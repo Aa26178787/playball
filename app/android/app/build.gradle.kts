@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.playball"
+    namespace = "com.playball.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
