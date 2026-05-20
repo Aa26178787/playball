@@ -1,0 +1,4 @@
+database/connection.py 
+__pycache__/
+*.pyc
+*.deb
