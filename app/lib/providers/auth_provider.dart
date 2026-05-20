@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import '../api/api_service.dart';
 import '../models/user.dart';
 
@@ -6,10 +7,12 @@ class AuthProvider extends ChangeNotifier {
   User? _user;
   bool _isLoggedIn = false;
   bool _isLoading = false;
+  String? _errorMessage;
 
   User? get user => _user;
   bool get isLoggedIn => _isLoggedIn;
   bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
 
   // 앱 시작 시 로그인 상태 확인
   Future<void> checkLoginStatus() async {
@@ -30,6 +33,7 @@ class AuthProvider extends ChangeNotifier {
   // 회원가입
   Future<bool> register(String email, String password, String nickname) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
@@ -46,6 +50,11 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
+      if (e is DioException) {
+        _errorMessage = e.response?.data?['detail'] ?? '회원가입에 실패했습니다';
+      } else {
+        _errorMessage = '회원가입에 실패했습니다';
+      }
       notifyListeners();
       return false;
     }
@@ -54,6 +63,7 @@ class AuthProvider extends ChangeNotifier {
   // 로그인
   Future<bool> login(String email, String password) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
@@ -69,8 +79,12 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      print('로그인 오류: $e');  // ← 추가
       _isLoading = false;
+      if (e is DioException) {
+        _errorMessage = e.response?.data?['detail'] ?? '로그인에 실패했습니다';
+      } else {
+        _errorMessage = '로그인에 실패했습니다';
+      }
       notifyListeners();
       return false;
     }

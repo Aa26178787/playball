@@ -816,7 +816,9 @@ def get_games_by_date(date_str: str):
                 WHERE gr.game_id = g.id
                 AND gr.is_starter = TRUE
                 AND gr.roster_type = 'batter'
-            ) AS has_lineup
+            ) AS has_lineup,
+            home_sp.name AS home_starter,
+            away_sp.name AS away_starter
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
@@ -833,6 +835,20 @@ def get_games_by_date(date_str: str):
             JOIN players p ON gp.player_id = p.id
             WHERE gp.result = '패'
         ) lp ON lp.game_id = g.id
+        LEFT JOIN LATERAL (
+            SELECT p.name FROM game_rosters gr
+            JOIN players p ON gr.player_id = p.id
+            WHERE gr.game_id = g.id AND gr.roster_type = 'pitcher'
+            AND gr.is_starter = TRUE AND gr.team_side = 'home'
+            LIMIT 1
+        ) home_sp ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT p.name FROM game_rosters gr
+            JOIN players p ON gr.player_id = p.id
+            WHERE gr.game_id = g.id AND gr.roster_type = 'pitcher'
+            AND gr.is_starter = TRUE AND gr.team_side = 'away'
+            LIMIT 1
+        ) away_sp ON TRUE
         WHERE g.game_date = %s
         ORDER BY g.start_time, g.id
     """, (date_str,))
@@ -873,6 +889,8 @@ def get_games_by_date(date_str: str):
             "win_pitcher":    win_pitcher,
             "lose_pitcher":   lose_pitcher,
             "is_draw":        r[2] == '종료' and not win_pitcher and not lose_pitcher,
+            "home_starter":   r[16],
+            "away_starter":   r[17],
         })
 
     return {"games": games, "count": len(games)}

@@ -15,6 +15,8 @@ class Game {
   final String? winPitcher;
   final String? losePitcher;
   final bool? isDraw;
+  final String? homeStarter;
+  final String? awayStarter;
 
   Game({
     required this.id,
@@ -33,6 +35,8 @@ class Game {
     this.winPitcher,
     this.losePitcher,
     this.isDraw,
+    this.homeStarter,
+    this.awayStarter,
   });
 
   factory Game.fromJson(Map<String, dynamic> json) {
@@ -53,6 +57,8 @@ class Game {
       winPitcher:    json['win_pitcher'],
       losePitcher:   json['lose_pitcher'],
       isDraw:        json['is_draw'] == true,
+      homeStarter:   json['home_starter'],
+      awayStarter:   json['away_starter'],
     );
   }
 }

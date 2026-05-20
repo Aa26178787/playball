@@ -37,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } else {
       setState(() {
-        _error = '이메일 또는 비밀번호가 틀렸습니다';
+        _error = auth.errorMessage ?? '이메일 또는 비밀번호가 틀렸습니다';
       });
     }
   }

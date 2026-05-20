@@ -22,6 +22,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Map<String, dynamic>? _relayAllData;
   bool _isLoading = true;
   Timer? _refreshTimer;
+  final ScrollController _inningScrollController = ScrollController();
 
   static const _pitchTypeMap = {
     'FAST': '직구', 'CURV': '커브', 'SLID': '슬라이더',
@@ -49,7 +50,20 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   void dispose() {
     _refreshTimer?.cancel();
     _tabController.dispose();
+    _inningScrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollInningsToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_inningScrollController.hasClients) {
+        _inningScrollController.animateTo(
+          _inningScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _loadData() async {
@@ -72,7 +86,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             .then((d) => setState(() => _recordDetailData = d))
             .catchError((_) {}),
         ApiService.getGameRelayAll(widget.gameId)
-            .then((d) => setState(() => _relayAllData = d))
+            .then((d) {
+              if (mounted) {
+                setState(() => _relayAllData = d);
+                if (_tabController.index == 0) _scrollInningsToBottom();
+              }
+            })
             .catchError((_) {}),
       ]);
 
@@ -107,7 +126,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             .then((d) { if (mounted) setState(() => _relayData = d); })
             .catchError((_) {});
         ApiService.getGameRelayAll(widget.gameId)
-            .then((d) { if (mounted) setState(() => _relayAllData = d); })
+            .then((d) {
+              if (mounted) {
+                setState(() => _relayAllData = d);
+                if (_tabController.index == 0) _scrollInningsToBottom();
+              }
+            })
             .catchError((_) {});
       } else {
         // 경기 종료 감지 시 타이머 취소 후 전체 데이터 새로고침
@@ -418,6 +442,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final winRate = _getWinRate();
 
     return SingleChildScrollView(
+      controller: _inningScrollController,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

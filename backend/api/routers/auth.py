@@ -73,6 +73,34 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="토큰이 유효하지 않습니다")
 
 
+@router.get("/check-email")
+def check_email(email: str):
+    """이메일 중복확인"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+    exists = cur.fetchone() is not None
+    cur.close()
+    conn.close()
+    return {"available": not exists}
+
+
+@router.get("/check-nickname")
+def check_nickname(nickname: str):
+    """닉네임 중복확인"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM users WHERE nickname = %s", (nickname,))
+    exists = cur.fetchone() is not None
+    cur.close()
+    conn.close()
+    return {"available": not exists}
+
+
 @router.post("/register")
 def register(user: UserRegister):
     """회원가입"""

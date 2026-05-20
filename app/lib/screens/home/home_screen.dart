@@ -208,6 +208,20 @@ class GameCard extends StatelessWidget {
 
   const GameCard({super.key, required this.game});
 
+  Widget _starterChip(String name, bool isHome) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.indigo.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        '${isHome ? '홈' : '원정'} $name',
+        style: const TextStyle(fontSize: 10, color: Colors.indigo),
+      ),
+    );
+  }
+
   Color _statusColor() {
     switch (game.status) {
       case '진행':
@@ -363,10 +377,28 @@ class GameCard extends StatelessWidget {
                         ),
                 ),
 
+              // 선발투수 표시 (예정/라인업)
+              if ((game.status == '예정' || game.status == '라인업') &&
+                  (game.homeStarter != null || game.awayStarter != null))
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      if (game.homeStarter != null)
+                        _starterChip(game.homeStarter!, true),
+                      if (game.homeStarter != null && game.awayStarter != null)
+                        const Text('vs', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      if (game.awayStarter != null)
+                        _starterChip(game.awayStarter!, false),
+                    ],
+                  ),
+                ),
+
               // 라인업 확정 표시
               if (game.status == '라인업')
                 Padding(
-                  padding: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.only(top: 4),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(

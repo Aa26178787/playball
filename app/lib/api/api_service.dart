@@ -57,6 +57,16 @@ class ApiService {
     }
   }
 
+  static Future<bool> checkEmailAvailable(String email) async {
+    final res = await _dio.get('/auth/check-email', queryParameters: {'email': email});
+    return res.data['available'] as bool;
+  }
+
+  static Future<bool> checkNicknameAvailable(String nickname) async {
+    final res = await _dio.get('/auth/check-nickname', queryParameters: {'nickname': nickname});
+    return res.data['available'] as bool;
+  }
+
   static Future<Map<String, dynamic>> getMe() async {
     final headers = await authHeaders();
     final res = await _dio.get('/auth/me', options: Options(headers: headers));
@@ -108,9 +118,11 @@ class ApiService {
   static Future<Map<String, dynamic>> getHitters({
     String sortBy = 'avg',
     int? teamId,
+    int limit = 100,
   }) async {
     final res = await _dio.get('/players/hitters', queryParameters: {
       'sort_by': sortBy,
+      'limit': limit,
       if (teamId != null) 'team_id': teamId,
     });
     return res.data;
@@ -119,9 +131,11 @@ class ApiService {
   static Future<Map<String, dynamic>> getPitchers({
     String sortBy = 'era',
     int? teamId,
+    int limit = 100,
   }) async {
     final res = await _dio.get('/players/pitchers', queryParameters: {
       'sort_by': sortBy,
+      'limit': limit,
       if (teamId != null) 'team_id': teamId,
     });
     return res.data;
