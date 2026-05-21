@@ -307,7 +307,7 @@ def get_player_detail(player_id: int):
                 avg, obp, slg, ops, woba, wrc_plus, babip, iso, war,
                 pa, tb, cs, sac, sf, ibb, hbp, gdp, errors,
                 sb_pct, mh, risp, ph_ba,
-                sba, fpct, po, assists, dp, pb
+                sba, fpct, po, assists, dp, pb, p_pa
             FROM batter_stats
             WHERE player_id = %s
             ORDER BY season DESC
@@ -337,6 +337,7 @@ def get_player_detail(player_id: int):
                 "ph_ba": float(r[33]) if r[33] else 0,
                 "sba": r[34], "fpct": float(r[35]) if r[35] else None,
                 "po": r[36], "assists": r[37], "dp": r[38], "pb": r[39],
+                "p_pa": float(r[40]) if r[40] else None,
             }
             for r in stats
         ]
@@ -348,7 +349,8 @@ def get_player_detail(player_id: int):
                 walks, strikeouts, home_runs_allowed, era, whip, war,
                 blown_saves, fip, k_per_9, bb_per_9, babip,
                 cg, sho, wpct, tbf, np, doubles_allowed, triples_allowed,
-                sac, sf, ibb, hbp, wp, bk, qs, avg_against
+                sac, sf, ibb, hbp, wp, bk, qs, avg_against,
+                gs, gf, svo
             FROM pitcher_stats
             WHERE player_id = %s
             ORDER BY season DESC
@@ -378,6 +380,7 @@ def get_player_detail(player_id: int):
                 "hbp": r[31], "wp": r[32], "bk": r[33],
                 "qs": r[34],
                 "avg_against": float(r[35]) if r[35] else 0,
+                "gs": r[36], "gf": r[37], "svo": r[38],
             }
             for r in stats
         ]

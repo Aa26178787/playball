@@ -139,6 +139,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         _statCard('비율 지표', [
           _statRow([('타율', _s(stats['avg'], rate: true)), ('출루율', _s(stats['obp'], rate: true)), ('장타율', _s(stats['slg'], rate: true)), ('OPS', _s(stats['ops'], rate: true))]),
           _statRow([('득점권타율', _s(stats['risp'], rate: true)), ('대타타율', _s(stats['ph_ba'], rate: true)), ('멀티히트', _s(stats['mh'])), ('도루율', stats['sb_pct'] != null ? '${(stats['sb_pct'] as num).toStringAsFixed(1)}%' : '-')]),
+          _statRow([('투구수/타석', stats['p_pa'] != null ? (stats['p_pa'] as num).toStringAsFixed(2) : '-'), ('', ''), ('', ''), ('', '')]),
         ]),
         _statCard('고급 지표', [
           _statRow([('wOBA', _s(stats['woba'], rate: true)), ('wRC+', _s(stats['wrc_plus'])), ('BABIP', _s(stats['babip'], rate: true)), ('ISO', _s(stats['iso'], rate: true))]),
@@ -160,6 +161,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         _statCard('성적 지표', [
           _statRow([('평균자책점', _s(stats['era'], dec: 2)), ('WHIP', _s(stats['whip'], dec: 2)), ('승률', _s(stats['wpct'], rate: true)), ('퀄리티스타트', _s(stats['qs']))]),
           _statRow([('블론세이브', _s(stats['blown_saves'])), ('완투', _s(stats['cg'])), ('완봉', _s(stats['sho'])), ('피안타율', _s(stats['avg_against'], rate: true))]),
+          _statRow([('선발', _s(stats['gs'])), ('구원종료', _s(stats['gf'])), ('세이브기회', _s(stats['svo'])), ('', '')]),
         ]),
         _statCard('고급 지표', [
           _statRow([('FIP', _s(stats['fip'], dec: 2)), ('9이닝삼진', _s(stats['k_per_9'], dec: 2)), ('9이닝볼넷', _s(stats['bb_per_9'], dec: 2)), ('BABIP', _s(stats['babip'], rate: true))]),
