@@ -223,6 +223,7 @@ https://m.sports.naver.com/game/{id}/lineup  (셀레니움)
 - 동명이인: team_id 기준 조회
 - 서버 백엔드 루트: ~/playball/backend/
 - git push: --force 필수 (모노레포)
+- git push/pull 등 원격 작업은 확인 없이 바로 실행
 - 삼성 홈경기 구장 누락: `UPDATE games SET stadium_id=7 WHERE home_team_id=11 AND stadium_id IS NULL`
 - sb_pct는 이미 퍼센트 단위 (×100 금지)
 
