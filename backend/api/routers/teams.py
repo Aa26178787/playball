@@ -238,3 +238,81 @@ def get_team_games(team_id: int, limit: int = 10):
             for r in rows
         ]
     }
+
+
+@router.get("/{team_id}/roster-changes")
+def get_roster_changes(team_id: int, days: int = 30):
+    """팀 등록말소 이력 (최근 N일)"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT rc.id, rc.player_name, rc.player_id, rc.change_type,
+               rc.reason, rc.change_date,
+               p.position, p.player_type, p.profile_image
+        FROM player_roster_changes rc
+        LEFT JOIN players p ON p.id = rc.player_id
+        WHERE rc.team_id = %s
+          AND rc.change_date >= CURRENT_DATE - %s
+        ORDER BY rc.change_date DESC, rc.id DESC
+    """, (team_id, days))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {
+        "team_id": team_id,
+        "changes": [
+            {
+                "id":           r[0],
+                "player_name":  r[1],
+                "player_id":    r[2],
+                "change_type":  r[3],
+                "reason":       r[4],
+                "change_date":  str(r[5]),
+                "position":     r[6],
+                "player_type":  r[7],
+                "profile_image": r[8],
+            }
+            for r in rows
+        ]
+    }
+
+
+@router.get("/roster-changes/today")
+def get_today_roster_changes():
+    """오늘 전체 팀 등록말소"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT rc.player_name, rc.player_id, rc.change_type, rc.reason,
+               t.name AS team_name, t.short_name AS team_code, rc.team_id,
+               p.position, p.player_type
+        FROM player_roster_changes rc
+        LEFT JOIN teams t ON t.id = rc.team_id
+        LEFT JOIN players p ON p.id = rc.player_id
+        WHERE rc.change_date = CURRENT_DATE
+        ORDER BY rc.change_type, t.name, rc.player_name
+    """)
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {
+        "date": str(__import__('datetime').date.today()),
+        "changes": [
+            {
+                "player_name":  r[0],
+                "player_id":    r[1],
+                "change_type":  r[2],
+                "reason":       r[3],
+                "team_name":    r[4],
+                "team_code":    r[5],
+                "team_id":      r[6],
+                "position":     r[7],
+                "player_type":  r[8],
+            }
+            for r in rows
+        ]
+    }

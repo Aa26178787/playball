@@ -16,16 +16,21 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   late TabController _tabController;
   List _players = [];
   List _games = [];
+  List _rosterChanges = [];
   bool _playersLoading = true;
   bool _gamesLoading = false;
+  bool _rosterLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (_tabController.index == 1 && _games.isEmpty && !_gamesLoading) {
         _loadGames();
+      }
+      if (_tabController.index == 2 && _rosterChanges.isEmpty && !_rosterLoading) {
+        _loadRosterChanges();
       }
     });
     _loadPlayers();
@@ -66,6 +71,21 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     }
   }
 
+  Future<void> _loadRosterChanges() async {
+    setState(() => _rosterLoading = true);
+    try {
+      final data = await ApiService.getTeamRosterChanges(widget.team['id'], days: 30);
+      if (mounted) {
+        setState(() {
+          _rosterChanges = data['changes'] ?? [];
+          _rosterLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _rosterLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final team = widget.team;
@@ -87,7 +107,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
-          tabs: const [Tab(text: '선수'), Tab(text: '최근경기')],
+          tabs: const [Tab(text: '선수'), Tab(text: '최근경기'), Tab(text: '등록말소')],
         ),
       ),
       body: Column(
@@ -96,7 +116,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [_buildPlayers(), _buildGames()],
+              children: [_buildPlayers(), _buildGames(), _buildRosterChanges()],
             ),
           ),
         ],
@@ -324,6 +344,114 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildRosterChanges() {
+    if (_rosterLoading) return const Center(child: CircularProgressIndicator());
+    if (_rosterChanges.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text('최근 30일 등록말소 내역이 없습니다', style: TextStyle(color: Colors.grey)),
+        ),
+      );
+    }
+
+    // 날짜별 그룹핑
+    final Map<String, List> byDate = {};
+    for (final c in _rosterChanges) {
+      final date = c['change_date'] as String? ?? '';
+      byDate.putIfAbsent(date, () => []).add(c);
+    }
+    final sortedDates = byDate.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: sortedDates.length,
+      itemBuilder: (context, i) {
+        final date = sortedDates[i];
+        final items = byDate[date]!;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
+              child: Text(
+                date,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+              ),
+            ),
+            ...items.map((c) => _buildChangeItem(c)),
+            const Divider(height: 1),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildChangeItem(Map<String, dynamic> c) {
+    final changeType = c['change_type'] as String? ?? '';
+    final playerName = c['player_name'] as String? ?? '';
+    final reason = c['reason'] as String? ?? '';
+    final position = c['position'] as String? ?? '';
+    final playerId = c['player_id'] as int?;
+
+    Color typeColor;
+    IconData typeIcon;
+    switch (changeType) {
+      case '1군등록':
+        typeColor = Colors.blue;
+        typeIcon = Icons.arrow_upward;
+        break;
+      case '등록말소':
+        typeColor = Colors.orange;
+        typeIcon = Icons.arrow_downward;
+        break;
+      case '부상자명단':
+        typeColor = Colors.red;
+        typeIcon = Icons.local_hospital;
+        break;
+      case '임의탈퇴':
+        typeColor = Colors.grey;
+        typeIcon = Icons.person_off;
+        break;
+      default:
+        typeColor = Colors.grey;
+        typeIcon = Icons.swap_horiz;
+    }
+
+    return ListTile(
+      dense: true,
+      leading: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: typeColor.withOpacity(0.15),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(typeIcon, size: 16, color: typeColor),
+      ),
+      title: Row(children: [
+        Text(playerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        if (position.isNotEmpty) ...[
+          const SizedBox(width: 6),
+          Text(position, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+        ],
+      ]),
+      subtitle: reason.isNotEmpty ? Text(reason, style: const TextStyle(fontSize: 11)) : null,
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: typeColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(changeType, style: TextStyle(fontSize: 11, color: typeColor, fontWeight: FontWeight.bold)),
+      ),
+      onTap: playerId != null
+          ? () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId)))
+          : null,
     );
   }
 }

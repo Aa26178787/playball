@@ -385,6 +385,21 @@ def get_player_detail(player_id: int):
             for r in stats
         ]
 
+    # 로스터 상태 (최근 변경 이력)
+    cur.execute("""
+        SELECT change_type, reason, change_date
+        FROM player_roster_changes
+        WHERE player_id = %s
+        ORDER BY change_date DESC
+        LIMIT 1
+    """, (player_id,))
+    rc = cur.fetchone()
+    result["roster_status"] = {
+        "change_type": rc[0],
+        "reason": rc[1],
+        "change_date": str(rc[2]),
+    } if rc else None
+
     cur.close()
     conn.close()
     return result

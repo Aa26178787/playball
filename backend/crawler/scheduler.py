@@ -616,6 +616,16 @@ def update_team_rankings():
     save_team_rankings(teams)
 
 
+def _update_roster_changes():
+    """오늘 등록말소 크롤링"""
+    try:
+        from crawler.kbo_roster_crawler import run_today
+        print(f"[{datetime.now()}] 등록말소 크롤링 시작")
+        run_today()
+    except Exception as e:
+        print(f"[{datetime.now()}] 등록말소 크롤링 오류: {e}")
+
+
 def update_kbo_player_stats():
     """KBO 사이트에서 선수 2026 시즌 스탯 업데이트"""
     try:
@@ -763,6 +773,9 @@ def run_scheduler():
     schedule.every().day.at("15:00").do(update_finished_game_records)
     schedule.every().day.at("15:00").do(update_team_rankings)
     schedule.every().day.at("15:30").do(update_kbo_player_stats)
+
+    # 매일 UTC 00:30 (KST 09:30): 등록말소 크롤링
+    schedule.every().day.at("00:30").do(_update_roster_changes)
 
     # 매주 월요일 UTC 03:00: 시즌 일정
     schedule.every().monday.at("03:00").do(update_season_schedule)

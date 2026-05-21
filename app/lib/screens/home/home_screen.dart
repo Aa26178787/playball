@@ -75,12 +75,21 @@ class TodayGamesTab extends StatefulWidget {
 class _TodayGamesTabState extends State<TodayGamesTab> {
   DateTime _selectedDate = DateTime.now();
   List _games = [];
+  List _todayRosterChanges = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadGames();
+    _loadTodayRosterChanges();
+  }
+
+  Future<void> _loadTodayRosterChanges() async {
+    try {
+      final data = await ApiService.getTodayRosterChanges();
+      if (mounted) setState(() => _todayRosterChanges = data['changes'] ?? []);
+    } catch (_) {}
   }
 
   Future<void> _loadGames() async {
@@ -186,6 +195,10 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
             ),
           ),
 
+          // 당일 등록말소 배너
+          if (_todayRosterChanges.isNotEmpty)
+            _buildTodayRosterBanner(),
+
           // 경기 목록
           Expanded(
             child: _isLoading
@@ -208,7 +221,98 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       ),
     );
   }
+
+  bool _rosterBannerExpanded = false;
+
+  Widget _buildTodayRosterBanner() {
+    final changes = _todayRosterChanges;
+    final registrations = changes.where((c) => c['change_type'] == '1군등록').toList();
+    final removals = changes.where((c) => c['change_type'] == '등록말소').toList();
+    final injuries = changes.where((c) => c['change_type'] == '부상자명단').toList();
+
+    return InkWell(
+      onTap: () => setState(() => _rosterBannerExpanded = !_rosterBannerExpanded),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF8E1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFFFE082)),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(children: [
+                const Icon(Icons.swap_horiz, size: 16, color: Color(0xFFF57F17)),
+                const SizedBox(width: 6),
+                const Text('오늘 등록말소',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFF57F17))),
+                const SizedBox(width: 8),
+                if (registrations.isNotEmpty)
+                  _rosterChip('${registrations.length}명 등록', Colors.blue),
+                if (removals.isNotEmpty) ...[
+                  const SizedBox(width: 4),
+                  _rosterChip('${removals.length}명 말소', Colors.orange),
+                ],
+                if (injuries.isNotEmpty) ...[
+                  const SizedBox(width: 4),
+                  _rosterChip('${injuries.length}명 부상', Colors.red),
+                ],
+                const Spacer(),
+                Icon(_rosterBannerExpanded ? Icons.expand_less : Icons.expand_more,
+                    size: 18, color: Colors.grey),
+              ]),
+            ),
+            if (_rosterBannerExpanded)
+              ...changes.map((c) {
+                final type = c['change_type'] as String? ?? '';
+                Color col = type == '1군등록' ? Colors.blue
+                    : type == '등록말소' ? Colors.orange
+                    : type == '부상자명단' ? Colors.red : Colors.grey;
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                  child: Row(children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: col.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(type, style: TextStyle(fontSize: 10, color: col, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(c['team_name'] ?? '', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                    const SizedBox(width: 4),
+                    Text(c['player_name'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                    if ((c['reason'] as String? ?? '').isNotEmpty) ...[
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text('(${c['reason']})',
+                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                  ]),
+                );
+              }),
+            if (_rosterBannerExpanded) const SizedBox(height: 4),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _rosterChip(String label, Color color) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.12),
+      borderRadius: BorderRadius.circular(4),
+    ),
+    child: Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
+  );
 }
+
 class GameCard extends StatelessWidget {
   final Game game;
 

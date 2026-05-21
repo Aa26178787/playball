@@ -312,6 +312,17 @@ class ApiService {
         options: Options(headers: headers));
   }
 
+  // ===== 등록말소 API =====
+  static Future<Map<String, dynamic>> getTeamRosterChanges(int teamId, {int days = 30}) async {
+    final res = await _dio.get('/teams/$teamId/roster-changes', queryParameters: {'days': days});
+    return res.data;
+  }
+
+  static Future<Map<String, dynamic>> getTodayRosterChanges() async {
+    final res = await _dio.get('/teams/roster-changes/today');
+    return res.data;
+  }
+
   // ===== 캘린더 API =====
   static Future<Map<String, dynamic>> getCalendar(int year, int month) async {
     final res = await _dio.get('/calendar/$year/$month');

@@ -99,6 +99,40 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     );
   }
 
+  Widget _buildRosterBadge(Map<String, dynamic> status) {
+    final type = status['change_type'] as String? ?? '';
+    Color color;
+    IconData icon;
+    switch (type) {
+      case '부상자명단':
+        color = Colors.red;
+        icon = Icons.local_hospital;
+        break;
+      case '등록말소':
+        color = Colors.orange;
+        icon = Icons.arrow_downward;
+        break;
+      case '임의탈퇴':
+        color = Colors.grey;
+        icon = Icons.person_off;
+        break;
+      default:
+        return const SizedBox.shrink();
+    }
+    final reason = status['reason'] as String? ?? '';
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(children: [
+        Icon(icon, size: 12, color: color),
+        const SizedBox(width: 4),
+        Text(
+          reason.isNotEmpty ? '$type · $reason' : type,
+          style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold),
+        ),
+      ]),
+    );
+  }
+
   Widget _buildHeader(Map<String, dynamic> player) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -122,6 +156,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   style: const TextStyle(color: Colors.white70, fontSize: 13),
                 ),
                 Text('#${player['number'] ?? '-'}', style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                if (player['roster_status'] != null)
+                  _buildRosterBadge(player['roster_status']),
               ],
             ),
           ),
