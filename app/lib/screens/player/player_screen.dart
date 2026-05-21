@@ -152,22 +152,24 @@ class _PlayerScreenState extends State<PlayerScreen>
     required VoidCallback onTap,
     Color? selectedColor,
   }) {
-    final color = selectedColor ?? const Color(0xFF1A237E);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(right: 6),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: selected ? color : Colors.grey.withOpacity(0.12),
+          color: selected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
-          border: selected ? null : Border.all(color: Colors.grey.withOpacity(0.3), width: 0.5),
+          border: Border.all(
+            color: selected ? Colors.white : Colors.white.withOpacity(0.4),
+            width: 1,
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 12,
-            color: selected ? Colors.white : Colors.grey[700],
+            color: selected ? const Color(0xFF1A237E) : Colors.white,
             fontWeight: selected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
@@ -186,9 +188,9 @@ class _PlayerScreenState extends State<PlayerScreen>
               padding: const EdgeInsets.only(left: 12),
               child: Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 11,
-                  color: Colors.grey[600],
+                  color: Colors.white,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -254,7 +256,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     )).toList();
 
     return Container(
-      color: const Color(0xFFC5CAE9),
+      color: const Color(0xFF1A237E),
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
         children: [

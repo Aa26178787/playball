@@ -68,11 +68,19 @@ class _TeamScreenState extends State<TeamScreen>
 
   Widget _buildTeamRankings() {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
+    final rankCounts = <int, int>{};
+    for (final t in _teams) {
+      final r = t['rank'] as int? ?? 0;
+      rankCounts[r] = (rankCounts[r] ?? 0) + 1;
+    }
     return RefreshIndicator(
       onRefresh: _loadTeams,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
-        children: _teams.map((team) => _buildTeamRow(team)).toList(),
+        children: _teams.map((team) {
+          final r = team['rank'] as int? ?? 0;
+          return _buildTeamRow(team, isTied: (rankCounts[r] ?? 1) > 1);
+        }).toList(),
       ),
     );
   }
@@ -89,7 +97,7 @@ class _TeamScreenState extends State<TeamScreen>
     return Colors.grey;
   }
 
-  Widget _buildTeamRow(Map<String, dynamic> team) {
+  Widget _buildTeamRow(Map<String, dynamic> team, {bool isTied = false}) {
     final code = team['short_name'] as String? ?? '';
     final gb = team['games_behind'];
     final gbNum = gb as num?;
@@ -102,6 +110,15 @@ class _TeamScreenState extends State<TeamScreen>
     final streak = team['streak'] as int? ?? 0;
     final rank = team['rank'] as int? ?? 0;
     final winRate = (team['win_rate'] as num?)?.toStringAsFixed(3) ?? '-';
+
+    final Color rankBg;
+    if (isTied) {
+      rankBg = const Color(0xFFF57F17); // 주황 (공동순위)
+    } else if (rank <= 5) {
+      rankBg = const Color(0xFF1565C0); // 파랑 (상위 5)
+    } else {
+      rankBg = const Color(0xFF78909C); // 회색 (하위 5)
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -122,21 +139,16 @@ class _TeamScreenState extends State<TeamScreen>
               Row(
                 children: [
                   Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: rank <= 5
-                          ? const Color(0xFF1A237E)
-                          : Colors.grey[200],
-                      shape: BoxShape.circle,
-                    ),
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(color: rankBg, shape: BoxShape.circle),
                     alignment: Alignment.center,
                     child: Text(
                       '$rank',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: rank <= 5 ? Colors.white : Colors.grey[700],
+                        fontSize: 14,
+                        color: Colors.white,
                       ),
                     ),
                   ),
@@ -167,7 +179,7 @@ class _TeamScreenState extends State<TeamScreen>
               const SizedBox(height: 8),
               // ─── 최근 5경기 + 연승 ───
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.grey.withOpacity(0.07),
                   borderRadius: BorderRadius.circular(6),
@@ -175,14 +187,14 @@ class _TeamScreenState extends State<TeamScreen>
                 child: Row(
                   children: [
                     Text('최근 5경기',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-                    const SizedBox(width: 8),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 10),
                     ...recent5.map((r) => _recentDot(r)),
                     const Spacer(),
                     Text(
                       _streakText(streak),
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: _streakColor(streak),
                       ),
@@ -217,16 +229,19 @@ class _TeamScreenState extends State<TeamScreen>
 
   Widget _recentDot(String result) {
     Color color;
+    String label;
     switch (result) {
-      case 'W': color = Colors.blue; break;
-      case 'L': color = Colors.red;  break;
-      default:  color = Colors.grey;
+      case 'W': color = const Color(0xFF1565C0); label = '승'; break;
+      case 'L': color = const Color(0xFFC62828); label = '패'; break;
+      default:  color = Colors.grey; label = '무';
     }
     return Container(
-      width: 9,
-      height: 9,
-      margin: const EdgeInsets.only(right: 3),
+      width: 22,
+      height: 22,
+      margin: const EdgeInsets.only(right: 4),
       decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      alignment: Alignment.center,
+      child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
     );
   }
 }
