@@ -238,11 +238,15 @@ def _normalize_trade_type(item: str) -> str:
         return '군입대'
     if '트레이드' in item:
         return '트레이드'
+    if '웨이버' in item:
+        return '웨이버'
     if '방출' in item:
         return '방출'
     if '복귀' in item or '해제' in item:
         return '복귀'
-    if '1군등록' in item or '등록' in item:
+    if '육성' in item:
+        return '육성선수'
+    if '1군등록' in item or ('등록' in item and '말소' not in item):
         return '1군등록'
     if '말소' in item:
         return '등록말소'
