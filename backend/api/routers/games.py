@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from database.connection import get_connection
+from api.weather_service import get_weather, get_forecast_at
 
 router = APIRouter()
 
@@ -577,7 +578,8 @@ def get_today_games():
             ht.short_name AS home_team_code,
             at.name AS away_team,
             at.short_name AS away_team_code,
-            s.name AS stadium
+            s.name AS stadium,
+            g.stadium_id, g.start_time
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
@@ -590,8 +592,29 @@ def get_today_games():
     cur.close()
     conn.close()
 
+    # 구장별 날씨 캐시 (같은 구장 중복 호출 방지)
+    weather_cache: dict = {}
+
     games = []
     for r in rows:
+        stadium_id = r[12]
+        start_time = r[13]
+
+        weather = None
+        if stadium_id and stadium_id not in weather_cache:
+            start_hour = None
+            if start_time:
+                try:
+                    total_sec = int(start_time.total_seconds())
+                    start_hour = (total_sec // 3600 + 9) % 24  # UTC→KST
+                except Exception:
+                    pass
+            weather_cache[stadium_id] = (
+                get_forecast_at(stadium_id, start_hour) if start_hour is not None
+                else get_weather(stadium_id)
+            )
+        weather = weather_cache.get(stadium_id)
+
         games.append({
             "id":             r[0],
             "game_date":      str(r[1]),
@@ -605,6 +628,8 @@ def get_today_games():
             "away_team":      r[9],
             "away_team_code": r[10],
             "stadium":        r[11],
+            "stadium_id":     stadium_id,
+            "weather":        weather,
         })
 
     return {"games": games, "count": len(games)}
@@ -854,8 +879,24 @@ def get_games_by_date(date_str: str):
     """, (date_str,))
 
     rows = cur.fetchall()
+
+    # stadium_id 별도 조회
+    game_ids = [r[0] for r in rows]
+    stadium_map: dict = {}
+    if game_ids:
+        cur.execute(
+            "SELECT id, stadium_id FROM games WHERE id = ANY(%s)", (game_ids,)
+        )
+        for gid, sid in cur.fetchall():
+            stadium_map[gid] = sid
+
     cur.close()
     conn.close()
+
+    # 오늘 날짜 경기만 날씨 포함 (과거 날짜는 스킵)
+    from datetime import date as _date
+    is_today = (date_str == str(_date.today()))
+    weather_cache: dict = {}
 
     seen_ids = set()
     games = []
@@ -871,6 +912,24 @@ def get_games_by_date(date_str: str):
 
         if status == '예정' and has_lineup:
             status = '라인업'
+
+        weather = None
+        if is_today:
+            stadium_id = stadium_map.get(r[0])
+            if stadium_id and stadium_id not in weather_cache:
+                start_time = r[7]
+                start_hour = None
+                if start_time:
+                    try:
+                        total_sec = int(start_time.total_seconds())
+                        start_hour = (total_sec // 3600 + 9) % 24
+                    except Exception:
+                        pass
+                weather_cache[stadium_id] = (
+                    get_forecast_at(stadium_id, start_hour) if start_hour is not None
+                    else get_weather(stadium_id)
+                )
+            weather = weather_cache.get(stadium_map.get(r[0]))
 
         games.append({
             "id":             r[0],
@@ -891,6 +950,7 @@ def get_games_by_date(date_str: str):
             "is_draw":        r[2] == '종료' and not win_pitcher and not lose_pitcher,
             "home_starter":   r[16],
             "away_starter":   r[17],
+            "weather":        weather,
         })
 
     return {"games": games, "count": len(games)}
@@ -987,3 +1047,35 @@ def get_game_relay(game_id: int):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"중계 데이터 조회 실패: {str(e)}")
+
+
+@router.get("/{game_id}/weather")
+def get_game_weather(game_id: int):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT stadium_id, start_time, status FROM games WHERE id = %s",
+        (game_id,)
+    )
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="경기를 찾을 수 없습니다")
+    stadium_id, start_time, status = row
+    if not stadium_id:
+        return {"weather": None}
+    start_hour = None
+    if start_time:
+        try:
+            total_sec = int(start_time.total_seconds())
+            start_hour = (total_sec // 3600 + 9) % 24
+        except Exception:
+            pass
+    if status in ('예정', '라인업') and start_hour is not None:
+        weather = get_forecast_at(stadium_id, start_hour)
+    else:
+        weather = get_weather(stadium_id)
+    return {"weather": weather}
