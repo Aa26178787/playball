@@ -311,4 +311,19 @@ class ApiService {
     await _dio.delete('/community/comments/$commentId',
         options: Options(headers: headers));
   }
+
+  // ===== 캘린더 API =====
+  static Future<Map<String, dynamic>> getCalendar(int year, int month) async {
+    final res = await _dio.get('/calendar/$year/$month');
+    return res.data;
+  }
+
+  // ===== FCM API =====
+  static Future<void> registerFcmToken(String token) async {
+    try {
+      final headers = await authHeaders();
+      await _dio.post('/user/push-token',
+          data: {'token': token}, options: Options(headers: headers));
+    } catch (_) {}
+  }
 }

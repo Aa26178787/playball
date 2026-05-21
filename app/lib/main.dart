@@ -2,18 +2,55 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'providers/auth_provider.dart';
 import 'providers/game_provider.dart';
 import 'providers/team_provider.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'api/api_service.dart';
 
-void main() {
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // 백그라운드 알림 수신 (별도 처리 불필요 — OS가 알림 표시)
+}
+
+Future<void> _initFirebase() async {
+  try {
+    // firebase_options.dart 필요: flutterfire configure 실행 후 생성됨
+    // 생성 전까지 Firebase 기능은 비활성화
+    // ignore: undefined_identifier
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    final messaging = FirebaseMessaging.instance;
+    await messaging.requestPermission(alert: true, badge: true, sound: true);
+
+    final token = await messaging.getToken();
+    if (token != null) {
+      await ApiService.registerFcmToken(token);
+    }
+
+    messaging.onTokenRefresh.listen((newToken) async {
+      await ApiService.registerFcmToken(newToken);
+    });
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      // 포그라운드 알림 — 필요시 in-app 토스트 추가
+    });
+  } catch (_) {
+    // Firebase 미설정 시 무시 (google-services.json + flutterfire configure 필요)
+  }
+}
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Color(0xFF1A237E),
     statusBarIconBrightness: Brightness.light,
   ));
+  await _initFirebase();
   runApp(const PlayBallApp());
 }
 

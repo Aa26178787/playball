@@ -76,6 +76,25 @@ class _PlayerScreenState extends State<PlayerScreen>
     {'value': 'holds', 'label': '홀드'},
   ];
 
+  // 각 정렬 기준별 1위 타이틀
+  static const Map<String, String> _hitterTitles = {
+    'avg': '타율왕',
+    'home_runs': '홈런왕',
+    'rbis': '타점왕',
+    'hits': '안타왕',
+    'ops': '출루장타율왕',
+    'war': 'WAR 1위',
+  };
+
+  static const Map<String, String> _pitcherTitles = {
+    'era': '평균자책점 1위',
+    'wins': '승리왕',
+    'strikeouts': '삼진왕',
+    'whip': '이닝당출루 1위',
+    'saves': '세이브왕',
+    'holds': '홀드왕',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -257,6 +276,63 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
+  /// 순위 뱃지 위젯 (1위=금, 2위=은, 3위=동, 나머지=회색 숫자)
+  Widget _buildRankBadge(int rank) {
+    if (rank <= 3) {
+      final colors = [
+        const Color(0xFFFFD700), // 금
+        const Color(0xFFC0C0C0), // 은
+        const Color(0xFFCD7F32), // 동
+      ];
+      final color = colors[rank - 1];
+      return Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(color: color.withOpacity(0.5), blurRadius: 4, offset: const Offset(0, 2)),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '$rank',
+          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+      );
+    }
+    return Container(
+      width: 28,
+      height: 28,
+      alignment: Alignment.center,
+      child: Text(
+        '$rank',
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[500]),
+      ),
+    );
+  }
+
+  /// 1위 타이틀 뱃지
+  Widget _buildTitleBadge(String title) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFD700), Color(0xFFFFA000)],
+        ),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(color: Colors.amber.withOpacity(0.4), blurRadius: 4, offset: const Offset(0, 1)),
+        ],
+      ),
+      child: Text(
+        title,
+        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -334,26 +410,26 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Widget _buildHitterList() {
     if (_hitters.isEmpty) return const Center(child: Text('데이터가 없습니다'));
+    final titleKey = _hitterSort;
+    final title1st = _hitterTitles[titleKey];
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: _hitters.length,
       itemBuilder: (context, index) {
         final p = _hitters[index];
         final pos = p['position'] as String?;
+        final rank = index + 1;
         return ListTile(
-          leading: Stack(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          leading: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
+              _buildRankBadge(rank),
+              const SizedBox(width: 6),
               CircleAvatar(
+                radius: 20,
                 backgroundImage: p['profile_image'] != null ? NetworkImage(p['profile_image']) : null,
-                child: p['profile_image'] == null ? Text('${index + 1}', style: const TextStyle(fontSize: 12)) : null,
-              ),
-              Positioned(
-                bottom: 0, right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(color: Color(0xFF1A237E), shape: BoxShape.circle),
-                  child: Text('${index + 1}', style: const TextStyle(color: Colors.white, fontSize: 9)),
-                ),
+                child: p['profile_image'] == null ? const Icon(Icons.person, size: 18) : null,
               ),
             ],
           ),
@@ -373,6 +449,10 @@ class _PlayerScreenState extends State<PlayerScreen>
                   child: Text(pos, style: const TextStyle(fontSize: 10, color: Color(0xFF00695C))),
                 ),
               ],
+              if (rank == 1 && title1st != null) ...[
+                const SizedBox(width: 4),
+                _buildTitleBadge(title1st),
+              ],
             ],
           ),
           subtitle: Text('타율 ${(p['avg'] as num?)?.toStringAsFixed(3) ?? '-'}  출루장타율 ${(p['ops'] as num?)?.toStringAsFixed(3) ?? '-'}  ${p['home_runs'] ?? 0}홈런 ${p['rbis'] ?? 0}타점'),
@@ -384,26 +464,26 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Widget _buildPitcherList() {
     if (_pitchers.isEmpty) return const Center(child: Text('데이터가 없습니다'));
+    final titleKey = _pitcherSort;
+    final title1st = _pitcherTitles[titleKey];
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: _pitchers.length,
       itemBuilder: (context, index) {
         final p = _pitchers[index];
         final throws = p['throws'] as String?;
+        final rank = index + 1;
         return ListTile(
-          leading: Stack(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          leading: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
+              _buildRankBadge(rank),
+              const SizedBox(width: 6),
               CircleAvatar(
+                radius: 20,
                 backgroundImage: p['profile_image'] != null ? NetworkImage(p['profile_image']) : null,
-                child: p['profile_image'] == null ? Text('${index + 1}', style: const TextStyle(fontSize: 12)) : null,
-              ),
-              Positioned(
-                bottom: 0, right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(color: Color(0xFF1A237E), shape: BoxShape.circle),
-                  child: Text('${index + 1}', style: const TextStyle(color: Colors.white, fontSize: 9)),
-                ),
+                child: p['profile_image'] == null ? const Icon(Icons.person, size: 18) : null,
               ),
             ],
           ),
@@ -422,6 +502,10 @@ class _PlayerScreenState extends State<PlayerScreen>
                   ),
                   child: Text(throws, style: const TextStyle(fontSize: 10, color: Color(0xFF00695C))),
                 ),
+              ],
+              if (rank == 1 && title1st != null) ...[
+                const SizedBox(width: 4),
+                _buildTitleBadge(title1st),
               ],
             ],
           ),

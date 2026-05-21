@@ -8,6 +8,7 @@ import '../game/game_detail_screen.dart';
 import '../team/team_screen.dart';
 import '../player/player_screen.dart';
 import '../community/community_screen.dart';
+import '../calendar/calendar_screen.dart';
 import '../auth/login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const TodayGamesTab(),
     const TeamScreen(),
     const PlayerScreen(),
+    const CalendarScreen(),
     const CommunityScreen(),
   ];
 
@@ -48,6 +50,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: '선수',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month),
+            label: '캘린더',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.forum),

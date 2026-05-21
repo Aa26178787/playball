@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:fl_chart/fl_chart.dart';
 import '../../api/api_service.dart';
 
 class GameDetailScreen extends StatefulWidget {
@@ -165,6 +166,261 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     } finally {
       if (mounted) setState(() => _isRelayRefreshing = false);
     }
+  }
+
+  // 경기흐름 그래프 (이닝별 득점)
+  Widget _buildGameFlowChart(List innings, String homeTeam, String awayTeam) {
+    if (innings.isEmpty) return const SizedBox.shrink();
+    final homeColor = const Color(0xFF1A237E);
+    final awayColor = const Color(0xFFC62828);
+
+    final homeGroups = <BarChartGroupData>[];
+    final awayGroups = <BarChartGroupData>[];
+
+    for (int i = 0; i < innings.length; i++) {
+      final inn = innings[i];
+      final hr = (inn['home_runs'] as num?)?.toDouble() ?? 0;
+      final ar = (inn['away_runs'] as num?)?.toDouble() ?? 0;
+      homeGroups.add(BarChartGroupData(x: i, barRods: [
+        BarChartRodData(toY: hr, color: homeColor, width: 8, borderRadius: BorderRadius.circular(2)),
+      ]));
+      awayGroups.add(BarChartGroupData(x: i, barRods: [
+        BarChartRodData(toY: ar, color: awayColor, width: 8, borderRadius: BorderRadius.circular(2)),
+      ]));
+    }
+
+    final maxY = innings.fold<double>(1, (m, inn) {
+      final hr = (inn['home_runs'] as num?)?.toDouble() ?? 0;
+      final ar = (inn['away_runs'] as num?)?.toDouble() ?? 0;
+      return [m, hr, ar].reduce((a, b) => a > b ? a : b);
+    });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        const Text('이닝별 득점', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 4),
+        Row(children: [
+          Container(width: 10, height: 10, color: awayColor),
+          const SizedBox(width: 4),
+          Text(awayTeam, style: const TextStyle(fontSize: 11)),
+          const SizedBox(width: 12),
+          Container(width: 10, height: 10, color: homeColor),
+          const SizedBox(width: 4),
+          Text(homeTeam, style: const TextStyle(fontSize: 11)),
+        ]),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 120,
+          child: Stack(children: [
+            // away bars (behind)
+            BarChart(BarChartData(
+              alignment: BarChartAlignment.spaceAround,
+              maxY: maxY + 1,
+              barGroups: awayGroups,
+              titlesData: FlTitlesData(
+                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                bottomTitles: AxisTitles(sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (v, _) {
+                    final idx = v.toInt();
+                    if (idx < 0 || idx >= innings.length) return const SizedBox.shrink();
+                    return Text('${innings[idx]['inning']}', style: const TextStyle(fontSize: 9));
+                  },
+                  reservedSize: 16,
+                )),
+              ),
+              gridData: const FlGridData(show: false),
+              borderData: FlBorderData(show: false),
+              barTouchData: BarTouchData(enabled: false),
+            )),
+            // home bars (in front, offset via padding)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: BarChart(BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: maxY + 1,
+                barGroups: homeGroups.map((g) => BarChartGroupData(
+                  x: g.x,
+                  barRods: [BarChartRodData(
+                    toY: g.barRods.first.toY,
+                    color: homeColor.withOpacity(0.75),
+                    width: 6,
+                    borderRadius: BorderRadius.circular(2),
+                  )],
+                )).toList(),
+                titlesData: const FlTitlesData(
+                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                barTouchData: BarTouchData(enabled: false),
+              )),
+            ),
+          ]),
+        ),
+      ],
+    );
+  }
+
+  // 승리확률 그래프
+  Widget _buildWinRateChart(String homeTeam, String awayTeam) {
+    final relays = _relayAllData?['relays'] as List? ?? [];
+    final pts = relays.where((r) {
+      final wr = r['home_win_rate'];
+      return wr != null && (wr as num) > 0 && (wr as num) < 100;
+    }).toList();
+
+    if (pts.isEmpty) {
+      final wr = _getWinRate();
+      if (wr == null) return const SizedBox.shrink();
+      final home = (wr['homeTeamWinRate'] as num?)?.toDouble() ?? 50;
+      final away = (wr['awayTeamWinRate'] as num?)?.toDouble() ?? 50;
+      return _buildWinRateStatic(home, away, homeTeam, awayTeam);
+    }
+
+    // downsample to max 80 points
+    final step = pts.length > 80 ? (pts.length / 80).ceil() : 1;
+    final sampled = <dynamic>[];
+    for (int i = 0; i < pts.length; i += step) sampled.add(pts[i]);
+    if (sampled.last != pts.last) sampled.add(pts.last);
+
+    final spots = <FlSpot>[];
+    for (int i = 0; i < sampled.length; i++) {
+      final wr = (sampled[i]['home_win_rate'] as num).toDouble();
+      spots.add(FlSpot(i.toDouble(), wr));
+    }
+
+    final lastWr = spots.last.y;
+    final homeColor = const Color(0xFF1A237E);
+    final awayColor = const Color(0xFFC62828);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        Row(children: [
+          const Text('승리확률 추이', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const Spacer(),
+          Container(width: 10, height: 10, color: homeColor),
+          const SizedBox(width: 4),
+          Text(homeTeam, style: const TextStyle(fontSize: 11)),
+          const SizedBox(width: 8),
+          Container(width: 10, height: 10, color: awayColor),
+          const SizedBox(width: 4),
+          Text(awayTeam, style: const TextStyle(fontSize: 11)),
+        ]),
+        const SizedBox(height: 4),
+        SizedBox(
+          height: 120,
+          child: LineChart(LineChartData(
+            minY: 0,
+            maxY: 100,
+            gridData: FlGridData(
+              show: true,
+              drawHorizontalLine: true,
+              horizontalInterval: 25,
+              getDrawingHorizontalLine: (_) => const FlLine(color: Color(0xFFE0E0E0), strokeWidth: 1),
+              drawVerticalLine: false,
+            ),
+            borderData: FlBorderData(show: false),
+            titlesData: FlTitlesData(
+              leftTitles: AxisTitles(sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 28,
+                interval: 25,
+                getTitlesWidget: (v, _) => Text('${v.toInt()}%', style: const TextStyle(fontSize: 9, color: Colors.grey)),
+              )),
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            extraLinesData: ExtraLinesData(horizontalLines: [
+              HorizontalLine(y: 50, color: Colors.grey.withOpacity(0.4), strokeWidth: 1,
+                dashArray: [4, 4]),
+            ]),
+            lineBarsData: [
+              LineChartBarData(
+                spots: spots,
+                isCurved: true,
+                color: homeColor,
+                barWidth: 2,
+                dotData: const FlDotData(show: false),
+                belowBarData: BarAreaData(
+                  show: true,
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [homeColor.withOpacity(0.25), homeColor.withOpacity(0.0)],
+                  ),
+                ),
+              ),
+            ],
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipItems: (spots) => spots.map((s) => LineTooltipItem(
+                  '홈 ${s.y.toStringAsFixed(1)}%',
+                  const TextStyle(fontSize: 11, color: Colors.white),
+                )).toList(),
+              ),
+            ),
+          )),
+        ),
+        // 현재 승률 표시
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(homeTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              const SizedBox(width: 8),
+              Text('${lastWr.toStringAsFixed(1)}%',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: homeColor)),
+              const Text(' : ', style: TextStyle(fontSize: 14, color: Colors.grey)),
+              Text('${(100 - lastWr).toStringAsFixed(1)}%',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: awayColor)),
+              const SizedBox(width: 8),
+              Text(awayTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWinRateStatic(double home, double away, String homeTeam, String awayTeam) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(children: [
+        Expanded(child: Column(children: [
+          Text(homeTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text('${home.toStringAsFixed(1)}%',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+        ])),
+        const Column(children: [
+          Icon(Icons.sports_baseball, size: 16, color: Colors.grey),
+          SizedBox(height: 2),
+          Text('승리확률', style: TextStyle(fontSize: 11, color: Colors.grey)),
+        ]),
+        Expanded(child: Column(children: [
+          Text(awayTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text('${away.toStringAsFixed(1)}%',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFC62828))),
+        ])),
+      ]),
+    );
   }
 
   // 승리확률 헬퍼
@@ -546,66 +802,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 ],
               );
             }),
-            // 승리확률 - 진행 중/종료 모두 표시
-            if (winRate != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Text(
-                            _gameData!['game']['home_team'],
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${winRate['homeTeamWinRate']}%',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1A237E),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Column(
-                      children: [
-                        Icon(Icons.sports_baseball, size: 16, color: Colors.grey),
-                        SizedBox(height: 2),
-                        Text('승리확률', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                      ],
-                    ),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Text(
-                            _gameData!['game']['away_team'],
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${winRate['awayTeamWinRate']}%',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1A237E),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            // 승리확률 + 경기흐름 그래프
+            _buildWinRateChart(homeTeam, awayTeam),
+            _buildGameFlowChart(innings, homeTeam, awayTeam),
             const SizedBox(height: 24),
           ],
 

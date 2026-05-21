@@ -63,19 +63,47 @@ def smart_update():
     if today_games == 0:
         return
 
-    prev_statuses = _get_game_statuses()
+    prev_details = _get_game_details()
     _update_today_games()
-    curr_statuses = _get_game_statuses()
+    curr_details = _get_game_details()
+
+    prev_statuses = {gid: d['status'] for gid, d in prev_details.items()}
+    curr_statuses = {gid: d['status'] for gid, d in curr_details.items()}
 
     _update_live_games_realtime()
     _update_lineup_by_starttime()
     _update_lineup_fallback()
 
-    if prev_statuses and curr_statuses:
+    if prev_details and curr_details:
         newly_finished = [
             gid for gid, status in curr_statuses.items()
             if status == '종료' and prev_statuses.get(gid) == '진행'
         ]
+
+        # FCM 알림
+        try:
+            from api.fcm_service import notify_game_start, notify_score_change, notify_game_end
+            for gid, curr in curr_details.items():
+                prev = prev_details.get(gid, {})
+                # 경기 시작
+                if curr['status'] == '진행' and prev.get('status') in ('예정', '라인업'):
+                    notify_game_start(gid, curr['home_team'], curr['away_team'],
+                                      curr['home_team_id'], curr['away_team_id'])
+                # 득점
+                elif (curr['status'] == '진행' and prev.get('status') == '진행' and
+                      (curr['home_score'] != prev.get('home_score') or
+                       curr['away_score'] != prev.get('away_score'))):
+                    notify_score_change(gid, curr['home_team'], curr['away_team'],
+                                        curr['home_score'], curr['away_score'],
+                                        curr['home_team_id'], curr['away_team_id'])
+                # 경기 종료
+                elif curr['status'] == '종료' and prev.get('status') == '진행':
+                    notify_game_end(gid, curr['home_team'], curr['away_team'],
+                                    curr['home_score'], curr['away_score'],
+                                    curr['home_team_id'], curr['away_team_id'])
+        except Exception as fcm_err:
+            print(f"[FCM] 알림 처리 오류: {fcm_err}")
+
         if newly_finished:
             print(f"[{datetime.now()}] 경기 {len(newly_finished)}개 종료 감지 → 팀순위 업데이트")
             for gid in newly_finished:
@@ -463,6 +491,37 @@ def _get_game_statuses():
     cur.close()
     conn.close()
     return {r[0]: r[1] for r in rows}
+
+
+def _get_game_details():
+    """오늘 경기의 상태 + 스코어 + 팀 정보 반환"""
+    conn = get_connection()
+    if not conn:
+        return {}
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT g.id, g.status, g.home_score, g.away_score,
+               ht.name, at2.name, g.home_team_id, g.away_team_id
+        FROM games g
+        JOIN teams ht ON g.home_team_id = ht.id
+        JOIN teams at2 ON g.away_team_id = at2.id
+        WHERE g.game_date = CURRENT_DATE AND g.status != '취소'
+    """)
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {
+        r[0]: {
+            'status': r[1],
+            'home_score': r[2] or 0,
+            'away_score': r[3] or 0,
+            'home_team': r[4],
+            'away_team': r[5],
+            'home_team_id': r[6],
+            'away_team_id': r[7],
+        }
+        for r in rows
+    }
 
 
 def _run_once(func):

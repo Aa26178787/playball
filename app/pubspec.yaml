@@ -51,6 +51,9 @@ dependencies:
   firebase_core: ^2.27.0
   firebase_messaging: ^14.7.19
   
+  # 차트
+  fl_chart: ^0.70.2
+
   # 날짜 포맷
   intl: ^0.20.2
 
