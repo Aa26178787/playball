@@ -71,12 +71,14 @@ ExecStart=/home/ubuntu/.local/bin/uvicorn api.main:app --host 0.0.0.0 --port 800
 - screens/game/game_detail_screen.dart
 - screens/player/player_screen.dart
 - screens/team/team_screen.dart
+- screens/team/team_detail_screen.dart - 팀 상세 (선수목록, 최근경기, 홈/원정전적)
 - screens/auth/login_screen.dart
 - models/game.dart
 - api/api_service.dart
 - providers/auth_provider.dart
 - providers/game_provider.dart
 - providers/team_provider.dart
+- utils/team_theme.dart - 팀 컬러맵(kTeamColors), TeamLogo 위젯
 
 ## 백엔드 라우터 구조 (api/main.py)
 - /auth - 인증 (로그인/회원가입/내정보/중복확인)
@@ -116,7 +118,7 @@ ExecStart=/home/ubuntu/.local/bin/uvicorn api.main:app --host 0.0.0.0 --port 800
 
 ### 팀
 - GET /teams/ - 팀 목록
-- GET /teams/rankings - 팀 순위
+- GET /teams/rankings - 팀 순위 (wins/losses/draws/rank/win_rate/games_behind/streak/recent_5/home_record/away_record)
 - GET /teams/{team_id}/players - 팀 선수 목록
 - GET /teams/{team_id}/games - 팀 경기 목록
 
@@ -289,15 +291,16 @@ id, status(예정/진행/종료/취소/라인업), homeTeam, awayTeam, homeScore
 - [x] 이닝 중계 자동 스크롤
 - [x] 부문별 순위 (타자/투수 TOP 10)
 - [x] 경기 예정 시 선발투수 표시 (홈화면)
+- [x] 선수 포지션별 필터링
+- [x] 취소 경기 UI 처리 개선
+- [x] 팀 순위 페이지 개선 (로고, 최근5경기, 홈/원정전적, 팀 상세화면)
+- [x] 팀 로고 전체 적용 (GameCard + 순위 + 부문별순위)
 
 ### 프론트엔드 작업 필요
-- [ ] 선수 포지션별 필터링
 - [ ] 이닝 중계 스크롤 자동화
-- [ ] 취소 경기 UI 처리 개선
 
 ### 백엔드 작업 필요
 - [ ] 캘린더 뷰 API
-- [ ] 팀 순위 페이지 개선
 
 ### 장기
 - [ ] 소셜 로그인 (카카오/구글)

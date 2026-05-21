@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git commit *)",
+      "Bash(claude mcp *)",
+      "Bash(uvx --version)",
+      "Bash(where uvx *)",
+      "Bash(uvx --from \"git+https://github.com/oraios/serena\" serena start-mcp-server)",
+      "PowerShell(uvx cache *)",
+      "PowerShell(uv cache *)",
+      "Bash(uvx *)",
+      "Bash(uv tool *)",
+      "Bash(uv pip *)",
+      "Bash(flutter analyze *)",
+      "PowerShell(flutter analyze *)",
+      "PowerShell(npx skills add https://github.com/anthropics/claude-plugins-official --skill claude-md-improver 2>&1)"
+    ]
+  }
+}
