@@ -21,6 +21,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Map<String, dynamic>? _recordDetailData;
   Map<String, dynamic>? _relayAllData;
   bool _isLoading = true;
+  bool _isRelayRefreshing = false;
   Timer? _refreshTimer;
   final ScrollController _inningScrollController = ScrollController();
 
@@ -140,6 +141,29 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       }
     } catch (e) {
       // 에러 무시
+    }
+  }
+
+  Future<void> _refreshRelayAll() async {
+    if (_isRelayRefreshing) return;
+    setState(() => _isRelayRefreshing = true);
+    try {
+      final gameData = await ApiService.getGameDetail(widget.gameId);
+      final relayAll = await ApiService.getGameRelayAll(widget.gameId);
+      if (!mounted) return;
+      setState(() {
+        _gameData = gameData;
+        _relayAllData = relayAll;
+      });
+      if (gameData['game']['status'] == '진행') {
+        ApiService.getGameRelay(widget.gameId)
+            .then((d) { if (mounted) setState(() => _relayData = d); })
+            .catchError((_) {});
+      }
+      _scrollInningsToBottom();
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _isRelayRefreshing = false);
     }
   }
 
@@ -441,7 +465,41 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     final winRate = _getWinRate();
 
-    return SingleChildScrollView(
+    final isLive = _gameData!['game']['status'] == '진행';
+
+    return Column(
+      children: [
+        // 새로고침 헤더
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          color: isLive ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
+          child: Row(
+            children: [
+              if (isLive) ...[
+                const Icon(Icons.circle, size: 8, color: Colors.green),
+                const SizedBox(width: 6),
+                const Text('30초 자동 새로고침', style: TextStyle(fontSize: 12, color: Colors.green)),
+              ] else
+                Text('경기 종료', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              const Spacer(),
+              _isRelayRefreshing
+                  ? const SizedBox(width: 18, height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : GestureDetector(
+                      onTap: _refreshRelayAll,
+                      child: Row(
+                        children: [
+                          Icon(Icons.refresh, size: 18, color: Colors.grey[700]),
+                          const SizedBox(width: 4),
+                          Text('새로고침', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                        ],
+                      ),
+                    ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
       controller: _inningScrollController,
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -612,7 +670,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           ],
         ],
       ),
-    );
+    ),         // close SingleChildScrollView
+  ),           // close Expanded
+],             // close outer Column children
+);             // close outer Column
   }
 
   Widget _buildBatterRelayTile(Map<String, dynamic> entry) {
