@@ -657,11 +657,12 @@ def update_team_rankings():
 
 
 def _update_roster_changes():
-    """오늘 등록말소 크롤링"""
+    """오늘 등록말소 + 선수이동 크롤링"""
     try:
-        from crawler.kbo_roster_crawler import run_today
+        from crawler.kbo_roster_crawler import run_today, run_trade
         print(f"[{datetime.now()}] 등록말소 크롤링 시작")
         run_today()
+        run_trade(days=7)
     except Exception as e:
         print(f"[{datetime.now()}] 등록말소 크롤링 오류: {e}")
 
