@@ -167,9 +167,13 @@ class _TeamScreenState extends State<TeamScreen>
               // ─── 스탯 행: G / 승-패-무 / 승률 / GB ───
               Row(
                 children: [
-                  _statCell('G', '$totalGames'),
+                  _statCell('경기', '$totalGames'),
                   _statDivider(),
-                  _statCell('승-패-무', '$wins-$losses-$draws'),
+                  _statCell('승', '$wins', valueColor: const Color(0xFF1565C0)),
+                  _statDivider(),
+                  _statCell('패', '$losses', valueColor: const Color(0xFFC62828)),
+                  _statDivider(),
+                  _statCell('무', '$draws'),
                   _statDivider(),
                   _statCell('승률', winRate),
                   _statDivider(),
@@ -209,12 +213,12 @@ class _TeamScreenState extends State<TeamScreen>
     );
   }
 
-  Widget _statCell(String label, String value) {
+  Widget _statCell(String label, String value, {Color? valueColor}) {
     return Expanded(
       child: Column(
         children: [
           Text(value,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: valueColor)),
           const SizedBox(height: 2),
           Text(label,
               style: TextStyle(fontSize: 10, color: Colors.grey[500])),
