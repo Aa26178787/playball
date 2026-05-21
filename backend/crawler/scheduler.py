@@ -165,7 +165,9 @@ def update_finished_player_stats():
         crawl_kbo_pitcher_season_stats(2026)
     except Exception as e:
         print(f"[{datetime.now()}] KBO 시즌 스탯 크롤링 오류: {e}")
-        _sync_batter_stats_from_daily()
+
+    # KBO가 규정타석 기준으로만 제공 → 나머지는 daily stats로 보완
+    _sync_batter_stats_from_daily()
 
     print(f"[{datetime.now()}] 경기 종료 후 선수 스탯 업데이트 완료")
 
