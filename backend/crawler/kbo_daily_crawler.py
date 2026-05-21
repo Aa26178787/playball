@@ -796,6 +796,8 @@ def crawl_kbo_runner_stats(season=2026):
     i_sb    = _h('SB',  '도루')
     i_cs    = _h('CS',  '도루실패')
     i_sbpct = _h('SB%', '도루성공률')
+    i_oob   = _h('OOB')
+    i_pko   = _h('PKO')
 
     conn = get_connection()
     if not conn:
@@ -826,9 +828,12 @@ def crawl_kbo_runner_stats(season=2026):
                     sba          = COALESCE(%s, sba),
                     stolen_bases = GREATEST(COALESCE(%s, 0), COALESCE(stolen_bases, 0)),
                     cs           = GREATEST(COALESCE(%s, 0), COALESCE(cs, 0)),
-                    sb_pct       = COALESCE(%s, sb_pct)
+                    sb_pct       = COALESCE(%s, sb_pct),
+                    oob          = COALESCE(%s, oob),
+                    pko          = COALESCE(%s, pko)
                 WHERE player_id=%s AND season=%s
-            """, (_ci(i_sba), _ci(i_sb), _ci(i_cs), sb_pct_val, player_id, season))
+            """, (_ci(i_sba), _ci(i_sb), _ci(i_cs), sb_pct_val,
+                  _ci(i_oob), _ci(i_pko), player_id, season))
             saved += 1
         except Exception:
             errors += 1
@@ -863,16 +868,25 @@ def crawl_kbo_defense_stats(season=2026):
     i_team = _h('팀명')   or 2
     i_pos  = _h('POS',  '포지션')
     i_g    = _h('G',    '경기')
+    i_gs   = _h('GS',   '선발')
+    i_ip   = _h('IP',   '이닝')
     i_e    = _h('E',    '실책')
+    i_pko  = _h('PKO')
     i_po   = _h('PO',   '풋아웃')
     i_a    = _h('A',    '보살')
     i_dp   = _h('DP',   '병살')
     i_fpct = _h('FPCT', '수비율')
     i_pb   = _h('PB',   '포일')
+    i_cs_a = _h('CS')
+    i_cspct= _h('CS%')
 
-    # 선수별 집계 (복수 포지션 가능)
     from collections import defaultdict
-    player_data = defaultdict(lambda: {'e': 0, 'po': 0, 'a': 0, 'dp': 0, 'pb': None, 'fpct': None, 'max_g': 0})
+    player_data = defaultdict(lambda: {
+        'e': 0, 'po': 0, 'a': 0, 'dp': 0,
+        'pb': None, 'fpct': None, 'max_g': 0,
+        'def_gs': 0, 'def_ip': 0.0, 'pko': 0,
+        'cs_against': None, 'cs_pct': None,
+    })
 
     conn = get_connection()
     if not conn:
@@ -895,24 +909,30 @@ def crawl_kbo_defense_stats(season=2026):
             def _cf(i): return _safe_float(cols[i]) if i is not None and i < len(cols) else None
 
             g    = _ci(i_g)
-            e    = _ci(i_e)
-            po   = _ci(i_po)
-            a    = _ci(i_a)
-            dp   = _ci(i_dp)
-            fpct = _cf(i_fpct)
             pos  = cols[i_pos] if i_pos is not None and i_pos < len(cols) else ''
-            pb   = _safe_int(cols[i_pb]) if i_pb is not None and i_pb < len(cols) and pos == '포수' else None
+            is_c = (pos == '포수')
 
             pd = player_data[player_id]
-            pd['e'] += e
-            pd['po'] += po
-            pd['a'] += a
-            pd['dp'] += dp
+            pd['e']  += _ci(i_e)
+            pd['po'] += _ci(i_po)
+            pd['a']  += _ci(i_a)
+            pd['dp'] += _ci(i_dp)
+            pd['pko'] += _ci(i_pko)
+            pd['def_gs'] += _ci(i_gs)
+            pd['def_ip'] += _cf(i_ip) or 0.0
             if g > pd['max_g']:
                 pd['max_g'] = g
-                pd['fpct'] = fpct
-            if pb is not None:
-                pd['pb'] = pb
+                pd['fpct'] = _cf(i_fpct)
+            if is_c:
+                pb_val = _safe_int(cols[i_pb]) if i_pb is not None and i_pb < len(cols) else None
+                if pb_val is not None:
+                    pd['pb'] = (pd['pb'] or 0) + pb_val
+                cs_a = _safe_int(cols[i_cs_a]) if i_cs_a is not None and i_cs_a < len(cols) else None
+                if cs_a is not None:
+                    pd['cs_against'] = (pd['cs_against'] or 0) + cs_a
+                csp = _cf(i_cspct)
+                if csp is not None:
+                    pd['cs_pct'] = csp
         except Exception:
             continue
 
@@ -921,15 +941,23 @@ def crawl_kbo_defense_stats(season=2026):
         try:
             cur.execute("""
                 UPDATE batter_stats SET
-                    errors  = GREATEST(COALESCE(errors, 0), %s),
-                    fpct    = COALESCE(%s, fpct),
-                    po      = COALESCE(%s, po),
-                    assists = COALESCE(%s, assists),
-                    dp      = COALESCE(%s, dp),
-                    pb      = COALESCE(%s, pb)
+                    errors     = GREATEST(COALESCE(errors, 0), %s),
+                    fpct       = COALESCE(%s, fpct),
+                    po         = COALESCE(%s, po),
+                    assists    = COALESCE(%s, assists),
+                    dp         = COALESCE(%s, dp),
+                    pb         = COALESCE(%s, pb),
+                    def_gs     = COALESCE(%s, def_gs),
+                    def_ip     = COALESCE(%s, def_ip),
+                    pko        = GREATEST(COALESCE(pko, 0), %s),
+                    cs_against = COALESCE(%s, cs_against),
+                    cs_pct     = COALESCE(%s, cs_pct)
                 WHERE player_id=%s AND season=%s
-            """, (pd['e'], pd['fpct'], pd['po'] or None, pd['a'] or None,
-                  pd['dp'] or None, pd['pb'], player_id, season))
+            """, (pd['e'], pd['fpct'],
+                  pd['po'] or None, pd['a'] or None, pd['dp'] or None,
+                  pd['pb'], pd['def_gs'] or None, pd['def_ip'] or None,
+                  pd['pko'], pd['cs_against'], pd['cs_pct'],
+                  player_id, season))
             saved += 1
         except Exception:
             errors += 1
@@ -941,7 +969,7 @@ def crawl_kbo_defense_stats(season=2026):
 
 
 def crawl_kbo_hitter_detail1(season=2026):
-    """HitterBasic/Detail1.aspx → P/PA (투구수/타석) 저장"""
+    """HitterBasic/Detail1.aspx → GO, AO, GW RBI, P/PA 저장"""
     url = "https://www.koreabaseball.com/Record/Player/HitterBasic/Detail1.aspx"
     driver = _get_driver()
     try:
@@ -961,13 +989,12 @@ def crawl_kbo_hitter_detail1(season=2026):
             except ValueError: pass
         return None
 
-    i_name = _h('선수명') or 1
-    i_team = _h('팀명')   or 2
-    i_ppa  = _h('P/PA', 'P_PA')
-
-    if i_ppa is None:
-        print("[KBO hitter detail1] P/PA 컬럼 없음")
-        return
+    i_name  = _h('선수명') or 1
+    i_team  = _h('팀명')   or 2
+    i_go    = _h('GO')
+    i_ao    = _h('AO')
+    i_gw    = _h('GW RBI', 'GWRBI', 'GW_RBI')
+    i_ppa   = _h('P/PA', 'P_PA')
 
     conn = get_connection()
     if not conn:
@@ -986,11 +1013,18 @@ def crawl_kbo_hitter_detail1(season=2026):
             if not row:
                 continue
             player_id = row[0]
-            ppa = _safe_float(cols[i_ppa]) if i_ppa < len(cols) else None
+
+            def _ci(i): return _safe_int(cols[i])   if i is not None and i < len(cols) else None
+            def _cf(i): return _safe_float(cols[i]) if i is not None and i < len(cols) else None
+
             cur.execute("""
-                UPDATE batter_stats SET p_pa = COALESCE(%s, p_pa)
+                UPDATE batter_stats SET
+                    go     = COALESCE(%s, go),
+                    ao     = COALESCE(%s, ao),
+                    gw_rbi = COALESCE(%s, gw_rbi),
+                    p_pa   = COALESCE(%s, p_pa)
                 WHERE player_id=%s AND season=%s
-            """, (ppa, player_id, season))
+            """, (_ci(i_go), _ci(i_ao), _ci(i_gw), _cf(i_ppa), player_id, season))
             saved += 1
         except Exception:
             errors += 1
@@ -1002,7 +1036,7 @@ def crawl_kbo_hitter_detail1(season=2026):
 
 
 def crawl_kbo_pitcher_detail1(season=2026):
-    """PitcherBasic/Detail1.aspx → GS, GF, SVO 저장"""
+    """PitcherBasic/Detail1.aspx → GS, GF, SVO, Wgs, Wgr, TS, GDP, GO, AO 저장"""
     url = "https://www.koreabaseball.com/Record/Player/PitcherBasic/Detail1.aspx"
     driver = _get_driver()
     try:
@@ -1025,8 +1059,14 @@ def crawl_kbo_pitcher_detail1(season=2026):
     i_name = _h('선수명') or 1
     i_team = _h('팀명')   or 2
     i_gs   = _h('GS',  '선발')
+    i_wgs  = _h('Wgs', 'WGS')
+    i_wgr  = _h('Wgr', 'WGR')
     i_gf   = _h('GF',  '구원종료')
     i_svo  = _h('SVO', '세이브기회')
+    i_ts   = _h('TS')
+    i_gdp  = _h('GDP')
+    i_go   = _h('GO')
+    i_ao   = _h('AO')
 
     conn = get_connection()
     if not conn:
@@ -1050,11 +1090,19 @@ def crawl_kbo_pitcher_detail1(season=2026):
 
             cur.execute("""
                 UPDATE pitcher_stats SET
-                    gs  = COALESCE(%s, gs),
-                    gf  = COALESCE(%s, gf),
-                    svo = COALESCE(%s, svo)
+                    gs          = COALESCE(%s, gs),
+                    wgs         = COALESCE(%s, wgs),
+                    wgr         = COALESCE(%s, wgr),
+                    gf          = COALESCE(%s, gf),
+                    svo         = COALESCE(%s, svo),
+                    ts          = COALESCE(%s, ts),
+                    gdp_induced = COALESCE(%s, gdp_induced),
+                    go          = COALESCE(%s, go),
+                    ao          = COALESCE(%s, ao)
                 WHERE player_id=%s AND season=%s
-            """, (_ci(i_gs), _ci(i_gf), _ci(i_svo), player_id, season))
+            """, (_ci(i_gs), _ci(i_wgs), _ci(i_wgr), _ci(i_gf), _ci(i_svo),
+                  _ci(i_ts), _ci(i_gdp), _ci(i_go), _ci(i_ao),
+                  player_id, season))
             saved += 1
         except Exception:
             errors += 1

@@ -19,113 +19,85 @@ from crawler.kbo_daily_crawler import (
 
 SEASON = 2026
 
+# IP 실제이닝 변환: .1=1/3, .2=2/3 형식 → 실수 (SQL 표현식)
+_IP_REAL = """
+    FLOOR(innings_pitched) +
+    ROUND((innings_pitched - FLOOR(innings_pitched)) * 10) * (1.0 / 3.0)
+"""
+
 
 def compute_derived_stats():
-    """기존 데이터로 파생 지표 계산 (NULL 값 채우기)"""
+    """기존 데이터로 파생 지표 계산 (전체 갱신)"""
     conn = get_connection()
     if not conn:
         return
     cur = conn.cursor()
 
-    # IP 실제이닝 변환: 45.2 → 45 + 2/3 이닝
-    # innings_pitched 컬럼: .1 = 1/3, .2 = 2/3 형식
-    ip_expr = """
-        FLOOR(innings_pitched) +
-        ROUND((innings_pitched - FLOOR(innings_pitched)) * 10) * (1.0 / 3.0)
-    """
-
-    # 투수: k_per_9
+    # ── 투수 ──────────────────────────────────────────────
     cur.execute(f"""
         UPDATE pitcher_stats SET
-            k_per_9 = ROUND((strikeouts * 9.0 / NULLIF({ip_expr}, 0))::numeric, 2)
+            k_per_9  = ROUND((strikeouts * 9.0       / NULLIF({_IP_REAL}, 0))::numeric, 2),
+            bb_per_9 = ROUND((walks * 9.0             / NULLIF({_IP_REAL}, 0))::numeric, 2),
+            h_per_9  = ROUND((hits_allowed * 9.0      / NULLIF({_IP_REAL}, 0))::numeric, 2),
+            hr_per_9 = ROUND((home_runs_allowed * 9.0 / NULLIF({_IP_REAL}, 0))::numeric, 2),
+            fip      = ROUND(
+                ((13.0 * COALESCE(home_runs_allowed,0)
+                  + 3.0 * (COALESCE(walks,0) + COALESCE(hbp,0))
+                  - 2.0 * COALESCE(strikeouts,0))
+                 / NULLIF({_IP_REAL}, 0) + 3.20)::numeric, 2),
+            k_bb     = ROUND((strikeouts::numeric / NULLIF(walks, 0)), 2),
+            go_ao    = ROUND((go::numeric          / NULLIF(ao,    0)), 2)
         WHERE season = %s AND innings_pitched > 0
-          AND strikeouts IS NOT NULL
-          AND (k_per_9 IS NULL OR k_per_9 = 0)
     """, (SEASON,))
-    print(f"[derived] k_per_9 업데이트: {cur.rowcount}행")
+    print(f"[derived] 투수 지표 업데이트: {cur.rowcount}행")
 
-    # 투수: bb_per_9
-    cur.execute(f"""
-        UPDATE pitcher_stats SET
-            bb_per_9 = ROUND((walks * 9.0 / NULLIF({ip_expr}, 0))::numeric, 2)
-        WHERE season = %s AND innings_pitched > 0
-          AND walks IS NOT NULL
-          AND (bb_per_9 IS NULL OR bb_per_9 = 0)
-    """, (SEASON,))
-    print(f"[derived] bb_per_9 업데이트: {cur.rowcount}행")
-
-    # 투수: FIP = (13*HR + 3*(BB+HBP) - 2*K) / IP + FIP_constant
-    # KBO 2026 FIP 상수 ≈ 3.2 (league ERA - unadjusted FIP 근사값)
-    cur.execute(f"""
-        UPDATE pitcher_stats SET
-            fip = ROUND(
-                ((13.0 * home_runs_allowed
-                  + 3.0 * (walks + COALESCE(hbp, 0))
-                  - 2.0 * strikeouts)
-                 / NULLIF({ip_expr}, 0) + 3.20)::numeric,
-                2)
-        WHERE season = %s AND innings_pitched > 0
-          AND home_runs_allowed IS NOT NULL
-          AND walks IS NOT NULL AND strikeouts IS NOT NULL
-          AND fip IS NULL
-    """, (SEASON,))
-    print(f"[derived] fip 업데이트: {cur.rowcount}행")
-
-    # 투수: BABIP = (HA - HRA) / (TBF - SO - HRA - BB - HBP)
     cur.execute("""
         UPDATE pitcher_stats SET
             babip = ROUND(
                 (hits_allowed - home_runs_allowed)::numeric /
-                NULLIF(tbf - strikeouts - home_runs_allowed
-                       - walks - COALESCE(hbp, 0), 0),
+                NULLIF(tbf - strikeouts - home_runs_allowed - walks - COALESCE(hbp,0), 0),
                 3)
         WHERE season = %s AND tbf > 0
           AND hits_allowed IS NOT NULL AND home_runs_allowed IS NOT NULL
           AND strikeouts IS NOT NULL AND walks IS NOT NULL
           AND babip IS NULL
     """, (SEASON,))
-    print(f"[derived] pitcher babip 업데이트: {cur.rowcount}행")
+    print(f"[derived] pitcher babip: {cur.rowcount}행")
 
-    # 타자: TB = H + 2B + 2*3B + 3*HR
+    # ── 타자 ──────────────────────────────────────────────
     cur.execute("""
         UPDATE batter_stats SET
-            tb = hits + doubles + 2 * triples + 3 * home_runs
-        WHERE season = %s AND hits IS NOT NULL AND doubles IS NOT NULL
-          AND (tb IS NULL OR tb = 0)
-    """, (SEASON,))
-    print(f"[derived] tb 업데이트: {cur.rowcount}행")
-
-    # 타자: ISO = SLG - AVG
-    cur.execute("""
-        UPDATE batter_stats SET
-            iso = ROUND((slg - avg)::numeric, 3)
-        WHERE season = %s AND slg IS NOT NULL AND avg IS NOT NULL
-          AND iso IS NULL
-    """, (SEASON,))
-    print(f"[derived] iso 업데이트: {cur.rowcount}행")
-
-    # 타자: BABIP = (H - HR) / (AB - SO - HR + SF)
-    cur.execute("""
-        UPDATE batter_stats SET
+            tb    = hits + doubles + 2 * triples + 3 * home_runs,
+            xbh   = doubles + triples + home_runs,
+            iso   = ROUND((slg - avg)::numeric, 3),
             babip = ROUND(
                 (hits - home_runs)::numeric /
                 NULLIF(at_bats - strikeouts - home_runs + COALESCE(sf, 0), 0),
-                3)
-        WHERE season = %s AND at_bats > 0
-          AND hits IS NOT NULL AND home_runs IS NOT NULL
-          AND strikeouts IS NOT NULL
-          AND babip IS NULL
+                3),
+            ops   = ROUND((obp + slg)::numeric, 3),
+            bb_k  = ROUND((walks::numeric / NULLIF(strikeouts, 0)), 3),
+            gpa   = ROUND(((1.8 * obp + slg) / 4.0)::numeric, 3),
+            xr    = ROUND((
+                0.50 * (hits - doubles - triples - home_runs)
+                + 0.72 * doubles
+                + 1.04 * triples
+                + 1.44 * home_runs
+                + 0.34 * (COALESCE(hbp,0) + walks - COALESCE(ibb,0))
+                + 0.25 * COALESCE(ibb,0)
+                + 0.18 * COALESCE(stolen_bases,0)
+                - 0.32 * COALESCE(cs,0)
+                - 0.09 * (at_bats - hits - strikeouts)
+                - 0.098 * strikeouts
+                - 0.37 * COALESCE(gdp,0)
+                + 0.37 * COALESCE(sf,0)
+                + 0.04 * COALESCE(sac,0)
+            )::numeric, 2),
+            go_ao = ROUND((go::numeric / NULLIF(ao, 0)), 2)
+        WHERE season = %s
+          AND hits IS NOT NULL AND at_bats IS NOT NULL
+          AND slg IS NOT NULL AND avg IS NOT NULL AND obp IS NOT NULL
     """, (SEASON,))
-    print(f"[derived] batter babip 업데이트: {cur.rowcount}행")
-
-    # 타자: OPS = OBP + SLG (NULL 채우기)
-    cur.execute("""
-        UPDATE batter_stats SET
-            ops = ROUND((obp + slg)::numeric, 3)
-        WHERE season = %s AND obp IS NOT NULL AND slg IS NOT NULL
-          AND ops IS NULL
-    """, (SEASON,))
-    print(f"[derived] ops 업데이트: {cur.rowcount}행")
+    print(f"[derived] 타자 지표 업데이트: {cur.rowcount}행")
 
     conn.commit()
     cur.close()
@@ -133,34 +105,90 @@ def compute_derived_stats():
     print("[derived] 파생지표 계산 완료")
 
 
+def sync_innings_from_game_pitchers():
+    """game_pitchers 집계로 pitcher_stats IP/games 복구 (덮어쓰기 방지)"""
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE pitcher_stats ps
+        SET
+            games              = GREATEST(COALESCE(ps.games,0), agg.g),
+            wins               = GREATEST(COALESCE(ps.wins,0),  agg.w),
+            losses             = GREATEST(COALESCE(ps.losses,0), agg.l),
+            saves              = GREATEST(COALESCE(ps.saves,0),  agg.sv),
+            holds              = GREATEST(COALESCE(ps.holds,0),  agg.hld),
+            innings_pitched    = GREATEST(COALESCE(ps.innings_pitched,0), agg.ip_fmt),
+            strikeouts         = GREATEST(COALESCE(ps.strikeouts,0), agg.so),
+            earned_runs        = GREATEST(COALESCE(ps.earned_runs,0), agg.er),
+            walks              = GREATEST(COALESCE(ps.walks,0),  agg.bb),
+            hits_allowed       = GREATEST(COALESCE(ps.hits_allowed,0), agg.ha),
+            runs_allowed       = GREATEST(COALESCE(ps.runs_allowed,0), agg.ra),
+            home_runs_allowed  = GREATEST(COALESCE(ps.home_runs_allowed,0), agg.hra)
+        FROM (
+            SELECT player_id,
+                COUNT(*) AS g,
+                SUM(CASE WHEN result='승' THEN 1 ELSE 0 END) AS w,
+                SUM(CASE WHEN result='패' THEN 1 ELSE 0 END) AS l,
+                SUM(CASE WHEN result='세이브' THEN 1 ELSE 0 END) AS sv,
+                SUM(CASE WHEN result='홀드' THEN 1 ELSE 0 END) AS hld,
+                SUM(strikeouts) AS so,
+                SUM(earned_runs) AS er,
+                SUM(walks) AS bb,
+                SUM(hits_allowed) AS ha,
+                SUM(runs_allowed) AS ra,
+                SUM(home_runs_allowed) AS hra,
+                (
+                    FLOOR(SUM(FLOOR(innings_pitched) + ROUND((innings_pitched - FLOOR(innings_pitched))*10)*(1.0/3.0))) +
+                    LEAST(ROUND(
+                        (SUM(FLOOR(innings_pitched) + ROUND((innings_pitched - FLOOR(innings_pitched))*10)*(1.0/3.0))
+                         - FLOOR(SUM(FLOOR(innings_pitched) + ROUND((innings_pitched - FLOOR(innings_pitched))*10)*(1.0/3.0))))
+                        * 3), 2) * 0.1
+                ) AS ip_fmt
+            FROM game_pitchers
+            WHERE innings_pitched > 0
+            GROUP BY player_id
+        ) agg
+        WHERE ps.player_id = agg.player_id AND ps.season = %s
+    """, (SEASON,))
+    print(f"[sync] game_pitchers 집계 복구: {cur.rowcount}행")
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
 def run_all():
     print("=== KBO 시즌 크롤러 전체 실행 ===")
 
-    print("\n[1/8] 타자 Basic1 (G/AB/R/H/2B/3B/HR/RBI/SB/CS/BB/HBP/SO/GDP/AVG)")
+    print("\n[1/8] 타자 Basic1")
     crawl_kbo_hitter_season_stats(SEASON)
 
-    print("\n[2/8] 타자 Basic2 (BB/IBB/HBP/SO/GDP/OBP/SLG/OPS/MH/RISP/PH-BA)")
+    print("\n[2/8] 타자 Basic2")
     crawl_kbo_hitter_season_stats_2(SEASON)
 
-    print("\n[3/8] 타자 Detail1 (P/PA)")
+    print("\n[3/8] 타자 Detail1 (GO/AO/GW_RBI/P_PA)")
     crawl_kbo_hitter_detail1(SEASON)
 
-    print("\n[4/8] 투수 Basic1 (G/W/L/SV/HLD/IP/HA/HRA/BB/HBP/SO/R/ER/ERA/WHIP/WPCT)")
+    print("\n[4/8] 투수 Basic1")
     crawl_kbo_pitcher_season_stats(SEASON)
 
-    print("\n[5/8] 투수 Basic2 (CG/SHO/QS/BSV/TBF/NP/AVG/2B/3B/SAC/SF/IBB/WP/BK)")
+    print("\n[5/8] 투수 Basic2")
     crawl_kbo_pitcher_season_stats_2(SEASON)
 
-    print("\n[6/8] 투수 Detail1 (GS/GF/SVO)")
+    print("\n[6/8] 투수 Detail1 (GS/GF/SVO/Wgs/Wgr/TS/GDP/GO/AO)")
     crawl_kbo_pitcher_detail1(SEASON)
 
-    print("\n[7/8] 주루 (SBA/SB/CS/SB%)")
+    print("\n[7/8] 주루 (SBA/SB/CS/SB%/OOB/PKO)")
     crawl_kbo_runner_stats(SEASON)
 
-    print("\n[8/8] 수비 (E/FPCT/PO/A/DP/PB)")
+    print("\n[8/8] 수비 (E/GS/IP/PKO/PO/A/DP/FPCT/PB/CS/CS%)")
     crawl_kbo_defense_stats(SEASON)
 
-    print("\n[파생지표] 계산 시작")
+    print("\n[sync] game_pitchers로 IP 복구")
+    sync_innings_from_game_pitchers()
+
+    print("\n[파생지표] 계산")
     compute_derived_stats()
 
     print("\n=== 전체 완료 ===")
