@@ -64,24 +64,22 @@ def compute_derived_stats():
     """, (SEASON,))
     print(f"[derived] pitcher babip: {cur.rowcount}행")
 
-    # ── 타자 ──────────────────────────────────────────────
+    # ── 타자 (조건별 분리) ────────────────────────────────
+    # 기본 누적 지표: hits/doubles/triples/home_runs만 있으면 계산 가능
     cur.execute("""
         UPDATE batter_stats SET
-            tb    = hits + doubles + 2 * triples + 3 * home_runs,
-            xbh   = doubles + triples + home_runs,
-            iso   = ROUND((slg - avg)::numeric, 3),
-            babip = ROUND(
-                (hits - home_runs)::numeric /
-                NULLIF(at_bats - strikeouts - home_runs + COALESCE(sf, 0), 0),
-                3),
-            ops   = ROUND((obp + slg)::numeric, 3),
-            bb_k  = ROUND((walks::numeric / NULLIF(strikeouts, 0)), 3),
-            gpa   = ROUND(((1.8 * obp + slg) / 4.0)::numeric, 3),
-            xr    = ROUND((
+            tb  = hits + doubles + 2 * triples + 3 * home_runs,
+            xbh = doubles + triples + home_runs
+        WHERE season = %s AND hits IS NOT NULL AND doubles IS NOT NULL
+    """, (SEASON,))
+    print(f"[derived] tb/xbh: {cur.rowcount}행")
+
+    # XR: 기본 타격 지표만 필요
+    cur.execute("""
+        UPDATE batter_stats SET
+            xr = ROUND((
                 0.50 * (hits - doubles - triples - home_runs)
-                + 0.72 * doubles
-                + 1.04 * triples
-                + 1.44 * home_runs
+                + 0.72 * doubles + 1.04 * triples + 1.44 * home_runs
                 + 0.34 * (COALESCE(hbp,0) + walks - COALESCE(ibb,0))
                 + 0.25 * COALESCE(ibb,0)
                 + 0.18 * COALESCE(stolen_bases,0)
@@ -91,13 +89,35 @@ def compute_derived_stats():
                 - 0.37 * COALESCE(gdp,0)
                 + 0.37 * COALESCE(sf,0)
                 + 0.04 * COALESCE(sac,0)
-            )::numeric, 2),
-            go_ao = ROUND((go::numeric / NULLIF(ao, 0)), 2)
-        WHERE season = %s
-          AND hits IS NOT NULL AND at_bats IS NOT NULL
-          AND slg IS NOT NULL AND avg IS NOT NULL AND obp IS NOT NULL
+            )::numeric, 2)
+        WHERE season = %s AND hits IS NOT NULL AND at_bats IS NOT NULL
+          AND walks IS NOT NULL AND strikeouts IS NOT NULL
     """, (SEASON,))
-    print(f"[derived] 타자 지표 업데이트: {cur.rowcount}행")
+    print(f"[derived] xr: {cur.rowcount}행")
+
+    # 비율 지표: slg/obp/avg 필요
+    cur.execute("""
+        UPDATE batter_stats SET
+            iso   = ROUND((slg - avg)::numeric, 3),
+            ops   = ROUND((obp + slg)::numeric, 3),
+            gpa   = ROUND(((1.8 * obp + slg) / 4.0)::numeric, 3),
+            babip = ROUND(
+                (hits - home_runs)::numeric /
+                NULLIF(at_bats - strikeouts - home_runs + COALESCE(sf,0), 0),
+                3)
+        WHERE season = %s AND slg IS NOT NULL AND avg IS NOT NULL AND obp IS NOT NULL
+          AND hits IS NOT NULL AND at_bats IS NOT NULL
+    """, (SEASON,))
+    print(f"[derived] iso/ops/gpa/babip: {cur.rowcount}행")
+
+    # BB/K, GO/AO
+    cur.execute("""
+        UPDATE batter_stats SET
+            bb_k  = ROUND((walks::numeric  / NULLIF(strikeouts, 0)), 3),
+            go_ao = ROUND((go::numeric     / NULLIF(ao, 0)), 2)
+        WHERE season = %s AND walks IS NOT NULL AND strikeouts IS NOT NULL
+    """, (SEASON,))
+    print(f"[derived] bb_k/go_ao: {cur.rowcount}행")
 
     conn.commit()
     cur.close()
