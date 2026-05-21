@@ -304,7 +304,8 @@ def get_player_detail(player_id: int):
                 home_runs, rbis, walks, strikeouts, stolen_bases,
                 avg, obp, slg, ops, woba, wrc_plus, babip, iso, war,
                 pa, tb, cs, sac, sf, ibb, hbp, gdp, errors,
-                sb_pct, mh, risp, ph_ba
+                sb_pct, mh, risp, ph_ba,
+                sba, fpct, po, assists, dp, pb
             FROM batter_stats
             WHERE player_id = %s
             ORDER BY season DESC
@@ -332,6 +333,8 @@ def get_player_detail(player_id: int):
                 "mh": r[31],
                 "risp":  float(r[32]) if r[32] else 0,
                 "ph_ba": float(r[33]) if r[33] else 0,
+                "sba": r[34], "fpct": float(r[35]) if r[35] else None,
+                "po": r[36], "assists": r[37], "dp": r[38], "pb": r[39],
             }
             for r in stats
         ]

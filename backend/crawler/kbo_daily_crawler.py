@@ -44,6 +44,25 @@ def _safe_float(val):
         return None
 
 
+def _parse_season_ip(ip_str):
+    """Parse KBO season page IP: '45 2/3', '10', '0 2/3'"""
+    s = str(ip_str).strip()
+    if ' ' in s:
+        parts = s.split()
+        try:
+            whole = int(parts[0])
+            frac = parts[1] if len(parts) > 1 else ''
+            return whole + (0.1 if frac == '1/3' else 0.2 if frac == '2/3' else 0)
+        except (ValueError, IndexError):
+            return 0.0
+    if s in ('1/3', '2/3'):
+        return 0.1 if s == '1/3' else 0.2
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
 def _parse_innings(ip_raw, next_val=None):
     try:
         if ip_raw in ['1/3', '2/3']:
@@ -490,14 +509,17 @@ def crawl_kbo_pitcher_season_stats(season=2026):
     i_loss  = _h('L', '패')
     i_sv    = _h('SV', '세이브')
     i_hold  = _h('HLD', '홀드')
+    i_wpct  = _h('WPCT', '승률')
     i_ip    = _h('IP', '이닝')
     i_ha    = _h('H', 'HA', '피안타')
     i_hra   = _h('HR', 'HRA', '피홈런')
     i_bb    = _h('BB', '볼넷')
+    i_hbp   = _h('HBP', '사구')
     i_so    = _h('SO', 'K', '삼진')
     i_r     = _h('R', '실점')
     i_er    = _h('ER', '자책점')
     i_era   = _h('ERA', '평균자책점')
+    i_whip  = _h('WHIP')
 
     conn = get_connection()
     if not conn:
@@ -529,14 +551,15 @@ def crawl_kbo_pitcher_season_stats(season=2026):
                 return _safe_float(cols[i]) if i is not None and i < len(cols) else None
 
             ip_str = cols[i_ip] if i_ip is not None and i_ip < len(cols) else '0'
-            ip_val = _parse_innings(ip_str)
+            ip_val = _parse_season_ip(ip_str)
 
             cur.execute("""
                 INSERT INTO pitcher_stats (
                     player_id, season, games, wins, losses, saves, holds,
                     innings_pitched, hits_allowed, home_runs_allowed,
-                    walks, strikeouts, runs_allowed, earned_runs, era
-                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    walks, hbp, strikeouts, runs_allowed, earned_runs,
+                    era, whip, wpct
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT (player_id, season) DO UPDATE SET
                     games              = EXCLUDED.games,
                     wins               = COALESCE(EXCLUDED.wins,              pitcher_stats.wins),
@@ -547,17 +570,20 @@ def crawl_kbo_pitcher_season_stats(season=2026):
                     hits_allowed       = COALESCE(EXCLUDED.hits_allowed,      pitcher_stats.hits_allowed),
                     home_runs_allowed  = COALESCE(EXCLUDED.home_runs_allowed, pitcher_stats.home_runs_allowed),
                     walks              = COALESCE(EXCLUDED.walks,             pitcher_stats.walks),
+                    hbp                = COALESCE(EXCLUDED.hbp,               pitcher_stats.hbp),
                     strikeouts         = COALESCE(EXCLUDED.strikeouts,        pitcher_stats.strikeouts),
                     runs_allowed       = COALESCE(EXCLUDED.runs_allowed,      pitcher_stats.runs_allowed),
                     earned_runs        = COALESCE(EXCLUDED.earned_runs,       pitcher_stats.earned_runs),
-                    era                = COALESCE(EXCLUDED.era,               pitcher_stats.era)
+                    era                = COALESCE(EXCLUDED.era,               pitcher_stats.era),
+                    whip               = COALESCE(EXCLUDED.whip,              pitcher_stats.whip),
+                    wpct               = COALESCE(EXCLUDED.wpct,              pitcher_stats.wpct)
             """, (
                 player_id, season,
                 _ci(i_games), _ci(i_wins), _ci(i_loss),
                 _ci(i_sv),    _ci(i_hold), ip_val,
                 _ci(i_ha),    _ci(i_hra),  _ci(i_bb),
-                _ci(i_so),    _ci(i_r),    _ci(i_er),
-                _cf(i_era),
+                _ci(i_hbp),   _ci(i_so),   _ci(i_r),
+                _ci(i_er),    _cf(i_era),  _cf(i_whip), _cf(i_wpct),
             ))
             saved += 1
         except Exception:
@@ -568,3 +594,347 @@ def crawl_kbo_pitcher_season_stats(season=2026):
     cur.close()
     conn.close()
     print(f"[KBO season] 투수 {saved}명 업데이트, {errors}건 오류")
+
+
+def crawl_kbo_hitter_season_stats_2(season=2026):
+    """HitterBasic/Basic2.aspx → BB, IBB, HBP, SO, GDP, OBP, SLG, OPS, MH, RISP, PH-BA"""
+    url = "https://www.koreabaseball.com/Record/Player/HitterBasic/Basic2.aspx"
+    driver = _get_driver()
+    try:
+        headers, rows = _get_kbo_season_pages(driver, url)
+    finally:
+        driver.quit()
+
+    if not rows:
+        print("[KBO season2] 타자 데이터 없음")
+        return
+
+    print(f"[KBO season2] 타자 {len(rows)}행. 헤더: {headers}")
+
+    def _h(*names):
+        for n in names:
+            try: return headers.index(n)
+            except ValueError: pass
+        return None
+
+    i_name = _h('선수명') or 1
+    i_team = _h('팀명')   or 2
+    i_bb   = _h('BB',   '볼넷')
+    i_ibb  = _h('IBB',  '고의사구')
+    i_hbp  = _h('HBP',  '사구')
+    i_so   = _h('SO',   'K', '삼진')
+    i_gdp  = _h('GDP',  '병살')
+    i_slg  = _h('SLG',  '장타율')
+    i_obp  = _h('OBP',  '출루율')
+    i_ops  = _h('OPS')
+    i_mh   = _h('MH',   '멀티히트')
+    i_risp = _h('RISP', '득점권타율')
+    i_phba = _h('PH-BA','대타타율')
+
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    saved = errors = 0
+
+    for cols in rows:
+        try:
+            name = cols[i_name]
+            team_id = _KBO_TEAM_ID.get(cols[i_team])
+            if not team_id:
+                continue
+            cur.execute("SELECT id FROM players WHERE name=%s AND team_id=%s AND player_type='타자' LIMIT 1", (name, team_id))
+            row = cur.fetchone()
+            if not row:
+                continue
+            player_id = row[0]
+
+            def _ci(i): return _safe_int(cols[i])   if i is not None and i < len(cols) else None
+            def _cf(i): return _safe_float(cols[i]) if i is not None and i < len(cols) else None
+
+            cur.execute("""
+                UPDATE batter_stats SET
+                    walks      = COALESCE(%s, walks),
+                    ibb        = COALESCE(%s, ibb),
+                    hbp        = COALESCE(%s, hbp),
+                    strikeouts = COALESCE(%s, strikeouts),
+                    gdp        = COALESCE(%s, gdp),
+                    slg        = COALESCE(%s, slg),
+                    obp        = COALESCE(%s, obp),
+                    ops        = COALESCE(%s, ops),
+                    mh         = COALESCE(%s, mh),
+                    risp       = COALESCE(%s, risp),
+                    ph_ba      = COALESCE(%s, ph_ba)
+                WHERE player_id=%s AND season=%s
+            """, (_ci(i_bb), _ci(i_ibb), _ci(i_hbp), _ci(i_so), _ci(i_gdp),
+                  _cf(i_slg), _cf(i_obp), _cf(i_ops),
+                  _ci(i_mh), _cf(i_risp), _cf(i_phba),
+                  player_id, season))
+            saved += 1
+        except Exception:
+            errors += 1
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[KBO season2] 타자 {saved}명 업데이트, {errors}건 오류")
+
+
+def crawl_kbo_pitcher_season_stats_2(season=2026):
+    """PitcherBasic/Basic2.aspx → CG, SHO, QS, BSV, TBF, NP, avg_against, 2B/3B 허용, SAC, SF, IBB, WP, BK"""
+    url = "https://www.koreabaseball.com/Record/Player/PitcherBasic/Basic2.aspx"
+    driver = _get_driver()
+    try:
+        headers, rows = _get_kbo_season_pages(driver, url)
+    finally:
+        driver.quit()
+
+    if not rows:
+        print("[KBO season2] 투수 데이터 없음")
+        return
+
+    print(f"[KBO season2] 투수 {len(rows)}행. 헤더: {headers}")
+
+    def _h(*names):
+        for n in names:
+            try: return headers.index(n)
+            except ValueError: pass
+        return None
+
+    i_name = _h('선수명') or 1
+    i_team = _h('팀명')   or 2
+    i_cg   = _h('CG',  '완투')
+    i_sho  = _h('SHO', '완봉')
+    i_qs   = _h('QS',  '퀄리티스타트')
+    i_bsv  = _h('BSV', '블론세이브')
+    i_tbf  = _h('TBF', '총타자')
+    i_np   = _h('NP',  '투구수')
+    i_avg  = _h('AVG', '피안타율')
+    i_2b   = _h('2B',  '2루타허용')
+    i_3b   = _h('3B',  '3루타허용')
+    i_sac  = _h('SAC', '희생번트')
+    i_sf   = _h('SF',  '희생플라이')
+    i_ibb  = _h('IBB', '고의사구')
+    i_wp   = _h('WP',  '폭투')
+    i_bk   = _h('BK',  '보크')
+
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    saved = errors = 0
+
+    for cols in rows:
+        try:
+            name = cols[i_name]
+            team_id = _KBO_TEAM_ID.get(cols[i_team])
+            if not team_id:
+                continue
+            cur.execute("SELECT id FROM players WHERE name=%s AND team_id=%s AND player_type='투수' LIMIT 1", (name, team_id))
+            row = cur.fetchone()
+            if not row:
+                continue
+            player_id = row[0]
+
+            def _ci(i): return _safe_int(cols[i])   if i is not None and i < len(cols) else None
+            def _cf(i): return _safe_float(cols[i]) if i is not None and i < len(cols) else None
+
+            cur.execute("""
+                UPDATE pitcher_stats SET
+                    cg               = COALESCE(%s, cg),
+                    sho              = COALESCE(%s, sho),
+                    qs               = COALESCE(%s, qs),
+                    blown_saves      = COALESCE(%s, blown_saves),
+                    tbf              = COALESCE(%s, tbf),
+                    np               = COALESCE(%s, np),
+                    avg_against      = COALESCE(%s, avg_against),
+                    doubles_allowed  = COALESCE(%s, doubles_allowed),
+                    triples_allowed  = COALESCE(%s, triples_allowed),
+                    sac              = COALESCE(%s, sac),
+                    sf               = COALESCE(%s, sf),
+                    ibb              = COALESCE(%s, ibb),
+                    wp               = COALESCE(%s, wp),
+                    bk               = COALESCE(%s, bk)
+                WHERE player_id=%s AND season=%s
+            """, (_ci(i_cg), _ci(i_sho), _ci(i_qs), _ci(i_bsv),
+                  _ci(i_tbf), _ci(i_np), _cf(i_avg),
+                  _ci(i_2b), _ci(i_3b), _ci(i_sac), _ci(i_sf),
+                  _ci(i_ibb), _ci(i_wp), _ci(i_bk),
+                  player_id, season))
+            saved += 1
+        except Exception:
+            errors += 1
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[KBO season2] 투수 {saved}명 업데이트, {errors}건 오류")
+
+
+def crawl_kbo_runner_stats(season=2026):
+    """Runner/Basic.aspx → SB, CS, SB%, SBA"""
+    url = "https://www.koreabaseball.com/Record/Player/Runner/Basic.aspx"
+    driver = _get_driver()
+    try:
+        headers, rows = _get_kbo_season_pages(driver, url)
+    finally:
+        driver.quit()
+
+    if not rows:
+        print("[KBO runner] 데이터 없음")
+        return
+
+    print(f"[KBO runner] {len(rows)}행. 헤더: {headers}")
+
+    def _h(*names):
+        for n in names:
+            try: return headers.index(n)
+            except ValueError: pass
+        return None
+
+    i_name  = _h('선수명') or 1
+    i_team  = _h('팀명')   or 2
+    i_sba   = _h('SBA', '도루시도')
+    i_sb    = _h('SB',  '도루')
+    i_cs    = _h('CS',  '도루실패')
+    i_sbpct = _h('SB%', '도루성공률')
+
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    saved = errors = 0
+
+    for cols in rows:
+        try:
+            name = cols[i_name]
+            team_id = _KBO_TEAM_ID.get(cols[i_team])
+            if not team_id:
+                continue
+            cur.execute("SELECT id FROM players WHERE name=%s AND team_id=%s AND player_type='타자' LIMIT 1", (name, team_id))
+            row = cur.fetchone()
+            if not row:
+                continue
+            player_id = row[0]
+
+            def _ci(i): return _safe_int(cols[i])   if i is not None and i < len(cols) else None
+            def _cf(i): return _safe_float(cols[i]) if i is not None and i < len(cols) else None
+
+            sb_pct_raw = cols[i_sbpct] if i_sbpct is not None and i_sbpct < len(cols) else None
+            sb_pct_val = _safe_float(sb_pct_raw) / 100 if sb_pct_raw else None
+
+            cur.execute("""
+                UPDATE batter_stats SET
+                    sba          = COALESCE(%s, sba),
+                    stolen_bases = GREATEST(COALESCE(%s, 0), COALESCE(stolen_bases, 0)),
+                    cs           = GREATEST(COALESCE(%s, 0), COALESCE(cs, 0)),
+                    sb_pct       = COALESCE(%s, sb_pct)
+                WHERE player_id=%s AND season=%s
+            """, (_ci(i_sba), _ci(i_sb), _ci(i_cs), sb_pct_val, player_id, season))
+            saved += 1
+        except Exception:
+            errors += 1
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[KBO runner] {saved}명 업데이트, {errors}건 오류")
+
+
+def crawl_kbo_defense_stats(season=2026):
+    """Defense/Basic.aspx → errors, fpct, po, assists, dp, pb (포수)"""
+    url = "https://www.koreabaseball.com/Record/Player/Defense/Basic.aspx"
+    driver = _get_driver()
+    try:
+        headers, rows = _get_kbo_season_pages(driver, url)
+    finally:
+        driver.quit()
+
+    if not rows:
+        print("[KBO defense] 데이터 없음")
+        return
+
+    print(f"[KBO defense] {len(rows)}행. 헤더: {headers}")
+
+    def _h(*names):
+        for n in names:
+            try: return headers.index(n)
+            except ValueError: pass
+        return None
+
+    i_name = _h('선수명') or 1
+    i_team = _h('팀명')   or 2
+    i_pos  = _h('POS',  '포지션')
+    i_g    = _h('G',    '경기')
+    i_e    = _h('E',    '실책')
+    i_po   = _h('PO',   '풋아웃')
+    i_a    = _h('A',    '보살')
+    i_dp   = _h('DP',   '병살')
+    i_fpct = _h('FPCT', '수비율')
+    i_pb   = _h('PB',   '포일')
+
+    # 선수별 집계 (복수 포지션 가능)
+    from collections import defaultdict
+    player_data = defaultdict(lambda: {'e': 0, 'po': 0, 'a': 0, 'dp': 0, 'pb': None, 'fpct': None, 'max_g': 0})
+
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+
+    for cols in rows:
+        try:
+            name = cols[i_name]
+            team_id = _KBO_TEAM_ID.get(cols[i_team])
+            if not team_id:
+                continue
+            cur.execute("SELECT id FROM players WHERE name=%s AND team_id=%s LIMIT 1", (name, team_id))
+            row = cur.fetchone()
+            if not row:
+                continue
+            player_id = row[0]
+
+            def _ci(i): return _safe_int(cols[i])   if i is not None and i < len(cols) else 0
+            def _cf(i): return _safe_float(cols[i]) if i is not None and i < len(cols) else None
+
+            g    = _ci(i_g)
+            e    = _ci(i_e)
+            po   = _ci(i_po)
+            a    = _ci(i_a)
+            dp   = _ci(i_dp)
+            fpct = _cf(i_fpct)
+            pos  = cols[i_pos] if i_pos is not None and i_pos < len(cols) else ''
+            pb   = _safe_int(cols[i_pb]) if i_pb is not None and i_pb < len(cols) and pos == '포수' else None
+
+            pd = player_data[player_id]
+            pd['e'] += e
+            pd['po'] += po
+            pd['a'] += a
+            pd['dp'] += dp
+            if g > pd['max_g']:
+                pd['max_g'] = g
+                pd['fpct'] = fpct
+            if pb is not None:
+                pd['pb'] = pb
+        except Exception:
+            continue
+
+    saved = errors = 0
+    for player_id, pd in player_data.items():
+        try:
+            cur.execute("""
+                UPDATE batter_stats SET
+                    errors  = GREATEST(COALESCE(errors, 0), %s),
+                    fpct    = COALESCE(%s, fpct),
+                    po      = COALESCE(%s, po),
+                    assists = COALESCE(%s, assists),
+                    dp      = COALESCE(%s, dp),
+                    pb      = COALESCE(%s, pb)
+                WHERE player_id=%s AND season=%s
+            """, (pd['e'], pd['fpct'], pd['po'] or None, pd['a'] or None,
+                  pd['dp'] or None, pd['pb'], player_id, season))
+            saved += 1
+        except Exception:
+            errors += 1
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[KBO defense] {saved}명 업데이트, {errors}건 오류")

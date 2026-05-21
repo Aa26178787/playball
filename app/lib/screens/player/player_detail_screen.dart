@@ -3,7 +3,6 @@ import '../../api/api_service.dart';
 
 class PlayerDetailScreen extends StatefulWidget {
   final int playerId;
-
   const PlayerDetailScreen({super.key, required this.playerId});
 
   @override
@@ -23,23 +22,15 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   Future<void> _loadPlayer() async {
     try {
       final data = await ApiService.getPlayerDetail(widget.playerId);
-      setState(() {
-        _playerData = data;
-        _isLoading = false;
-      });
+      setState(() { _playerData = data; _isLoading = false; });
     } catch (e) {
-      print('선수 상세 오류: $e');
       setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-          body: Center(child: CircularProgressIndicator()));
-    }
-
+    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     if (_playerData == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('선수 상세')),
@@ -48,202 +39,195 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     }
 
     final player = _playerData!;
-
     return Scaffold(
       appBar: AppBar(title: Text(player['name'] ?? '')),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // 프로필 헤더
-            Container(
-              padding: const EdgeInsets.all(24),
-              color: const Color(0xFF1A237E),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundImage: player['profile_image'] != null
-                        ? NetworkImage(player['profile_image'])
-                        : null,
-                    child: player['profile_image'] == null
-                        ? const Icon(Icons.person, size: 40)
-                        : null,
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          player['name'] ?? '',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          '${player['team'] ?? ''} | ${(player['position'] != null && player['position'].toString().isNotEmpty) ? player['position'] : player['player_type'] ?? ''}',
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 14),
-                        ),
-                        Text(
-                          '#${player['number'] ?? ''}',
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+            _buildHeader(player),
+            _buildInfoCard(player),
+            if (_playerData!['stats'] != null && (_playerData!['stats'] as List).isNotEmpty)
+              ..._buildStatCards()
+            else
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('아직 시즌 기록이 없습니다', style: TextStyle(color: Colors.grey)),
               ),
-            ),
-
-            // 기본 정보
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('기본 정보',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
-                      const Divider(),
-                      _infoRow('생년월일', player['birth_date'] ?? '-'),
-                      _infoRow('신장/체중',
-                          '${player['height'] ?? '-'}cm / ${player['weight'] ?? '-'}kg'),
-                      _infoRow('팀', player['team'] ?? '-'),
-                      _infoRow('투타', '${player['throws'] ?? '-'} / ${player['bats'] ?? '-'}'),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // 시즌 통계
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('2026 시즌 통계',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
-                      const Divider(),
-                      if (_playerData!['stats'] != null &&
-                          (_playerData!['stats'] as List).isNotEmpty)
-                        ..._buildStats()
-                      else
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Text(
-                              '아직 시즌 기록이 없습니다',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _buildStats() {
-    final statsList = _playerData!['stats'] as List?;
-    if (statsList == null || statsList.isEmpty) return [];
+  Widget _buildHeader(Map<String, dynamic> player) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      color: const Color(0xFF1A237E),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 38,
+            backgroundImage: player['profile_image'] != null ? NetworkImage(player['profile_image']) : null,
+            child: player['profile_image'] == null ? const Icon(Icons.person, size: 38, color: Colors.white) : null,
+            backgroundColor: const Color(0xFF283593),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(player['name'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                Text(
+                  '${player['team'] ?? ''} | ${(player['position'] != null && player['position'].toString().isNotEmpty) ? player['position'] : player['player_type'] ?? ''}',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                Text('#${player['number'] ?? '-'}', style: const TextStyle(color: Colors.white54, fontSize: 13)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-    final stats = statsList[0];
+  Widget _buildInfoCard(Map<String, dynamic> player) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _sectionLabel('기본 정보'),
+              _infoRow('생년월일', player['birth_date'] ?? '-'),
+              _infoRow('신장/체중', '${player['height'] ?? '-'}cm / ${player['weight'] ?? '-'}kg'),
+              _infoRow('팀', player['team'] ?? '-'),
+              _infoRow('투/타', '${player['throws'] ?? '-'} / ${player['bats'] ?? '-'}'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-    if (_playerData!['player_type'] == '타자') {
+  List<Widget> _buildStatCards() {
+    final statsList = _playerData!['stats'] as List;
+    final stats = statsList[0] as Map<String, dynamic>;
+    final isHitter = _playerData!['player_type'] == '타자';
+
+    String _s(dynamic v, {int dec = 0, bool rate = false}) {
+      if (v == null) return '-';
+      if (v is num) {
+        if (rate) return v.toStringAsFixed(3);
+        if (dec > 0) return v.toStringAsFixed(dec);
+        return '${v.toInt()}';
+      }
+      return '$v';
+    }
+
+    if (isHitter) {
       return [
-        _infoRow('경기', '${stats['games'] ?? '-'}'),
-        _infoRow('타율', (stats['avg'] as num?)?.toStringAsFixed(3) ?? '-'),
-        _infoRow('출루율', (stats['obp'] as num?)?.toStringAsFixed(3) ?? '-'),
-        _infoRow('장타율', (stats['slg'] as num?)?.toStringAsFixed(3) ?? '-'),
-        _infoRow('OPS', (stats['ops'] as num?)?.toStringAsFixed(3) ?? '-'),
-        _infoRow('안타', '${stats['hits'] ?? '-'}'),
-        _infoRow('2루타', '${stats['doubles'] ?? '-'}'),
-        _infoRow('3루타', '${stats['triples'] ?? '-'}'),
-        _infoRow('홈런', '${stats['home_runs'] ?? '-'}'),
-        _infoRow('타점', '${stats['rbis'] ?? '-'}'),
-        _infoRow('득점', '${stats['runs'] ?? '-'}'),
-        _infoRow('볼넷', '${stats['walks'] ?? '-'}'),
-        _infoRow('삼진', '${stats['strikeouts'] ?? '-'}'),
-        _infoRow('도루', '${stats['stolen_bases'] ?? '-'}'),
-        _infoRow('BABIP', (stats['babip'] as num?)?.toStringAsFixed(3) ?? '-'),
-        _infoRow('ISO', (stats['iso'] as num?)?.toStringAsFixed(3) ?? '-'),
-        _infoRow('wOBA', (stats['woba'] as num?)?.toStringAsFixed(3) ?? '-'),
-        _infoRow('wRC+', '${stats['wrc_plus'] ?? '-'}'),
-        _infoRow('WAR', (stats['war'] as num?)?.toStringAsFixed(2) ?? '-'),
-        // 기존 스탯 아래에 추가
-        _infoRow('타석', '${stats['pa'] ?? '-'}'),
-        _infoRow('루타', '${stats['tb'] ?? '-'}'),
-        _infoRow('병살타', '${stats['gdp'] ?? '-'}'),
-        _infoRow('희생번트', '${stats['sac'] ?? '-'}'),
-        _infoRow('희생플라이', '${stats['sf'] ?? '-'}'),
-        _infoRow('고의사구', '${stats['ibb'] ?? '-'}'),
-        _infoRow('몸에 맞는 볼', '${stats['hbp'] ?? '-'}'),
-        _infoRow('도루실패', '${stats['cs'] ?? '-'}'),
-        _infoRow('실책', '${stats['errors'] ?? '-'}'),
-        _infoRow('득점권타율', (stats['risp'] as num?)?.toStringAsFixed(3) ?? '-'),
-        _infoRow('대타타율', (stats['ph_ba'] as num?)?.toStringAsFixed(3) ?? '-'),
+        _statCard('기본 기록', [
+          _statRow([('G', _s(stats['games'])), ('PA', _s(stats['pa'])), ('AB', _s(stats['at_bats'])), ('H', _s(stats['hits']))]),
+          _statRow([('2B', _s(stats['doubles'])), ('3B', _s(stats['triples'])), ('HR', _s(stats['home_runs'])), ('RBI', _s(stats['rbis']))]),
+          _statRow([('R', _s(stats['runs'])), ('SB', _s(stats['stolen_bases'])), ('SBA', _s(stats['sba'])), ('CS', _s(stats['cs']))]),
+          _statRow([('BB', _s(stats['walks'])), ('IBB', _s(stats['ibb'])), ('HBP', _s(stats['hbp'])), ('SO', _s(stats['strikeouts']))]),
+          _statRow([('GDP', _s(stats['gdp'])), ('SAC', _s(stats['sac'])), ('SF', _s(stats['sf'])), ('TB', _s(stats['tb']))]),
+        ]),
+        _statCard('비율 지표', [
+          _statRow([('AVG', _s(stats['avg'], rate: true)), ('OBP', _s(stats['obp'], rate: true)), ('SLG', _s(stats['slg'], rate: true)), ('OPS', _s(stats['ops'], rate: true))]),
+          _statRow([('RISP', _s(stats['risp'], rate: true)), ('PH-BA', _s(stats['ph_ba'], rate: true)), ('MH', _s(stats['mh'])), ('도루율', stats['sb_pct'] != null ? '${((stats['sb_pct'] as num) * 100).toStringAsFixed(1)}%' : '-')]),
+        ]),
+        _statCard('고급 지표', [
+          _statRow([('wOBA', _s(stats['woba'], rate: true)), ('wRC+', _s(stats['wrc_plus'])), ('BABIP', _s(stats['babip'], rate: true)), ('ISO', _s(stats['iso'], rate: true))]),
+          _statRow([('WAR', _s(stats['war'], dec: 2)), ('', ''), ('', ''), ('', '')]),
+        ]),
+        _statCard('수비', [
+          _statRow([('E', _s(stats['errors'])), ('FPCT', _s(stats['fpct'], rate: true)), ('DP', _s(stats['dp'])), ('PO', _s(stats['po']))]),
+          _statRow([('보살', _s(stats['assists'])), if (_playerData!['position'] == '포수') ('PB', _s(stats['pb'])) else ('', ''), ('', ''), ('', '')]),
+        ]),
       ];
     } else {
       return [
-        _infoRow('경기', '${stats['games'] ?? '-'}'),
-        _infoRow('ERA', (stats['era'] as num?)?.toStringAsFixed(2) ?? '-'),
-        _infoRow('WHIP', (stats['whip'] as num?)?.toStringAsFixed(2) ?? '-'),
-        _infoRow('승', '${stats['wins'] ?? '-'}'),
-        _infoRow('패', '${stats['losses'] ?? '-'}'),
-        _infoRow('세이브', '${stats['saves'] ?? '-'}'),
-        _infoRow('홀드', '${stats['holds'] ?? '-'}'),
-        _infoRow('이닝', '${stats['innings_pitched'] ?? '-'}'),
-        _infoRow('삼진', '${stats['strikeouts'] ?? '-'}'),
-        _infoRow('볼넷', '${stats['walks'] ?? '-'}'),
-        _infoRow('피안타', '${stats['hits_allowed'] ?? '-'}'),
-        _infoRow('피홈런', '${stats['home_runs_allowed'] ?? '-'}'),
-        _infoRow('WAR', (stats['war'] as num?)?.toStringAsFixed(2) ?? '-'),
-        _infoRow('블론세이브', '${stats['blown_saves'] ?? '-'}'),
-        _infoRow('퀄리티스타트', '${stats['qs'] ?? '-'}'),
-        _infoRow('완투', '${stats['cg'] ?? '-'}'),
-        _infoRow('완봉', '${stats['sho'] ?? '-'}'),
-        _infoRow('피안타', '${stats['hits_allowed'] ?? '-'}'),
-        _infoRow('실점', '${stats['runs_allowed'] ?? '-'}'),
-        _infoRow('자책점', '${stats['earned_runs'] ?? '-'}'),
-        _infoRow('피홈런', '${stats['home_runs_allowed'] ?? '-'}'),
-        _infoRow('고의사구', '${stats['ibb'] ?? '-'}'),
-        _infoRow('몸에 맞는 볼', '${stats['hbp'] ?? '-'}'),
-        _infoRow('보크', '${stats['bk'] ?? '-'}'),
-        _infoRow('폭투', '${stats['wp'] ?? '-'}'),
-        _infoRow('FIP', (stats['fip'] as num?)?.toStringAsFixed(2) ?? '-'),
-        _infoRow('K/9', (stats['k_per_9'] as num?)?.toStringAsFixed(2) ?? '-'),
-        _infoRow('BB/9', (stats['bb_per_9'] as num?)?.toStringAsFixed(2) ?? '-'),
-        _infoRow('피안타율', (stats['avg_against'] as num?)?.toStringAsFixed(3) ?? '-'),
+        _statCard('기본 기록', [
+          _statRow([('G', _s(stats['games'])), ('W', _s(stats['wins'])), ('L', _s(stats['losses'])), ('SV', _s(stats['saves']))]),
+          _statRow([('HLD', _s(stats['holds'])), ('IP', _s(stats['innings_pitched'], dec: 1)), ('H', _s(stats['hits_allowed'])), ('HR', _s(stats['home_runs_allowed']))]),
+          _statRow([('BB', _s(stats['walks'])), ('HBP', _s(stats['hbp'])), ('SO', _s(stats['strikeouts'])), ('R', _s(stats['runs_allowed']))]),
+          _statRow([('ER', _s(stats['earned_runs'])), ('TBF', _s(stats['tbf'])), ('NP', _s(stats['np'])), ('', '')]),
+        ]),
+        _statCard('성적 지표', [
+          _statRow([('ERA', _s(stats['era'], dec: 2)), ('WHIP', _s(stats['whip'], dec: 2)), ('WPCT', _s(stats['wpct'], rate: true)), ('QS', _s(stats['qs']))]),
+          _statRow([('BS', _s(stats['blown_saves'])), ('CG', _s(stats['cg'])), ('SHO', _s(stats['sho'])), ('피안타율', _s(stats['avg_against'], rate: true))]),
+        ]),
+        _statCard('고급 지표', [
+          _statRow([('FIP', _s(stats['fip'], dec: 2)), ('K/9', _s(stats['k_per_9'], dec: 2)), ('BB/9', _s(stats['bb_per_9'], dec: 2)), ('BABIP', _s(stats['babip'], rate: true))]),
+          _statRow([('WAR', _s(stats['war'], dec: 2)), ('', ''), ('', ''), ('', '')]),
+        ]),
+        _statCard('투구 상세', [
+          _statRow([('2B허용', _s(stats['doubles_allowed'])), ('3B허용', _s(stats['triples_allowed'])), ('SAC', _s(stats['sac'])), ('SF', _s(stats['sf']))]),
+          _statRow([('IBB', _s(stats['ibb'])), ('WP', _s(stats['wp'])), ('BK', _s(stats['bk'])), ('', '')]),
+        ]),
       ];
     }
   }
 
+  Widget _statCard(String title, List<Widget> rows) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _sectionLabel(title),
+              const SizedBox(height: 8),
+              ...rows,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _statRow(List<(String, String)> items) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: items.map((item) {
+          return Expanded(
+            child: item.$1.isEmpty
+                ? const SizedBox()
+                : Column(
+                    children: [
+                      Text(item.$1, style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 2),
+                      Text(item.$2, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1A237E))),
+    );
+  }
+
   Widget _infoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[400])),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
         ],
       ),
     );

@@ -159,10 +159,18 @@ def update_finished_player_stats():
     try:
         from crawler.kbo_daily_crawler import (
             crawl_kbo_hitter_season_stats,
+            crawl_kbo_hitter_season_stats_2,
             crawl_kbo_pitcher_season_stats,
+            crawl_kbo_pitcher_season_stats_2,
+            crawl_kbo_runner_stats,
+            crawl_kbo_defense_stats,
         )
         crawl_kbo_hitter_season_stats(2026)
+        crawl_kbo_hitter_season_stats_2(2026)
+        crawl_kbo_runner_stats(2026)
+        crawl_kbo_defense_stats(2026)
         crawl_kbo_pitcher_season_stats(2026)
+        crawl_kbo_pitcher_season_stats_2(2026)
     except Exception as e:
         print(f"[{datetime.now()}] KBO 시즌 스탯 크롤링 오류: {e}")
 
@@ -187,9 +195,9 @@ def _sync_batter_stats_from_daily():
           runs         = GREATEST(COALESCE(sub.total_runs,  0), COALESCE(bs.runs,          0)),
           at_bats      = GREATEST(COALESCE(sub.total_ab,    0), COALESCE(bs.at_bats,       0)),
           games        = GREATEST(COALESCE(sub.game_count,  0), COALESCE(bs.games,         0)),
-          walks        = COALESCE(sub.total_bb,  bs.walks),
-          strikeouts   = COALESCE(sub.total_so,  bs.strikeouts),
-          stolen_bases = COALESCE(sub.total_sb,  bs.stolen_bases),
+          walks        = GREATEST(COALESCE(sub.total_bb,  0), COALESCE(bs.walks,        0)),
+          strikeouts   = GREATEST(COALESCE(sub.total_so,  0), COALESCE(bs.strikeouts,   0)),
+          stolen_bases = GREATEST(COALESCE(sub.total_sb,  0), COALESCE(bs.stolen_bases, 0)),
           avg = CASE
                   WHEN bs.avg IS NOT NULL AND bs.avg > 0 THEN bs.avg
                   WHEN sub.total_ab > 0
