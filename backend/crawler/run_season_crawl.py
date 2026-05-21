@@ -125,6 +125,60 @@ def compute_derived_stats():
     print("[derived] 파생지표 계산 완료")
 
 
+def sync_batter_stats_from_daily():
+    """player_daily_stats 누적 합산으로 batter_stats 보완"""
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE batter_stats bs
+        SET
+          rbis         = GREATEST(COALESCE(sub.total_rbi,   0), COALESCE(bs.rbis,         0)),
+          hits         = GREATEST(COALESCE(sub.total_hits,  0), COALESCE(bs.hits,          0)),
+          home_runs    = GREATEST(COALESCE(sub.total_hr,    0), COALESCE(bs.home_runs,     0)),
+          runs         = GREATEST(COALESCE(sub.total_runs,  0), COALESCE(bs.runs,          0)),
+          at_bats      = GREATEST(COALESCE(sub.total_ab,    0), COALESCE(bs.at_bats,       0)),
+          games        = GREATEST(COALESCE(sub.game_count,  0), COALESCE(bs.games,         0)),
+          walks        = GREATEST(COALESCE(sub.total_bb,    0), COALESCE(bs.walks,         0)),
+          strikeouts   = GREATEST(COALESCE(sub.total_so,    0), COALESCE(bs.strikeouts,    0)),
+          stolen_bases = GREATEST(COALESCE(sub.total_sb,    0), COALESCE(bs.stolen_bases,  0)),
+          doubles      = GREATEST(COALESCE(sub.total_2b,    0), COALESCE(bs.doubles,       0)),
+          triples      = GREATEST(COALESCE(sub.total_3b,    0), COALESCE(bs.triples,       0)),
+          hbp          = GREATEST(COALESCE(sub.total_hbp,   0), COALESCE(bs.hbp,           0)),
+          cs           = GREATEST(COALESCE(sub.total_cs,    0), COALESCE(bs.cs,            0)),
+          pa           = GREATEST(COALESCE(sub.total_pa,    0), COALESCE(bs.pa,            0))
+        FROM (
+          SELECT
+            player_id,
+            COUNT(*)        AS game_count,
+            SUM(rbi)        AS total_rbi,
+            SUM(hits)       AS total_hits,
+            SUM(home_runs)  AS total_hr,
+            SUM(runs)       AS total_runs,
+            SUM(walks)      AS total_bb,
+            SUM(strikeouts) AS total_so,
+            SUM(sb)         AS total_sb,
+            SUM(ab)         AS total_ab,
+            SUM(doubles)    AS total_2b,
+            SUM(triples)    AS total_3b,
+            SUM(hbp)        AS total_hbp,
+            SUM(cs)         AS total_cs,
+            SUM(pa)         AS total_pa
+          FROM player_daily_stats
+          WHERE stat_type = 'hitter'
+          AND EXTRACT(YEAR FROM game_date) = %s
+          GROUP BY player_id
+        ) sub
+        WHERE bs.player_id = sub.player_id
+        AND bs.season = %s
+    """, (SEASON, SEASON))
+    print(f"[sync] 타자 daily 동기화: {cur.rowcount}행")
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
 def sync_innings_from_game_pitchers():
     """game_pitchers 집계로 pitcher_stats IP/games 복구 (덮어쓰기 방지)"""
     conn = get_connection()
@@ -207,6 +261,9 @@ def run_all():
 
     print("\n[sync] game_pitchers로 IP 복구")
     sync_innings_from_game_pitchers()
+
+    print("\n[sync] daily stats로 타자 누락 지표 보완")
+    sync_batter_stats_from_daily()
 
     print("\n[파생지표] 계산")
     compute_derived_stats()

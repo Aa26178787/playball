@@ -189,15 +189,20 @@ def _sync_batter_stats_from_daily():
     cur.execute("""
         UPDATE batter_stats bs
         SET
-          rbis         = GREATEST(COALESCE(sub.total_rbi,   0), COALESCE(bs.rbis,         0)),
-          hits         = GREATEST(COALESCE(sub.total_hits,  0), COALESCE(bs.hits,          0)),
-          home_runs    = GREATEST(COALESCE(sub.total_hr,    0), COALESCE(bs.home_runs,     0)),
-          runs         = GREATEST(COALESCE(sub.total_runs,  0), COALESCE(bs.runs,          0)),
-          at_bats      = GREATEST(COALESCE(sub.total_ab,    0), COALESCE(bs.at_bats,       0)),
-          games        = GREATEST(COALESCE(sub.game_count,  0), COALESCE(bs.games,         0)),
-          walks        = GREATEST(COALESCE(sub.total_bb,  0), COALESCE(bs.walks,        0)),
-          strikeouts   = GREATEST(COALESCE(sub.total_so,  0), COALESCE(bs.strikeouts,   0)),
-          stolen_bases = GREATEST(COALESCE(sub.total_sb,  0), COALESCE(bs.stolen_bases, 0)),
+          rbis         = GREATEST(COALESCE(sub.total_rbi,     0), COALESCE(bs.rbis,         0)),
+          hits         = GREATEST(COALESCE(sub.total_hits,    0), COALESCE(bs.hits,          0)),
+          home_runs    = GREATEST(COALESCE(sub.total_hr,      0), COALESCE(bs.home_runs,     0)),
+          runs         = GREATEST(COALESCE(sub.total_runs,    0), COALESCE(bs.runs,          0)),
+          at_bats      = GREATEST(COALESCE(sub.total_ab,      0), COALESCE(bs.at_bats,       0)),
+          games        = GREATEST(COALESCE(sub.game_count,    0), COALESCE(bs.games,         0)),
+          walks        = GREATEST(COALESCE(sub.total_bb,      0), COALESCE(bs.walks,         0)),
+          strikeouts   = GREATEST(COALESCE(sub.total_so,      0), COALESCE(bs.strikeouts,    0)),
+          stolen_bases = GREATEST(COALESCE(sub.total_sb,      0), COALESCE(bs.stolen_bases,  0)),
+          doubles      = GREATEST(COALESCE(sub.total_2b,      0), COALESCE(bs.doubles,       0)),
+          triples      = GREATEST(COALESCE(sub.total_3b,      0), COALESCE(bs.triples,       0)),
+          hbp          = GREATEST(COALESCE(sub.total_hbp,     0), COALESCE(bs.hbp,           0)),
+          cs           = GREATEST(COALESCE(sub.total_cs,      0), COALESCE(bs.cs,            0)),
+          pa           = GREATEST(COALESCE(sub.total_pa,      0), COALESCE(bs.pa,            0)),
           avg = CASE
                   WHEN bs.avg IS NOT NULL AND bs.avg > 0 THEN bs.avg
                   WHEN sub.total_ab > 0
@@ -215,7 +220,12 @@ def _sync_batter_stats_from_daily():
             SUM(walks)      AS total_bb,
             SUM(strikeouts) AS total_so,
             SUM(sb)         AS total_sb,
-            SUM(ab)         AS total_ab
+            SUM(ab)         AS total_ab,
+            SUM(doubles)    AS total_2b,
+            SUM(triples)    AS total_3b,
+            SUM(hbp)        AS total_hbp,
+            SUM(cs)         AS total_cs,
+            SUM(pa)         AS total_pa
           FROM player_daily_stats
           WHERE stat_type = 'hitter'
           AND EXTRACT(YEAR FROM game_date) = 2026
