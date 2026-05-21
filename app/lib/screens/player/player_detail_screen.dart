@@ -130,44 +130,44 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     if (isHitter) {
       return [
         _statCard('기본 기록', [
-          _statRow([('G', _s(stats['games'])), ('PA', _s(stats['pa'])), ('AB', _s(stats['at_bats'])), ('H', _s(stats['hits']))]),
-          _statRow([('2B', _s(stats['doubles'])), ('3B', _s(stats['triples'])), ('HR', _s(stats['home_runs'])), ('RBI', _s(stats['rbis']))]),
-          _statRow([('R', _s(stats['runs'])), ('SB', _s(stats['stolen_bases'])), ('SBA', _s(stats['sba'])), ('CS', _s(stats['cs']))]),
-          _statRow([('BB', _s(stats['walks'])), ('IBB', _s(stats['ibb'])), ('HBP', _s(stats['hbp'])), ('SO', _s(stats['strikeouts']))]),
-          _statRow([('GDP', _s(stats['gdp'])), ('SAC', _s(stats['sac'])), ('SF', _s(stats['sf'])), ('TB', _s(stats['tb']))]),
+          _statRow([('경기', _s(stats['games'])), ('타석', _s(stats['pa'])), ('타수', _s(stats['at_bats'])), ('안타', _s(stats['hits']))]),
+          _statRow([('2루타', _s(stats['doubles'])), ('3루타', _s(stats['triples'])), ('홈런', _s(stats['home_runs'])), ('타점', _s(stats['rbis']))]),
+          _statRow([('득점', _s(stats['runs'])), ('도루', _s(stats['stolen_bases'])), ('도루시도', _s(stats['sba'])), ('도루실패', _s(stats['cs']))]),
+          _statRow([('볼넷', _s(stats['walks'])), ('고의사구', _s(stats['ibb'])), ('사구', _s(stats['hbp'])), ('삼진', _s(stats['strikeouts']))]),
+          _statRow([('병살타', _s(stats['gdp'])), ('희생번트', _s(stats['sac'])), ('희생플라이', _s(stats['sf'])), ('루타', _s(stats['tb']))]),
         ]),
         _statCard('비율 지표', [
-          _statRow([('AVG', _s(stats['avg'], rate: true)), ('OBP', _s(stats['obp'], rate: true)), ('SLG', _s(stats['slg'], rate: true)), ('OPS', _s(stats['ops'], rate: true))]),
-          _statRow([('RISP', _s(stats['risp'], rate: true)), ('PH-BA', _s(stats['ph_ba'], rate: true)), ('MH', _s(stats['mh'])), ('도루율', stats['sb_pct'] != null ? '${(stats['sb_pct'] as num).toStringAsFixed(1)}%' : '-')]),
+          _statRow([('타율', _s(stats['avg'], rate: true)), ('출루율', _s(stats['obp'], rate: true)), ('장타율', _s(stats['slg'], rate: true)), ('OPS', _s(stats['ops'], rate: true))]),
+          _statRow([('득점권타율', _s(stats['risp'], rate: true)), ('대타타율', _s(stats['ph_ba'], rate: true)), ('멀티히트', _s(stats['mh'])), ('도루율', stats['sb_pct'] != null ? '${(stats['sb_pct'] as num).toStringAsFixed(1)}%' : '-')]),
         ]),
         _statCard('고급 지표', [
           _statRow([('wOBA', _s(stats['woba'], rate: true)), ('wRC+', _s(stats['wrc_plus'])), ('BABIP', _s(stats['babip'], rate: true)), ('ISO', _s(stats['iso'], rate: true))]),
           _statRow([('WAR', _s(stats['war'], dec: 2)), ('', ''), ('', ''), ('', '')]),
         ]),
         _statCard('수비', [
-          _statRow([('E', _s(stats['errors'])), ('FPCT', _s(stats['fpct'], rate: true)), ('DP', _s(stats['dp'])), ('PO', _s(stats['po']))]),
-          _statRow([('보살', _s(stats['assists'])), if (_playerData!['position'] == '포수') ('PB', _s(stats['pb'])) else ('', ''), ('', ''), ('', '')]),
+          _statRow([('실책', _s(stats['errors'])), ('수비율', _s(stats['fpct'], rate: true)), ('병살', _s(stats['dp'])), ('자살', _s(stats['po']))]),
+          _statRow([('보살', _s(stats['assists'])), if (_playerData!['position'] == '포수') ('포일', _s(stats['pb'])) else ('', ''), ('', ''), ('', '')]),
         ]),
       ];
     } else {
       return [
         _statCard('기본 기록', [
-          _statRow([('G', _s(stats['games'])), ('W', _s(stats['wins'])), ('L', _s(stats['losses'])), ('SV', _s(stats['saves']))]),
-          _statRow([('HLD', _s(stats['holds'])), ('IP', _s(stats['innings_pitched'], dec: 1)), ('H', _s(stats['hits_allowed'])), ('HR', _s(stats['home_runs_allowed']))]),
-          _statRow([('BB', _s(stats['walks'])), ('HBP', _s(stats['hbp'])), ('SO', _s(stats['strikeouts'])), ('R', _s(stats['runs_allowed']))]),
-          _statRow([('ER', _s(stats['earned_runs'])), ('TBF', _s(stats['tbf'])), ('NP', _s(stats['np'])), ('', '')]),
+          _statRow([('경기', _s(stats['games'])), ('승', _s(stats['wins'])), ('패', _s(stats['losses'])), ('세이브', _s(stats['saves']))]),
+          _statRow([('홀드', _s(stats['holds'])), ('이닝', _s(stats['innings_pitched'], dec: 1)), ('피안타', _s(stats['hits_allowed'])), ('피홈런', _s(stats['home_runs_allowed']))]),
+          _statRow([('볼넷', _s(stats['walks'])), ('사구', _s(stats['hbp'])), ('삼진', _s(stats['strikeouts'])), ('실점', _s(stats['runs_allowed']))]),
+          _statRow([('자책점', _s(stats['earned_runs'])), ('상대타자', _s(stats['tbf'])), ('투구수', _s(stats['np'])), ('', '')]),
         ]),
         _statCard('성적 지표', [
-          _statRow([('ERA', _s(stats['era'], dec: 2)), ('WHIP', _s(stats['whip'], dec: 2)), ('WPCT', _s(stats['wpct'], rate: true)), ('QS', _s(stats['qs']))]),
-          _statRow([('BS', _s(stats['blown_saves'])), ('CG', _s(stats['cg'])), ('SHO', _s(stats['sho'])), ('피안타율', _s(stats['avg_against'], rate: true))]),
+          _statRow([('평균자책점', _s(stats['era'], dec: 2)), ('WHIP', _s(stats['whip'], dec: 2)), ('승률', _s(stats['wpct'], rate: true)), ('퀄리티스타트', _s(stats['qs']))]),
+          _statRow([('블론세이브', _s(stats['blown_saves'])), ('완투', _s(stats['cg'])), ('완봉', _s(stats['sho'])), ('피안타율', _s(stats['avg_against'], rate: true))]),
         ]),
         _statCard('고급 지표', [
-          _statRow([('FIP', _s(stats['fip'], dec: 2)), ('K/9', _s(stats['k_per_9'], dec: 2)), ('BB/9', _s(stats['bb_per_9'], dec: 2)), ('BABIP', _s(stats['babip'], rate: true))]),
+          _statRow([('FIP', _s(stats['fip'], dec: 2)), ('9이닝삼진', _s(stats['k_per_9'], dec: 2)), ('9이닝볼넷', _s(stats['bb_per_9'], dec: 2)), ('BABIP', _s(stats['babip'], rate: true))]),
           _statRow([('WAR', _s(stats['war'], dec: 2)), ('', ''), ('', ''), ('', '')]),
         ]),
         _statCard('투구 상세', [
-          _statRow([('2B허용', _s(stats['doubles_allowed'])), ('3B허용', _s(stats['triples_allowed'])), ('SAC', _s(stats['sac'])), ('SF', _s(stats['sf']))]),
-          _statRow([('IBB', _s(stats['ibb'])), ('WP', _s(stats['wp'])), ('BK', _s(stats['bk'])), ('', '')]),
+          _statRow([('2루타허용', _s(stats['doubles_allowed'])), ('3루타허용', _s(stats['triples_allowed'])), ('희생번트', _s(stats['sac'])), ('희생플라이', _s(stats['sf']))]),
+          _statRow([('고의사구', _s(stats['ibb'])), ('폭투', _s(stats['wp'])), ('보크', _s(stats['bk'])), ('', '')]),
         ]),
       ];
     }
