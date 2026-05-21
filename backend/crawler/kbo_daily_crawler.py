@@ -13,6 +13,8 @@ from database.connection import get_connection
 def _get_driver():
     from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
+    from webdriver_manager.chrome import ChromeDriverManager
     options = Options()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
@@ -22,7 +24,10 @@ def _get_driver():
         'profile.managed_default_content_settings.images': 2,
         'profile.managed_default_content_settings.stylesheets': 2,
     })
-    return webdriver.Chrome(options=options)
+    return webdriver.Chrome(
+        service=Service(ChromeDriverManager().install()),
+        options=options
+    )
 
 
 def _safe_int(val):
