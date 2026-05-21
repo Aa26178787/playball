@@ -268,18 +268,18 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     {'value': 'rbis',         'label': '타점'},
     {'value': 'hits',         'label': '안타'},
     {'value': 'stolen_bases', 'label': '도루'},
-    {'value': 'ops',          'label': 'OPS'},
-    {'value': 'war',          'label': 'WAR'},
+    {'value': 'ops',          'label': '출루장타율'},
+    {'value': 'war',          'label': '대체승리기여'},
   ];
 
   final List<Map<String, String>> _pitcherCategories = [
-    {'value': 'era',        'label': 'ERA'},
+    {'value': 'era',        'label': '평균자책점'},
     {'value': 'wins',       'label': '승리'},
     {'value': 'strikeouts', 'label': '탈삼진'},
     {'value': 'saves',      'label': '세이브'},
     {'value': 'holds',      'label': '홀드'},
-    {'value': 'whip',       'label': 'WHIP'},
-    {'value': 'war',        'label': 'WAR'},
+    {'value': 'whip',       'label': '이닝당출루'},
+    {'value': 'war',        'label': '대체승리기여'},
   ];
 
   String _hitterSort = 'avg';

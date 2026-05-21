@@ -63,15 +63,15 @@ class _PlayerScreenState extends State<PlayerScreen>
     {'value': 'home_runs', 'label': '홈런'},
     {'value': 'rbis', 'label': '타점'},
     {'value': 'hits', 'label': '안타'},
-    {'value': 'ops', 'label': 'OPS'},
-    {'value': 'war', 'label': 'WAR'},
+    {'value': 'ops', 'label': '출루장타율'},
+    {'value': 'war', 'label': '대체승리기여'},
   ];
 
   final List<Map<String, String>> _pitcherSortOptions = [
-    {'value': 'era', 'label': 'ERA'},
+    {'value': 'era', 'label': '평균자책점'},
     {'value': 'wins', 'label': '승'},
     {'value': 'strikeouts', 'label': '탈삼진'},
-    {'value': 'whip', 'label': 'WHIP'},
+    {'value': 'whip', 'label': '이닝당출루'},
     {'value': 'saves', 'label': '세이브'},
     {'value': 'holds', 'label': '홀드'},
   ];
@@ -375,7 +375,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               ],
             ],
           ),
-          subtitle: Text('타율 ${(p['avg'] as num?)?.toStringAsFixed(3) ?? '-'}  OPS ${(p['ops'] as num?)?.toStringAsFixed(3) ?? '-'}  ${p['home_runs'] ?? 0}홈런 ${p['rbis'] ?? 0}타점'),
+          subtitle: Text('타율 ${(p['avg'] as num?)?.toStringAsFixed(3) ?? '-'}  출루장타율 ${(p['ops'] as num?)?.toStringAsFixed(3) ?? '-'}  ${p['home_runs'] ?? 0}홈런 ${p['rbis'] ?? 0}타점'),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
         );
       },
@@ -425,7 +425,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               ],
             ],
           ),
-          subtitle: Text('ERA ${(p['era'] as num?)?.toStringAsFixed(2) ?? '-'}  WHIP ${(p['whip'] as num?)?.toStringAsFixed(2) ?? '-'}  ${p['wins'] ?? 0}승 ${p['strikeouts'] ?? 0}K'),
+          subtitle: Text('평자 ${(p['era'] as num?)?.toStringAsFixed(2) ?? '-'}  이닝당출루 ${(p['whip'] as num?)?.toStringAsFixed(2) ?? '-'}  ${p['wins'] ?? 0}승 ${p['strikeouts'] ?? 0}삼진'),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
         );
       },

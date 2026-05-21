@@ -977,11 +977,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             Wrap(
               spacing: 12,
               children: [
-                _statChip('ERA', '${season['era'] ?? '-'}'),
+                _statChip('평자', '${season['era'] ?? '-'}'),
                 _statChip('${season['wins'] ?? 0}승 ${season['losses'] ?? 0}패', ''),
                 _statChip('이닝', season['innings'] ?? '-'),
-                _statChip('K', '${season['kk'] ?? 0}'),
-                _statChip('BB', '${season['bb'] ?? 0}'),
+                _statChip('삼진', '${season['kk'] ?? 0}'),
+                _statChip('볼넷', '${season['bb'] ?? 0}'),
               ],
             ),
             if (vs['games'] != null && vs['games'] != '0') ...[
@@ -992,9 +992,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               Wrap(
                 spacing: 12,
                 children: [
-                  _statChip('ERA', '${vs['era'] ?? '-'}'),
+                  _statChip('평자', '${vs['era'] ?? '-'}'),
                   _statChip('이닝', vs['innings'] ?? '-'),
-                  _statChip('K', '${vs['kk'] ?? 0}'),
+                  _statChip('삼진', '${vs['kk'] ?? 0}'),
                 ],
               ),
             ],
