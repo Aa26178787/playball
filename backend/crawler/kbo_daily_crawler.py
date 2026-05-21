@@ -938,3 +938,128 @@ def crawl_kbo_defense_stats(season=2026):
     cur.close()
     conn.close()
     print(f"[KBO defense] {saved}명 업데이트, {errors}건 오류")
+
+
+def crawl_kbo_hitter_detail1(season=2026):
+    """HitterBasic/Detail1.aspx → P/PA (투구수/타석) 저장"""
+    url = "https://www.koreabaseball.com/Record/Player/HitterBasic/Detail1.aspx"
+    driver = _get_driver()
+    try:
+        headers, rows = _get_kbo_season_pages(driver, url)
+    finally:
+        driver.quit()
+
+    if not rows:
+        print("[KBO hitter detail1] 데이터 없음")
+        return
+
+    print(f"[KBO hitter detail1] {len(rows)}행. 헤더: {headers}")
+
+    def _h(*names):
+        for n in names:
+            try: return headers.index(n)
+            except ValueError: pass
+        return None
+
+    i_name = _h('선수명') or 1
+    i_team = _h('팀명')   or 2
+    i_ppa  = _h('P/PA', 'P_PA')
+
+    if i_ppa is None:
+        print("[KBO hitter detail1] P/PA 컬럼 없음")
+        return
+
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    saved = errors = 0
+
+    for cols in rows:
+        try:
+            name = cols[i_name]
+            team_id = _KBO_TEAM_ID.get(cols[i_team])
+            if not team_id:
+                continue
+            cur.execute("SELECT id FROM players WHERE name=%s AND team_id=%s AND player_type='타자' LIMIT 1", (name, team_id))
+            row = cur.fetchone()
+            if not row:
+                continue
+            player_id = row[0]
+            ppa = _safe_float(cols[i_ppa]) if i_ppa < len(cols) else None
+            cur.execute("""
+                UPDATE batter_stats SET p_pa = COALESCE(%s, p_pa)
+                WHERE player_id=%s AND season=%s
+            """, (ppa, player_id, season))
+            saved += 1
+        except Exception:
+            errors += 1
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[KBO hitter detail1] {saved}명 업데이트, {errors}건 오류")
+
+
+def crawl_kbo_pitcher_detail1(season=2026):
+    """PitcherBasic/Detail1.aspx → GS, GF, SVO 저장"""
+    url = "https://www.koreabaseball.com/Record/Player/PitcherBasic/Detail1.aspx"
+    driver = _get_driver()
+    try:
+        headers, rows = _get_kbo_season_pages(driver, url)
+    finally:
+        driver.quit()
+
+    if not rows:
+        print("[KBO pitcher detail1] 데이터 없음")
+        return
+
+    print(f"[KBO pitcher detail1] {len(rows)}행. 헤더: {headers}")
+
+    def _h(*names):
+        for n in names:
+            try: return headers.index(n)
+            except ValueError: pass
+        return None
+
+    i_name = _h('선수명') or 1
+    i_team = _h('팀명')   or 2
+    i_gs   = _h('GS',  '선발')
+    i_gf   = _h('GF',  '구원종료')
+    i_svo  = _h('SVO', '세이브기회')
+
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    saved = errors = 0
+
+    for cols in rows:
+        try:
+            name = cols[i_name]
+            team_id = _KBO_TEAM_ID.get(cols[i_team])
+            if not team_id:
+                continue
+            cur.execute("SELECT id FROM players WHERE name=%s AND team_id=%s AND player_type='투수' LIMIT 1", (name, team_id))
+            row = cur.fetchone()
+            if not row:
+                continue
+            player_id = row[0]
+
+            def _ci(i): return _safe_int(cols[i]) if i is not None and i < len(cols) else None
+
+            cur.execute("""
+                UPDATE pitcher_stats SET
+                    gs  = COALESCE(%s, gs),
+                    gf  = COALESCE(%s, gf),
+                    svo = COALESCE(%s, svo)
+                WHERE player_id=%s AND season=%s
+            """, (_ci(i_gs), _ci(i_gf), _ci(i_svo), player_id, season))
+            saved += 1
+        except Exception:
+            errors += 1
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[KBO pitcher detail1] {saved}명 업데이트, {errors}건 오류")
