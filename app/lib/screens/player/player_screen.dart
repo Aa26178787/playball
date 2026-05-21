@@ -42,8 +42,14 @@ class _PlayerScreenState extends State<PlayerScreen>
   final List<Map<String, String?>> _positions = [
     {'value': null, 'label': '전체'},
     {'value': '포수', 'label': '포수'},
-    {'value': '내야수', 'label': '내야수'},
-    {'value': '외야수', 'label': '외야수'},
+    {'value': '1루수', 'label': '1루수'},
+    {'value': '2루수', 'label': '2루수'},
+    {'value': '3루수', 'label': '3루수'},
+    {'value': '유격수', 'label': '유격수'},
+    {'value': '좌익수', 'label': '좌익수'},
+    {'value': '중견수', 'label': '중견수'},
+    {'value': '우익수', 'label': '우익수'},
+    {'value': '지명타자', 'label': 'DH'},
   ];
 
   final List<Map<String, String?>> _throwsOptions = [
@@ -219,7 +225,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         setState(() => _selectedPosition = p['value']);
         _loadCurrentTab();
       },
-      selectedColor: const Color(0xFF00695C),
+      selectedColor: const Color(0xFF303F9F),
     )).toList();
 
     final throwsChips = _throwsOptions.map((t) => _buildChip(
@@ -229,7 +235,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         setState(() => _selectedThrows = t['value']);
         _loadCurrentTab();
       },
-      selectedColor: const Color(0xFF00695C),
+      selectedColor: const Color(0xFF303F9F),
     )).toList();
 
     final sortOptions = isHitter ? _hitterSortOptions : _pitcherSortOptions;
@@ -244,7 +250,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         });
         _loadCurrentTab();
       },
-      selectedColor: Colors.orange[800],
+      selectedColor: const Color(0xFF1565C0),
     )).toList();
 
     return Container(
@@ -375,7 +381,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF00695C).withOpacity(0.12),
+                    color: const Color(0xFF303F9F).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(pos, style: const TextStyle(fontSize: 10, color: Color(0xFF00695C))),
@@ -425,7 +431,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF00695C).withOpacity(0.12),
+                    color: const Color(0xFF303F9F).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(throws, style: const TextStyle(fontSize: 10, color: Color(0xFF00695C))),
