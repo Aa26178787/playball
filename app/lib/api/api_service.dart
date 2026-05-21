@@ -109,6 +109,16 @@ class ApiService {
     return res.data;
   }
 
+  static Future<Map<String, dynamic>?> getGameWeather(int gameId) async {
+    try {
+      final res = await _dio.get('/games/$gameId/weather');
+      final w = res.data['weather'];
+      return w != null ? Map<String, dynamic>.from(w) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<Map<String, dynamic>> getGameRoster(int gameId) async {
     final res = await _dio.get('/games/$gameId/roster');
     return res.data;

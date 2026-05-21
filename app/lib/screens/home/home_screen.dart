@@ -332,6 +332,24 @@ class GameCard extends StatelessWidget {
     );
   }
 
+  Widget? _buildWeatherChip() {
+    final w = game.weather;
+    if (w == null) return null;
+    if (w['indoor'] == true) {
+      return const Text('실내', style: TextStyle(fontSize: 11, color: Colors.grey));
+    }
+    final emoji = w['emoji'] ?? '';
+    final temp = w['temp'];
+    final pop = w['pop'];
+    final parts = <String>[
+      if (emoji.isNotEmpty) emoji,
+      if (temp != null) '${temp}°',
+      if (pop != null && (pop as int) > 0) '강수 $pop%',
+    ];
+    if (parts.isEmpty) return null;
+    return Text(parts.join(' '), style: const TextStyle(fontSize: 12, color: Colors.blueGrey));
+  }
+
   Color _statusColor() {
     switch (game.status) {
       case '진행':
@@ -390,9 +408,18 @@ class GameCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Text(
-                    game.stadium ?? '',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_buildWeatherChip() != null) ...[
+                        _buildWeatherChip()!,
+                        const SizedBox(width: 6),
+                      ],
+                      Text(
+                        game.stadium ?? '',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
                   ),
                 ],
               ),

@@ -21,6 +21,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Map<String, dynamic>? _previewData;
   Map<String, dynamic>? _recordDetailData;
   Map<String, dynamic>? _relayAllData;
+  Map<String, dynamic>? _weatherData;
   bool _isLoading = true;
   bool _isRelayRefreshing = false;
   Timer? _refreshTimer;
@@ -94,6 +95,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 if (_tabController.index == 0) _scrollInningsToBottom();
               }
             })
+            .catchError((_) {}),
+        ApiService.getGameWeather(widget.gameId)
+            .then((w) { if (mounted) setState(() => _weatherData = w); })
             .catchError((_) {}),
       ]);
 
@@ -560,8 +564,38 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 : game['status'],
             style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
+          if (_weatherData != null) ...[
+            const SizedBox(height: 6),
+            _buildWeatherRow(_weatherData!),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildWeatherRow(Map<String, dynamic> w) {
+    if (w['indoor'] == true) {
+      return const Text('실내 구장', style: TextStyle(color: Colors.white54, fontSize: 12));
+    }
+    final emoji = w['emoji'] ?? '';
+    final temp = w['temp'];
+    final feelsLike = w['feels_like'];
+    final humidity = w['humidity'];
+    final windSpeed = w['wind_speed'];
+    final description = w['description'] ?? '';
+    final pop = w['pop'];
+    final parts = <String>[
+      if (emoji.isNotEmpty) emoji,
+      if (description.isNotEmpty) description,
+      if (temp != null) '${temp}°C',
+      if (feelsLike != null) '체감 ${feelsLike}°',
+      if (humidity != null) '습도 $humidity%',
+      if (windSpeed != null && (windSpeed as num) > 0) '풍속 ${windSpeed}m/s',
+      if (pop != null) '강수 $pop%',
+    ];
+    return Text(
+      parts.join('  '),
+      style: const TextStyle(color: Colors.white60, fontSize: 12),
     );
   }
 

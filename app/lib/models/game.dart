@@ -17,6 +17,7 @@ class Game {
   final bool? isDraw;
   final String? homeStarter;
   final String? awayStarter;
+  final Map<String, dynamic>? weather;
 
   Game({
     required this.id,
@@ -37,6 +38,7 @@ class Game {
     this.isDraw,
     this.homeStarter,
     this.awayStarter,
+    this.weather,
   });
 
   factory Game.fromJson(Map<String, dynamic> json) {
@@ -59,6 +61,9 @@ class Game {
       isDraw:        json['is_draw'] == true,
       homeStarter:   json['home_starter'],
       awayStarter:   json['away_starter'],
+      weather:       json['weather'] != null
+                       ? Map<String, dynamic>.from(json['weather'])
+                       : null,
     );
   }
 }
