@@ -302,20 +302,10 @@ def _get_kbo_season_pages(driver, url):
             if cols:
                 all_rows.append(cols)
 
-        # 다음 페이지
+        # 다음 페이지 (Selenium click)
         try:
-            paging = soup.find('div', class_='paging')
-            if not paging:
-                break
-            next_a = None
-            for a in paging.find_all('a'):
-                if a.get_text(strip=True) in ('다음', '>'):
-                    next_a = a
-                    break
-            if not next_a:
-                break
-            href = next_a.get('href', '')
-            driver.execute_script(f"javascript:{href.split('javascript:')[1]}" if 'javascript:' in href else href)
+            next_btn = driver.find_element('xpath', '//a[normalize-space(.)="다음"]')
+            next_btn.click()
             time.sleep(2)
         except Exception:
             break
@@ -338,31 +328,33 @@ def crawl_kbo_hitter_season_stats(season=2026):
 
     print(f"[KBO season] 타자 {len(rows)}행 파싱. 헤더: {headers}")
 
-    # 컬럼 인덱스 (헤더 기반)
-    def idx(name):
-        try:
-            return headers.index(name)
-        except ValueError:
-            return None
+    # 컬럼 인덱스 (영문/한국어 모두 시도)
+    def _h(*names):
+        for name in names:
+            try:
+                return headers.index(name)
+            except ValueError:
+                continue
+        return None
 
-    i_name   = idx('선수명') or 1
-    i_team   = idx('팀명')   or 2
-    i_games  = idx('경기')   or 3
-    i_pa     = idx('타석')   or 4
-    i_ab     = idx('타수')   or 5
-    i_runs   = idx('득점')   or 6
-    i_hits   = idx('안타')   or 7
-    i_2b     = idx('2루타')  or 8
-    i_3b     = idx('3루타')  or 9
-    i_hr     = idx('홈런')   or 10
-    i_rbi    = idx('타점')   or 11
-    i_sb     = idx('도루')   or 12
-    i_cs     = idx('도루자') or 13
-    i_bb     = idx('볼넷')   or 14
-    i_hbp    = idx('사구')   or 15
-    i_so     = idx('삼진')   or 16
-    i_gdp    = idx('병살')   or 17
-    i_avg    = idx('타율')   or 18
+    i_name  = _h('선수명') or 1
+    i_team  = _h('팀명')   or 2
+    i_avg   = _h('AVG', '타율')
+    i_games = _h('G', '경기')
+    i_pa    = _h('PA', '타석')
+    i_ab    = _h('AB', '타수')
+    i_runs  = _h('R', '득점')
+    i_hits  = _h('H', '안타')
+    i_2b    = _h('2B', '2루타')
+    i_3b    = _h('3B', '3루타')
+    i_hr    = _h('HR', '홈런')
+    i_rbi   = _h('RBI', '타점')
+    i_sb    = _h('SB', '도루')
+    i_cs    = _h('CS', '도루자')
+    i_bb    = _h('BB', '볼넷')
+    i_hbp   = _h('HBP', '사구')
+    i_so    = _h('SO', 'K', '삼진')
+    i_gdp   = _h('GDP', '병살')
 
     conn = get_connection()
     if not conn:
@@ -388,6 +380,11 @@ def crawl_kbo_hitter_season_stats(season=2026):
                 continue
             player_id = row[0]
 
+            def _col_int(i):
+                return _safe_int(cols[i]) if i is not None and i < len(cols) else None
+            def _col_float(i):
+                return _safe_float(cols[i]) if i is not None and i < len(cols) else None
+
             cur.execute("""
                 INSERT INTO batter_stats (
                     player_id, season, games, pa, at_bats, runs, hits,
@@ -396,39 +393,29 @@ def crawl_kbo_hitter_season_stats(season=2026):
                 ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT (player_id, season) DO UPDATE SET
                     games        = EXCLUDED.games,
-                    pa           = EXCLUDED.pa,
-                    at_bats      = EXCLUDED.at_bats,
-                    runs         = EXCLUDED.runs,
+                    pa           = COALESCE(EXCLUDED.pa,           batter_stats.pa),
+                    at_bats      = COALESCE(EXCLUDED.at_bats,      batter_stats.at_bats),
+                    runs         = COALESCE(EXCLUDED.runs,         batter_stats.runs),
                     hits         = EXCLUDED.hits,
-                    doubles      = EXCLUDED.doubles,
-                    triples      = EXCLUDED.triples,
+                    doubles      = COALESCE(EXCLUDED.doubles,      batter_stats.doubles),
+                    triples      = COALESCE(EXCLUDED.triples,      batter_stats.triples),
                     home_runs    = EXCLUDED.home_runs,
                     rbis         = EXCLUDED.rbis,
-                    stolen_bases = EXCLUDED.stolen_bases,
-                    cs           = EXCLUDED.cs,
-                    walks        = EXCLUDED.walks,
-                    hbp          = EXCLUDED.hbp,
-                    strikeouts   = EXCLUDED.strikeouts,
-                    gdp          = EXCLUDED.gdp,
-                    avg          = EXCLUDED.avg
+                    stolen_bases = COALESCE(EXCLUDED.stolen_bases, batter_stats.stolen_bases),
+                    cs           = COALESCE(EXCLUDED.cs,           batter_stats.cs),
+                    walks        = COALESCE(EXCLUDED.walks,        batter_stats.walks),
+                    hbp          = COALESCE(EXCLUDED.hbp,          batter_stats.hbp),
+                    strikeouts   = COALESCE(EXCLUDED.strikeouts,   batter_stats.strikeouts),
+                    gdp          = COALESCE(EXCLUDED.gdp,          batter_stats.gdp),
+                    avg          = COALESCE(EXCLUDED.avg,          batter_stats.avg)
             """, (
                 player_id, season,
-                _safe_int(cols[i_games]),
-                _safe_int(cols[i_pa]),
-                _safe_int(cols[i_ab]),
-                _safe_int(cols[i_runs]),
-                _safe_int(cols[i_hits]),
-                _safe_int(cols[i_2b]),
-                _safe_int(cols[i_3b]),
-                _safe_int(cols[i_hr]),
-                _safe_int(cols[i_rbi]),
-                _safe_int(cols[i_sb]),
-                _safe_int(cols[i_cs]),
-                _safe_int(cols[i_bb]),
-                _safe_int(cols[i_hbp]),
-                _safe_int(cols[i_so]),
-                _safe_int(cols[i_gdp]),
-                _safe_float(cols[i_avg]),
+                _col_int(i_games), _col_int(i_pa),  _col_int(i_ab),
+                _col_int(i_runs),  _col_int(i_hits), _col_int(i_2b),
+                _col_int(i_3b),    _col_int(i_hr),   _col_int(i_rbi),
+                _col_int(i_sb),    _col_int(i_cs),   _col_int(i_bb),
+                _col_int(i_hbp),   _col_int(i_so),   _col_int(i_gdp),
+                _col_float(i_avg),
             ))
             saved += 1
         except Exception as e:
@@ -456,27 +443,29 @@ def crawl_kbo_pitcher_season_stats(season=2026):
 
     print(f"[KBO season] 투수 {len(rows)}행 파싱. 헤더: {headers}")
 
-    def idx(name):
-        try:
-            return headers.index(name)
-        except ValueError:
-            return None
+    def _h(*names):
+        for name in names:
+            try:
+                return headers.index(name)
+            except ValueError:
+                continue
+        return None
 
-    i_name  = idx('선수명') or 1
-    i_team  = idx('팀명')   or 2
-    i_games = idx('경기')   or 3
-    i_wins  = idx('승')     or 4
-    i_loss  = idx('패')     or 5
-    i_sv    = idx('세이브') or 6
-    i_hold  = idx('홀드')   or 7
-    i_ip    = idx('이닝')   or 8
-    i_ha    = idx('피안타') or 9
-    i_hra   = idx('피홈런') or 10
-    i_bb    = idx('볼넷')   or 11
-    i_so    = idx('삼진')   or 12
-    i_r     = idx('실점')   or 13
-    i_er    = idx('자책점') or 14
-    i_era   = idx('평균자책점') or 15
+    i_name  = _h('선수명') or 1
+    i_team  = _h('팀명')   or 2
+    i_games = _h('G', '경기')
+    i_wins  = _h('W', '승')
+    i_loss  = _h('L', '패')
+    i_sv    = _h('SV', '세이브')
+    i_hold  = _h('HLD', '홀드')
+    i_ip    = _h('IP', '이닝')
+    i_ha    = _h('H', 'HA', '피안타')
+    i_hra   = _h('HR', 'HRA', '피홈런')
+    i_bb    = _h('BB', '볼넷')
+    i_so    = _h('SO', 'K', '삼진')
+    i_r     = _h('R', '실점')
+    i_er    = _h('ER', '자책점')
+    i_era   = _h('ERA', '평균자책점')
 
     conn = get_connection()
     if not conn:
@@ -502,7 +491,12 @@ def crawl_kbo_pitcher_season_stats(season=2026):
                 continue
             player_id = row[0]
 
-            ip_str = cols[i_ip] if i_ip < len(cols) else '0'
+            def _ci(i):
+                return _safe_int(cols[i]) if i is not None and i < len(cols) else None
+            def _cf(i):
+                return _safe_float(cols[i]) if i is not None and i < len(cols) else None
+
+            ip_str = cols[i_ip] if i_ip is not None and i_ip < len(cols) else '0'
             ip_val = _parse_innings(ip_str)
 
             cur.execute("""
@@ -513,33 +507,25 @@ def crawl_kbo_pitcher_season_stats(season=2026):
                 ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT (player_id, season) DO UPDATE SET
                     games              = EXCLUDED.games,
-                    wins               = EXCLUDED.wins,
-                    losses             = EXCLUDED.losses,
-                    saves              = EXCLUDED.saves,
-                    holds              = EXCLUDED.holds,
+                    wins               = COALESCE(EXCLUDED.wins,              pitcher_stats.wins),
+                    losses             = COALESCE(EXCLUDED.losses,            pitcher_stats.losses),
+                    saves              = COALESCE(EXCLUDED.saves,             pitcher_stats.saves),
+                    holds              = COALESCE(EXCLUDED.holds,             pitcher_stats.holds),
                     innings_pitched    = EXCLUDED.innings_pitched,
-                    hits_allowed       = EXCLUDED.hits_allowed,
-                    home_runs_allowed  = EXCLUDED.home_runs_allowed,
-                    walks              = EXCLUDED.walks,
-                    strikeouts         = EXCLUDED.strikeouts,
-                    runs_allowed       = EXCLUDED.runs_allowed,
-                    earned_runs        = EXCLUDED.earned_runs,
-                    era                = EXCLUDED.era
+                    hits_allowed       = COALESCE(EXCLUDED.hits_allowed,      pitcher_stats.hits_allowed),
+                    home_runs_allowed  = COALESCE(EXCLUDED.home_runs_allowed, pitcher_stats.home_runs_allowed),
+                    walks              = COALESCE(EXCLUDED.walks,             pitcher_stats.walks),
+                    strikeouts         = COALESCE(EXCLUDED.strikeouts,        pitcher_stats.strikeouts),
+                    runs_allowed       = COALESCE(EXCLUDED.runs_allowed,      pitcher_stats.runs_allowed),
+                    earned_runs        = COALESCE(EXCLUDED.earned_runs,       pitcher_stats.earned_runs),
+                    era                = COALESCE(EXCLUDED.era,               pitcher_stats.era)
             """, (
                 player_id, season,
-                _safe_int(cols[i_games]),
-                _safe_int(cols[i_wins]),
-                _safe_int(cols[i_loss]),
-                _safe_int(cols[i_sv]),
-                _safe_int(cols[i_hold]),
-                ip_val,
-                _safe_int(cols[i_ha]),
-                _safe_int(cols[i_hra]),
-                _safe_int(cols[i_bb]),
-                _safe_int(cols[i_so]),
-                _safe_int(cols[i_r]),
-                _safe_int(cols[i_er]),
-                _safe_float(cols[i_era]),
+                _ci(i_games), _ci(i_wins), _ci(i_loss),
+                _ci(i_sv),    _ci(i_hold), ip_val,
+                _ci(i_ha),    _ci(i_hra),  _ci(i_bb),
+                _ci(i_so),    _ci(i_r),    _ci(i_er),
+                _cf(i_era),
             ))
             saved += 1
         except Exception:
