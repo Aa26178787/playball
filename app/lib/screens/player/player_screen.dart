@@ -49,14 +49,13 @@ class _PlayerScreenState extends State<PlayerScreen>
     {'value': '좌익수', 'label': '좌익수'},
     {'value': '중견수', 'label': '중견수'},
     {'value': '우익수', 'label': '우익수'},
-    {'value': '지명타자', 'label': 'DH'},
+    {'value': '지명타자', 'label': '지명타자'},
   ];
 
   final List<Map<String, String?>> _throwsOptions = [
     {'value': null, 'label': '전체'},
-    {'value': '우투', 'label': '우투'},
-    {'value': '좌투', 'label': '좌투'},
-    {'value': '우언', 'label': '우언더'},
+    {'value': '우투', 'label': '우완'},
+    {'value': '좌투', 'label': '좌완'},
   ];
 
   final List<Map<String, String>> _hitterSortOptions = [
@@ -153,27 +152,32 @@ class _PlayerScreenState extends State<PlayerScreen>
     required ValueChanged<T?> onChanged,
   }) {
     return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(label,
-                style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 2),
-            DropdownButtonHideUnderline(
-              child: DropdownButton<T>(
-                value: value,
-                isExpanded: true,
-                dropdownColor: const Color(0xFF283593),
-                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70, size: 18),
-                items: items,
-                onChanged: onChanged,
+      child: LayoutBuilder(
+        builder: (context, constraints) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(label,
+                  style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 2),
+              SizedBox(
+                width: constraints.maxWidth - 20,
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<T>(
+                    value: value,
+                    isExpanded: true,
+                    dropdownColor: const Color(0xFF283593),
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70, size: 18),
+                    items: items,
+                    onChanged: onChanged,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
