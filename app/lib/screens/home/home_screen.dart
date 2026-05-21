@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/game_provider.dart';
 import '../../models/game.dart';
 import '../../api/api_service.dart';
+import '../../utils/team_theme.dart';
 import '../game/game_detail_screen.dart';
 import '../team/team_screen.dart';
 import '../player/player_screen.dart';
@@ -295,9 +295,11 @@ class GameCard extends StatelessWidget {
                   Expanded(
                     child: Column(
                       children: [
+                        TeamLogo(teamCode: game.homeTeamCode, size: 44),
+                        const SizedBox(height: 4),
                         Text(
                           game.homeTeam,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
                         ),
                         Text('홈', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
@@ -323,9 +325,11 @@ class GameCard extends StatelessWidget {
                   Expanded(
                     child: Column(
                       children: [
+                        TeamLogo(teamCode: game.awayTeamCode, size: 44),
+                        const SizedBox(height: 4),
                         Text(
                           game.awayTeam,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
                         ),
                         Text('원정', style: TextStyle(fontSize: 11, color: Colors.grey[400])),

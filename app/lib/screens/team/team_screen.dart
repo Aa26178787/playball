@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
+import '../../utils/team_theme.dart';
 import '../player/player_detail_screen.dart';
+import 'team_detail_screen.dart';
 
 class TeamScreen extends StatefulWidget {
   const TeamScreen({super.key});
@@ -41,18 +43,6 @@ class _TeamScreenState extends State<TeamScreen>
     }
   }
 
-  String _streakText(int streak) {
-    if (streak > 0) return '$streak연승';
-    if (streak < 0) return '${-streak}연패';
-    return '-';
-  }
-
-  Color _streakColor(int streak) {
-    if (streak > 0) return Colors.blue;
-    if (streak < 0) return Colors.red;
-    return Colors.grey;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -81,29 +71,30 @@ class _TeamScreenState extends State<TeamScreen>
     return RefreshIndicator(
       onRefresh: _loadTeams,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         children: [
+          // 헤더
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
             decoration: BoxDecoration(
               color: const Color(0xFF1A237E),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                SizedBox(width: 30, child: Text('순위', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-                Expanded(child: Text('팀', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-                SizedBox(width: 30, child: Text('G', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-                SizedBox(width: 30, child: Text('승', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-                SizedBox(width: 30, child: Text('패', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-                SizedBox(width: 30, child: Text('무', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-                SizedBox(width: 45, child: Text('승률', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-                SizedBox(width: 30, child: Text('게차', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
-                SizedBox(width: 45, child: Text('연속', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
+                const SizedBox(width: 24, child: Text('순위', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                const SizedBox(width: 36), // logo space
+                const Expanded(child: Text('팀', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                const SizedBox(width: 26, child: Text('승', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                const SizedBox(width: 26, child: Text('패', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                const SizedBox(width: 26, child: Text('무', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                const SizedBox(width: 42, child: Text('승률', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                const SizedBox(width: 26, child: Text('GB', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                const SizedBox(width: 52, child: Text('최근5', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           ..._teams.map((team) => _buildTeamRow(team)),
         ],
       ),
@@ -111,41 +102,121 @@ class _TeamScreenState extends State<TeamScreen>
   }
 
   Widget _buildTeamRow(Map<String, dynamic> team) {
-    final streak = team['streak'] as int? ?? 0;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-      margin: const EdgeInsets.only(bottom: 4),
-      decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+    final code = team['short_name'] as String? ?? '';
+    final gb = team['games_behind'];
+    final gbText = gb == null ? '-' : (gb as num) == 0 ? '-' : gb.toStringAsFixed(1);
+    final recent5 = (team['recent_5'] as List?)?.cast<String>() ?? [];
+
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => TeamDetailScreen(team: team)),
       ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 30,
-            child: Text('${team['rank'] ?? '-'}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          ),
-          Expanded(
-            child: Text(team['name'] ?? '',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          ),
-          SizedBox(width: 30, child: Text('${team['total_games'] ?? 0}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12))),
-          SizedBox(width: 30, child: Text('${team['wins'] ?? 0}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12))),
-          SizedBox(width: 30, child: Text('${team['losses'] ?? 0}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12))),
-          SizedBox(width: 30, child: Text('${team['draws'] ?? 0}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12))),
-          SizedBox(width: 45, child: Text((team['win_rate'] as num?)?.toStringAsFixed(3) ?? '-', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12))),
-          SizedBox(width: 30, child: Text('${team['games_behind'] ?? '-'}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12))),
-          SizedBox(
-            width: 45,
-            child: Text(
-              _streakText(streak),
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _streakColor(streak)),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: Colors.grey.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            // 순위
+            SizedBox(
+              width: 24,
+              child: Text(
+                '${team['rank'] ?? '-'}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
             ),
-          ),
-        ],
+            // 로고
+            TeamLogo(teamCode: code, size: 28, logoUrl: team['logo_url']),
+            const SizedBox(width: 8),
+            // 팀 이름
+            Expanded(
+              child: Text(
+                team['name'] ?? '',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // 승
+            SizedBox(
+              width: 26,
+              child: Text(
+                '${team['wins'] ?? 0}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+            // 패
+            SizedBox(
+              width: 26,
+              child: Text(
+                '${team['losses'] ?? 0}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+            // 무
+            SizedBox(
+              width: 26,
+              child: Text(
+                '${team['draws'] ?? 0}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+            // 승률
+            SizedBox(
+              width: 42,
+              child: Text(
+                (team['win_rate'] as num?)?.toStringAsFixed(3) ?? '-',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+            // GB
+            SizedBox(
+              width: 26,
+              child: Text(
+                gbText,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+            // 최근5 도트
+            SizedBox(
+              width: 52,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: recent5.map((r) => _recentDot(r)).toList(),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _recentDot(String result) {
+    Color color;
+    switch (result) {
+      case 'W':
+        color = Colors.blue;
+        break;
+      case 'L':
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.grey;
+    }
+    return Container(
+      width: 8,
+      height: 8,
+      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
     );
   }
 }
@@ -163,13 +234,13 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   late TabController _tabController;
 
   final List<Map<String, String>> _hitterCategories = [
-    {'value': 'avg',       'label': '타율'},
-    {'value': 'home_runs', 'label': '홈런'},
-    {'value': 'rbis',      'label': '타점'},
-    {'value': 'hits',      'label': '안타'},
+    {'value': 'avg',          'label': '타율'},
+    {'value': 'home_runs',    'label': '홈런'},
+    {'value': 'rbis',         'label': '타점'},
+    {'value': 'hits',         'label': '안타'},
     {'value': 'stolen_bases', 'label': '도루'},
-    {'value': 'ops',       'label': 'OPS'},
-    {'value': 'war',       'label': 'WAR'},
+    {'value': 'ops',          'label': 'OPS'},
+    {'value': 'war',          'label': 'WAR'},
   ];
 
   final List<Map<String, String>> _pitcherCategories = [
@@ -229,27 +300,27 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   String _hitterStatValue(Map p) {
     switch (_hitterSort) {
-      case 'avg': return (p['avg'] as num?)?.toStringAsFixed(3) ?? '-';
-      case 'home_runs': return '${p['home_runs'] ?? '-'}';
-      case 'rbis': return '${p['rbis'] ?? '-'}';
-      case 'hits': return '${p['hits'] ?? '-'}';
+      case 'avg':          return (p['avg'] as num?)?.toStringAsFixed(3) ?? '-';
+      case 'home_runs':    return '${p['home_runs'] ?? '-'}';
+      case 'rbis':         return '${p['rbis'] ?? '-'}';
+      case 'hits':         return '${p['hits'] ?? '-'}';
       case 'stolen_bases': return '${p['stolen_bases'] ?? '-'}';
-      case 'ops': return (p['ops'] as num?)?.toStringAsFixed(3) ?? '-';
-      case 'war': return (p['war'] as num?)?.toStringAsFixed(1) ?? '-';
-      default: return '-';
+      case 'ops':          return (p['ops'] as num?)?.toStringAsFixed(3) ?? '-';
+      case 'war':          return (p['war'] as num?)?.toStringAsFixed(1) ?? '-';
+      default:             return '-';
     }
   }
 
   String _pitcherStatValue(Map p) {
     switch (_pitcherSort) {
-      case 'era': return (p['era'] as num?)?.toStringAsFixed(2) ?? '-';
-      case 'wins': return '${p['wins'] ?? '-'}';
+      case 'era':        return (p['era'] as num?)?.toStringAsFixed(2) ?? '-';
+      case 'wins':       return '${p['wins'] ?? '-'}';
       case 'strikeouts': return '${p['strikeouts'] ?? '-'}';
-      case 'saves': return '${p['saves'] ?? '-'}';
-      case 'holds': return '${p['holds'] ?? '-'}';
-      case 'whip': return (p['whip'] as num?)?.toStringAsFixed(2) ?? '-';
-      case 'war': return (p['war'] as num?)?.toStringAsFixed(1) ?? '-';
-      default: return '-';
+      case 'saves':      return '${p['saves'] ?? '-'}';
+      case 'holds':      return '${p['holds'] ?? '-'}';
+      case 'whip':       return (p['whip'] as num?)?.toStringAsFixed(2) ?? '-';
+      case 'war':        return (p['war'] as num?)?.toStringAsFixed(1) ?? '-';
+      default:           return '-';
     }
   }
 
@@ -295,11 +366,14 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                 color: isSelected ? const Color(0xFF1A237E) : Colors.grey.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Text(cat['label']!,
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: isSelected ? Colors.white : null,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+              child: Text(
+                cat['label']!,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isSelected ? Colors.white : null,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
             ),
           );
         },
@@ -331,6 +405,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                           playerId: p['id'],
                           name: p['name'] ?? '',
                           team: p['team'] ?? '',
+                          teamCode: p['team_code'] ?? '',
                           label: label,
                           value: _hitterStatValue(p),
                         );
@@ -365,6 +440,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                           playerId: p['id'],
                           name: p['name'] ?? '',
                           team: p['team'] ?? '',
+                          teamCode: p['team_code'] ?? '',
                           label: label,
                           value: _pitcherStatValue(p),
                         );
@@ -380,6 +456,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     required int playerId,
     required String name,
     required String team,
+    required String teamCode,
     required String label,
     required String value,
   }) {
@@ -392,7 +469,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
         MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId)),
       ),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         margin: const EdgeInsets.only(bottom: 4),
         decoration: BoxDecoration(
           color: isTop3
@@ -415,6 +492,8 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
               ),
             ),
             const SizedBox(width: 8),
+            TeamLogo(teamCode: teamCode, size: 32),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

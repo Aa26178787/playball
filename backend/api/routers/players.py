@@ -80,7 +80,7 @@ def get_hitters(
                 bs.walks, bs.strikeouts, bs.stolen_bases,
                 bs.avg, bs.obp, bs.slg, bs.ops,
                 bs.woba, bs.wrc_plus, bs.babip, bs.iso, bs.war,
-                p.position
+                p.position, t.short_name AS team_code
             FROM batter_stats bs
             JOIN players p ON bs.player_id = p.id
             JOIN teams t ON p.team_id = t.id
@@ -117,6 +117,7 @@ def get_hitters(
                 "iso":      float(r[20]) if r[20] else 0,
                 "war":      float(r[21]) if r[21] else 0,
                 "position": r[22],
+                "team_code": r[23],
             }
             for r in rows
         ]
@@ -162,7 +163,7 @@ def get_pitchers(
                 ps.era, ps.whip, ps.fip,
                 ps.k_per_9, ps.bb_per_9, ps.babip, ps.war,
                 ps.blown_saves, ps.qs,
-                p.throws
+                p.throws, t.short_name AS team_code
             FROM pitcher_stats ps
             JOIN players p ON ps.player_id = p.id
             JOIN teams t ON p.team_id = t.id
@@ -200,6 +201,7 @@ def get_pitchers(
                 "war":     float(r[20]) if r[20] else 0,
                 "blown_saves": r[21], "qs": r[22],
                 "throws":  r[23],
+                "team_code": r[24],
             }
             for r in rows
         ]

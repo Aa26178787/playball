@@ -5,29 +5,22 @@ router = APIRouter()
 
 
 def _calc_streak(team_id, cur):
-    """팀의 현재 연승/연패 계산"""
     cur.execute("""
-        SELECT g.home_team_id, g.away_team_id, g.home_score, g.away_score
-        FROM games g
-        WHERE (g.home_team_id = %s OR g.away_team_id = %s)
-        AND g.status = '종료'
-        AND g.home_score != g.away_score
-        ORDER BY g.game_date DESC, g.id DESC
+        SELECT home_team_id, away_team_id, home_score, away_score
+        FROM games
+        WHERE (home_team_id = %s OR away_team_id = %s)
+          AND status = '종료'
+          AND home_score != away_score
+        ORDER BY game_date DESC, id DESC
         LIMIT 20
     """, (team_id, team_id))
     games = cur.fetchall()
-
     if not games:
         return 0
-
     streak = 0
     first_result = None
-
-    for home_id, away_id, home_score, away_score in games:
-        is_home = home_id == team_id
-        win = (is_home and home_score > away_score) or \
-              (not is_home and away_score > home_score)
-
+    for home_id, away_id, hs, as_ in games:
+        win = (home_id == team_id and hs > as_) or (away_id == team_id and as_ > hs)
         if first_result is None:
             first_result = win
             streak = 1
@@ -35,14 +28,50 @@ def _calc_streak(team_id, cur):
             streak += 1
         else:
             break
-
-    # 양수=연승, 음수=연패
     return streak if first_result else -streak
+
+
+def _calc_recent_5(team_id, cur):
+    cur.execute("""
+        SELECT home_team_id, away_team_id, home_score, away_score
+        FROM games
+        WHERE (home_team_id = %s OR away_team_id = %s)
+          AND status = '종료'
+        ORDER BY game_date DESC, id DESC
+        LIMIT 5
+    """, (team_id, team_id))
+    result = []
+    for home_id, away_id, hs, as_ in cur.fetchall():
+        if hs == as_:
+            result.append('D')
+        elif (home_id == team_id and hs > as_) or (away_id == team_id and as_ > hs):
+            result.append('W')
+        else:
+            result.append('L')
+    return result
+
+
+def _calc_home_away(team_id, cur):
+    cur.execute("""
+        SELECT
+            SUM(CASE WHEN home_team_id=%s AND home_score>away_score THEN 1 ELSE 0 END),
+            SUM(CASE WHEN home_team_id=%s AND home_score<away_score THEN 1 ELSE 0 END),
+            SUM(CASE WHEN home_team_id=%s AND home_score=away_score THEN 1 ELSE 0 END),
+            SUM(CASE WHEN away_team_id=%s AND away_score>home_score THEN 1 ELSE 0 END),
+            SUM(CASE WHEN away_team_id=%s AND away_score<home_score THEN 1 ELSE 0 END),
+            SUM(CASE WHEN away_team_id=%s AND away_score=home_score THEN 1 ELSE 0 END)
+        FROM games
+        WHERE (home_team_id=%s OR away_team_id=%s) AND status='종료'
+    """, (team_id,) * 8)
+    row = cur.fetchone()
+    return {
+        "home": {"wins": int(row[0] or 0), "losses": int(row[1] or 0), "draws": int(row[2] or 0)},
+        "away": {"wins": int(row[3] or 0), "losses": int(row[4] or 0), "draws": int(row[5] or 0)},
+    }
 
 
 @router.get("/rankings")
 def get_team_rankings():
-    """팀 순위표 - 연승/연패, 전체 게임수 포함"""
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -59,11 +88,15 @@ def get_team_rankings():
     result = []
     for r in rows:
         team_id = r[0]
-        wins = r[3] or 0
-        losses = r[4] or 0
-        draws = r[5] or 0
-        total_games = wins + losses + draws
-        streak = _calc_streak(team_id, cur)
+        wins    = r[3] or 0
+        losses  = r[4] or 0
+        draws   = r[5] or 0
+        rank    = r[6]
+        gb      = float(r[7]) if r[7] else 0
+
+        streak    = _calc_streak(team_id, cur)
+        recent_5  = _calc_recent_5(team_id, cur)
+        home_away = _calc_home_away(team_id, cur)
 
         result.append({
             "id":           team_id,
@@ -72,23 +105,24 @@ def get_team_rankings():
             "wins":         wins,
             "losses":       losses,
             "draws":        draws,
-            "total_games":  total_games,
-            "rank":         r[6],
-            "games_behind": float(r[7]) if r[7] else 0,
+            "total_games":  wins + losses + draws,
+            "rank":         rank,
+            "games_behind": None if rank == 1 else gb,
             "win_rate":     float(r[8]) if r[8] else 0,
             "logo_url":     r[9],
-            "streak":       streak,  # 양수=연승, 음수=연패, 0=해당없음
+            "streak":       streak,
+            "recent_5":     recent_5,
+            "home_record":  home_away["home"],
+            "away_record":  home_away["away"],
         })
 
     cur.close()
     conn.close()
-
     return {"count": len(result), "rankings": result}
 
 
 @router.get("/")
 def get_teams():
-    """팀 목록"""
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -100,7 +134,6 @@ def get_teams():
         FROM teams
         ORDER BY rank ASC NULLS LAST, wins DESC
     """)
-
     rows = cur.fetchall()
     cur.close()
     conn.close()
@@ -127,7 +160,6 @@ def get_teams():
 
 @router.get("/{team_id}/players")
 def get_team_players(team_id: int):
-    """팀 선수 목록"""
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -144,7 +176,6 @@ def get_team_players(team_id: int):
         WHERE team_id = %s AND is_active = TRUE
         ORDER BY player_type, number
     """, (team_id,))
-
     rows = cur.fetchall()
     cur.close()
     conn.close()
@@ -154,13 +185,7 @@ def get_team_players(team_id: int):
         "team_name": team[1],
         "count":     len(rows),
         "players": [
-            {
-                "id":          r[0],
-                "name":        r[1],
-                "player_type": r[2],
-                "position":    r[3],
-                "number":      r[4],
-            }
+            {"id": r[0], "name": r[1], "player_type": r[2], "position": r[3], "number": r[4]}
             for r in rows
         ]
     }
@@ -168,7 +193,6 @@ def get_team_players(team_id: int):
 
 @router.get("/{team_id}/games")
 def get_team_games(team_id: int, limit: int = 10):
-    """팀 최근 경기 결과"""
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -193,7 +217,6 @@ def get_team_games(team_id: int, limit: int = 10):
         ORDER BY g.game_date DESC
         LIMIT %s
     """, (team_id, team_id, limit))
-
     rows = cur.fetchall()
     cur.close()
     conn.close()
