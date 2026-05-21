@@ -146,64 +146,35 @@ class _PlayerScreenState extends State<PlayerScreen>
     } catch (e) {}
   }
 
-  Widget _buildChip({
+  Widget _buildDropdown<T>({
     required String label,
-    required bool selected,
-    required VoidCallback onTap,
-    Color? selectedColor,
+    required T value,
+    required List<DropdownMenuItem<T>> items,
+    required ValueChanged<T?> onChanged,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? Colors.white : Colors.white.withOpacity(0.4),
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: selected ? const Color(0xFF1A237E) : Colors.white,
-            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterRow(String label, List<Widget> chips) {
-    return SizedBox(
-      height: 34,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 44,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 12),
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label,
+                style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 2),
+            DropdownButtonHideUnderline(
+              child: DropdownButton<T>(
+                value: value,
+                isExpanded: true,
+                dropdownColor: const Color(0xFF283593),
+                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70, size: 18),
+                items: items,
+                onChanged: onChanged,
               ),
             ),
-          ),
-          Expanded(
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(right: 12),
-              children: chips,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -211,63 +182,72 @@ class _PlayerScreenState extends State<PlayerScreen>
   Widget _buildFilters() {
     final isHitter = _tabController.index == 0;
 
-    final teamChips = _teams.map((t) => _buildChip(
-      label: t['name'] as String,
-      selected: _selectedTeamId == t['id'],
-      onTap: () {
-        setState(() => _selectedTeamId = t['id'] as int?);
-        _loadCurrentTab();
-      },
+    final teamItems = _teams.map((t) => DropdownMenuItem<int?>(
+      value: t['id'] as int?,
+      child: Text(t['name'] as String, style: const TextStyle(color: Colors.white)),
     )).toList();
 
-    final positionChips = _positions.map((p) => _buildChip(
-      label: p['label']!,
-      selected: _selectedPosition == p['value'],
-      onTap: () {
-        setState(() => _selectedPosition = p['value']);
-        _loadCurrentTab();
-      },
-      selectedColor: const Color(0xFF303F9F),
+    final positionItems = _positions.map((p) => DropdownMenuItem<String?>(
+      value: p['value'],
+      child: Text(p['label']!, style: const TextStyle(color: Colors.white)),
     )).toList();
 
-    final throwsChips = _throwsOptions.map((t) => _buildChip(
-      label: t['label']!,
-      selected: _selectedThrows == t['value'],
-      onTap: () {
-        setState(() => _selectedThrows = t['value']);
-        _loadCurrentTab();
-      },
-      selectedColor: const Color(0xFF303F9F),
+    final throwsItems = _throwsOptions.map((t) => DropdownMenuItem<String?>(
+      value: t['value'],
+      child: Text(t['label']!, style: const TextStyle(color: Colors.white)),
     )).toList();
 
-    final sortOptions = isHitter ? _hitterSortOptions : _pitcherSortOptions;
-    final currentSort = isHitter ? _hitterSort : _pitcherSort;
-    final statsChips = sortOptions.map((opt) => _buildChip(
-      label: opt['label']!,
-      selected: currentSort == opt['value'],
-      onTap: () {
-        setState(() {
-          if (isHitter) _hitterSort = opt['value']!;
-          else _pitcherSort = opt['value']!;
-        });
-        _loadCurrentTab();
-      },
-      selectedColor: const Color(0xFF1565C0),
+    final hitterSortItems = _hitterSortOptions.map((o) => DropdownMenuItem<String>(
+      value: o['value']!,
+      child: Text(o['label']!, style: const TextStyle(color: Colors.white)),
+    )).toList();
+
+    final pitcherSortItems = _pitcherSortOptions.map((o) => DropdownMenuItem<String>(
+      value: o['value']!,
+      child: Text(o['label']!, style: const TextStyle(color: Colors.white)),
     )).toList();
 
     return Container(
       color: const Color(0xFF1A237E),
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
+      child: Row(
         children: [
-          _buildFilterRow('팀', teamChips),
-          const SizedBox(height: 2),
-          if (isHitter)
-            _buildFilterRow('포지션', positionChips)
-          else
-            _buildFilterRow('투구', throwsChips),
-          const SizedBox(height: 2),
-          _buildFilterRow('기록', statsChips),
+          _buildDropdown<int?>(
+            label: '팀',
+            value: _selectedTeamId,
+            items: teamItems,
+            onChanged: (v) {
+              setState(() => _selectedTeamId = v);
+              _loadCurrentTab();
+            },
+          ),
+          Container(width: 1, height: 44, color: Colors.white.withOpacity(0.2)),
+          _buildDropdown<String?>(
+            label: isHitter ? '포지션' : '투구',
+            value: isHitter ? _selectedPosition : _selectedThrows,
+            items: isHitter ? positionItems : throwsItems,
+            onChanged: (v) {
+              setState(() {
+                if (isHitter) _selectedPosition = v;
+                else _selectedThrows = v;
+              });
+              _loadCurrentTab();
+            },
+          ),
+          Container(width: 1, height: 44, color: Colors.white.withOpacity(0.2)),
+          _buildDropdown<String>(
+            label: '기록',
+            value: isHitter ? _hitterSort : _pitcherSort,
+            items: isHitter ? hitterSortItems : pitcherSortItems,
+            onChanged: (v) {
+              if (v == null) return;
+              setState(() {
+                if (isHitter) _hitterSort = v;
+                else _pitcherSort = v;
+              });
+              _loadCurrentTab();
+            },
+          ),
         ],
       ),
     );
