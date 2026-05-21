@@ -71,11 +71,10 @@ class _TeamScreenState extends State<TeamScreen>
     return RefreshIndicator(
       onRefresh: _loadTeams,
       child: ListView(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
         children: [
-          // 헤더
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+            padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 10),
             decoration: BoxDecoration(
               color: const Color(0xFF1A237E),
               borderRadius: BorderRadius.circular(8),
@@ -83,14 +82,11 @@ class _TeamScreenState extends State<TeamScreen>
             child: Row(
               children: [
                 const SizedBox(width: 24, child: Text('순위', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                const SizedBox(width: 36), // logo space
+                const SizedBox(width: 40),
                 const Expanded(child: Text('팀', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                const SizedBox(width: 26, child: Text('승', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                const SizedBox(width: 26, child: Text('패', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                const SizedBox(width: 26, child: Text('무', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                const SizedBox(width: 42, child: Text('승률', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                const SizedBox(width: 26, child: Text('GB', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                const SizedBox(width: 52, child: Text('최근5', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                const SizedBox(width: 64, child: Text('승-패-무', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                const SizedBox(width: 44, child: Text('승률', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
+                const SizedBox(width: 28, child: Text('GB', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
               ],
             ),
           ),
@@ -104,8 +100,12 @@ class _TeamScreenState extends State<TeamScreen>
   Widget _buildTeamRow(Map<String, dynamic> team) {
     final code = team['short_name'] as String? ?? '';
     final gb = team['games_behind'];
-    final gbText = gb == null ? '-' : (gb as num) == 0 ? '-' : gb.toStringAsFixed(1);
+    final gbNum = gb as num?;
+    final gbText = gbNum == null || gbNum == 0 ? '-' : gbNum.toStringAsFixed(1);
     final recent5 = (team['recent_5'] as List?)?.cast<String>() ?? [];
+    final wins = team['wins'] as int? ?? 0;
+    final losses = team['losses'] as int? ?? 0;
+    final draws = team['draws'] as int? ?? 0;
 
     return InkWell(
       onTap: () => Navigator.push(
@@ -114,10 +114,10 @@ class _TeamScreenState extends State<TeamScreen>
       ),
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-        margin: const EdgeInsets.only(bottom: 4),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+        margin: const EdgeInsets.only(bottom: 5),
         decoration: BoxDecoration(
-          color: Colors.grey.withOpacity(0.08),
+          color: Colors.grey.withOpacity(0.07),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -127,71 +127,54 @@ class _TeamScreenState extends State<TeamScreen>
               width: 24,
               child: Text(
                 '${team['rank'] ?? '-'}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ),
             // 로고
-            TeamLogo(teamCode: code, size: 28, logoUrl: team['logo_url']),
+            TeamLogo(teamCode: code, size: 32, logoUrl: team['logo_url']),
             const SizedBox(width: 8),
-            // 팀 이름
+            // 팀 이름 + 최근5 도트
             Expanded(
-              child: Text(
-                team['name'] ?? '',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                overflow: TextOverflow.ellipsis,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    team['name'] ?? '',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: recent5.map((r) => _recentDot(r)).toList(),
+                  ),
+                ],
               ),
             ),
-            // 승
+            // 승-패-무
             SizedBox(
-              width: 26,
+              width: 64,
               child: Text(
-                '${team['wins'] ?? 0}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12),
-              ),
-            ),
-            // 패
-            SizedBox(
-              width: 26,
-              child: Text(
-                '${team['losses'] ?? 0}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12),
-              ),
-            ),
-            // 무
-            SizedBox(
-              width: 26,
-              child: Text(
-                '${team['draws'] ?? 0}',
+                '$wins-$losses-$draws',
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 12),
               ),
             ),
             // 승률
             SizedBox(
-              width: 42,
+              width: 44,
               child: Text(
                 (team['win_rate'] as num?)?.toStringAsFixed(3) ?? '-',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               ),
             ),
             // GB
             SizedBox(
-              width: 26,
+              width: 28,
               child: Text(
                 gbText,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12),
-              ),
-            ),
-            // 최근5 도트
-            SizedBox(
-              width: 52,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: recent5.map((r) => _recentDot(r)).toList(),
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
               ),
             ),
           ],
@@ -203,19 +186,14 @@ class _TeamScreenState extends State<TeamScreen>
   Widget _recentDot(String result) {
     Color color;
     switch (result) {
-      case 'W':
-        color = Colors.blue;
-        break;
-      case 'L':
-        color = Colors.red;
-        break;
-      default:
-        color = Colors.grey;
+      case 'W': color = Colors.blue; break;
+      case 'L': color = Colors.red;  break;
+      default:  color = Colors.grey;
     }
     return Container(
-      width: 8,
-      height: 8,
-      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+      width: 9,
+      height: 9,
+      margin: const EdgeInsets.only(right: 3),
       decoration: BoxDecoration(shape: BoxShape.circle, color: color),
     );
   }
@@ -406,6 +384,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                           name: p['name'] ?? '',
                           team: p['team'] ?? '',
                           teamCode: p['team_code'] ?? '',
+                          profileImage: p['profile_image'] as String?,
                           label: label,
                           value: _hitterStatValue(p),
                         );
@@ -441,6 +420,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                           name: p['name'] ?? '',
                           team: p['team'] ?? '',
                           teamCode: p['team_code'] ?? '',
+                          profileImage: p['profile_image'] as String?,
                           label: label,
                           value: _pitcherStatValue(p),
                         );
@@ -459,9 +439,11 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     required String teamCode,
     required String label,
     required String value,
+    String? profileImage,
   }) {
     final isTop3 = rank <= 3;
-    final rankColors = [Colors.amber, Colors.grey, Colors.brown];
+    final rankColors = [Colors.amber, Colors.grey[600]!, Colors.brown];
+    final color = teamColor(teamCode);
 
     return InkWell(
       onTap: () => Navigator.push(
@@ -492,7 +474,20 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
               ),
             ),
             const SizedBox(width: 8),
-            TeamLogo(teamCode: teamCode, size: 32),
+            // 선수 사진 (없으면 팀 컬러 이니셜)
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: color,
+              backgroundImage: (profileImage != null && profileImage.isNotEmpty)
+                  ? NetworkImage(profileImage)
+                  : null,
+              child: (profileImage == null || profileImage.isEmpty)
+                  ? Text(
+                      teamDisplayName(teamCode).substring(0, teamDisplayName(teamCode).length.clamp(0, 2)),
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    )
+                  : null,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(

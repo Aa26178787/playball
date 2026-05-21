@@ -254,7 +254,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     )).toList();
 
     return Container(
-      color: Colors.grey[50],
+      color: const Color(0xFFEEF0FF),
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
         children: [

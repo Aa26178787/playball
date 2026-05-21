@@ -138,7 +138,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         ]),
         _statCard('비율 지표', [
           _statRow([('AVG', _s(stats['avg'], rate: true)), ('OBP', _s(stats['obp'], rate: true)), ('SLG', _s(stats['slg'], rate: true)), ('OPS', _s(stats['ops'], rate: true))]),
-          _statRow([('RISP', _s(stats['risp'], rate: true)), ('PH-BA', _s(stats['ph_ba'], rate: true)), ('MH', _s(stats['mh'])), ('도루율', stats['sb_pct'] != null ? '${((stats['sb_pct'] as num) * 100).toStringAsFixed(1)}%' : '-')]),
+          _statRow([('RISP', _s(stats['risp'], rate: true)), ('PH-BA', _s(stats['ph_ba'], rate: true)), ('MH', _s(stats['mh'])), ('도루율', stats['sb_pct'] != null ? '${(stats['sb_pct'] as num).toStringAsFixed(1)}%' : '-')]),
         ]),
         _statCard('고급 지표', [
           _statRow([('wOBA', _s(stats['woba'], rate: true)), ('wRC+', _s(stats['wrc_plus'])), ('BABIP', _s(stats['babip'], rate: true)), ('ISO', _s(stats['iso'], rate: true))]),
