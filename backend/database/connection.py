@@ -7,7 +7,7 @@ DB_CONFIG = {
     "port": 5432,
     "database": "playball",
     "user": "playball_user",  # 설치할 때 설정한 사용자 이름
-    "password": "Aa2615362@"  # 설치할 때 설정한 비밀번호
+    "password": "playball1234"  # 설치할 때 설정한 비밀번호
 }
 
 def get_connection():
