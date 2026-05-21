@@ -73,6 +73,7 @@ def smart_update():
     _update_live_games_realtime()
     _update_lineup_by_starttime()
     _update_lineup_fallback()
+    _update_roster_changes_pregame()
 
     if prev_details and curr_details:
         newly_finished = [
@@ -479,6 +480,45 @@ def _update_lineup_fallback():
         for (db_game_id, naver_game_id) in games:
             save_game_roster(db_game_id, naver_game_id)
             time.sleep(0.5)
+
+
+def _update_roster_changes_pregame():
+    """
+    경기 시작 2시간 전 ~ 30분 전 구간, 5분마다 등록말소 크롤링
+    (이 구간에 해당하는 경기가 있을 때만 실행)
+    """
+    now_utc = datetime.now(timezone.utc)
+    if now_utc.minute % 5 != 0:
+        return
+
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    # 오늘 경기 중 [start_time-2h, start_time-30min] 구간에 있는 예정/라인업 경기 존재 여부
+    cur.execute("""
+        SELECT COUNT(*) FROM games
+        WHERE game_date = CURRENT_DATE
+        AND status IN ('예정', '라인업')
+        AND start_time IS NOT NULL
+        AND (start_time - INTERVAL '2 hours') <=
+            (CURRENT_TIME AT TIME ZONE 'UTC' + INTERVAL '9 hours')
+        AND (CURRENT_TIME AT TIME ZONE 'UTC' + INTERVAL '9 hours') <=
+            (start_time - INTERVAL '30 minutes')
+    """)
+    count = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+
+    if count == 0:
+        return
+
+    try:
+        from crawler.kbo_roster_crawler import run_today
+        print(f"[{datetime.now()}] 경기전 등록말소 크롤링 ({count}경기 대기 중)")
+        run_today()
+    except Exception as e:
+        print(f"[{datetime.now()}] 등록말소 크롤링 오류: {e}")
 
 
 def _get_game_statuses():
