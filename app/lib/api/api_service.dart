@@ -118,12 +118,14 @@ class ApiService {
   static Future<Map<String, dynamic>> getHitters({
     String sortBy = 'avg',
     int? teamId,
+    String? position,
     int limit = 100,
   }) async {
     final res = await _dio.get('/players/hitters', queryParameters: {
       'sort_by': sortBy,
       'limit': limit,
       if (teamId != null) 'team_id': teamId,
+      if (position != null) 'position': position,
     });
     return res.data;
   }
@@ -131,12 +133,14 @@ class ApiService {
   static Future<Map<String, dynamic>> getPitchers({
     String sortBy = 'era',
     int? teamId,
+    String? throws,
     int limit = 100,
   }) async {
     final res = await _dio.get('/players/pitchers', queryParameters: {
       'sort_by': sortBy,
       'limit': limit,
       if (teamId != null) 'team_id': teamId,
+      if (throws != null) 'throws': throws,
     });
     return res.data;
   }

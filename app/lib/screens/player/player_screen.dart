@@ -19,10 +19,11 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
 
-  // 필터
   String _hitterSort = 'avg';
   String _pitcherSort = 'era';
   int? _selectedTeamId;
+  String? _selectedPosition;
+  String? _selectedThrows;
 
   final List<Map<String, dynamic>> _teams = [
     {'id': null, 'name': '전체'},
@@ -36,6 +37,20 @@ class _PlayerScreenState extends State<PlayerScreen>
     {'id': 6, 'name': 'NC'},
     {'id': 4, 'name': '롯데'},
     {'id': 8, 'name': '키움'},
+  ];
+
+  final List<Map<String, String?>> _positions = [
+    {'value': null, 'label': '전체'},
+    {'value': '포수', 'label': '포수'},
+    {'value': '내야수', 'label': '내야수'},
+    {'value': '외야수', 'label': '외야수'},
+  ];
+
+  final List<Map<String, String?>> _throwsOptions = [
+    {'value': null, 'label': '전체'},
+    {'value': '우투', 'label': '우투'},
+    {'value': '좌투', 'label': '좌투'},
+    {'value': '우언', 'label': '우언더'},
   ];
 
   final List<Map<String, String>> _hitterSortOptions = [
@@ -60,6 +75,9 @@ class _PlayerScreenState extends State<PlayerScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) setState(() {});
+    });
     _loadPlayers();
   }
 
@@ -75,11 +93,17 @@ class _PlayerScreenState extends State<PlayerScreen>
     try {
       if (_tabController.index == 0) {
         final data = await ApiService.getHitters(
-            sortBy: _hitterSort, teamId: _selectedTeamId);
+          sortBy: _hitterSort,
+          teamId: _selectedTeamId,
+          position: _selectedPosition,
+        );
         setState(() { _hitters = data['hitters'] ?? []; });
       } else {
         final data = await ApiService.getPitchers(
-            sortBy: _pitcherSort, teamId: _selectedTeamId);
+          sortBy: _pitcherSort,
+          teamId: _selectedTeamId,
+          throws: _selectedThrows,
+        );
         setState(() { _pitchers = data['pitchers'] ?? []; });
       }
       setState(() => _isLoading = false);
@@ -116,20 +140,147 @@ class _PlayerScreenState extends State<PlayerScreen>
     } catch (e) {}
   }
 
+  Widget _buildChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    Color? selectedColor,
+  }) {
+    final color = selectedColor ?? const Color(0xFF1A237E);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected ? color : Colors.grey.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: selected ? null : Border.all(color: Colors.grey.withOpacity(0.3), width: 0.5),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: selected ? Colors.white : Colors.grey[700],
+            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterRow(String label, List<Widget> chips) {
+    return SizedBox(
+      height: 34,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 44,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(right: 12),
+              children: chips,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilters() {
+    final isHitter = _tabController.index == 0;
+
+    final teamChips = _teams.map((t) => _buildChip(
+      label: t['name'] as String,
+      selected: _selectedTeamId == t['id'],
+      onTap: () {
+        setState(() => _selectedTeamId = t['id'] as int?);
+        _loadCurrentTab();
+      },
+    )).toList();
+
+    final positionChips = _positions.map((p) => _buildChip(
+      label: p['label']!,
+      selected: _selectedPosition == p['value'],
+      onTap: () {
+        setState(() => _selectedPosition = p['value']);
+        _loadCurrentTab();
+      },
+      selectedColor: const Color(0xFF00695C),
+    )).toList();
+
+    final throwsChips = _throwsOptions.map((t) => _buildChip(
+      label: t['label']!,
+      selected: _selectedThrows == t['value'],
+      onTap: () {
+        setState(() => _selectedThrows = t['value']);
+        _loadCurrentTab();
+      },
+      selectedColor: const Color(0xFF00695C),
+    )).toList();
+
+    final sortOptions = isHitter ? _hitterSortOptions : _pitcherSortOptions;
+    final currentSort = isHitter ? _hitterSort : _pitcherSort;
+    final statsChips = sortOptions.map((opt) => _buildChip(
+      label: opt['label']!,
+      selected: currentSort == opt['value'],
+      onTap: () {
+        setState(() {
+          if (isHitter) _hitterSort = opt['value']!;
+          else _pitcherSort = opt['value']!;
+        });
+        _loadCurrentTab();
+      },
+      selectedColor: Colors.orange[800],
+    )).toList();
+
+    return Container(
+      color: Colors.grey[50],
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        children: [
+          _buildFilterRow('팀', teamChips),
+          const SizedBox(height: 2),
+          if (isHitter)
+            _buildFilterRow('포지션', positionChips)
+          else
+            _buildFilterRow('투구', throwsChips),
+          const SizedBox(height: 2),
+          _buildFilterRow('기록', statsChips),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('선수 기록'),
-        bottom: _isSearching ? null : TabBar(
-          controller: _tabController,
-          tabs: const [Tab(text: '타자'), Tab(text: '투수')],
-        ),
+        bottom: _isSearching
+            ? null
+            : TabBar(
+                controller: _tabController,
+                tabs: const [Tab(text: '타자'), Tab(text: '투수')],
+              ),
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
             child: TextField(
               controller: _searchController,
               onChanged: _search,
@@ -147,84 +298,13 @@ class _PlayerScreenState extends State<PlayerScreen>
                     : null,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                isDense: true,
               ),
             ),
           ),
-          if (!_isSearching) ...[
-            // 팀 필터
-            SizedBox(
-              height: 40,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                itemCount: _teams.length,
-                itemBuilder: (context, index) {
-                  final team = _teams[index];
-                  final selected = _selectedTeamId == team['id'];
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() => _selectedTeamId = team['id']);
-                      _loadCurrentTab();
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: selected ? const Color(0xFF1A237E) : Colors.grey.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(team['name']!,
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: selected ? Colors.white : null,
-                              fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
-                    ),
-                  );
-                },
-              ),
-            ),
-            // 정렬 필터
-            SizedBox(
-              height: 40,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                itemCount: _tabController.index == 0
-                    ? _hitterSortOptions.length
-                    : _pitcherSortOptions.length,
-                itemBuilder: (context, index) {
-                  final options = _tabController.index == 0
-                      ? _hitterSortOptions
-                      : _pitcherSortOptions;
-                  final opt = options[index];
-                  final currentSort = _tabController.index == 0 ? _hitterSort : _pitcherSort;
-                  final selected = currentSort == opt['value'];
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        if (_tabController.index == 0) _hitterSort = opt['value']!;
-                        else _pitcherSort = opt['value']!;
-                      });
-                      _loadCurrentTab();
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: selected ? Colors.orange : Colors.grey.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(opt['label']!,
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: selected ? Colors.white : null,
-                              fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+          if (!_isSearching) _buildFilters(),
+          if (!_isSearching)
+            const Divider(height: 1, thickness: 1),
           Expanded(
             child: _isSearching
                 ? _buildSearchResults()
@@ -267,6 +347,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       itemCount: _hitters.length,
       itemBuilder: (context, index) {
         final p = _hitters[index];
+        final pos = p['position'] as String?;
         return ListTile(
           leading: Stack(
             children: [
@@ -284,7 +365,24 @@ class _PlayerScreenState extends State<PlayerScreen>
               ),
             ],
           ),
-          title: Text('${p['name']} (${p['team'] ?? ''})'),
+          title: Row(
+            children: [
+              Text('${p['name']}', style: const TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(width: 6),
+              Text('${p['team'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              if (pos != null) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00695C).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(pos, style: const TextStyle(fontSize: 10, color: Color(0xFF00695C))),
+                ),
+              ],
+            ],
+          ),
           subtitle: Text('타율 ${(p['avg'] as num?)?.toStringAsFixed(3) ?? '-'}  OPS ${(p['ops'] as num?)?.toStringAsFixed(3) ?? '-'}  ${p['home_runs'] ?? 0}홈런 ${p['rbis'] ?? 0}타점'),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
         );
@@ -299,6 +397,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       itemCount: _pitchers.length,
       itemBuilder: (context, index) {
         final p = _pitchers[index];
+        final throws = p['throws'] as String?;
         return ListTile(
           leading: Stack(
             children: [
@@ -316,7 +415,24 @@ class _PlayerScreenState extends State<PlayerScreen>
               ),
             ],
           ),
-          title: Text('${p['name']} (${p['team'] ?? ''})'),
+          title: Row(
+            children: [
+              Text('${p['name']}', style: const TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(width: 6),
+              Text('${p['team'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              if (throws != null) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00695C).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(throws, style: const TextStyle(fontSize: 10, color: Color(0xFF00695C))),
+                ),
+              ],
+            ],
+          ),
           subtitle: Text('ERA ${(p['era'] as num?)?.toStringAsFixed(2) ?? '-'}  WHIP ${(p['whip'] as num?)?.toStringAsFixed(2) ?? '-'}  ${p['wins'] ?? 0}승 ${p['strikeouts'] ?? 0}K'),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
         );

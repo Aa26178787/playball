@@ -50,6 +50,7 @@ def get_hitters(
     limit: int = 100,
     team_id: Optional[int] = None,
     sort_by: str = "avg",
+    position: Optional[str] = None,
 ):
     conn = get_connection()
     if not conn:
@@ -65,7 +66,8 @@ def get_hitters(
     }
     order = sort_map.get(sort_by, "avg DESC NULLS LAST")
     team_filter = "AND p.team_id = %s" if team_id else ""
-    params = [season] + ([team_id] if team_id else []) + [limit]
+    position_filter = "AND p.position = %s" if position else ""
+    params = [season] + ([team_id] if team_id else []) + ([position] if position else []) + [limit]
 
     cur = conn.cursor()
     cur.execute(f"""
@@ -77,11 +79,12 @@ def get_hitters(
                 bs.home_runs, bs.rbis, bs.runs,
                 bs.walks, bs.strikeouts, bs.stolen_bases,
                 bs.avg, bs.obp, bs.slg, bs.ops,
-                bs.woba, bs.wrc_plus, bs.babip, bs.iso, bs.war
+                bs.woba, bs.wrc_plus, bs.babip, bs.iso, bs.war,
+                p.position
             FROM batter_stats bs
             JOIN players p ON bs.player_id = p.id
             JOIN teams t ON p.team_id = t.id
-            WHERE bs.season = %s {team_filter}
+            WHERE bs.season = %s {team_filter} {position_filter}
             AND p.player_type = '타자'
             ORDER BY p.id
             LIMIT 1000
@@ -113,6 +116,7 @@ def get_hitters(
                 "babip":    float(r[19]) if r[19] else 0,
                 "iso":      float(r[20]) if r[20] else 0,
                 "war":      float(r[21]) if r[21] else 0,
+                "position": r[22],
             }
             for r in rows
         ]
@@ -125,6 +129,7 @@ def get_pitchers(
     limit: int = 100,
     team_id: Optional[int] = None,
     sort_by: str = "era",
+    throws: Optional[str] = None,
 ):
     conn = get_connection()
     if not conn:
@@ -141,7 +146,8 @@ def get_pitchers(
     }
     order = sort_map.get(sort_by, "era ASC NULLS LAST")
     team_filter = "AND p.team_id = %s" if team_id else ""
-    params = [season] + ([team_id] if team_id else []) + [limit]
+    throws_filter = "AND p.throws = %s" if throws else ""
+    params = [season] + ([team_id] if team_id else []) + ([throws] if throws else []) + [limit]
 
     cur = conn.cursor()
     cur.execute(f"""
@@ -155,11 +161,12 @@ def get_pitchers(
                 ps.hits_allowed, ps.home_runs_allowed,
                 ps.era, ps.whip, ps.fip,
                 ps.k_per_9, ps.bb_per_9, ps.babip, ps.war,
-                ps.blown_saves, ps.qs
+                ps.blown_saves, ps.qs,
+                p.throws
             FROM pitcher_stats ps
             JOIN players p ON ps.player_id = p.id
             JOIN teams t ON p.team_id = t.id
-            WHERE ps.season = %s {team_filter}
+            WHERE ps.season = %s {team_filter} {throws_filter}
             AND p.player_type = '투수'
             ORDER BY p.id
             LIMIT 1000
@@ -192,6 +199,7 @@ def get_pitchers(
                 "babip":   float(r[19]) if r[19] else 0,
                 "war":     float(r[20]) if r[20] else 0,
                 "blown_saves": r[21], "qs": r[22],
+                "throws":  r[23],
             }
             for r in rows
         ]
