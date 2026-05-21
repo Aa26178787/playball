@@ -287,27 +287,46 @@ def _get_kbo_season_pages(driver, url):
 
     all_rows = []
     headers = []
+    prev_first_row = None
+    max_pages = 30
 
-    while True:
+    for page_num in range(1, max_pages + 1):
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         table = soup.find('table', class_='tData01')
         if not table:
+            print(f"[KBO season] 페이지 {page_num}: 테이블 없음 → 종료")
             break
 
         if not headers:
             headers = [th.get_text(strip=True) for th in table.select('thead th')]
 
-        for tr in table.select('tbody tr'):
+        trs = table.select('tbody tr')
+        if not trs:
+            break
+
+        # 같은 페이지 감지 (무한루프 방지)
+        first_row_text = ''.join(trs[0].get_text(strip=True))
+        if first_row_text == prev_first_row:
+            print(f"[KBO season] 페이지 {page_num}: 중복 감지 → 종료")
+            break
+        prev_first_row = first_row_text
+
+        page_rows = 0
+        for tr in trs:
             cols = [td.get_text(strip=True) for td in tr.find_all('td')]
             if cols:
                 all_rows.append(cols)
+                page_rows += 1
 
-        # 다음 페이지 (Selenium click)
+        print(f"[KBO season] 페이지 {page_num}: {page_rows}행 (누적 {len(all_rows)})")
+
+        # 다음 페이지
         try:
             next_btn = driver.find_element('xpath', '//a[normalize-space(.)="다음"]')
             next_btn.click()
             time.sleep(2)
         except Exception:
+            print(f"[KBO season] 페이지 {page_num}: 다음 버튼 없음 → 종료")
             break
 
     return headers, all_rows
