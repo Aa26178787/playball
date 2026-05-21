@@ -102,15 +102,17 @@ def smart_update():
             WHERE g.status = '종료'
             AND g.game_date = CURRENT_DATE
             AND g.naver_game_id IS NOT NULL
-            AND NOT EXISTS (
-                SELECT 1 FROM game_pitchers gp
-                WHERE gp.game_id = g.id
-                AND gp.pitching_order > 0
-            )
-            OR NOT EXISTS (
-                SELECT 1 FROM game_pitchers gp
-                WHERE gp.game_id = g.id
-                AND gp.result != ''
+            AND (
+                NOT EXISTS (
+                    SELECT 1 FROM game_pitchers gp
+                    WHERE gp.game_id = g.id
+                    AND gp.pitching_order > 0
+                )
+                OR NOT EXISTS (
+                    SELECT 1 FROM game_pitchers gp
+                    WHERE gp.game_id = g.id
+                    AND gp.result != ''
+                )
             )
         """)
         missing = cur.fetchone()[0]
@@ -378,19 +380,23 @@ def update_team_rankings():
 
 def update_kbo_player_stats():
     """KBO 사이트에서 선수 2026 시즌 스탯 업데이트"""
-    from selenium.webdriver.common.by import By
-    from crawler.crawl_kbo_player_info import (
-        get_driver,
-        parse_basic_info,
-        parse_basic_stats_hitter,
-        parse_basic_stats_pitcher,
-        parse_awards,
-        parse_register_days,
-        save_basic_stats_hitter,
-        save_basic_stats_pitcher,
-        save_awards,
-        save_register_days,
-    )
+    try:
+        from selenium.webdriver.common.by import By
+        from crawler.crawl_kbo_player_info import (
+            get_driver,
+            parse_basic_info,
+            parse_basic_stats_hitter,
+            parse_basic_stats_pitcher,
+            parse_awards,
+            parse_register_days,
+            save_basic_stats_hitter,
+            save_basic_stats_pitcher,
+            save_awards,
+            save_register_days,
+        )
+    except ImportError as e:
+        print(f"[{datetime.now()}] KBO 선수 스탯 업데이트 건너뜀 (모듈 없음): {e}")
+        return
 
     print(f"[{datetime.now()}] KBO 선수 스탯 업데이트 시작")
 
