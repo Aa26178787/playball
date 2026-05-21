@@ -97,6 +97,18 @@ class _TeamScreenState extends State<TeamScreen>
     );
   }
 
+  String _streakText(int streak) {
+    if (streak > 0) return '$streak연승';
+    if (streak < 0) return '${-streak}연패';
+    return '-';
+  }
+
+  Color _streakColor(int streak) {
+    if (streak > 0) return Colors.blue;
+    if (streak < 0) return Colors.red;
+    return Colors.grey;
+  }
+
   Widget _buildTeamRow(Map<String, dynamic> team) {
     final code = team['short_name'] as String? ?? '';
     final gb = team['games_behind'];
@@ -106,6 +118,8 @@ class _TeamScreenState extends State<TeamScreen>
     final wins = team['wins'] as int? ?? 0;
     final losses = team['losses'] as int? ?? 0;
     final draws = team['draws'] as int? ?? 0;
+    final totalGames = team['total_games'] as int? ?? 0;
+    final streak = team['streak'] as int? ?? 0;
 
     return InkWell(
       onTap: () => Navigator.push(
@@ -133,7 +147,7 @@ class _TeamScreenState extends State<TeamScreen>
             // 로고
             TeamLogo(teamCode: code, size: 32, logoUrl: team['logo_url']),
             const SizedBox(width: 8),
-            // 팀 이름 + 최근5 도트
+            // 팀 이름 + 서브 정보
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,7 +159,23 @@ class _TeamScreenState extends State<TeamScreen>
                   ),
                   const SizedBox(height: 4),
                   Row(
-                    children: recent5.map((r) => _recentDot(r)).toList(),
+                    children: [
+                      Text(
+                        'G$totalGames',
+                        style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                      ),
+                      const SizedBox(width: 6),
+                      ...recent5.map((r) => _recentDot(r)),
+                      const SizedBox(width: 6),
+                      Text(
+                        _streakText(streak),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _streakColor(streak),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

@@ -1,5 +1,18 @@
 import 'package:flutter/material.dart';
 
+const Map<String, String> kTeamLogoUrls = {
+  'LG': 'https://sports-phinf.pstatic.net/team/kbo/default/LG.png?type=f92_88',
+  'KT': 'https://sports-phinf.pstatic.net/team/kbo/default/KT.png?type=f92_88',
+  'SK': 'https://sports-phinf.pstatic.net/team/kbo/default/SK.png?type=f92_88',
+  'NC': 'https://sports-phinf.pstatic.net/team/kbo/default/NC.png?type=f92_88',
+  'OB': 'https://sports-phinf.pstatic.net/team/kbo/default/OB.png?type=f92_88',
+  'HT': 'https://sports-phinf.pstatic.net/team/kbo/default/HT.png?type=f92_88',
+  'LT': 'https://sports-phinf.pstatic.net/team/kbo/default/LT.png?type=f92_88',
+  'SS': 'https://sports-phinf.pstatic.net/team/kbo/default/SS.png?type=f92_88',
+  'HH': 'https://sports-phinf.pstatic.net/team/kbo/default/HH.png?type=f92_88',
+  'WO': 'https://sports-phinf.pstatic.net/team/kbo/default/WO.png?type=f92_88',
+};
+
 const Map<String, Color> kTeamColors = {
   'LG': Color(0xFFC30452),
   'KT': Color(0xFF1A1A1A),
@@ -48,11 +61,14 @@ class TeamLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = teamColor(teamCode);
     final abbr = teamDisplayName(teamCode);
+    final resolvedUrl = (logoUrl != null && logoUrl!.isNotEmpty)
+        ? logoUrl!
+        : kTeamLogoUrls[teamCode];
 
-    if (logoUrl != null && logoUrl!.isNotEmpty) {
+    if (resolvedUrl != null) {
       return ClipOval(
         child: Image.network(
-          logoUrl!,
+          resolvedUrl,
           width: size,
           height: size,
           fit: BoxFit.cover,
