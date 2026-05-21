@@ -72,27 +72,7 @@ class _TeamScreenState extends State<TeamScreen>
       onRefresh: _loadTeams,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1A237E),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                const SizedBox(width: 24, child: Text('순위', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                const SizedBox(width: 40),
-                const Expanded(child: Text('팀', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                const SizedBox(width: 64, child: Text('승-패-무', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                const SizedBox(width: 44, child: Text('승률', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-                const SizedBox(width: 28, child: Text('GB', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11))),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
-          ..._teams.map((team) => _buildTeamRow(team)),
-        ],
+        children: _teams.map((team) => _buildTeamRow(team)).toList(),
       ),
     );
   }
@@ -120,97 +100,119 @@ class _TeamScreenState extends State<TeamScreen>
     final draws = team['draws'] as int? ?? 0;
     final totalGames = team['total_games'] as int? ?? 0;
     final streak = team['streak'] as int? ?? 0;
+    final rank = team['rank'] as int? ?? 0;
+    final winRate = (team['win_rate'] as num?)?.toStringAsFixed(3) ?? '-';
 
-    return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => TeamDetailScreen(team: team)),
-      ),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-        margin: const EdgeInsets.only(bottom: 5),
-        decoration: BoxDecoration(
-          color: Colors.grey.withOpacity(0.07),
-          borderRadius: BorderRadius.circular(8),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => TeamDetailScreen(team: team)),
         ),
-        child: Row(
-          children: [
-            // 순위
-            SizedBox(
-              width: 24,
-              child: Text(
-                '${team['rank'] ?? '-'}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-            ),
-            // 로고
-            TeamLogo(teamCode: code, size: 32, logoUrl: team['logo_url']),
-            const SizedBox(width: 8),
-            // 팀 이름 + 서브 정보
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ─── 헤더: 순위 + 로고 + 팀명 ───
+              Row(
                 children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: rank <= 5
+                          ? const Color(0xFF1A237E)
+                          : Colors.grey[200],
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$rank',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: rank <= 5 ? Colors.white : Colors.grey[700],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  TeamLogo(teamCode: code, size: 36, logoUrl: team['logo_url']),
+                  const SizedBox(width: 10),
                   Text(
                     team['name'] ?? '',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        'G$totalGames',
-                        style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-                      ),
-                      const SizedBox(width: 6),
-                      ...recent5.map((r) => _recentDot(r)),
-                      const SizedBox(width: 6),
-                      Text(
-                        _streakText(streak),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: _streakColor(streak),
-                        ),
-                      ),
-                    ],
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ],
               ),
-            ),
-            // 승-패-무
-            SizedBox(
-              width: 64,
-              child: Text(
-                '$wins-$losses-$draws',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12),
+              const SizedBox(height: 10),
+              const Divider(height: 1, thickness: 0.5),
+              const SizedBox(height: 10),
+              // ─── 스탯 행: G / 승-패-무 / 승률 / GB ───
+              Row(
+                children: [
+                  _statCell('G', '$totalGames'),
+                  _statDivider(),
+                  _statCell('승-패-무', '$wins-$losses-$draws'),
+                  _statDivider(),
+                  _statCell('승률', winRate),
+                  _statDivider(),
+                  _statCell('게임차', gbText),
+                ],
               ),
-            ),
-            // 승률
-            SizedBox(
-              width: 44,
-              child: Text(
-                (team['win_rate'] as num?)?.toStringAsFixed(3) ?? '-',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              const SizedBox(height: 8),
+              // ─── 최근 5경기 + 연승 ───
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
+                    Text('최근 5경기',
+                        style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                    const SizedBox(width: 8),
+                    ...recent5.map((r) => _recentDot(r)),
+                    const Spacer(),
+                    Text(
+                      _streakText(streak),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: _streakColor(streak),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            // GB
-            SizedBox(
-              width: 28,
-              child: Text(
-                gbText,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _statCell(String label, String value) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(value,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(height: 2),
+          Text(label,
+              style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+        ],
+      ),
+    );
+  }
+
+  Widget _statDivider() {
+    return Container(width: 0.5, height: 28, color: Colors.grey[300]);
   }
 
   Widget _recentDot(String result) {
