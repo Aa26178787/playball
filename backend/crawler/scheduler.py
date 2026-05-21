@@ -156,7 +156,16 @@ def update_finished_player_stats():
     except Exception as e:
         print(f"[{datetime.now()}] KBO daily 크롤링 오류: {e}")
 
-    _sync_batter_stats_from_daily()
+    try:
+        from crawler.kbo_daily_crawler import (
+            crawl_kbo_hitter_season_stats,
+            crawl_kbo_pitcher_season_stats,
+        )
+        crawl_kbo_hitter_season_stats(2026)
+        crawl_kbo_pitcher_season_stats(2026)
+    except Exception as e:
+        print(f"[{datetime.now()}] KBO 시즌 스탯 크롤링 오류: {e}")
+        _sync_batter_stats_from_daily()
 
     print(f"[{datetime.now()}] 경기 종료 후 선수 스탯 업데이트 완료")
 

@@ -270,3 +270,283 @@ def crawl_daily_stats_for_today_players():
 
     driver.quit()
     print(f"[KBO daily] 완료: {updated}명 업데이트, {errors}명 오류")
+
+
+# KBO site team name → DB team_id
+_KBO_TEAM_ID = {
+    'KIA': 2, 'LG': 9, 'SSG': 10, '두산': 7, '한화': 5,
+    '롯데': 4, '삼성': 11, 'NC': 6, 'KT': 1, '키움': 8,
+}
+
+
+def _get_kbo_season_pages(driver, url):
+    """KBO 사이트 페이지 전체 순회하며 tbody tr 수집"""
+    from bs4 import BeautifulSoup
+    driver.get(url)
+    time.sleep(3)
+
+    all_rows = []
+    headers = []
+
+    while True:
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        table = soup.find('table', class_='tData01')
+        if not table:
+            break
+
+        if not headers:
+            headers = [th.get_text(strip=True) for th in table.select('thead th')]
+
+        for tr in table.select('tbody tr'):
+            cols = [td.get_text(strip=True) for td in tr.find_all('td')]
+            if cols:
+                all_rows.append(cols)
+
+        # 다음 페이지
+        try:
+            paging = soup.find('div', class_='paging')
+            if not paging:
+                break
+            next_a = None
+            for a in paging.find_all('a'):
+                if a.get_text(strip=True) in ('다음', '>'):
+                    next_a = a
+                    break
+            if not next_a:
+                break
+            href = next_a.get('href', '')
+            driver.execute_script(f"javascript:{href.split('javascript:')[1]}" if 'javascript:' in href else href)
+            time.sleep(2)
+        except Exception:
+            break
+
+    return headers, all_rows
+
+
+def crawl_kbo_hitter_season_stats(season=2026):
+    """KBO 공식 사이트 HitterBasic/Basic1.aspx → batter_stats 업데이트"""
+    url = f"https://www.koreabaseball.com/Record/Player/HitterBasic/Basic1.aspx"
+    driver = _get_driver()
+    try:
+        headers, rows = _get_kbo_season_pages(driver, url)
+    finally:
+        driver.quit()
+
+    if not rows:
+        print("[KBO season] 타자 데이터 없음")
+        return
+
+    print(f"[KBO season] 타자 {len(rows)}행 파싱. 헤더: {headers}")
+
+    # 컬럼 인덱스 (헤더 기반)
+    def idx(name):
+        try:
+            return headers.index(name)
+        except ValueError:
+            return None
+
+    i_name   = idx('선수명') or 1
+    i_team   = idx('팀명')   or 2
+    i_games  = idx('경기')   or 3
+    i_pa     = idx('타석')   or 4
+    i_ab     = idx('타수')   or 5
+    i_runs   = idx('득점')   or 6
+    i_hits   = idx('안타')   or 7
+    i_2b     = idx('2루타')  or 8
+    i_3b     = idx('3루타')  or 9
+    i_hr     = idx('홈런')   or 10
+    i_rbi    = idx('타점')   or 11
+    i_sb     = idx('도루')   or 12
+    i_cs     = idx('도루자') or 13
+    i_bb     = idx('볼넷')   or 14
+    i_hbp    = idx('사구')   or 15
+    i_so     = idx('삼진')   or 16
+    i_gdp    = idx('병살')   or 17
+    i_avg    = idx('타율')   or 18
+
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    saved = errors = 0
+
+    for cols in rows:
+        try:
+            name     = cols[i_name]
+            team_name = cols[i_team]
+            team_id  = _KBO_TEAM_ID.get(team_name)
+            if not team_id:
+                continue
+
+            cur.execute("""
+                SELECT id FROM players
+                WHERE name = %s AND team_id = %s AND player_type = '타자'
+                LIMIT 1
+            """, (name, team_id))
+            row = cur.fetchone()
+            if not row:
+                continue
+            player_id = row[0]
+
+            cur.execute("""
+                INSERT INTO batter_stats (
+                    player_id, season, games, pa, at_bats, runs, hits,
+                    doubles, triples, home_runs, rbis, stolen_bases, cs,
+                    walks, hbp, strikeouts, gdp, avg
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (player_id, season) DO UPDATE SET
+                    games        = EXCLUDED.games,
+                    pa           = EXCLUDED.pa,
+                    at_bats      = EXCLUDED.at_bats,
+                    runs         = EXCLUDED.runs,
+                    hits         = EXCLUDED.hits,
+                    doubles      = EXCLUDED.doubles,
+                    triples      = EXCLUDED.triples,
+                    home_runs    = EXCLUDED.home_runs,
+                    rbis         = EXCLUDED.rbis,
+                    stolen_bases = EXCLUDED.stolen_bases,
+                    cs           = EXCLUDED.cs,
+                    walks        = EXCLUDED.walks,
+                    hbp          = EXCLUDED.hbp,
+                    strikeouts   = EXCLUDED.strikeouts,
+                    gdp          = EXCLUDED.gdp,
+                    avg          = EXCLUDED.avg
+            """, (
+                player_id, season,
+                _safe_int(cols[i_games]),
+                _safe_int(cols[i_pa]),
+                _safe_int(cols[i_ab]),
+                _safe_int(cols[i_runs]),
+                _safe_int(cols[i_hits]),
+                _safe_int(cols[i_2b]),
+                _safe_int(cols[i_3b]),
+                _safe_int(cols[i_hr]),
+                _safe_int(cols[i_rbi]),
+                _safe_int(cols[i_sb]),
+                _safe_int(cols[i_cs]),
+                _safe_int(cols[i_bb]),
+                _safe_int(cols[i_hbp]),
+                _safe_int(cols[i_so]),
+                _safe_int(cols[i_gdp]),
+                _safe_float(cols[i_avg]),
+            ))
+            saved += 1
+        except Exception as e:
+            errors += 1
+            continue
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[KBO season] 타자 {saved}명 업데이트, {errors}건 오류")
+
+
+def crawl_kbo_pitcher_season_stats(season=2026):
+    """KBO 공식 사이트 PitcherBasic/Basic1.aspx → pitcher_stats 업데이트"""
+    url = "https://www.koreabaseball.com/Record/Player/PitcherBasic/Basic1.aspx"
+    driver = _get_driver()
+    try:
+        headers, rows = _get_kbo_season_pages(driver, url)
+    finally:
+        driver.quit()
+
+    if not rows:
+        print("[KBO season] 투수 데이터 없음")
+        return
+
+    print(f"[KBO season] 투수 {len(rows)}행 파싱. 헤더: {headers}")
+
+    def idx(name):
+        try:
+            return headers.index(name)
+        except ValueError:
+            return None
+
+    i_name  = idx('선수명') or 1
+    i_team  = idx('팀명')   or 2
+    i_games = idx('경기')   or 3
+    i_wins  = idx('승')     or 4
+    i_loss  = idx('패')     or 5
+    i_sv    = idx('세이브') or 6
+    i_hold  = idx('홀드')   or 7
+    i_ip    = idx('이닝')   or 8
+    i_ha    = idx('피안타') or 9
+    i_hra   = idx('피홈런') or 10
+    i_bb    = idx('볼넷')   or 11
+    i_so    = idx('삼진')   or 12
+    i_r     = idx('실점')   or 13
+    i_er    = idx('자책점') or 14
+    i_era   = idx('평균자책점') or 15
+
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    saved = errors = 0
+
+    for cols in rows:
+        try:
+            name      = cols[i_name]
+            team_name = cols[i_team]
+            team_id   = _KBO_TEAM_ID.get(team_name)
+            if not team_id:
+                continue
+
+            cur.execute("""
+                SELECT id FROM players
+                WHERE name = %s AND team_id = %s AND player_type = '투수'
+                LIMIT 1
+            """, (name, team_id))
+            row = cur.fetchone()
+            if not row:
+                continue
+            player_id = row[0]
+
+            ip_str = cols[i_ip] if i_ip < len(cols) else '0'
+            ip_val = _parse_innings(ip_str)
+
+            cur.execute("""
+                INSERT INTO pitcher_stats (
+                    player_id, season, games, wins, losses, saves, holds,
+                    innings_pitched, hits_allowed, home_runs_allowed,
+                    walks, strikeouts, runs_allowed, earned_runs, era
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (player_id, season) DO UPDATE SET
+                    games              = EXCLUDED.games,
+                    wins               = EXCLUDED.wins,
+                    losses             = EXCLUDED.losses,
+                    saves              = EXCLUDED.saves,
+                    holds              = EXCLUDED.holds,
+                    innings_pitched    = EXCLUDED.innings_pitched,
+                    hits_allowed       = EXCLUDED.hits_allowed,
+                    home_runs_allowed  = EXCLUDED.home_runs_allowed,
+                    walks              = EXCLUDED.walks,
+                    strikeouts         = EXCLUDED.strikeouts,
+                    runs_allowed       = EXCLUDED.runs_allowed,
+                    earned_runs        = EXCLUDED.earned_runs,
+                    era                = EXCLUDED.era
+            """, (
+                player_id, season,
+                _safe_int(cols[i_games]),
+                _safe_int(cols[i_wins]),
+                _safe_int(cols[i_loss]),
+                _safe_int(cols[i_sv]),
+                _safe_int(cols[i_hold]),
+                ip_val,
+                _safe_int(cols[i_ha]),
+                _safe_int(cols[i_hra]),
+                _safe_int(cols[i_bb]),
+                _safe_int(cols[i_so]),
+                _safe_int(cols[i_r]),
+                _safe_int(cols[i_er]),
+                _safe_float(cols[i_era]),
+            ))
+            saved += 1
+        except Exception:
+            errors += 1
+            continue
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[KBO season] 투수 {saved}명 업데이트, {errors}건 오류")
