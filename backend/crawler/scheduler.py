@@ -181,18 +181,21 @@ def _sync_batter_stats_from_daily():
     cur.execute("""
         UPDATE batter_stats bs
         SET
-          rbis         = sub.total_rbi,
-          hits         = sub.total_hits,
-          home_runs    = sub.total_hr,
-          runs         = sub.total_runs,
-          walks        = sub.total_bb,
-          strikeouts   = sub.total_so,
-          stolen_bases = sub.total_sb,
-          at_bats      = sub.total_ab,
-          games        = sub.game_count,
-          avg = CASE WHEN sub.total_ab > 0
-                     THEN ROUND(sub.total_hits::numeric / sub.total_ab, 3)
-                     ELSE 0 END
+          rbis         = GREATEST(COALESCE(sub.total_rbi,   0), COALESCE(bs.rbis,         0)),
+          hits         = GREATEST(COALESCE(sub.total_hits,  0), COALESCE(bs.hits,          0)),
+          home_runs    = GREATEST(COALESCE(sub.total_hr,    0), COALESCE(bs.home_runs,     0)),
+          runs         = GREATEST(COALESCE(sub.total_runs,  0), COALESCE(bs.runs,          0)),
+          at_bats      = GREATEST(COALESCE(sub.total_ab,    0), COALESCE(bs.at_bats,       0)),
+          games        = GREATEST(COALESCE(sub.game_count,  0), COALESCE(bs.games,         0)),
+          walks        = COALESCE(sub.total_bb,  bs.walks),
+          strikeouts   = COALESCE(sub.total_so,  bs.strikeouts),
+          stolen_bases = COALESCE(sub.total_sb,  bs.stolen_bases),
+          avg = CASE
+                  WHEN bs.avg IS NOT NULL AND bs.avg > 0 THEN bs.avg
+                  WHEN sub.total_ab > 0
+                  THEN ROUND(sub.total_hits::numeric / sub.total_ab, 3)
+                  ELSE 0
+                END
         FROM (
           SELECT
             player_id,
