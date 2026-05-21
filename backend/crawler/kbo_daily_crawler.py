@@ -561,12 +561,12 @@ def crawl_kbo_pitcher_season_stats(season=2026):
                     era, whip, wpct
                 ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT (player_id, season) DO UPDATE SET
-                    games              = EXCLUDED.games,
+                    games              = GREATEST(COALESCE(EXCLUDED.games, 0),              COALESCE(pitcher_stats.games, 0)),
                     wins               = COALESCE(EXCLUDED.wins,              pitcher_stats.wins),
                     losses             = COALESCE(EXCLUDED.losses,            pitcher_stats.losses),
                     saves              = COALESCE(EXCLUDED.saves,             pitcher_stats.saves),
                     holds              = COALESCE(EXCLUDED.holds,             pitcher_stats.holds),
-                    innings_pitched    = EXCLUDED.innings_pitched,
+                    innings_pitched    = GREATEST(COALESCE(EXCLUDED.innings_pitched, 0),    COALESCE(pitcher_stats.innings_pitched, 0)),
                     hits_allowed       = COALESCE(EXCLUDED.hits_allowed,      pitcher_stats.hits_allowed),
                     home_runs_allowed  = COALESCE(EXCLUDED.home_runs_allowed, pitcher_stats.home_runs_allowed),
                     walks              = COALESCE(EXCLUDED.walks,             pitcher_stats.walks),
