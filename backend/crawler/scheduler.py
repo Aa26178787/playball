@@ -150,6 +150,12 @@ def update_finished_player_stats():
 
     _save_player_daily_stats_today()
 
+    try:
+        from crawler.kbo_daily_crawler import crawl_daily_stats_for_today_players
+        crawl_daily_stats_for_today_players()
+    except Exception as e:
+        print(f"[{datetime.now()}] KBO daily 크롤링 오류: {e}")
+
     print(f"[{datetime.now()}] 경기 종료 후 선수 스탯 업데이트 완료")
 
 
