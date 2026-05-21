@@ -148,7 +148,98 @@ def update_finished_player_stats():
             deduped[nid] = p
     save_players_and_stats(list(deduped.values()), "PITCHER")
 
+    _save_player_daily_stats_today()
+
     print(f"[{datetime.now()}] 경기 종료 후 선수 스탯 업데이트 완료")
+
+
+def _save_player_daily_stats_today():
+    """오늘 종료 경기의 player_daily_stats 업데이트 (game_batters/game_pitchers 기반)"""
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT g.id, g.game_date, g.home_score, g.away_score,
+               ht.name, at2.name
+        FROM games g
+        JOIN teams ht ON g.home_team_id = ht.id
+        JOIN teams at2 ON g.away_team_id = at2.id
+        WHERE g.game_date = CURRENT_DATE
+        AND g.status = '종료'
+    """)
+    games = cur.fetchall()
+
+    total = 0
+    for (game_id, game_date, home_score, away_score, home_team, away_team) in games:
+        if home_score > away_score:
+            home_result, away_result = '승', '패'
+        elif home_score < away_score:
+            home_result, away_result = '패', '승'
+        else:
+            home_result = away_result = '무'
+
+        # 타자
+        cur.execute("""
+            SELECT player_id, team_side, at_bats, runs, hits, rbis,
+                   home_runs, walks, strikeouts, stolen_bases, avg
+            FROM game_batters WHERE game_id = %s
+        """, (game_id,))
+        for (pid, side, ab, runs, hits, rbi, hr, bb, so, sb, avg) in cur.fetchall():
+            opponent = away_team if side == 'home' else home_team
+            result = home_result if side == 'home' else away_result
+            cur.execute("""
+                INSERT INTO player_daily_stats (
+                    player_id, game_date, opponent, result, stat_type,
+                    avg, ab, runs, hits, home_runs, rbi, sb, walks, strikeouts
+                ) VALUES (%s, %s, %s, %s, 'hitter', %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (player_id, game_date, opponent, stat_type) DO UPDATE SET
+                    result = EXCLUDED.result,
+                    avg = EXCLUDED.avg,
+                    ab = EXCLUDED.ab,
+                    runs = EXCLUDED.runs,
+                    hits = EXCLUDED.hits,
+                    home_runs = EXCLUDED.home_runs,
+                    rbi = EXCLUDED.rbi,
+                    sb = EXCLUDED.sb,
+                    walks = EXCLUDED.walks,
+                    strikeouts = EXCLUDED.strikeouts
+            """, (pid, game_date, opponent, result, avg, ab, runs, hits, hr, rbi, sb, bb, so))
+            total += 1
+
+        # 투수
+        cur.execute("""
+            SELECT player_id, team_side, innings_pitched, hits_allowed,
+                   earned_runs, runs_allowed, walks, strikeouts, home_runs_allowed
+            FROM game_pitchers WHERE game_id = %s
+        """, (game_id,))
+        for (pid, side, ip, h, er, r, bb, so, hr) in cur.fetchall():
+            opponent = away_team if side == 'home' else home_team
+            result = home_result if side == 'home' else away_result
+            era = round(float(er) / float(ip) * 9, 2) if ip and float(ip) > 0 else None
+            cur.execute("""
+                INSERT INTO player_daily_stats (
+                    player_id, game_date, opponent, result, stat_type,
+                    era, ip, h, hr, bb, so, r, er
+                ) VALUES (%s, %s, %s, %s, 'pitcher', %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (player_id, game_date, opponent, stat_type) DO UPDATE SET
+                    result = EXCLUDED.result,
+                    era = EXCLUDED.era,
+                    ip = EXCLUDED.ip,
+                    h = EXCLUDED.h,
+                    hr = EXCLUDED.hr,
+                    bb = EXCLUDED.bb,
+                    so = EXCLUDED.so,
+                    r = EXCLUDED.r,
+                    er = EXCLUDED.er
+            """, (pid, game_date, opponent, result, era, ip, h, hr, bb, so, r, er))
+            total += 1
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[{datetime.now()}] player_daily_stats 업데이트 완료 ({len(games)}경기, {total}건)")
 
 def _update_live_games_realtime():
     """진행 중인 경기 이닝/선수/투구 업데이트"""
