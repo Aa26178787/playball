@@ -156,7 +156,57 @@ def update_finished_player_stats():
     except Exception as e:
         print(f"[{datetime.now()}] KBO daily 크롤링 오류: {e}")
 
+    _sync_batter_stats_from_daily()
+
     print(f"[{datetime.now()}] 경기 종료 후 선수 스탯 업데이트 완료")
+
+
+def _sync_batter_stats_from_daily():
+    """player_daily_stats 누적 합산으로 batter_stats 보완 (statiz 지연 대응)"""
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE batter_stats bs
+        SET
+          rbis         = sub.total_rbi,
+          hits         = sub.total_hits,
+          home_runs    = sub.total_hr,
+          runs         = sub.total_runs,
+          walks        = sub.total_bb,
+          strikeouts   = sub.total_so,
+          stolen_bases = sub.total_sb,
+          at_bats      = sub.total_ab,
+          games        = sub.game_count,
+          avg = CASE WHEN sub.total_ab > 0
+                     THEN ROUND(sub.total_hits::numeric / sub.total_ab, 3)
+                     ELSE 0 END
+        FROM (
+          SELECT
+            player_id,
+            COUNT(*)        AS game_count,
+            SUM(rbi)        AS total_rbi,
+            SUM(hits)       AS total_hits,
+            SUM(home_runs)  AS total_hr,
+            SUM(runs)       AS total_runs,
+            SUM(walks)      AS total_bb,
+            SUM(strikeouts) AS total_so,
+            SUM(sb)         AS total_sb,
+            SUM(ab)         AS total_ab
+          FROM player_daily_stats
+          WHERE stat_type = 'hitter'
+          AND EXTRACT(YEAR FROM game_date) = 2026
+          GROUP BY player_id
+        ) sub
+        WHERE bs.player_id = sub.player_id
+        AND bs.season = 2026
+    """)
+    updated = cur.rowcount
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[{datetime.now()}] batter_stats daily 동기화 완료 ({updated}명)")
 
 
 def _save_player_daily_stats_today():
