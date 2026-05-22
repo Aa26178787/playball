@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "363967479348",
+    "project_id": "playball-22795",
+    "storage_bucket": "playball-22795.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:363967479348:android:55c5fbd30398fdd3441461",
+        "android_client_info": {
+          "package_name": "com.playball.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARg_GkBajU6watsGSlggUFC9YwntM_gNs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
