@@ -6,6 +6,7 @@ import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import '../game/game_detail_screen.dart';
 import '../team/team_screen.dart';
+import '../team/team_detail_screen.dart';
 import '../player/player_screen.dart';
 import '../community/community_screen.dart';
 import '../calendar/calendar_screen.dart';
@@ -77,6 +78,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   DateTime _selectedDate = DateTime.now();
   List _games = [];
   List _todayRosterChanges = [];
+  List _rankings = [];
   bool _isLoading = true;
   Set<int> _favoriteTeamIds = {};
   bool _myTeamOnly = false;
@@ -90,6 +92,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     _loadGames();
     _loadTodayRosterChanges();
     _loadFavoriteTeams();
+    _loadRankings();
     _startAutoRefresh();
   }
 
@@ -116,6 +119,13 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
           );
         });
       }
+    } catch (_) {}
+  }
+
+  Future<void> _loadRankings() async {
+    try {
+      final data = await ApiService.getTeamRankings();
+      if (mounted) setState(() => _rankings = data['rankings'] ?? []);
     } catch (_) {}
   }
 
@@ -237,6 +247,9 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
           if (_todayRosterChanges.isNotEmpty)
             _buildTodayRosterBanner(),
 
+          // 마이팀 대시보드
+          _buildMyTeamDashboard(),
+
           // 마이팀 필터
           if (_favoriteTeamIds.isNotEmpty)
             Padding(
@@ -282,6 +295,185 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
                 : _buildGameList(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMyTeamDashboard() {
+    if (_favoriteTeamIds.isEmpty || _rankings.isEmpty) return const SizedBox.shrink();
+    final myRankings = _rankings
+        .where((r) => _favoriteTeamIds.contains(r['id'] as int?))
+        .toList();
+    if (myRankings.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+          child: Row(
+            children: const [
+              Icon(Icons.star, size: 14, color: Color(0xFF1A237E)),
+              SizedBox(width: 5),
+              Text('마이팀',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 112,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            children: myRankings.map((r) => _buildMyTeamCard(r as Map)).toList(),
+          ),
+        ),
+        const Divider(height: 1, thickness: 1),
+      ],
+    );
+  }
+
+  Widget _buildMyTeamCard(Map ranking) {
+    final teamId = ranking['id'] as int? ?? 0;
+    final code = ranking['short_name'] as String? ?? '';
+    final name = ranking['name'] as String? ?? '';
+    final rank = ranking['rank'] as int? ?? 0;
+    final wins = ranking['wins'] as int? ?? 0;
+    final losses = ranking['losses'] as int? ?? 0;
+    final draws = ranking['draws'] as int? ?? 0;
+    final streak = ranking['streak'] as int? ?? 0;
+    final recent5 = (ranking['recent_5'] as List?)?.cast<String>() ?? [];
+
+    Map? todayGame;
+    for (final g in _games) {
+      final gm = g as Map;
+      if (gm['home_team_id'] == teamId || gm['away_team_id'] == teamId) {
+        todayGame = gm;
+        break;
+      }
+    }
+
+    final bool isHome = todayGame != null && todayGame['home_team_id'] == teamId;
+    final String oppName = todayGame != null
+        ? (isHome
+            ? todayGame['away_team'] as String? ?? ''
+            : todayGame['home_team'] as String? ?? '')
+        : '';
+
+    String gameStr;
+    Color gameColor = Colors.grey;
+    bool showWinIcon = false;
+    bool showLossIcon = false;
+
+    if (todayGame == null) {
+      gameStr = '오늘 경기 없음';
+    } else {
+      final status = todayGame['status'] as String? ?? '';
+      final hs = todayGame['home_score'] as int? ?? 0;
+      final as_ = todayGame['away_score'] as int? ?? 0;
+      final myScore = isHome ? hs : as_;
+      final oppScore = isHome ? as_ : hs;
+      if (status == '예정' || status == '라인업') {
+        gameStr = 'vs $oppName  ${todayGame['start_time'] ?? ''}';
+        gameColor = Colors.indigo;
+      } else if (status == '진행') {
+        gameStr = '$myScore : $oppScore  vs $oppName';
+        gameColor = Colors.green;
+      } else if (status == '종료') {
+        gameStr = '$myScore : $oppScore  vs $oppName';
+        if (myScore > oppScore) { gameColor = Colors.blue; showWinIcon = true; }
+        else if (myScore < oppScore) { gameColor = Colors.red; showLossIcon = true; }
+      } else if (status == '취소') {
+        gameStr = '취소  vs $oppName';
+      } else {
+        gameStr = 'vs $oppName';
+      }
+    }
+
+    String streakText = '';
+    Color streakColor = Colors.grey;
+    if (streak > 0) { streakText = '$streak연승'; streakColor = Colors.blue; }
+    else if (streak < 0) { streakText = '${-streak}연패'; streakColor = Colors.red; }
+
+    final Color rankBg = rank <= 5 ? const Color(0xFF1565C0) : const Color(0xFF78909C);
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(ranking))),
+      ),
+      child: Container(
+        width: 215,
+        margin: const EdgeInsets.only(right: 10),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF1A237E).withOpacity(0.25), width: 1.5),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 4, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                TeamLogo(teamCode: code, size: 28),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      Text('$wins승 $losses패${draws > 0 ? ' $draws무' : ''}',
+                          style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 26, height: 26,
+                  decoration: BoxDecoration(color: rankBg, shape: BoxShape.circle),
+                  alignment: Alignment.center,
+                  child: Text('$rank', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 7),
+            Row(
+              children: [
+                if (showWinIcon) const Icon(Icons.arrow_upward, size: 11, color: Colors.blue),
+                if (showLossIcon) const Icon(Icons.arrow_downward, size: 11, color: Colors.red),
+                Expanded(
+                  child: Text(gameStr,
+                      style: TextStyle(fontSize: 11, color: gameColor, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis),
+                ),
+                if (streakText.isNotEmpty)
+                  Text(streakText, style: TextStyle(fontSize: 10, color: streakColor, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            if (recent5.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: recent5.reversed.map((r) {
+                  final c = r == 'W' ? Colors.blue : r == 'L' ? Colors.red : Colors.grey;
+                  return Container(
+                    width: 16, height: 16,
+                    margin: const EdgeInsets.only(right: 3),
+                    decoration: BoxDecoration(
+                      color: c.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(color: c.withOpacity(0.5), width: 0.8),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(r, style: TextStyle(fontSize: 8, color: c, fontWeight: FontWeight.bold)),
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
