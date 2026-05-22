@@ -1174,6 +1174,39 @@ def get_pitch_locations(game_id: int):
     game_status = row[1]
     max_inning = row[3] or 9
 
+    # 팀 이름 + 투수 홈/어웨이 분류
+    cur.execute("""
+        SELECT ht.name, at.name
+        FROM games g
+        JOIN teams ht ON g.home_team_id = ht.id
+        JOIN teams at ON g.away_team_id = at.id
+        WHERE g.id = %s
+    """, (game_id,))
+    team_row = cur.fetchone()
+    home_team = team_row[0] if team_row else "홈"
+    away_team = team_row[1] if team_row else "원정"
+
+    cur.execute("""
+        SELECT DISTINCT p.name, gp.team_side
+        FROM game_pitchers gp
+        JOIN players p ON gp.player_id = p.id
+        WHERE gp.game_id = %s
+    """, (game_id,))
+    pitcher_sides = {r[0]: r[1] for r in cur.fetchall()}
+
+    def _build_response(all_pitches_list):
+        pitchers = sorted({p["pitcher"] for p in all_pitches_list if p["pitcher"]})
+        home_p = [p for p in pitchers if pitcher_sides.get(p) == 'home']
+        away_p = [p for p in pitchers if pitcher_sides.get(p) == 'away']
+        return {
+            "pitches": all_pitches_list,
+            "pitchers": pitchers,
+            "home_pitchers": home_p,
+            "away_pitchers": away_p,
+            "home_team": home_team,
+            "away_team": away_team,
+        }
+
     # 종료 경기 → DB 우선 조회
     if game_status == '종료':
         cur.execute("""
@@ -1195,8 +1228,7 @@ def get_pitch_locations(game_id: int):
                 }
                 for r in db_rows
             ]
-            pitchers = sorted({p["pitcher"] for p in all_pitches if p["pitcher"]})
-            return {"pitches": all_pitches, "pitchers": pitchers}
+            return _build_response(all_pitches)
 
     # Build pitcher naver_id -> name cache
     cur.execute("SELECT naver_player_id, name FROM players WHERE naver_player_id IS NOT NULL")
@@ -1287,8 +1319,7 @@ def get_pitch_locations(game_id: int):
         except Exception:
             pass
 
-    pitchers = sorted({p["pitcher"] for p in all_pitches if p["pitcher"]})
-    return {"pitches": all_pitches, "pitchers": pitchers}
+    return _build_response(all_pitches)
 
 @router.get("/{game_id}/weather")
 def get_game_weather(game_id: int):
