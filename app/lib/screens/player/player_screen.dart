@@ -13,97 +13,38 @@ class PlayerScreen extends StatefulWidget {
 class _PlayerScreenState extends State<PlayerScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  List _hitters = [];
-  List _pitchers = [];
+
+  final Map<String, List> _hitterCategories = {};
+  final Map<String, List> _pitcherCategories = {};
+
   List _searchResults = [];
   bool _isLoading = true;
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
 
-  String _hitterSort = 'avg';
-  String _pitcherSort = 'era';
-  int? _selectedTeamId;
-  String? _selectedPosition;
-  String? _selectedThrows;
-
-  final List<Map<String, dynamic>> _teams = [
-    {'id': null, 'name': '전체'},
-    {'id': 1, 'name': 'KT'},
-    {'id': 9, 'name': 'LG'},
-    {'id': 11, 'name': '삼성'},
-    {'id': 10, 'name': 'SSG'},
-    {'id': 2, 'name': 'KIA'},
-    {'id': 5, 'name': '한화'},
-    {'id': 7, 'name': '두산'},
-    {'id': 6, 'name': 'NC'},
-    {'id': 4, 'name': '롯데'},
-    {'id': 8, 'name': '키움'},
+  static const List<Map<String, String>> _hitterSorts = [
+    {'value': 'avg',       'label': '타율',       'title': '타율왕'},
+    {'value': 'home_runs', 'label': '홈런',       'title': '홈런왕'},
+    {'value': 'rbis',      'label': '타점',       'title': '타점왕'},
+    {'value': 'hits',      'label': '안타',       'title': '안타왕'},
+    {'value': 'ops',       'label': '출루장타율', 'title': 'OPS 1위'},
+    {'value': 'war',       'label': 'WAR',        'title': 'WAR 1위'},
   ];
 
-  final List<Map<String, String?>> _positions = [
-    {'value': null, 'label': '전체'},
-    {'value': '포수', 'label': '포수'},
-    {'value': '1루수', 'label': '1루수'},
-    {'value': '2루수', 'label': '2루수'},
-    {'value': '3루수', 'label': '3루수'},
-    {'value': '유격수', 'label': '유격수'},
-    {'value': '좌익수', 'label': '좌익수'},
-    {'value': '중견수', 'label': '중견수'},
-    {'value': '우익수', 'label': '우익수'},
-    {'value': '지명타자', 'label': '지명타자'},
+  static const List<Map<String, String>> _pitcherSorts = [
+    {'value': 'era',        'label': '평균자책점', 'title': 'ERA 1위'},
+    {'value': 'wins',       'label': '승',         'title': '승리왕'},
+    {'value': 'strikeouts', 'label': '탈삼진',     'title': '삼진왕'},
+    {'value': 'whip',       'label': '이닝당출루', 'title': 'WHIP 1위'},
+    {'value': 'saves',      'label': '세이브',     'title': '세이브왕'},
+    {'value': 'holds',      'label': '홀드',       'title': '홀드왕'},
   ];
-
-  final List<Map<String, String?>> _throwsOptions = [
-    {'value': null, 'label': '전체'},
-    {'value': '우투', 'label': '우완'},
-    {'value': '좌투', 'label': '좌완'},
-  ];
-
-  final List<Map<String, String>> _hitterSortOptions = [
-    {'value': 'avg', 'label': '타율'},
-    {'value': 'home_runs', 'label': '홈런'},
-    {'value': 'rbis', 'label': '타점'},
-    {'value': 'hits', 'label': '안타'},
-    {'value': 'ops', 'label': '출루장타율'},
-    {'value': 'war', 'label': '대체승리기여'},
-  ];
-
-  final List<Map<String, String>> _pitcherSortOptions = [
-    {'value': 'era', 'label': '평균자책점'},
-    {'value': 'wins', 'label': '승'},
-    {'value': 'strikeouts', 'label': '탈삼진'},
-    {'value': 'whip', 'label': '이닝당출루'},
-    {'value': 'saves', 'label': '세이브'},
-    {'value': 'holds', 'label': '홀드'},
-  ];
-
-  // 각 정렬 기준별 1위 타이틀
-  static const Map<String, String> _hitterTitles = {
-    'avg': '타율왕',
-    'home_runs': '홈런왕',
-    'rbis': '타점왕',
-    'hits': '안타왕',
-    'ops': '출루장타율왕',
-    'war': 'WAR 1위',
-  };
-
-  static const Map<String, String> _pitcherTitles = {
-    'era': '평균자책점 1위',
-    'wins': '승리왕',
-    'strikeouts': '삼진왕',
-    'whip': '이닝당출루 1위',
-    'saves': '세이브왕',
-    'holds': '홀드왕',
-  };
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) setState(() {});
-    });
-    _loadPlayers();
+    _loadAllCategories();
   }
 
   @override
@@ -113,45 +54,26 @@ class _PlayerScreenState extends State<PlayerScreen>
     super.dispose();
   }
 
-  Future<void> _loadCurrentTab() async {
+  Future<void> _loadAllCategories() async {
     setState(() => _isLoading = true);
     try {
-      if (_tabController.index == 0) {
-        final data = await ApiService.getHitters(
-          sortBy: _hitterSort,
-          teamId: _selectedTeamId,
-          position: _selectedPosition,
-        );
-        setState(() { _hitters = data['hitters'] ?? []; });
-      } else {
-        final data = await ApiService.getPitchers(
-          sortBy: _pitcherSort,
-          teamId: _selectedTeamId,
-          throws: _selectedThrows,
-        );
-        setState(() { _pitchers = data['pitchers'] ?? []; });
-      }
-      setState(() => _isLoading = false);
-    } catch (e) {
-      setState(() => _isLoading = false);
-    }
-  }
+      final hitterFutures = _hitterSorts.map((s) =>
+          ApiService.getHitters(sortBy: s['value']!, limit: 3));
+      final pitcherFutures = _pitcherSorts.map((s) =>
+          ApiService.getPitchers(sortBy: s['value']!, limit: 3));
 
-  Future<void> _loadPlayers() async {
-    setState(() => _isLoading = true);
-    try {
-      final results = await Future.wait([
-        ApiService.getHitters(sortBy: _hitterSort, teamId: _selectedTeamId),
-        ApiService.getPitchers(sortBy: _pitcherSort, teamId: _selectedTeamId),
-      ]);
-      setState(() {
-        _hitters = results[0]['hitters'] ?? [];
-        _pitchers = results[1]['pitchers'] ?? [];
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-    }
+      final results = await Future.wait([...hitterFutures, ...pitcherFutures]);
+
+      for (int i = 0; i < _hitterSorts.length; i++) {
+        _hitterCategories[_hitterSorts[i]['value']!] =
+            results[i]['hitters'] ?? [];
+      }
+      for (int i = 0; i < _pitcherSorts.length; i++) {
+        _pitcherCategories[_pitcherSorts[i]['value']!] =
+            results[_hitterSorts.length + i]['pitchers'] ?? [];
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _search(String query) async {
@@ -161,160 +83,37 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     try {
       final data = await ApiService.searchPlayers(query);
-      setState(() { _searchResults = data['players'] ?? []; _isSearching = true; });
-    } catch (e) {}
+      setState(() {
+        _searchResults = data['players'] ?? [];
+        _isSearching = true;
+      });
+    } catch (_) {}
   }
 
-  Widget _buildDropdown<T>({
-    required String label,
-    required T value,
-    required List<DropdownMenuItem<T>> items,
-    required ValueChanged<T?> onChanged,
-  }) {
-    return Expanded(
-      child: LayoutBuilder(
-        builder: (context, constraints) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(label,
-                  style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 2),
-              SizedBox(
-                width: constraints.maxWidth - 20,
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<T>(
-                    value: value,
-                    isExpanded: true,
-                    dropdownColor: const Color(0xFF283593),
-                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70, size: 18),
-                    items: items,
-                    onChanged: onChanged,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilters() {
-    final isHitter = _tabController.index == 0;
-
-    final teamItems = _teams.map((t) => DropdownMenuItem<int?>(
-      value: t['id'] as int?,
-      child: Text(t['name'] as String, style: const TextStyle(color: Colors.white)),
-    )).toList();
-
-    final positionItems = _positions.map((p) => DropdownMenuItem<String?>(
-      value: p['value'],
-      child: Text(p['label']!, style: const TextStyle(color: Colors.white)),
-    )).toList();
-
-    final throwsItems = _throwsOptions.map((t) => DropdownMenuItem<String?>(
-      value: t['value'],
-      child: Text(t['label']!, style: const TextStyle(color: Colors.white)),
-    )).toList();
-
-    final hitterSortItems = _hitterSortOptions.map((o) => DropdownMenuItem<String>(
-      value: o['value']!,
-      child: Text(o['label']!, style: const TextStyle(color: Colors.white)),
-    )).toList();
-
-    final pitcherSortItems = _pitcherSortOptions.map((o) => DropdownMenuItem<String>(
-      value: o['value']!,
-      child: Text(o['label']!, style: const TextStyle(color: Colors.white)),
-    )).toList();
-
-    return Container(
-      color: const Color(0xFF1A237E),
-      padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
-      child: Row(
-        children: [
-          _buildDropdown<int?>(
-            label: '팀',
-            value: _selectedTeamId,
-            items: teamItems,
-            onChanged: (v) {
-              setState(() => _selectedTeamId = v);
-              _loadCurrentTab();
-            },
-          ),
-          Container(width: 1, height: 44, color: Colors.white.withOpacity(0.2)),
-          _buildDropdown<String?>(
-            label: isHitter ? '포지션' : '투구',
-            value: isHitter ? _selectedPosition : _selectedThrows,
-            items: isHitter ? positionItems : throwsItems,
-            onChanged: (v) {
-              setState(() {
-                if (isHitter) _selectedPosition = v;
-                else _selectedThrows = v;
-              });
-              _loadCurrentTab();
-            },
-          ),
-          Container(width: 1, height: 44, color: Colors.white.withOpacity(0.2)),
-          _buildDropdown<String>(
-            label: '기록',
-            value: isHitter ? _hitterSort : _pitcherSort,
-            items: isHitter ? hitterSortItems : pitcherSortItems,
-            onChanged: (v) {
-              if (v == null) return;
-              setState(() {
-                if (isHitter) _hitterSort = v;
-                else _pitcherSort = v;
-              });
-              _loadCurrentTab();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 순위 뱃지 위젯 (1위=금, 2위=은, 3위=동, 나머지=회색 숫자)
-  Widget _buildRankBadge(int rank) {
-    if (rank <= 3) {
-      final colors = [
-        const Color(0xFFFFD700), // 금
-        const Color(0xFFC0C0C0), // 은
-        const Color(0xFFCD7F32), // 동
-      ];
-      final color = colors[rank - 1];
-      return Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(color: color.withOpacity(0.5), blurRadius: 4, offset: const Offset(0, 2)),
-          ],
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          '$rank',
-          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-        ),
-      );
+  String _hitterStatValue(Map p, String sortKey) {
+    switch (sortKey) {
+      case 'avg':       return (p['avg'] as num?)?.toStringAsFixed(3) ?? '-';
+      case 'home_runs': return '${p['home_runs'] ?? 0}';
+      case 'rbis':      return '${p['rbis'] ?? 0}';
+      case 'hits':      return '${p['hits'] ?? 0}';
+      case 'ops':       return (p['ops'] as num?)?.toStringAsFixed(3) ?? '-';
+      case 'war':       return (p['war'] as num?)?.toStringAsFixed(1) ?? '-';
+      default:          return '-';
     }
-    return Container(
-      width: 28,
-      height: 28,
-      alignment: Alignment.center,
-      child: Text(
-        '$rank',
-        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[500]),
-      ),
-    );
   }
 
-  /// 1위 타이틀 뱃지
+  String _pitcherStatValue(Map p, String sortKey) {
+    switch (sortKey) {
+      case 'era':        return (p['era'] as num?)?.toStringAsFixed(2) ?? '-';
+      case 'wins':       return '${p['wins'] ?? 0}';
+      case 'strikeouts': return '${p['strikeouts'] ?? 0}';
+      case 'whip':       return (p['whip'] as num?)?.toStringAsFixed(2) ?? '-';
+      case 'saves':      return '${p['saves'] ?? 0}';
+      case 'holds':      return '${p['holds'] ?? 0}';
+      default:           return '-';
+    }
+  }
+
   Widget _buildTitleBadge(String title) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -324,13 +123,186 @@ class _PlayerScreenState extends State<PlayerScreen>
         ),
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
-          BoxShadow(color: Colors.amber.withOpacity(0.4), blurRadius: 4, offset: const Offset(0, 1)),
+          BoxShadow(color: Colors.amber.withValues(alpha: 0.4), blurRadius: 4, offset: const Offset(0, 1)),
         ],
       ),
       child: Text(
         title,
         style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
       ),
+    );
+  }
+
+  Widget _buildPodium(List players, String sortKey, String title, bool isHitter) {
+    if (players.length < 3) return const SizedBox.shrink();
+    final p1 = players[0] as Map;
+    final p2 = players[1] as Map;
+    final p3 = players[2] as Map;
+
+    Widget slot(Map p, int rank, double height, Color medalColor) {
+      final statVal = isHitter
+          ? _hitterStatValue(p, sortKey)
+          : _pitcherStatValue(p, sortKey);
+
+      return GestureDetector(
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                CircleAvatar(
+                  radius: rank == 1 ? 32 : 24,
+                  backgroundImage: p['profile_image'] != null
+                      ? NetworkImage(p['profile_image'])
+                      : null,
+                  backgroundColor: medalColor.withValues(alpha: 0.15),
+                  child: p['profile_image'] == null
+                      ? Icon(Icons.person, size: rank == 1 ? 28 : 20, color: medalColor)
+                      : null,
+                ),
+                Positioned(
+                  bottom: -6,
+                  right: -6,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: medalColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                      boxShadow: [BoxShadow(color: medalColor.withValues(alpha: 0.4), blurRadius: 3)],
+                    ),
+                    alignment: Alignment.center,
+                    child: Text('$rank',
+                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('${p['name']}',
+                style: TextStyle(fontSize: rank == 1 ? 13 : 11, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis),
+            Text('${p['team'] ?? ''}',
+                style: TextStyle(fontSize: 9, color: Colors.grey[600]),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 2),
+            Text(statVal,
+                style: TextStyle(
+                  fontSize: rank == 1 ? 15 : 13,
+                  fontWeight: FontWeight.bold,
+                  color: medalColor,
+                ),
+                textAlign: TextAlign.center),
+            if (rank == 1) ...[
+              const SizedBox(height: 2),
+              _buildTitleBadge(title),
+            ],
+            const SizedBox(height: 6),
+            Container(
+              width: rank == 1 ? 90 : 72,
+              height: height,
+              decoration: BoxDecoration(
+                color: medalColor.withValues(alpha: 0.18),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+              ),
+              alignment: Alignment.center,
+              child: Text('$rank위',
+                  style: TextStyle(fontSize: 11, color: medalColor, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+      padding: const EdgeInsets.fromLTRB(8, 14, 8, 0),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          Expanded(child: slot(p2, 2, 52, const Color(0xFFC0C0C0))),
+          Expanded(child: slot(p1, 1, 80, const Color(0xFFFFD700))),
+          Expanded(child: slot(p3, 3, 38, const Color(0xFFCD7F32))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategorySection(Map<String, String> sortInfo, bool isHitter) {
+    final key = sortInfo['value']!;
+    final label = sortInfo['label']!;
+    final title = sortInfo['title']!;
+    final players = isHitter ? (_hitterCategories[key] ?? []) : (_pitcherCategories[key] ?? []);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 4, height: 16,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A237E),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(label,
+                    style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1A237E),
+                    )),
+              ],
+            ),
+          ),
+          _buildPodium(players, key, title, isHitter),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryList(bool isHitter) {
+    final sorts = isHitter ? _hitterSorts : _pitcherSorts;
+    return ListView(
+      padding: const EdgeInsets.only(top: 12, bottom: 24),
+      children: sorts.map((s) => _buildCategorySection(s, isHitter)).toList(),
+    );
+  }
+
+  Widget _buildSearchResults() {
+    if (_searchResults.isEmpty) {
+      return const Center(child: Text('검색 결과가 없습니다'));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: _searchResults.length,
+      itemBuilder: (context, index) {
+        final p = _searchResults[index] as Map;
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundImage: p['profile_image'] != null ? NetworkImage(p['profile_image']) : null,
+            child: p['profile_image'] == null ? const Icon(Icons.person) : null,
+          ),
+          title: Text('${p['name']}', style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: Text('${p['team'] ?? ''} | ${p['player_type'] ?? ''} | #${p['number'] ?? '-'}'),
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
+        );
+      },
     );
   }
 
@@ -379,9 +351,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               ),
             ),
           ),
-          if (!_isSearching) _buildFilters(),
-          if (!_isSearching)
-            const Divider(height: 1, thickness: 1),
+          if (!_isSearching) const Divider(height: 1, thickness: 1),
           Expanded(
             child: _isSearching
                 ? _buildSearchResults()
@@ -389,239 +359,14 @@ class _PlayerScreenState extends State<PlayerScreen>
                     ? const Center(child: CircularProgressIndicator())
                     : TabBarView(
                         controller: _tabController,
-                        children: [_buildHitterList(), _buildPitcherList()],
+                        children: [
+                          _buildCategoryList(true),
+                          _buildCategoryList(false),
+                        ],
                       ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSearchResults() {
-    if (_searchResults.isEmpty) return const Center(child: Text('검색 결과가 없습니다'));
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: _searchResults.length,
-      itemBuilder: (context, index) {
-        final p = _searchResults[index];
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundImage: p['profile_image'] != null ? NetworkImage(p['profile_image']) : null,
-            child: p['profile_image'] == null ? const Icon(Icons.person) : null,
-          ),
-          title: Text('${p['name']}'),
-          subtitle: Text('${p['team']} | ${p['player_type']} | #${p['number'] ?? '-'}'),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
-        );
-      },
-    );
-  }
-
-  String _hitterStatValue(Map p) {
-    switch (_hitterSort) {
-      case 'avg':    return (p['avg'] as num?)?.toStringAsFixed(3) ?? '-';
-      case 'home_runs': return '${p['home_runs'] ?? 0}';
-      case 'rbis':   return '${p['rbis'] ?? 0}';
-      case 'hits':   return '${p['hits'] ?? 0}';
-      case 'ops':    return (p['ops'] as num?)?.toStringAsFixed(3) ?? '-';
-      case 'war':    return (p['war'] as num?)?.toStringAsFixed(1) ?? '-';
-      default:       return '-';
-    }
-  }
-
-  String _pitcherStatValue(Map p) {
-    switch (_pitcherSort) {
-      case 'era':       return (p['era'] as num?)?.toStringAsFixed(2) ?? '-';
-      case 'wins':      return '${p['wins'] ?? 0}';
-      case 'strikeouts':return '${p['strikeouts'] ?? 0}';
-      case 'whip':      return (p['whip'] as num?)?.toStringAsFixed(2) ?? '-';
-      case 'saves':     return '${p['saves'] ?? 0}';
-      case 'holds':     return '${p['holds'] ?? 0}';
-      default:          return '-';
-    }
-  }
-
-  Widget _buildPodium(List players, String Function(Map) statValue, String? title) {
-    if (players.length < 3) return const SizedBox.shrink();
-    final p1 = players[0] as Map;
-    final p2 = players[1] as Map;
-    final p3 = players[2] as Map;
-
-    Widget podiumSlot(Map p, int rank, double height, Color medalColor) {
-      return GestureDetector(
-        onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.center,
-              children: [
-                CircleAvatar(
-                  radius: rank == 1 ? 34 : 26,
-                  backgroundImage: p['profile_image'] != null
-                      ? NetworkImage(p['profile_image'])
-                      : null,
-                  backgroundColor: medalColor.withOpacity(0.15),
-                  child: p['profile_image'] == null
-                      ? Icon(Icons.person, size: rank == 1 ? 30 : 22, color: medalColor)
-                      : null,
-                ),
-                Positioned(
-                  bottom: -6,
-                  right: -6,
-                  child: Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: medalColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
-                      boxShadow: [BoxShadow(color: medalColor.withOpacity(0.4), blurRadius: 3)],
-                    ),
-                    alignment: Alignment.center,
-                    child: Text('$rank',
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text('${p['name']}',
-                style: TextStyle(
-                  fontSize: rank == 1 ? 13 : 12,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis),
-            Text('${p['team'] ?? ''}',
-                style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 2),
-            Text(statValue(p),
-                style: TextStyle(
-                  fontSize: rank == 1 ? 16 : 14,
-                  fontWeight: FontWeight.bold,
-                  color: medalColor,
-                ),
-                textAlign: TextAlign.center),
-            if (rank == 1 && title != null) ...[
-              const SizedBox(height: 2),
-              _buildTitleBadge(title),
-            ],
-            const SizedBox(height: 6),
-            Container(
-              width: rank == 1 ? 100 : 80,
-              height: height,
-              decoration: BoxDecoration(
-                color: medalColor.withOpacity(0.18),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-              ),
-              alignment: Alignment.center,
-              child: Text('$rank위',
-                  style: TextStyle(fontSize: 12, color: medalColor, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      padding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          Expanded(child: podiumSlot(p2, 2, 60, const Color(0xFFC0C0C0))),
-          Expanded(child: podiumSlot(p1, 1, 90, const Color(0xFFFFD700))),
-          Expanded(child: podiumSlot(p3, 3, 45, const Color(0xFFCD7F32))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlayerRow(Map p, int rank, String sub, String? tag) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      leading: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildRankBadge(rank),
-          const SizedBox(width: 6),
-          CircleAvatar(
-            radius: 20,
-            backgroundImage: p['profile_image'] != null ? NetworkImage(p['profile_image']) : null,
-            child: p['profile_image'] == null ? const Icon(Icons.person, size: 18) : null,
-          ),
-        ],
-      ),
-      title: Row(
-        children: [
-          Text('${p['name']}', style: const TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(width: 6),
-          Text('${p['team'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-          if (tag != null) ...[
-            const SizedBox(width: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: const Color(0xFF303F9F).withOpacity(0.12),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(tag, style: const TextStyle(fontSize: 10, color: Color(0xFF00695C))),
-            ),
-          ],
-        ],
-      ),
-      subtitle: Text(sub),
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
-    );
-  }
-
-  Widget _buildHitterList() {
-    if (_hitters.isEmpty) return const Center(child: Text('데이터가 없습니다'));
-    final title1st = _hitterTitles[_hitterSort];
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      children: [
-        _buildPodium(_hitters, _hitterStatValue, title1st),
-        ..._hitters.asMap().entries.skip(3).map((e) {
-          final p = e.value as Map;
-          final rank = e.key + 1;
-          return _buildPlayerRow(
-            p, rank,
-            '타율 ${(p['avg'] as num?)?.toStringAsFixed(3) ?? '-'}  출루장타율 ${(p['ops'] as num?)?.toStringAsFixed(3) ?? '-'}  ${p['home_runs'] ?? 0}홈런 ${p['rbis'] ?? 0}타점',
-            p['position'] as String?,
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildPitcherList() {
-    if (_pitchers.isEmpty) return const Center(child: Text('데이터가 없습니다'));
-    final title1st = _pitcherTitles[_pitcherSort];
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      children: [
-        _buildPodium(_pitchers, _pitcherStatValue, title1st),
-        ..._pitchers.asMap().entries.skip(3).map((e) {
-          final p = e.value as Map;
-          final rank = e.key + 1;
-          return _buildPlayerRow(
-            p, rank,
-            '평자 ${(p['era'] as num?)?.toStringAsFixed(2) ?? '-'}  이닝당출루 ${(p['whip'] as num?)?.toStringAsFixed(2) ?? '-'}  ${p['wins'] ?? 0}승 ${p['strikeouts'] ?? 0}삼진',
-            p['throws'] as String?,
-          );
-        }),
-      ],
     );
   }
 }
