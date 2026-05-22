@@ -68,11 +68,13 @@ def get_hitters(
     team_filter = "AND p.team_id = %s" if team_id else ""
     position_filter = "AND p.position = %s" if position else ""
 
-    # 비율 스탯은 규정타석(PA >= 팀 경기수 × 3.1) 필터 적용
+    # 비율 스탯은 규정타석 필터 적용
+    # pa 컬럼 미수집 → at_bats + walks + hbp + sac + sf 추정값 사용
+    # 팀 경기수 대리: MAX(batter games) × 3 ≈ 규정타석
     RATE_STATS_HITTER = {"avg", "ops", "obp", "slg", "woba", "babip", "iso", "wrc_plus"}
     qual_filter = (
-        "AND bs.pa >= (SELECT GREATEST(COALESCE(MAX(games), 1), 1) * 3 "
-        "              FROM batter_stats WHERE season = bs.season)"
+        "AND (bs.at_bats + bs.walks + COALESCE(bs.hbp, 0) + COALESCE(bs.sac, 0) + COALESCE(bs.sf, 0)) "
+        ">= (SELECT GREATEST(COALESCE(MAX(games), 1), 1) * 3 FROM batter_stats WHERE season = bs.season)"
         if sort_by in RATE_STATS_HITTER else ""
     )
 
@@ -160,10 +162,11 @@ def get_pitchers(
     throws_filter = "AND p.throws = %s" if throws else ""
 
     # 비율 스탯은 규정이닝(IP >= 팀 경기수 × 1) 필터 적용
+    # 팀 경기수 대리: batter MAX(games) (투수 games는 등판수라 부적합)
     RATE_STATS_PITCHER = {"era", "whip", "fip", "k_per_9", "bb_per_9", "babip"}
     qual_filter = (
         "AND ps.innings_pitched >= (SELECT GREATEST(COALESCE(MAX(games), 1), 1) * 1.0 "
-        "                            FROM pitcher_stats WHERE season = ps.season)"
+        "                            FROM batter_stats WHERE season = ps.season)"
         if sort_by in RATE_STATS_PITCHER else ""
     )
 
