@@ -36,11 +36,33 @@ Environment=EMAIL_PASS=lwsc sxbs mmxg uoba
 - baseUrl: http://168.107.61.147:8000
 - 인증: JWT Bearer → SharedPreferences `access_token`
 
+## 앱 실행 / 배포
+
+### 유선 flutter run
+```bash
+flutter run
+```
+
+### 무선 ADB (Android 11+ / 같은 네트워크 필수)
+```bash
+# 폰: 개발자 옵션 → 무선 디버깅 → 페어링 코드로 기기 페어링
+adb pair [IP]:[포트]   # 6자리 코드 입력
+adb connect [IP]:5555
+flutter run
+```
+- 노트북-폰 다른 네트워크(집/일터)일 경우: 폰 핫스팟 켜고 노트북 연결
+
+### APK 빌드 후 전송 (원격 배포)
+```bash
+flutter build apk --debug   # 또는 --release
+# build/app/outputs/flutter-apk/app-release.apk → 카카오톡/구글드라이브로 전송
+```
+
 ## 주요 파일
 
 ### 백엔드 (~/playball/backend/)
 - api/main.py
-- api/routers/{games,players,teams,auth,user,stadiums,widget,community,calendar,phone,email_verify}.py
+- api/routers/{games,players,teams,auth,user,stadiums,widget,community,calendar,phone,email_verify,search}.py
 - api/weather_service.py (OpenWeatherMap 5분 캐시)
 - api/email_service.py (Gmail SMTP, noreply.playball@gmail.com 발신)
 - api/sms_service.py (미사용 — email로 교체됨)
@@ -49,16 +71,20 @@ Environment=EMAIL_PASS=lwsc sxbs mmxg uoba
 - crawler/naver_crawler.py (**절대 수정 금지**)
 - crawler/scheduler.py, crawl_all_games.py, crawl_past_rosters.py
 - crawler/kbo_roster_crawler.py
+- static/profiles/ (프로필 이미지 저장 디렉토리)
 
 ### 앱 (app/lib/)
 - main.dart, api/api_service.dart
 - screens/home/home_screen.dart
 - screens/game/game_detail_screen.dart
+- screens/game/pitch_location_chart.dart  ← 투구 위치 시각화 (스트라이크존)
 - screens/player/{player_screen,player_detail_screen,player_compare_screen}.dart
 - screens/team/{team_screen,team_detail_screen}.dart
 - screens/calendar/calendar_screen.dart
 - screens/auth/{login_screen,register_screen}.dart
-- screens/mypage/{my_page_screen,phone_verify_screen}.dart  ← 이메일 인증 UI
+- screens/mypage/{my_page_screen,phone_verify_screen}.dart
+- screens/community/{community_screen,post_detail_screen,create_post_screen}.dart
+- screens/search/search_screen.dart  ← 통합 선수/팀 검색
 - models/game.dart, utils/team_theme.dart
 - providers/{auth,game,team}_provider.dart
 
@@ -71,6 +97,9 @@ POST /auth/login             → access_token
 GET  /auth/me                [Bearer] → id,email,nickname,phone_verified,phone_number,settings
 GET  /auth/check-email?email=
 GET  /auth/check-nickname?nickname=
+POST /auth/password/send-code  (email) → 비밀번호 재설정 코드 발송
+POST /auth/password/reset      (email, code, new_password)
+DELETE /auth/me              [Bearer] → 회원탈퇴
 ```
 
 ### 경기
@@ -85,6 +114,9 @@ GET /games/{id}/preview      (선발투수, 상대전적)
 GET /games/{id}/record_detail
 GET /games/{id}/weather      (실내=indoor:true, 야외=temp/humidity/wind/pop)
 GET /games/{id}/pitch-types  → {pitchers:{name:[{type,count,pct}]}}
+GET /games/{id}/pitch-locations → {pitches:[{x,z,result,pitcher,top_sz,bot_sz}], pitchers:[...]}
+  ※ x=횡위치(ft), z=높이(ft, 물리궤적 계산), result=ball/strike/swing/foul/hit/other
+  ※ 진행중 경기: GREATEST(MAX(gi.inning), g.current_inning)으로 현재이닝 포함
 ```
 
 ### 선수
@@ -117,16 +149,27 @@ PUT        /user/nickname                        (닉네임 변경, 중복확인
 POST       /user/email/send-code                (가입 이메일로 인증번호 발송, rate limit 1분)
 POST       /user/email/verify                   ({code}) → phone_verified=TRUE
 POST       /user/push-token                     (FCM — 활성화 대기)
+POST       /user/profile-image                  (multipart/form-data, file) → {profile_image: url}
 ```
 
 ### 커뮤니티
 ```
-GET    /community/posts?team_id=&category=&page=
+GET    /community/posts?team_id=&category=&sort=&q=&page=
 GET    /community/posts/{id}
 POST   /community/posts      [Bearer + phone_verified 필수] → 미인증 시 403 phone_not_verified
+PUT    /community/posts/{id} [Bearer, 작성자만]  (title, content)
+DELETE /community/posts/{id} [Bearer, 작성자만]
 POST   /community/posts/{id}/like    [Bearer]
+POST   /community/posts/{id}/report  [Bearer]   (reason)
 POST   /community/posts/{id}/comments [Bearer]
-DELETE /community/comments/{id}      [Bearer]
+DELETE /community/comments/{id}      [Bearer, 작성자만]
+GET    /community/my-posts?page=     [Bearer]
+GET    /community/my-comments?page=  [Bearer] → {comments:[{id,content,created_at,post_id,post_title}]}
+```
+
+### 검색
+```
+GET /search?q=  → {players:[{id,name,player_type,position,profile_image,team,team_code}], teams:[{id,name,short_name}]}
 ```
 
 ### 기타
@@ -176,7 +219,7 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 
 ### 탭 구성
 0: 경기, 1: 순위, 2: 선수, 3: 캘린더, 4: 커뮤니티
-- AppBar 우측: 마이페이지 아이콘(person_outline) → MyPageScreen
+- AppBar 우측: 검색 아이콘 → SearchScreen, 마이페이지 아이콘(person_outline) → MyPageScreen
 
 ### home_screen.dart (TodayGamesTab)
 - 날짜 이동 + 날짜 선택기
@@ -186,11 +229,22 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 
 ### game_detail_screen.dart
 - 탭: 이닝/프리뷰/로스터/투수/타자/기록
-- 스코어 헤더: 날씨 정보 행
+- 스코어 헤더: 날씨 정보 행 + 팀별 최근5경기 W/L/D 뱃지
 - 승리확률 그래프: LineChart (80pt 다운샘플)
 - 경기흐름 그래프: BarChart (이닝별 득점)
-- 투수 타일: 구종차트 바 + 범례
+- 투수 탭: 구종차트 바 + 범례 + **투구 위치 보기** 버튼 → PitchLocationSheet
 - 자동새로고침: 30초 (진행중만)
+
+### pitch_location_chart.dart (PitchLocationSheet)
+- 투수별 선택 칩 + 결과 필터 칩(전체/볼/스트라이크/헛스윙/파울/타격)
+- CustomPainter 스트라이크존: 타자별 ABS존(topSz/bottomSz) 평균 반영
+- 투구 좌표: Naver relay ptsOptions 물리궤적 계산 (y=0 시점 z값)
+- 색상: 볼=파랑, 스트라이크=빨강, 헛스윙=주황, 파울=노랑, 타격=초록
+
+### search_screen.dart
+- AppBar 인라인 TextField (자동포커스)
+- /search?q= → 팀 섹션(TeamLogo) + 선수 섹션
+- 탭: TeamDetailScreen / PlayerDetailScreen
 
 ### player_screen.dart
 - 1~3위 포디엄 (2위 좌/1위 중/3위 우, 금은동)
@@ -212,11 +266,13 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 ### team_detail_screen.dart
 - 탭 3개: 선수명단 / 경기일정 / 등록말소
 
-### my_page_screen.dart (신규)
-- 프로필 (닉네임 편집 아이콘)
+### my_page_screen.dart
+- 프로필 이미지: GestureDetector → ImagePicker(갤러리) → 업로드 (카메라 뱃지 + 스피너)
+- 닉네임 편집 아이콘
 - 이메일 인증 상태 + 인증하기 버튼 → PhoneVerifyScreen
 - 마이팀 목록 → TeamDetailScreen
 - 즐겨찾기 선수 → PlayerDetailScreen
+- 내 댓글 최근 5개 (post_title 포함) → PostDetailScreen
 - 로그아웃 (AuthProvider.logout())
 
 ### phone_verify_screen.dart (이메일 인증 UI)
@@ -224,7 +280,16 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 - 코드 입력 → 인증 완료 → phone_verified=TRUE
 - Rate limit 429 수신 시 에러 표시
 
-### community/create_post_screen.dart
+### community_screen.dart
+- 무한스크롤: ScrollController → 200px 여유 시 _loadMore() → page+1 append
+- AutomaticKeepAliveClientMixin으로 탭 전환 시 상태 유지
+
+### post_detail_screen.dart
+- 본인 글: PopupMenu → 수정(인라인 다이얼로그)/삭제(확인 후 pop)
+- 타인 글: PopupMenu → 신고
+- 본인 댓글: 휴지통 아이콘 → 삭제
+
+### create_post_screen.dart
 - 403 phone_not_verified 수신 시 → 인증 유도 다이얼로그 → PhoneVerifyScreen
 
 ### game.dart 모델
@@ -237,6 +302,14 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 ## 네이버 API
 NAVER_TEAM_CODE: HT=KIA, OB=두산, LT=롯데, SS=삼성, HH=한화, SK=SSG, KT=KT, NC=NC, WO=키움, LG=LG
 Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
+
+### 투구 위치 데이터 (relay API)
+- `ptsOptions`: 물리궤적 파라미터 (y0,vy0,ay,z0,vz0,az,x0,vx0,ax)
+- `crossPlateX`: 홈플레이트 통과 횡위치(ft) — 직접 사용
+- `crossPlateY`: 0.7083ft 고정 = 플레이트 절반 너비(8.5인치) — 높이 아님, 사용 안 함
+- 높이 계산: y=0 시점 t 이차방정식 풀기 → `z_plate = z0 + vz0*t + 0.5*az*t²`
+- `topSz`/`bottomSz`: 타자별 ABS 스트라이크존 (신장 기반으로 변동)
+- `textOptions type=1`: 투구 이벤트, `stuff`=구종, `text`=결과(볼/스트라이크/헛스윙/파울/타격)
 
 ## 크롤러 핵심 로직
 
@@ -270,6 +343,8 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 소셜 로그인 구현 안 함 (결정)
 - TeamLogo 파라미터: `teamCode` (not `code`)
 - TeamDetailScreen 파라미터: `team` (Map, not teamId)
+- 서버 직접 수정 후 git push 시: 로컬 scp로 동기화 먼저, 그 다음 push
+- 서버 pull 전: `git stash` 필수 (직접 수정 파일 있을 경우)
 
 ## FCM 활성화 방법 (인프라 완료 — 수동 작업 필요)
 
@@ -280,10 +355,11 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 5. Claude에게 "FCM 활성화 마무리해줘" 요청
 
 ## 미구현 기능
-- [ ] 비밀번호 찾기/재설정, 회원탈퇴, 프로필 이미지 업로드
 - [ ] FCM 활성화 (인프라 완료)
-- [ ] 마이팀 개인화 홈, 내 게시글/댓글
-- [ ] 커뮤니티: 이미지 첨부, 검색, 신고, 인기글 탭
-- [ ] 투구 히트맵, 스프레이 차트, 드래프트/FA 정보
+- [ ] 비밀번호 찾기/재설정 UI (API는 구현됨: /auth/password/send-code, /auth/password/reset)
+- [ ] 커뮤니티: 이미지 첨부, 검색, 인기글 탭
+- [ ] 스프레이 차트 (타구방향 데이터 없음 — 네이버 중계 텍스트만 제공)
+- [ ] 드래프트/FA 정보
 - [ ] 피타고리안 승률, 직관 승률
 - [ ] 다크모드, 홈화면 위젯, 카카오맵 연동
+- [ ] 마이팀 개인화 홈
