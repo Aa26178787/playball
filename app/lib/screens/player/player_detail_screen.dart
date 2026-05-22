@@ -59,25 +59,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(player['name'] ?? ''),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: TextButton(
-              onPressed: () => setState(() => _useEng = !_useEng),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: _useEng ? Colors.white24 : Colors.transparent,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(
-                _useEng ? 'ENG' : '한글',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -368,7 +349,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final stats = statsList[0] as Map<String, dynamic>;
     final isHitter = _playerData!['player_type'] == '타자';
 
-    // 한글/영어 라벨 선택
     String _l(String kor, String eng) => _useEng ? eng : kor;
 
     String _s(dynamic v, {int dec = 0, bool rate = false}) {
@@ -381,8 +361,40 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       return '$v';
     }
 
+    final toggleWidget = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '${statsList[0]['season'] ?? ''}시즌 기록',
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1A237E)),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _useEng = !_useEng),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: _useEng ? const Color(0xFF1A237E) : Colors.grey[200],
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                _useEng ? 'ENG' : '한글',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: _useEng ? Colors.white : Colors.black87,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
     if (isHitter) {
       return [
+        toggleWidget,
         _statCard(_l('기본 기록', 'Batting'), [
           _statRow([
             (_l('경기', 'G'),   _s(stats['games'])),
@@ -466,6 +478,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       ];
     } else {
       return [
+        toggleWidget,
         _statCard(_l('기본 기록', 'Pitching'), [
           _statRow([
             (_l('경기', 'G'),    _s(stats['games'])),

@@ -233,9 +233,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final awayTeam = game['away_team'] as String? ?? '';
     final homeCode = game['home_team_code'] as String? ?? '';
     final awayCode = game['away_team_code'] as String? ?? '';
-    final homeScore = game['home_score'];
-    final awayScore = game['away_score'];
+    final homeScore = game['home_score'] as int? ?? 0;
+    final awayScore = game['away_score'] as int? ?? 0;
     final startTime = game['start_time'] as String? ?? '';
+    final stadium = game['stadium'] as String? ?? '';
+    final winPitcher = game['win_pitcher'] as String?;
+    final losePitcher = game['lose_pitcher'] as String?;
+    final homeStarter = game['home_starter'] as String?;
+    final awayStarter = game['away_starter'] as String?;
+    final isDraw = game['is_draw'] == true;
     final id = game['id'] as int;
 
     Color statusColor;
@@ -243,7 +249,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     switch (status) {
       case '진행':
         statusColor = Colors.green;
-        statusLabel = '진행중';
+        statusLabel = '${game['current_inning'] ?? ''}회 ${game['inning_half'] ?? ''}';
         break;
       case '종료':
         statusColor = Colors.grey;
@@ -253,52 +259,168 @@ class _CalendarScreenState extends State<CalendarScreen> {
         statusColor = Colors.red;
         statusLabel = '취소';
         break;
+      case '라인업':
+        statusColor = Colors.green;
+        statusLabel = '라인업';
+        break;
       default:
         statusColor = Colors.blue;
-        statusLabel = startTime.isNotEmpty ? startTime : '예정';
+        statusLabel = '예정';
     }
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: id))),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
+          padding: const EdgeInsets.all(16),
+          child: Column(
             children: [
-              TeamLogo(teamCode: homeCode, size: 32),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('$homeTeam vs $awayTeam',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 2),
-                    if (status == '종료' && homeScore != null)
-                      Text('$homeScore : $awayScore',
-                          style: const TextStyle(fontSize: 13, color: Colors.black87))
-                    else
-                      Text(startTime, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                  ],
-                ),
+              // 상태 + 경기장
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      statusLabel,
+                      style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                  ),
+                  Text(stadium, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
               ),
-              TeamLogo(teamCode: awayCode, size: 32),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(statusLabel,
-                    style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+
+              // 팀 vs 스코어
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        TeamLogo(teamCode: homeCode, size: 40),
+                        const SizedBox(height: 4),
+                        Text(homeTeam,
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center),
+                        Text('홈', style: TextStyle(fontSize: 10, color: Colors.grey[400])),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: (status == '예정' || status == '취소' || status == '라인업')
+                        ? Text(
+                            status == '취소' ? '취소' : startTime,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: status == '취소' ? Colors.red : null,
+                            ),
+                          )
+                        : Text(
+                            '$homeScore : $awayScore',
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        TeamLogo(teamCode: awayCode, size: 40),
+                        const SizedBox(height: 4),
+                        Text(awayTeam,
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center),
+                        Text('원정', style: TextStyle(fontSize: 10, color: Colors.grey[400])),
+                      ],
+                    ),
+                  ),
+                ],
               ),
+
+              // 승/패 투수 또는 무승부 (종료만)
+              if (status == '종료' && (winPitcher != null || losePitcher != null || isDraw))
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: isDraw
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('무승부',
+                              style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (winPitcher != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text('승 $winPitcher',
+                                    style: const TextStyle(fontSize: 11, color: Colors.blue)),
+                              ),
+                            if (losePitcher != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text('패 $losePitcher',
+                                    style: const TextStyle(fontSize: 11, color: Colors.red)),
+                              ),
+                          ],
+                        ),
+                ),
+
+              // 선발투수 (예정/라인업)
+              if ((status == '예정' || status == '라인업') &&
+                  (homeStarter != null || awayStarter != null))
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      if (homeStarter != null)
+                        _starterChip(homeStarter, true),
+                      if (homeStarter != null && awayStarter != null)
+                        const Text('vs', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      if (awayStarter != null)
+                        _starterChip(awayStarter, false),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _starterChip(String name, bool isHome) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.indigo.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        '${isHome ? '홈' : '원정'} $name',
+        style: const TextStyle(fontSize: 10, color: Colors.indigo),
       ),
     );
   }
