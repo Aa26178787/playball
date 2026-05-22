@@ -207,6 +207,7 @@ def get_hitter_stats(season=2026):
                 "number":          p.get("backNumber"),
                 "season":          season,
                 "games":           p.get("hitterGameCount", 0),
+                "pa":              p.get("hitterPa", 0),
                 "at_bats":         p.get("hitterAb", 0),
                 "runs":            p.get("hitterRun", 0),
                 "hits":            p.get("hitterHit", 0),
@@ -393,14 +394,15 @@ def save_players_and_stats(players, player_type):
             if player_type == "HITTER":
                 cur.execute("""
                     INSERT INTO batter_stats (
-                        player_id, season, games, at_bats, runs, hits,
+                        player_id, season, games, pa, at_bats, runs, hits,
                         doubles, triples, home_runs, rbis, walks, strikeouts,
                         stolen_bases, avg, obp, slg, ops, woba, wrc_plus, babip, iso, war
                     ) VALUES (
-                        %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                        %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
                     )
                     ON CONFLICT (player_id, season) DO UPDATE SET
                         games        = GREATEST(EXCLUDED.games,        batter_stats.games),
+                        pa           = GREATEST(EXCLUDED.pa,           batter_stats.pa),
                         at_bats      = GREATEST(EXCLUDED.at_bats,      batter_stats.at_bats),
                         runs         = GREATEST(EXCLUDED.runs,         batter_stats.runs),
                         hits         = GREATEST(EXCLUDED.hits,         batter_stats.hits),
@@ -421,7 +423,7 @@ def save_players_and_stats(players, player_type):
                         iso          = EXCLUDED.iso,
                         war          = EXCLUDED.war
                 """, (
-                    player_db_id, p["season"], p["games"], p["at_bats"],
+                    player_db_id, p["season"], p["games"], p.get("pa", 0), p["at_bats"],
                     p["runs"], p["hits"], p["doubles"], p["triples"],
                     p["home_runs"], p["rbis"], p["walks"], p["strikeouts"],
                     p["stolen_bases"], p["avg"], p["obp"], p["slg"], p["ops"],

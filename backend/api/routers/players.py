@@ -68,13 +68,13 @@ def get_hitters(
     team_filter = "AND p.team_id = %s" if team_id else ""
     position_filter = "AND p.position = %s" if position else ""
 
-    # 비율 스탯은 규정타석 필터 적용
-    # pa 컬럼 미수집 → at_bats + walks + hbp + sac + sf 추정값 사용
-    # 팀 경기수 대리: MAX(batter games) × 3 ≈ 규정타석
+    # 비율 스탯은 규정타석(PA >= 팀 경기수 × 3.1) 필터 적용
+    # pa 수집 후: pa 컬럼 사용. pa=0이면 at_bats 추정값으로 폴백
     RATE_STATS_HITTER = {"avg", "ops", "obp", "slg", "woba", "babip", "iso", "wrc_plus"}
     qual_filter = (
-        "AND (bs.at_bats + bs.walks + COALESCE(bs.hbp, 0) + COALESCE(bs.sac, 0) + COALESCE(bs.sf, 0)) "
-        ">= (SELECT GREATEST(COALESCE(MAX(games), 1), 1) * 3.1 FROM batter_stats WHERE season = bs.season)"
+        "AND CASE WHEN bs.pa > 0 THEN bs.pa "
+        "         ELSE bs.at_bats + bs.walks + COALESCE(bs.hbp,0) + COALESCE(bs.sac,0) + COALESCE(bs.sf,0) "
+        "    END >= (SELECT GREATEST(COALESCE(MAX(games),1),1) * 3.1 FROM batter_stats WHERE season = bs.season)"
         if sort_by in RATE_STATS_HITTER else ""
     )
 
