@@ -549,6 +549,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildScoreHeader(Map<String, dynamic> game) {
+    final homeRecent = List<String>.from(game['home_recent_5'] ?? []);
+    final awayRecent = List<String>.from(game['away_recent_5'] ?? []);
     return Container(
       padding: const EdgeInsets.all(20),
       color: const Color(0xFF1A237E),
@@ -557,12 +559,20 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           Row(
             children: [
               Expanded(
-                child: Text(game['home_team'],
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center),
+                child: Column(
+                  children: [
+                    Text(game['home_team'],
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center),
+                    if (homeRecent.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      _buildRecentBar(homeRecent),
+                    ],
+                  ],
+                ),
               ),
               Text(
                 game['status'] == '예정'
@@ -574,12 +584,20 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     fontWeight: FontWeight.bold),
               ),
               Expanded(
-                child: Text(game['away_team'],
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center),
+                child: Column(
+                  children: [
+                    Text(game['away_team'],
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center),
+                    if (awayRecent.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      _buildRecentBar(awayRecent),
+                    ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -596,6 +614,28 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildRecentBar(List<String> recent) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: recent.map((r) {
+        final c = r == 'W' ? Colors.blue : r == 'L' ? Colors.red : Colors.grey;
+        return Container(
+          width: 14,
+          height: 14,
+          margin: const EdgeInsets.only(right: 2),
+          decoration: BoxDecoration(
+            color: c.withOpacity(0.25),
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: c.withOpacity(0.7), width: 0.8),
+          ),
+          alignment: Alignment.center,
+          child: Text(r, style: TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
+        );
+      }).toList(),
     );
   }
 
