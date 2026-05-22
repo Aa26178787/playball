@@ -1295,6 +1295,8 @@ def get_pitch_locations(game_id: int):
                     opt = pitch_txts[i]
                     result_text = opt.get("text") or ""
                     stuff = opt.get("stuff") or ""
+                if "고의" in result_text:
+                    continue
                 all_pitches.append({
                     "inning":      inning,
                     "inning_half": inning_half,
