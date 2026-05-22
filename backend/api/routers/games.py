@@ -1159,18 +1159,20 @@ def get_pitch_locations(game_id: int):
         raise HTTPException(status_code=500, detail="DB 연결 실패")
     cur = conn.cursor()
     cur.execute("""
-        SELECT naver_game_id, MAX(inning)
+        SELECT g.naver_game_id, g.status, g.current_inning,
+               GREATEST(COALESCE(MAX(gi.inning), 1), COALESCE(g.current_inning, 1))
         FROM games g
         LEFT JOIN game_innings gi ON g.id = gi.game_id
         WHERE g.id = %s
-        GROUP BY naver_game_id
+        GROUP BY g.naver_game_id, g.status, g.current_inning
     """, (game_id,))
     row = cur.fetchone()
     if not row or not row[0]:
         cur.close(); conn.close()
         raise HTTPException(status_code=404, detail="경기 없음")
     naver_game_id = row[0]
-    max_inning = row[1] or 9
+    game_status = row[1]
+    max_inning = row[3] or 9
 
     # Build pitcher naver_id -> name cache
     cur.execute("SELECT naver_player_id, name FROM players WHERE naver_player_id IS NOT NULL")
