@@ -12,56 +12,99 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _nicknameController = TextEditingController();
-  String? _error;
+  final _emailCtrl      = TextEditingController();
+  final _nicknameCtrl   = TextEditingController();
+  final _pwCtrl         = TextEditingController();
+  final _pwConfirmCtrl  = TextEditingController();
+
   bool? _emailAvailable;
   bool? _nicknameAvailable;
-  bool _checkingEmail = false;
+  bool _checkingEmail    = false;
   bool _checkingNickname = false;
+  bool _obscure          = true;
+  bool _agreedTerms      = false;
+  String? _error;
+
+  // 클라이언트 유효성
+  String? get _emailError {
+    final v = _emailCtrl.text.trim();
+    if (v.isEmpty) return null;
+    if (!v.contains('@') || !v.contains('.')) return '올바른 이메일 형식이 아닙니다';
+    return null;
+  }
+
+  String? get _nicknameError {
+    final v = _nicknameCtrl.text.trim();
+    if (v.isEmpty) return null;
+    if (v.length < 2) return '닉네임은 2자 이상이어야 합니다';
+    if (v.length > 20) return '닉네임은 20자 이하여야 합니다';
+    return null;
+  }
+
+  String? get _pwError {
+    final v = _pwCtrl.text;
+    if (v.isEmpty) return null;
+    if (v.length < 6) return '비밀번호는 6자 이상이어야 합니다';
+    return null;
+  }
+
+  String? get _pwConfirmError {
+    if (_pwConfirmCtrl.text.isEmpty) return null;
+    if (_pwCtrl.text != _pwConfirmCtrl.text) return '비밀번호가 일치하지 않습니다';
+    return null;
+  }
+
+  bool get _canRegister =>
+      _emailAvailable == true &&
+      _nicknameAvailable == true &&
+      _emailError == null &&
+      _nicknameError == null &&
+      _pwError == null &&
+      _pwConfirmError == null &&
+      _pwCtrl.text.isNotEmpty &&
+      _pwConfirmCtrl.text.isNotEmpty &&
+      _agreedTerms;
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _nicknameController.dispose();
+    _emailCtrl.dispose();
+    _nicknameCtrl.dispose();
+    _pwCtrl.dispose();
+    _pwConfirmCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _checkEmail() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty) return;
+    if (_emailError != null || _emailCtrl.text.trim().isEmpty) return;
     setState(() => _checkingEmail = true);
     try {
-      final available = await ApiService.checkEmailAvailable(email);
-      if (mounted) setState(() { _emailAvailable = available; _checkingEmail = false; });
+      final ok = await ApiService.checkEmailAvailable(_emailCtrl.text.trim());
+      if (mounted) setState(() { _emailAvailable = ok; _checkingEmail = false; });
     } catch (_) {
       if (mounted) setState(() => _checkingEmail = false);
     }
   }
 
   Future<void> _checkNickname() async {
-    final nickname = _nicknameController.text.trim();
-    if (nickname.isEmpty) return;
+    if (_nicknameError != null || _nicknameCtrl.text.trim().isEmpty) return;
     setState(() => _checkingNickname = true);
     try {
-      final available = await ApiService.checkNicknameAvailable(nickname);
-      if (mounted) setState(() { _nicknameAvailable = available; _checkingNickname = false; });
+      final ok = await ApiService.checkNicknameAvailable(_nicknameCtrl.text.trim());
+      if (mounted) setState(() { _nicknameAvailable = ok; _checkingNickname = false; });
     } catch (_) {
       if (mounted) setState(() => _checkingNickname = false);
     }
   }
 
   Future<void> _register() async {
-    if (_emailAvailable == false || _nicknameAvailable == false) return;
+    if (!_canRegister) return;
+    setState(() => _error = null);
     final auth = context.read<AuthProvider>();
     final success = await auth.register(
-      _emailController.text.trim(),
-      _passwordController.text.trim(),
-      _nicknameController.text.trim(),
+      _emailCtrl.text.trim(),
+      _pwCtrl.text,
+      _nicknameCtrl.text.trim(),
     );
-
     if (success && mounted) {
       Navigator.pushAndRemoveUntil(
         context,
@@ -69,17 +112,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
         (route) => false,
       );
     } else {
-      setState(() {
-        _error = auth.errorMessage ?? '회원가입에 실패했습니다';
-      });
+      setState(() => _error = auth.errorMessage ?? '회원가입에 실패했습니다');
     }
   }
 
-  Widget _checkStatus(bool? available, bool checking) {
-    if (checking) return const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2));
+  Widget _availIcon(bool? available, bool checking) {
+    if (checking) return const SizedBox(width: 18, height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2));
     if (available == null) return const SizedBox.shrink();
     return Icon(available ? Icons.check_circle : Icons.cancel,
         color: available ? Colors.green : Colors.red, size: 20);
+  }
+
+  Widget _hint(String? msg, bool? ok) {
+    if (msg == null && ok == null) return const SizedBox.shrink();
+    final text = msg ?? (ok == true ? '사용 가능합니다' : '이미 사용 중입니다');
+    final color = (msg != null || ok == false) ? Colors.red : Colors.green;
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, top: 4, bottom: 4),
+      child: Text(text, style: TextStyle(fontSize: 12, color: color)),
+    );
   }
 
   @override
@@ -89,126 +141,177 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('회원가입')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 24),
-
-              // 닉네임
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _nicknameController,
-                      onChanged: (_) => setState(() => _nicknameAvailable = null),
-                      decoration: InputDecoration(
-                        labelText: '닉네임',
-                        prefixIcon: const Icon(Icons.person),
-                        border: const OutlineInputBorder(),
-                        suffixIcon: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: _checkStatus(_nicknameAvailable, _checkingNickname),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _checkingNickname ? null : _checkNickname,
-                    child: const Text('중복확인'),
-                  ),
-                ],
-              ),
-              if (_nicknameAvailable != null)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _nicknameAvailable! ? '사용 가능한 닉네임입니다' : '이미 사용 중인 닉네임입니다',
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: _nicknameAvailable! ? Colors.green : Colors.red),
-                  ),
-                ),
-              const SizedBox(height: 16),
-
-              // 이메일
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      onChanged: (_) => setState(() => _emailAvailable = null),
-                      decoration: InputDecoration(
-                        labelText: '이메일',
-                        prefixIcon: const Icon(Icons.email),
-                        border: const OutlineInputBorder(),
-                        suffixIcon: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: _checkStatus(_emailAvailable, _checkingEmail),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _checkingEmail ? null : _checkEmail,
-                    child: const Text('중복확인'),
-                  ),
-                ],
-              ),
-              if (_emailAvailable != null)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _emailAvailable! ? '사용 가능한 이메일입니다' : '이미 사용 중인 이메일입니다',
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: _emailAvailable! ? Colors.green : Colors.red),
-                  ),
-                ),
-              const SizedBox(height: 16),
-
-              // 비밀번호
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: '비밀번호',
-                  prefixIcon: Icon(Icons.lock),
-                  border: OutlineInputBorder(),
-                ),
-              ),
               const SizedBox(height: 8),
 
-              // 오류 메시지
-              if (_error != null)
-                Text(
-                  _error!,
-                  style: const TextStyle(color: Colors.red),
+              // ── 닉네임 ──
+              Row(children: [
+                Expanded(
+                  child: TextField(
+                    controller: _nicknameCtrl,
+                    maxLength: 20,
+                    onChanged: (_) => setState(() => _nicknameAvailable = null),
+                    decoration: InputDecoration(
+                      labelText: '닉네임 (2~20자)',
+                      prefixIcon: const Icon(Icons.person_outline),
+                      border: const OutlineInputBorder(),
+                      counterText: '',
+                      errorText: _nicknameError,
+                      suffixIcon: Padding(padding: const EdgeInsets.all(12),
+                          child: _availIcon(_nicknameAvailable, _checkingNickname)),
+                    ),
+                  ),
                 ),
-              const SizedBox(height: 16),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: (_checkingNickname || _nicknameError != null) ? null : _checkNickname,
+                  style: _smallBtn(),
+                  child: const Text('중복확인'),
+                ),
+              ]),
+              _hint(_nicknameError != null ? null : null,
+                    _nicknameError == null ? _nicknameAvailable : null),
+              const SizedBox(height: 14),
 
-              // 회원가입 버튼
+              // ── 이메일 ──
+              Row(children: [
+                Expanded(
+                  child: TextField(
+                    controller: _emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    onChanged: (_) => setState(() => _emailAvailable = null),
+                    decoration: InputDecoration(
+                      labelText: '이메일',
+                      prefixIcon: const Icon(Icons.email_outlined),
+                      border: const OutlineInputBorder(),
+                      errorText: _emailError,
+                      suffixIcon: Padding(padding: const EdgeInsets.all(12),
+                          child: _availIcon(_emailAvailable, _checkingEmail)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: (_checkingEmail || _emailError != null) ? null : _checkEmail,
+                  style: _smallBtn(),
+                  child: const Text('중복확인'),
+                ),
+              ]),
+              _hint(null, _emailError == null ? _emailAvailable : null),
+              const SizedBox(height: 14),
+
+              // ── 비밀번호 ──
+              TextField(
+                controller: _pwCtrl,
+                obscureText: _obscure,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: '비밀번호 (6자 이상)',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  border: const OutlineInputBorder(),
+                  errorText: _pwError,
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () => setState(() => _obscure = !_obscure),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // ── 비밀번호 확인 ──
+              TextField(
+                controller: _pwConfirmCtrl,
+                obscureText: _obscure,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: '비밀번호 확인',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  border: const OutlineInputBorder(),
+                  errorText: _pwConfirmError,
+                  suffixIcon: _pwConfirmCtrl.text.isNotEmpty
+                      ? Icon(
+                          _pwConfirmError == null ? Icons.check_circle : Icons.cancel,
+                          color: _pwConfirmError == null ? Colors.green : Colors.red,
+                          size: 20,
+                        )
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // ── 이용약관 ──
+              Row(children: [
+                Checkbox(
+                  value: _agreedTerms,
+                  onChanged: (v) => setState(() => _agreedTerms = v ?? false),
+                  activeColor: const Color(0xFF1A237E),
+                ),
+                const Expanded(
+                  child: Text(
+                    '서비스 이용약관 및 개인정보 처리방침에 동의합니다',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 8),
+
+              // ── 오류 ──
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(_error!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red, fontSize: 13)),
+                ),
+
+              // ── 가입 조건 안내 ──
+              if (!_canRegister && _emailCtrl.text.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    _emailAvailable != true
+                        ? '이메일 중복확인을 해주세요'
+                        : _nicknameAvailable != true
+                            ? '닉네임 중복확인을 해주세요'
+                            : !_agreedTerms
+                                ? '이용약관에 동의해주세요'
+                                : '',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.orange, fontSize: 12),
+                  ),
+                ),
+
+              // ── 회원가입 버튼 ──
               SizedBox(
-                width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: auth.isLoading ? null : _register,
+                  onPressed: (auth.isLoading || !_canRegister) ? null : _register,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1A237E),
                     foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey[300],
                   ),
                   child: auth.isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
                       : const Text('회원가입', style: TextStyle(fontSize: 16)),
                 ),
               ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
       ),
     );
   }
+
+  ButtonStyle _smallBtn() => ElevatedButton.styleFrom(
+    backgroundColor: const Color(0xFF1A237E),
+    foregroundColor: Colors.white,
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+    textStyle: const TextStyle(fontSize: 13),
+  );
 }

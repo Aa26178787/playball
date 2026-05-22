@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../utils/team_theme.dart';
 import '../player/player_detail_screen.dart';
 import '../team/team_detail_screen.dart';
+import '../community/post_detail_screen.dart';
 import 'phone_verify_screen.dart';
 
 class MyPageScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Map<String, dynamic>? _user;
   List _favoriteTeams = [];
   List _favoritePlayers = [];
+  List _myPosts = [];
   bool _loading = true;
 
   @override
@@ -33,12 +35,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ApiService.getMe(),
         ApiService.getFavoriteTeams(),
         ApiService.getFavoritePlayers(),
+        ApiService.getMyPosts(),
       ]);
       if (mounted) {
         setState(() {
           _user = results[0];
           _favoriteTeams = (results[1] as Map)['teams'] ?? [];
           _favoritePlayers = (results[2] as Map)['players'] ?? [];
+          _myPosts = (results[3] as Map)['posts'] ?? [];
           _loading = false;
         });
       }
@@ -153,6 +157,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   _buildFavoriteTeams(),
                   const SizedBox(height: 16),
                   _buildFavoritePlayers(),
+                  const SizedBox(height: 16),
+                  _buildMyPosts(),
                   const SizedBox(height: 24),
                   TextButton(
                     onPressed: _deleteAccount,
@@ -330,6 +336,48 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       style: const TextStyle(fontSize: 12)),
                   onTap: () => Navigator.push(context, MaterialPageRoute(
                       builder: (_) => PlayerDetailScreen(playerId: p['id']))),
+                );
+              }).toList(),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMyPosts() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Text('내 게시글', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ),
+        if (_myPosts.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(
+                child: Text('작성한 게시글이 없습니다', style: TextStyle(color: Colors.grey)),
+              ),
+            ),
+          )
+        else
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Column(
+              children: _myPosts.take(5).map((p) {
+                return ListTile(
+                  title: Text(p['title'] ?? '',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(
+                    '${p['category'] ?? ''}  ❤️${p['likes'] ?? 0}  💬${p['comment_count'] ?? 0}',
+                    style: const TextStyle(fontSize: 11)),
+                  trailing: Text(
+                    (p['created_at'] ?? '').toString().substring(0, 10),
+                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => PostDetailScreen(postId: p['id']))),
                 );
               }).toList(),
             ),
