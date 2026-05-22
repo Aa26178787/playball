@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
+import '../../utils/team_theme.dart';
 import 'player_detail_screen.dart';
 import 'player_compare_screen.dart';
 
@@ -14,37 +15,47 @@ class _PlayerScreenState extends State<PlayerScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  final Map<String, List> _hitterCategories = {};
-  final Map<String, List> _pitcherCategories = {};
+  List _hitters = [];
+  List _pitchers = [];
+  bool _hitterLoading = false;
+  bool _pitcherLoading = false;
+
+  String _hitterSort = 'avg';
+  String _pitcherSort = 'era';
 
   List _searchResults = [];
-  bool _isLoading = true;
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
 
   static const List<Map<String, String>> _hitterSorts = [
-    {'value': 'avg',       'label': '타율'},
-    {'value': 'home_runs', 'label': '홈런'},
-    {'value': 'rbis',      'label': '타점'},
-    {'value': 'hits',      'label': '안타'},
-    {'value': 'ops',       'label': '출루장타율'},
-    {'value': 'war',       'label': 'WAR'},
+    {'value': 'avg',          'label': '타율'},
+    {'value': 'home_runs',    'label': '홈런'},
+    {'value': 'rbis',         'label': '타점'},
+    {'value': 'hits',         'label': '안타'},
+    {'value': 'stolen_bases', 'label': '도루'},
+    {'value': 'ops',          'label': 'OPS'},
+    {'value': 'war',          'label': 'WAR'},
   ];
 
   static const List<Map<String, String>> _pitcherSorts = [
-    {'value': 'era',        'label': '평균자책점'},
+    {'value': 'era',        'label': 'ERA'},
     {'value': 'wins',       'label': '승'},
     {'value': 'strikeouts', 'label': '탈삼진'},
-    {'value': 'whip',       'label': '이닝당출루'},
     {'value': 'saves',      'label': '세이브'},
     {'value': 'holds',      'label': '홀드'},
+    {'value': 'whip',       'label': 'WHIP'},
+    {'value': 'war',        'label': 'WAR'},
   ];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadAllCategories();
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) return;
+      if (_tabController.index == 1 && _pitchers.isEmpty) _loadPitchers();
+    });
+    _loadHitters();
   }
 
   @override
@@ -54,26 +65,24 @@ class _PlayerScreenState extends State<PlayerScreen>
     super.dispose();
   }
 
-  Future<void> _loadAllCategories() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadHitters() async {
+    setState(() => _hitterLoading = true);
     try {
-      final hitterFutures = _hitterSorts.map((s) =>
-          ApiService.getHitters(sortBy: s['value']!, limit: 3));
-      final pitcherFutures = _pitcherSorts.map((s) =>
-          ApiService.getPitchers(sortBy: s['value']!, limit: 3));
+      final data = await ApiService.getHitters(sortBy: _hitterSort, limit: 200);
+      if (mounted) setState(() { _hitters = data['hitters'] ?? []; _hitterLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _hitterLoading = false);
+    }
+  }
 
-      final results = await Future.wait([...hitterFutures, ...pitcherFutures]);
-
-      for (int i = 0; i < _hitterSorts.length; i++) {
-        _hitterCategories[_hitterSorts[i]['value']!] =
-            results[i]['hitters'] ?? [];
-      }
-      for (int i = 0; i < _pitcherSorts.length; i++) {
-        _pitcherCategories[_pitcherSorts[i]['value']!] =
-            results[_hitterSorts.length + i]['pitchers'] ?? [];
-      }
-    } catch (_) {}
-    if (mounted) setState(() => _isLoading = false);
+  Future<void> _loadPitchers() async {
+    setState(() => _pitcherLoading = true);
+    try {
+      final data = await ApiService.getPitchers(sortBy: _pitcherSort, limit: 200);
+      if (mounted) setState(() { _pitchers = data['pitchers'] ?? []; _pitcherLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _pitcherLoading = false);
+    }
   }
 
   Future<void> _search(String query) async {
@@ -83,53 +92,100 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
     try {
       final data = await ApiService.searchPlayers(query);
-      setState(() {
-        _searchResults = data['players'] ?? [];
-        _isSearching = true;
-      });
+      if (mounted) setState(() { _searchResults = data['players'] ?? []; _isSearching = true; });
     } catch (_) {}
   }
 
-  String _hitterStatValue(Map p, String sortKey) {
-    switch (sortKey) {
-      case 'avg':       return (p['avg'] as num?)?.toStringAsFixed(3) ?? '-';
-      case 'home_runs': return '${p['home_runs'] ?? 0}';
-      case 'rbis':      return '${p['rbis'] ?? 0}';
-      case 'hits':      return '${p['hits'] ?? 0}';
-      case 'ops':       return (p['ops'] as num?)?.toStringAsFixed(3) ?? '-';
-      case 'war':       return (p['war'] as num?)?.toStringAsFixed(1) ?? '-';
-      default:          return '-';
+  String _hitterStat(Map p) {
+    switch (_hitterSort) {
+      case 'avg':          return (p['avg'] as num?)?.toStringAsFixed(3) ?? '-';
+      case 'home_runs':    return '${p['home_runs'] ?? 0}';
+      case 'rbis':         return '${p['rbis'] ?? 0}';
+      case 'hits':         return '${p['hits'] ?? 0}';
+      case 'stolen_bases': return '${p['stolen_bases'] ?? 0}';
+      case 'ops':          return (p['ops'] as num?)?.toStringAsFixed(3) ?? '-';
+      case 'war':          return (p['war'] as num?)?.toStringAsFixed(1) ?? '-';
+      default:             return '-';
     }
   }
 
-  String _pitcherStatValue(Map p, String sortKey) {
-    switch (sortKey) {
+  String _pitcherStat(Map p) {
+    switch (_pitcherSort) {
       case 'era':        return (p['era'] as num?)?.toStringAsFixed(2) ?? '-';
       case 'wins':       return '${p['wins'] ?? 0}';
       case 'strikeouts': return '${p['strikeouts'] ?? 0}';
-      case 'whip':       return (p['whip'] as num?)?.toStringAsFixed(2) ?? '-';
       case 'saves':      return '${p['saves'] ?? 0}';
       case 'holds':      return '${p['holds'] ?? 0}';
+      case 'whip':       return (p['whip'] as num?)?.toStringAsFixed(2) ?? '-';
+      case 'war':        return (p['war'] as num?)?.toStringAsFixed(1) ?? '-';
       default:           return '-';
     }
   }
 
-  Widget _buildPlayerListItem(Map p, String statVal, String statLabel) {
+  Widget _buildSortChips(
+    List<Map<String, String>> sorts,
+    String selected,
+    void Function(String) onSelect,
+  ) {
+    return SizedBox(
+      height: 38,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+        itemCount: sorts.length,
+        itemBuilder: (_, i) {
+          final s = sorts[i];
+          final sel = selected == s['value'];
+          return GestureDetector(
+            onTap: () => onSelect(s['value']!),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              decoration: BoxDecoration(
+                color: sel ? const Color(0xFF1A237E) : Colors.grey.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                s['label']!,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                  color: sel ? Colors.white : null,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPlayerRow(Map p, String statVal, String statLabel) {
+    final code = p['team_code'] as String? ?? p['team'] as String? ?? '';
+    final img = p['profile_image'] as String?;
     return InkWell(
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id'])),
+      ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
         child: Row(
           children: [
             CircleAvatar(
-              radius: 18,
-              backgroundImage: (p['profile_image'] != null && (p['profile_image'] as String).isNotEmpty)
-                  ? NetworkImage(p['profile_image'] as String)
-                  : null,
-              backgroundColor: const Color(0xFF1A237E).withValues(alpha: 0.1),
-              child: (p['profile_image'] == null || (p['profile_image'] as String).isEmpty)
-                  ? const Icon(Icons.person, size: 16, color: Color(0xFF1A237E))
+              radius: 20,
+              backgroundColor: teamColor(code).withValues(alpha: 0.15),
+              backgroundImage: (img != null && img.isNotEmpty) ? NetworkImage(img) : null,
+              child: (img == null || img.isEmpty)
+                  ? Text(
+                      teamDisplayName(code).characters.take(2).string,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: teamColor(code),
+                      ),
+                    )
                   : null,
             ),
             const SizedBox(width: 12),
@@ -139,7 +195,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 children: [
                   Text(p['name'] ?? '',
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                  Text(p['team'] ?? '',
+                  Text('${p['team'] ?? ''}  ${p['position'] ?? ''}',
                       style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                 ],
               ),
@@ -159,86 +215,42 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  Widget _buildCategorySection(Map<String, String> sortInfo, bool isHitter) {
-    final key = sortInfo['value']!;
-    final label = sortInfo['label']!;
-    final players = isHitter ? (_hitterCategories[key] ?? []) : (_pitcherCategories[key] ?? []);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-            child: Row(
-              children: [
-                Container(
-                  width: 4, height: 16,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1A237E),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(label,
-                    style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1A237E),
-                    )),
-              ],
-            ),
-          ),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
-            ),
-            child: Column(
-              children: players.asMap().entries.map((entry) {
-                final idx = entry.key;
-                final p = entry.value as Map;
-                final statVal = isHitter
-                    ? _hitterStatValue(p, key)
-                    : _pitcherStatValue(p, key);
-                return Column(
-                  children: [
-                    _buildPlayerListItem(p, statVal, label),
-                    if (idx < players.length - 1)
-                      Divider(height: 1, indent: 48, endIndent: 16,
-                          color: Colors.grey.withValues(alpha: 0.2)),
-                  ],
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
+  Widget _buildHitterList() {
+    if (_hitterLoading) return const Center(child: CircularProgressIndicator());
+    if (_hitters.isEmpty) return const Center(child: Text('데이터가 없습니다'));
+    final label = _hitterSorts.firstWhere((s) => s['value'] == _hitterSort)['label']!;
+    return ListView.separated(
+      padding: const EdgeInsets.only(bottom: 24),
+      itemCount: _hitters.length,
+      separatorBuilder: (context2, idx) => Divider(height: 1, indent: 52, endIndent: 16, color: Colors.grey.withValues(alpha: 0.15)),
+      itemBuilder: (_, i) => _buildPlayerRow(_hitters[i] as Map, _hitterStat(_hitters[i] as Map), label),
     );
   }
 
-  Widget _buildCategoryList(bool isHitter) {
-    final sorts = isHitter ? _hitterSorts : _pitcherSorts;
-    return ListView(
-      padding: const EdgeInsets.only(top: 12, bottom: 24),
-      children: sorts.map((s) => _buildCategorySection(s, isHitter)).toList(),
+  Widget _buildPitcherList() {
+    if (_pitcherLoading) return const Center(child: CircularProgressIndicator());
+    if (_pitchers.isEmpty) return const Center(child: Text('데이터가 없습니다'));
+    final label = _pitcherSorts.firstWhere((s) => s['value'] == _pitcherSort)['label']!;
+    return ListView.separated(
+      padding: const EdgeInsets.only(bottom: 24),
+      itemCount: _pitchers.length,
+      separatorBuilder: (context2, idx) => Divider(height: 1, indent: 52, endIndent: 16, color: Colors.grey.withValues(alpha: 0.15)),
+      itemBuilder: (_, i) => _buildPlayerRow(_pitchers[i] as Map, _pitcherStat(_pitchers[i] as Map), label),
     );
   }
 
   Widget _buildSearchResults() {
-    if (_searchResults.isEmpty) {
-      return const Center(child: Text('검색 결과가 없습니다'));
-    }
+    if (_searchResults.isEmpty) return const Center(child: Text('검색 결과가 없습니다'));
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: _searchResults.length,
-      itemBuilder: (context, index) {
-        final p = _searchResults[index] as Map;
+      itemBuilder: (_, i) {
+        final p = _searchResults[i] as Map;
+        final img = p['profile_image'] as String?;
         return ListTile(
           leading: CircleAvatar(
-            backgroundImage: p['profile_image'] != null ? NetworkImage(p['profile_image']) : null,
-            child: p['profile_image'] == null ? const Icon(Icons.person) : null,
+            backgroundImage: (img != null && img.isNotEmpty) ? NetworkImage(img) : null,
+            child: (img == null || img.isEmpty) ? const Icon(Icons.person) : null,
           ),
           title: Text('${p['name']}', style: const TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Text('${p['team'] ?? ''} | ${p['player_type'] ?? ''} | #${p['number'] ?? '-'}'),
@@ -272,7 +284,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
             child: TextField(
               controller: _searchController,
               onChanged: _search,
@@ -289,25 +301,48 @@ class _PlayerScreenState extends State<PlayerScreen>
                       )
                     : null,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 isDense: true,
               ),
             ),
           ),
-          if (!_isSearching) const Divider(height: 1, thickness: 1),
-          Expanded(
-            child: _isSearching
-                ? _buildSearchResults()
-                : _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildCategoryList(true),
-                          _buildCategoryList(false),
-                        ],
-                      ),
-          ),
+          if (!_isSearching) ...[
+            const Divider(height: 1, thickness: 1),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  Column(
+                    children: [
+                      const SizedBox(height: 6),
+                      _buildSortChips(_hitterSorts, _hitterSort, (val) {
+                        setState(() { _hitterSort = val; _hitters = []; });
+                        _loadHitters();
+                      }),
+                      const SizedBox(height: 6),
+                      const Divider(height: 1),
+                      Expanded(child: _buildHitterList()),
+                    ],
+                  ),
+                  Column(
+                    children: [
+                      const SizedBox(height: 6),
+                      _buildSortChips(_pitcherSorts, _pitcherSort, (val) {
+                        setState(() { _pitcherSort = val; _pitchers = []; });
+                        _loadPitchers();
+                      }),
+                      const SizedBox(height: 6),
+                      const Divider(height: 1),
+                      Expanded(child: _buildPitcherList()),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            const Divider(height: 1, thickness: 1),
+            Expanded(child: _buildSearchResults()),
+          ],
         ],
       ),
     );
