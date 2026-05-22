@@ -698,8 +698,8 @@ class GameCard extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildRecentBar(game.homeRecent5, game.homeTeam, true),
-                      _buildRecentBar(game.awayRecent5, game.awayTeam, false),
+                      _buildRecentBar(game.homeRecent5.reversed.toList(), game.homeTeam, true),
+                      _buildRecentBar(game.awayRecent5.reversed.toList(), game.awayTeam, false),
                     ],
                   ),
                 ),

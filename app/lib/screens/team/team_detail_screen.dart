@@ -276,70 +276,131 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     );
   }
 
+  List<List<Map>> _groupIntoSeries(List games, String teamName) {
+    final sorted = List<Map>.from(games)
+      ..sort((a, b) => (a['game_date'] as String).compareTo(b['game_date'] as String));
+
+    final series = <List<Map>>[];
+
+    for (final g in sorted) {
+      final isHome = g['home_team'] == teamName;
+      final opp = isHome ? g['away_team'] : g['home_team'];
+      final date = DateTime.tryParse(g['game_date'] as String? ?? '') ?? DateTime(2000);
+
+      if (series.isEmpty) {
+        series.add([g]);
+        continue;
+      }
+
+      final last = series.last;
+      final lastG = last.last;
+      final lastIsHome = lastG['home_team'] == teamName;
+      final lastOpp = lastIsHome ? lastG['away_team'] : lastG['home_team'];
+      final lastDate = DateTime.tryParse(lastG['game_date'] as String? ?? '') ?? DateTime(2000);
+      final dayDiff = date.difference(lastDate).inDays;
+
+      if (lastOpp == opp && dayDiff <= 3 && last.length < 3) {
+        last.add(g);
+      } else {
+        series.add([g]);
+      }
+    }
+
+    return series.reversed.toList();
+  }
+
   Widget _buildGames() {
     if (_gamesLoading) return const Center(child: CircularProgressIndicator());
     if (_games.isEmpty) return const Center(child: Text('경기 정보가 없습니다'));
 
     final teamName = widget.team['name'] as String? ?? '';
+    final seriesList = _groupIntoSeries(_games, teamName);
 
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: _games.length,
-      itemBuilder: (context, index) {
-        final g = _games[index];
-        final isHome = g['home_team'] == teamName;
-        final myScore = isHome ? (g['home_score'] ?? 0) : (g['away_score'] ?? 0);
-        final oppScore = isHome ? (g['away_score'] ?? 0) : (g['home_score'] ?? 0);
-        final oppName = isHome ? g['away_team'] : g['home_team'];
-        final isWin = myScore > oppScore;
-        final isLoss = myScore < oppScore;
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      itemCount: seriesList.length,
+      itemBuilder: (context, idx) {
+        final s = seriesList[idx];
+        final firstG = s.first;
+        final firstIsHome = firstG['home_team'] == teamName;
+        final oppName = firstIsHome ? firstG['away_team'] : firstG['home_team'];
+
+        int wins = 0, losses = 0, draws = 0;
+        for (final g in s) {
+          final isHome = g['home_team'] == teamName;
+          final my = isHome ? (g['home_score'] ?? 0) : (g['away_score'] ?? 0);
+          final opp = isHome ? (g['away_score'] ?? 0) : (g['home_score'] ?? 0);
+          if ((my as num) > (opp as num)) wins++;
+          else if (my < opp) losses++;
+          else draws++;
+        }
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 32,
-                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isWin ? Colors.blue : isLoss ? Colors.red : Colors.grey,
-                  borderRadius: BorderRadius.circular(6),
+                  color: Colors.grey.withOpacity(0.07),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
                 ),
-                alignment: Alignment.center,
-                child: Text(
-                  isWin ? '승' : isLoss ? '패' : '무',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      'vs $oppName',
-                      style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-                    ),
-                    Text(
-                      '${isHome ? '홈' : '원정'} · ${g['game_date'] ?? ''}',
-                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                    ),
+                    Text('vs $oppName',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const Spacer(),
+                    if (wins > 0)
+                      Text('$wins승 ', style: const TextStyle(color: Colors.blue, fontSize: 13, fontWeight: FontWeight.bold)),
+                    if (losses > 0)
+                      Text('$losses패', style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+                    if (draws > 0)
+                      Text(' $draws무', style: const TextStyle(color: Colors.grey, fontSize: 13)),
                   ],
                 ),
               ),
-              Text(
-                '$myScore : $oppScore',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
+              ...s.map((g) {
+                final isHome = g['home_team'] == teamName;
+                final myScore = isHome ? (g['home_score'] ?? 0) : (g['away_score'] ?? 0);
+                final oppScore = isHome ? (g['away_score'] ?? 0) : (g['home_score'] ?? 0);
+                final isWin = (myScore as num) > (oppScore as num);
+                final isLoss = myScore < oppScore;
+                final dateStr = (g['game_date'] as String? ?? '').replaceAll('-', '.');
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: isWin ? Colors.blue : isLoss ? Colors.red : Colors.grey,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          isWin ? '승' : isLoss ? '패' : '무',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text('$myScore : $oppScore',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      const SizedBox(width: 10),
+                      Text(isHome ? '홈' : '원정',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                      const Spacer(),
+                      Text(dateStr, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    ],
+                  ),
+                );
+              }),
             ],
           ),
         );

@@ -24,6 +24,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Map<String, dynamic>? _relayAllData;
   Map<String, dynamic>? _weatherData;
   Map<String, dynamic>? _pitchTypesData;
+  Map<String, String> _playerRosterStatus = {};
   bool _isLoading = true;
   bool _isRelayRefreshing = false;
   Timer? _refreshTimer;
@@ -104,7 +105,27 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
       Future.wait([
         ApiService.getGameRoster(widget.gameId)
-            .then((d) => setState(() => _rosterData = d))
+            .then((d) async {
+              if (mounted) setState(() => _rosterData = d);
+              // 등록말소 현황 로드
+              try {
+                final homeId = gameData['game']['home_team_id'] as int?;
+                final awayId = gameData['game']['away_team_id'] as int?;
+                final statusMap = <String, String>{};
+                for (final teamId in [homeId, awayId]) {
+                  if (teamId == null) continue;
+                  final changes = await ApiService.getTeamRosterChanges(teamId, days: 60);
+                  for (final c in (changes['changes'] as List? ?? [])) {
+                    final name = c['player_name'] as String? ?? '';
+                    final type = c['change_type'] as String? ?? '';
+                    if (name.isNotEmpty && !statusMap.containsKey(name)) {
+                      statusMap[name] = type;
+                    }
+                  }
+                }
+                if (mounted) setState(() => _playerRosterStatus = statusMap);
+              } catch (_) {}
+            })
             .catchError((_) {}),
         ApiService.getGamePreview(widget.gameId)
             .then((d) => setState(() => _previewData = d))
@@ -550,8 +571,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildScoreHeader(Map<String, dynamic> game) {
-    final homeRecent = List<String>.from(game['home_recent_5'] ?? []);
-    final awayRecent = List<String>.from(game['away_recent_5'] ?? []);
+    final homeRecent = List<String>.from(game['home_recent_5'] ?? []).reversed.toList();
+    final awayRecent = List<String>.from(game['away_recent_5'] ?? []).reversed.toList();
     return Container(
       padding: const EdgeInsets.all(20),
       color: const Color(0xFF1A237E),
@@ -836,22 +857,25 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 const Icon(Icons.circle, size: 8, color: Colors.green),
                 const SizedBox(width: 6),
                 const Text('30초 자동 새로고침', style: TextStyle(fontSize: 12, color: Colors.green)),
-              ] else
+              ] else if (_gameData!['game']['status'] == '예정' || _gameData!['game']['status'] == '라인업')
+                Text('경기 전', style: TextStyle(fontSize: 12, color: Colors.grey[600]))
+              else
                 Text('경기 종료', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
               const Spacer(),
-              _isRelayRefreshing
-                  ? const SizedBox(width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : GestureDetector(
-                      onTap: _refreshRelayAll,
-                      child: Row(
-                        children: [
-                          Icon(Icons.refresh, size: 18, color: Colors.grey[700]),
-                          const SizedBox(width: 4),
-                          Text('새로고침', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                        ],
+              if (isLive)
+                _isRelayRefreshing
+                    ? const SizedBox(width: 18, height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : GestureDetector(
+                        onTap: _refreshRelayAll,
+                        child: Row(
+                          children: [
+                            Icon(Icons.refresh, size: 18, color: Colors.grey[700]),
+                            const SizedBox(width: 4),
+                            Text('새로고침', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                          ],
+                        ),
                       ),
-                    ),
             ],
           ),
         ),
@@ -1651,7 +1675,38 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     );
   }
 
+  Widget _rosterStatusBadge(String name) {
+    final status = _playerRosterStatus[name];
+    if (status == null) return const SizedBox.shrink();
+    Color color;
+    String label;
+    if (status.contains('말소')) {
+      color = Colors.orange;
+      label = '말소';
+    } else if (status.contains('부상')) {
+      color = Colors.red;
+      label = '부상';
+    } else if (status.contains('등록')) {
+      color = Colors.blue;
+      label = '1군';
+    } else {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      margin: const EdgeInsets.only(left: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.6)),
+      ),
+      child: Text(label,
+          style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+    );
+  }
+
   Widget _starterBatterTile(Map<String, dynamic> b) {
+    final name = b['name'] as String? ?? '';
     return ListTile(
       dense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
@@ -1679,8 +1734,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           ),
         ],
       ),
-      title: Text('${b['name'] ?? ''} (#${b['number'] ?? '-'})',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+      title: Row(
+        children: [
+          Text('$name (#${b['number'] ?? '-'})',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          _rosterStatusBadge(name),
+        ],
+      ),
       subtitle: Text(b['position'] ?? '',
           style: TextStyle(fontSize: 12, color: Colors.grey[500])),
     );
@@ -1696,8 +1756,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         backgroundImage: profileImage != null ? NetworkImage(profileImage) : null,
         child: profileImage == null ? const Icon(Icons.person, size: 18) : null,
       ),
-      title: Text('$name (#${number ?? '-'})',
-          style: const TextStyle(fontSize: 14)),
+      title: Row(
+        children: [
+          Text('$name (#${number ?? '-'})',
+              style: const TextStyle(fontSize: 14)),
+          _rosterStatusBadge(name),
+        ],
+      ),
       subtitle: subtitle.isNotEmpty
           ? Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[500]))
           : null,
