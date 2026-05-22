@@ -9,9 +9,19 @@ import string
 
 router = APIRouter()
 
+RATE_LIMIT_SECONDS = 60   # 1분 내 재발송 차단
+CLEANUP_KEEP_DAYS = 1     # 만료 레코드 1일 후 삭제
+
 
 def _generate_code() -> str:
     return ''.join(random.choices(string.digits, k=6))
+
+
+def _cleanup_expired(cur):
+    cur.execute(
+        "DELETE FROM phone_verifications WHERE expires_at < NOW() - INTERVAL '%s days'",
+        (CLEANUP_KEEP_DAYS,)
+    )
 
 
 @router.post("/send-code")
@@ -28,6 +38,24 @@ def send_code(current_user: dict = Depends(get_current_user)):
         conn.close()
         raise HTTPException(status_code=404, detail="유저를 찾을 수 없습니다")
     email = row[0]
+
+    # Rate limit: 1분 내 이미 발송된 코드 있으면 차단
+    cur.execute(
+        """SELECT created_at FROM phone_verifications
+           WHERE user_id=%s AND used=FALSE AND expires_at > NOW()
+           ORDER BY created_at DESC LIMIT 1""",
+        (current_user["user_id"],)
+    )
+    last = cur.fetchone()
+    if last:
+        elapsed = (datetime.now() - last[0]).total_seconds()
+        if elapsed < RATE_LIMIT_SECONDS:
+            wait = int(RATE_LIMIT_SECONDS - elapsed)
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=429, detail=f"{wait}초 후 재발송 가능합니다")
+
+    _cleanup_expired(cur)
 
     code = _generate_code()
     expires_at = datetime.now() + timedelta(minutes=5)
@@ -79,6 +107,7 @@ def verify_code(req: VerifyRequest, current_user: dict = Depends(get_current_use
 
     cur.execute('UPDATE phone_verifications SET used=TRUE WHERE id=%s', (vrow[0],))
     cur.execute('UPDATE users SET phone_verified=TRUE WHERE id=%s', (current_user["user_id"],))
+    _cleanup_expired(cur)
     conn.commit()
     cur.close()
     conn.close()

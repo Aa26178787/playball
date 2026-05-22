@@ -28,7 +28,11 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
           SnackBar(content: Text('인증번호를 ${_sentToEmail}로 발송했습니다 (5분 유효)')));
       }
     } on DioException catch (e) {
-      setState(() => _error = e.response?.data?['detail'] ?? '발송 실패');
+      final detail = e.response?.data?['detail'] ?? '발송 실패';
+      setState(() => _error = detail);
+      if (e.response?.statusCode == 429) {
+        setState(() => _sentToEmail = null);
+      }
     } finally {
       setState(() => _sending = false);
     }
