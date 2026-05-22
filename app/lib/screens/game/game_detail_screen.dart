@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import '../../api/api_service.dart';
+import 'pitch_location_chart.dart';
 
 class GameDetailScreen extends StatefulWidget {
   final int gameId;
@@ -1748,6 +1749,20 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 _buildPitcherList(homePitchers),
                 _buildPitcherList(awayPitchers),
               ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: OutlinedButton.icon(
+              onPressed: () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+                builder: (_) => PitchLocationSheet(gameId: widget.gameId),
+              ),
+              icon: const Icon(Icons.sports_baseball, size: 16),
+              label: const Text('투구 위치 보기'),
             ),
           ),
         ],

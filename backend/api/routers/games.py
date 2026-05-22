@@ -1150,6 +1150,112 @@ def get_pitch_types(game_id: int):
     return {'pitchers': pitchers}
 
 
+
+@router.get("/{game_id}/pitch-locations")
+def get_pitch_locations(game_id: int):
+    import math as _math
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT naver_game_id, MAX(inning)
+        FROM games g
+        LEFT JOIN game_innings gi ON g.id = gi.game_id
+        WHERE g.id = %s
+        GROUP BY naver_game_id
+    """, (game_id,))
+    row = cur.fetchone()
+    if not row or not row[0]:
+        cur.close(); conn.close()
+        raise HTTPException(status_code=404, detail="경기 없음")
+    naver_game_id = row[0]
+    max_inning = row[1] or 9
+
+    # Build pitcher naver_id -> name cache
+    cur.execute("SELECT naver_player_id, name FROM players WHERE naver_player_id IS NOT NULL")
+    pitcher_cache = {str(r[0]): r[1] for r in cur.fetchall()}
+    cur.close(); conn.close()
+
+    def compute_z(p):
+        try:
+            y0, vy0, ay = p["y0"], p["vy0"], p["ay"]
+            z0, vz0, az = p["z0"], p["vz0"], p["az"]
+            A = 0.5*ay; B = vy0; C = y0
+            disc = B*B - 4*A*C
+            if disc < 0: return None
+            t1 = (-B - _math.sqrt(disc))/(2*A); t2 = (-B + _math.sqrt(disc))/(2*A)
+            valid = [t for t in [t1,t2] if t > 0]
+            if not valid: return None
+            t = min(valid)
+            return round(z0 + vz0*t + 0.5*az*t**2, 4)
+        except Exception:
+            return None
+
+    def classify(text):
+        if not text: return "other"
+        if "볼" in text: return "ball"
+        if "헛스윙" in text or "스윙" in text: return "swing"
+        if "파울" in text: return "foul"
+        if "타격" in text or "안타" in text or "홈런" in text: return "hit"
+        if "스트라이크" in text: return "strike"
+        return "other"
+
+    all_pitches = []
+    for inning in range(1, max_inning + 1):
+        try:
+            url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/relay?inning={inning}"
+            res = req.get(url, headers=NAVER_HEADERS, timeout=8)
+            if res.status_code != 200: continue
+            text_relays = res.json().get("result", {}).get("textRelayData", {}).get("textRelays", [])
+        except Exception:
+            continue
+
+        for item in text_relays:
+            pts_opts = item.get("ptsOptions", [])
+            txt_opts = item.get("textOptions", [])
+            batter = item.get("title", "")
+            inning_half = str(item.get("homeOrAway", ""))
+            if not pts_opts: continue
+
+            pitch_txts = [o for o in txt_opts if o.get("type") == 1]
+            pitcher_name = ""
+            for opt in txt_opts:
+                gs = opt.get("currentGameState") or {}
+                pid = str(gs.get("pitcher") or "")
+                if pid and pid in pitcher_cache:
+                    pitcher_name = pitcher_cache[pid]
+                    break
+
+            for i, pts in enumerate(pts_opts):
+                x = pts.get("crossPlateX")
+                z = compute_z(pts)
+                if x is None or z is None: continue
+                result_text = ""
+                stuff = ""
+                if i < len(pitch_txts):
+                    opt = pitch_txts[i]
+                    result_text = opt.get("text") or ""
+                    stuff = opt.get("stuff") or ""
+                all_pitches.append({
+                    "inning":      inning,
+                    "inning_half": inning_half,
+                    "batter":      batter,
+                    "pitcher":     pitcher_name,
+                    "pitch_num":   i + 1,
+                    "x":           round(float(x), 4),
+                    "z":           z,
+                    "top_sz":      pts.get("topSz"),
+                    "bot_sz":      pts.get("bottomSz"),
+                    "stuff":       stuff,
+                    "result_text": result_text,
+                    "result":      classify(result_text),
+                    "stance":      pts.get("stance", "R"),
+                })
+
+    pitchers = sorted({p["pitcher"] for p in all_pitches if p["pitcher"]})
+    return {"pitches": all_pitches, "pitchers": pitchers}
+
 @router.get("/{game_id}/weather")
 def get_game_weather(game_id: int):
     conn = get_connection()

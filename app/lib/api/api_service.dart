@@ -396,6 +396,11 @@ class ApiService {
   }
 
   // ===== FCM API =====
+  static Future<Map<String, dynamic>> getPitchLocations(int gameId) async {
+    final res = await _dio.get('/games/$gameId/pitch-locations');
+    return Map<String, dynamic>.from(res.data);
+  }
+
   static Future<void> registerFcmToken(String token) async {
     try {
       final headers = await authHeaders();
