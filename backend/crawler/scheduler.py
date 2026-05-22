@@ -107,12 +107,13 @@ def smart_update():
 
         if newly_finished:
             print(f"[{datetime.now()}] 경기 {len(newly_finished)}개 종료 감지 → 팀순위 업데이트")
+            finished_team_ids = set()
             for gid in newly_finished:
                 conn_tmp = get_connection()
                 if conn_tmp:
                     cur_tmp = conn_tmp.cursor()
                     cur_tmp.execute(
-                        "SELECT naver_game_id, current_inning FROM games WHERE id = %s", (gid,)
+                        "SELECT naver_game_id, current_inning, home_team_id, away_team_id FROM games WHERE id = %s", (gid,)
                     )
                     row_tmp = cur_tmp.fetchone()
                     cur_tmp.close()
@@ -127,9 +128,18 @@ def smart_update():
                             print(f"[{datetime.now()}] pitch_locations 저장: game_id={gid} {n}구")
                         except Exception as pl_err:
                             print(f"[{datetime.now()}] pitch_locations 오류: {pl_err}")
+                        if row_tmp[2]: finished_team_ids.add(row_tmp[2])
+                        if row_tmp[3]: finished_team_ids.add(row_tmp[3])
             update_team_rankings()
             schedule.every(10).minutes.do(_run_once, update_finished_game_records)
             schedule.every(15).minutes.do(_run_once, update_finished_player_stats)
+            # 경기 종료 팀 뉴스 크롤링
+            if finished_team_ids:
+                try:
+                    from crawler.crawl_naver_news import crawl_news_for_teams
+                    crawl_news_for_teams(list(finished_team_ids))
+                except Exception as news_err:
+                    print(f"[{datetime.now()}] 뉴스 크롤링 오류: {news_err}")
 
     conn = get_connection()
     if conn:
@@ -809,6 +819,14 @@ def _is_regular_game(naver_game_id):
     return bool(re.match(pattern, naver_game_id))
 
 
+def _crawl_news_hourly():
+    try:
+        from crawler.crawl_naver_news import crawl_all_team_news
+        crawl_all_team_news()
+    except Exception as e:
+        print(f"[{datetime.now()}] 뉴스 시간별 크롤링 오류: {e}")
+
+
 def run_scheduler():
     print("PlayBall 스케줄러 시작!")
 
@@ -831,6 +849,9 @@ def run_scheduler():
 
     # 매시간: 좀비 크롬 정리
     schedule.every(1).hours.do(kill_zombie_chrome)
+
+    # 매시간: 팀 뉴스 크롤링
+    schedule.every(1).hours.do(_crawl_news_hourly)
 
     print("스케줄 등록 완료!")
     print("- 1분마다 (UTC 01:00~15:00 = KST 10:00~00:00): 경기 상태/이닝/선수/투구 업데이트")
