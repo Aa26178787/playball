@@ -269,11 +269,24 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   }
 
   Widget _buildGameList() {
-    final filtered = _myTeamOnly && _favoriteTeamIds.isNotEmpty
-        ? _games.where((g) =>
-            _favoriteTeamIds.contains(g['home_team_id']) ||
-            _favoriteTeamIds.contains(g['away_team_id'])).toList()
-        : _games;
+    List filtered;
+    if (_myTeamOnly && _favoriteTeamIds.isNotEmpty) {
+      filtered = _games.where((g) =>
+          _favoriteTeamIds.contains(g['home_team_id']) ||
+          _favoriteTeamIds.contains(g['away_team_id'])).toList();
+    } else if (_favoriteTeamIds.isNotEmpty) {
+      // 마이팀 경기 상단 고정
+      final my = _games.where((g) =>
+          _favoriteTeamIds.contains(g['home_team_id']) ||
+          _favoriteTeamIds.contains(g['away_team_id'])).toList();
+      final others = _games.where((g) =>
+          !_favoriteTeamIds.contains(g['home_team_id']) &&
+          !_favoriteTeamIds.contains(g['away_team_id'])).toList();
+      filtered = [...my, ...others];
+    } else {
+      filtered = _games;
+    }
+
     if (filtered.isEmpty) {
       return Center(
         child: Text(
@@ -287,7 +300,12 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: filtered.length,
-        itemBuilder: (context, index) => GameCard(game: Game.fromJson(filtered[index])),
+        itemBuilder: (context, index) {
+          final g = filtered[index];
+          final isMyTeam = _favoriteTeamIds.contains(g['home_team_id']) ||
+              _favoriteTeamIds.contains(g['away_team_id']);
+          return GameCard(game: Game.fromJson(g), isMyTeam: isMyTeam && !_myTeamOnly);
+        },
       ),
     );
   }
@@ -385,8 +403,9 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 
 class GameCard extends StatelessWidget {
   final Game game;
+  final bool isMyTeam;
 
-  const GameCard({super.key, required this.game});
+  const GameCard({super.key, required this.game, this.isMyTeam = false});
 
   Widget _starterChip(String name, bool isHome) {
     return Container(
@@ -468,6 +487,12 @@ class GameCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isMyTeam
+            ? const BorderSide(color: Color(0xFF1A237E), width: 1.5)
+            : BorderSide.none,
+      ),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -486,6 +511,20 @@ class GameCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isMyTeam)
+                        Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1A237E),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('MY',
+                              style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -506,6 +545,8 @@ class GameCard extends StatelessWidget {
                         fontSize: 12,
                       ),
                     ),
+                  ),
+                    ],
                   ),
                   Row(
                     mainAxisSize: MainAxisSize.min,
