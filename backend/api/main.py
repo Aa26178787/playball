@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routers import games, players, teams, auth, user, stadiums, widget, community, calendar, phone
+from api.routers import games, players, teams, auth, user, stadiums, widget, community, calendar, phone, email_verify
 
 
 app = FastAPI(
@@ -27,6 +27,7 @@ app.include_router(widget.router, prefix="/widget", tags=["위젯"])
 app.include_router(community.router, prefix="/community", tags=["커뮤니티"])
 app.include_router(calendar.router, prefix="/calendar", tags=["캘린더"])
 app.include_router(phone.router, prefix="/user/phone", tags=["전화인증"])
+app.include_router(email_verify.router, prefix="/user/email", tags=["이메일인증"])
 
 
 @app.get("/")

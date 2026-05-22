@@ -11,55 +11,53 @@ class PhoneVerifyScreen extends StatefulWidget {
 }
 
 class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
-  final _phoneCtrl = TextEditingController();
   final _codeCtrl = TextEditingController();
 
-  bool _codeSent = false;
+  String? _sentToEmail;
   bool _sending = false;
   bool _verifying = false;
   String? _error;
 
   Future<void> _sendCode() async {
-    final phone = _phoneCtrl.text.trim();
-    if (phone.isEmpty) return;
     setState(() { _sending = true; _error = null; });
     try {
-      await ApiService.sendPhoneCode(phone);
-      setState(() { _codeSent = true; });
+      final res = await ApiService.sendEmailCode();
+      setState(() => _sentToEmail = res['email'] ?? '이메일');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('인증번호가 발송되었습니다 (5분 내 입력)')));
+          SnackBar(content: Text('인증번호를 ${_sentToEmail}로 발송했습니다 (5분 유효)')));
       }
     } on DioException catch (e) {
-      setState(() { _error = e.response?.data?['detail'] ?? 'SMS 발송 실패'; });
+      setState(() => _error = e.response?.data?['detail'] ?? '발송 실패');
     } finally {
-      setState(() { _sending = false; });
+      setState(() => _sending = false);
     }
   }
 
   Future<void> _verifyCode() async {
-    final phone = _phoneCtrl.text.trim();
     final code = _codeCtrl.text.trim();
-    if (phone.isEmpty || code.isEmpty) return;
+    if (code.length != 6) {
+      setState(() => _error = '6자리 인증번호를 입력하세요');
+      return;
+    }
     setState(() { _verifying = true; _error = null; });
     try {
-      await ApiService.verifyPhoneCode(phone, code);
+      await ApiService.verifyEmailCode(code);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('전화번호 인증 완료')));
+          const SnackBar(content: Text('이메일 인증 완료')));
         widget.onVerified?.call();
         Navigator.pop(context, true);
       }
     } on DioException catch (e) {
-      setState(() { _error = e.response?.data?['detail'] ?? '인증 실패'; });
+      setState(() => _error = e.response?.data?['detail'] ?? '인증 실패');
     } finally {
-      setState(() { _verifying = false; });
+      setState(() => _verifying = false);
     }
   }
 
   @override
   void dispose() {
-    _phoneCtrl.dispose();
     _codeCtrl.dispose();
     super.dispose();
   }
@@ -67,83 +65,77 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('전화번호 인증')),
+      appBar: AppBar(title: const Text('이메일 인증')),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('전화번호 인증 후 커뮤니티 글쓰기가 가능합니다.',
-                style: TextStyle(color: Colors.grey, fontSize: 13)),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _phoneCtrl,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
-                      labelText: '전화번호 (예: 01012345678)',
-                      border: OutlineInputBorder(),
-                    ),
-                    enabled: !_codeSent,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _sending || _codeSent ? null : _sendCode,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1A237E),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                  ),
-                  child: _sending
-                      ? const SizedBox(width: 18, height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : Text(_codeSent ? '발송됨' : '발송'),
-                ),
-              ],
+            const Icon(Icons.mark_email_unread_outlined,
+                size: 56, color: Color(0xFF1A237E)),
+            const SizedBox(height: 16),
+            const Text(
+              '가입한 이메일로 인증번호를 발송합니다.\n인증 후 커뮤니티 글쓰기가 가능합니다.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.6),
             ),
-            if (_codeSent) ...[
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _codeCtrl,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      decoration: const InputDecoration(
-                        labelText: '인증번호 6자리',
-                        border: OutlineInputBorder(),
-                        counterText: '',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _verifying ? null : _verifyCode,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                    ),
-                    child: _verifying
-                        ? const SizedBox(width: 18, height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('확인'),
-                  ),
-                ],
+            const SizedBox(height: 32),
+            if (_sentToEmail == null) ...[
+              ElevatedButton.icon(
+                onPressed: _sending ? null : _sendCode,
+                icon: _sending
+                    ? const SizedBox(width: 18, height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.send),
+                label: Text(_sending ? '발송 중...' : '인증번호 발송'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1A237E),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
               ),
+            ] else ...[
+              Text('인증번호 발송: $_sentToEmail',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, color: Colors.grey)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _codeCtrl,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 24, letterSpacing: 8, fontWeight: FontWeight.bold),
+                decoration: const InputDecoration(
+                  hintText: '------',
+                  border: OutlineInputBorder(),
+                  counterText: '',
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _verifying ? null : _verifyCode,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: _verifying
+                    ? const SizedBox(width: 18, height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('인증 확인', style: TextStyle(fontSize: 16)),
+              ),
+              const SizedBox(height: 8),
               TextButton(
-                onPressed: () => setState(() { _codeSent = false; _codeCtrl.clear(); }),
-                child: const Text('번호 다시 입력'),
+                onPressed: _sending ? null : _sendCode,
+                child: const Text('인증번호 재발송'),
               ),
             ],
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                child: Text(_error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.red)),
               ),
           ],
         ),

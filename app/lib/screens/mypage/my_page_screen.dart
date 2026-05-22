@@ -188,15 +188,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: Icon(
-          Icons.phone_android,
+          Icons.email_outlined,
           color: verified ? Colors.green : Colors.orange,
         ),
         title: Text(verified
-            ? '전화번호 인증 완료'
-            : '전화번호 미인증'),
+            ? '이메일 인증 완료'
+            : '이메일 미인증'),
         subtitle: Text(verified
-            ? (phone ?? '')
-            : '커뮤니티 글쓰기를 위해 인증하세요',
+            ? (_user?['email'] ?? '')
+            : '커뮤니티 글쓰기를 위해 이메일 인증하세요',
             style: const TextStyle(fontSize: 12)),
         trailing: verified
             ? const Icon(Icons.check_circle, color: Colors.green)
@@ -243,7 +243,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 final t = e.value;
                 final code = t['short_name'] ?? '';
                 return ListTile(
-                  leading: TeamLogo(code: code, size: 36),
+                  leading: TeamLogo(teamCode: code, size: 36),
                   title: Text(t['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: Text(
                     '${t['rank'] ?? '-'}위  ${t['wins'] ?? 0}승 ${t['losses'] ?? 0}패'
@@ -251,7 +251,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     style: const TextStyle(fontSize: 12),
                   ),
                   onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => TeamDetailScreen(teamId: t['id']))),
+                      builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(t)))),
                 );
               }).toList(),
             ),

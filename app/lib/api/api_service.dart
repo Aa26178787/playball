@@ -80,17 +80,17 @@ class ApiService {
     return res.data;
   }
 
-  static Future<void> sendPhoneCode(String phone) async {
+  static Future<Map<String, dynamic>> sendEmailCode() async {
     final headers = await authHeaders();
-    await _dio.post('/user/phone/send-code',
-        data: {'phone_number': phone}, options: Options(headers: headers));
+    final res = await _dio.post('/user/email/send-code',
+        options: Options(headers: headers));
+    return res.data;
   }
 
-  static Future<void> verifyPhoneCode(String phone, String code) async {
+  static Future<void> verifyEmailCode(String code) async {
     final headers = await authHeaders();
-    await _dio.post('/user/phone/verify',
-        data: {'phone_number': phone, 'code': code},
-        options: Options(headers: headers));
+    await _dio.post('/user/email/verify',
+        data: {'code': code}, options: Options(headers: headers));
   }
 
   // ===== 경기 API =====
