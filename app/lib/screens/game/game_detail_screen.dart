@@ -1846,34 +1846,42 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(3),
+                        borderRadius: BorderRadius.circular(4),
                         child: SizedBox(
-                          height: 8,
+                          height: 12,
                           child: Row(
                             children: types.map<Widget>((t) {
-                              final pct = (t['pct'] as int? ?? 0) / 100.0;
+                              final typeStr = t['type'] as String? ?? '';
+                              final color = _pitchColor(_pitchTypeMap[typeStr] ?? typeStr);
                               return Expanded(
                                 flex: t['pct'] as int? ?? 1,
-                                child: Container(color: _pitchColor(t['type'] as String? ?? '')),
+                                child: Container(color: color),
                               );
                             }).toList(),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Wrap(
-                        spacing: 6,
-                        runSpacing: 2,
-                        children: types.take(5).map<Widget>((t) {
-                          final color = _pitchColor(t['type'] as String? ?? '');
+                        spacing: 10,
+                        runSpacing: 3,
+                        children: types.map<Widget>((t) {
+                          final typeStr = t['type'] as String? ?? '';
+                          final korName = _pitchTypeMap[typeStr] ?? typeStr;
+                          final color = _pitchColor(korName);
+                          final pct = t['pct'] as int? ?? 0;
+                          final count = t['count'] as int? ?? 0;
                           return Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(width: 8, height: 8,
                                   decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
                               const SizedBox(width: 3),
-                              Text('${t['type']} ${t['pct']}%',
-                                  style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                              Text(korName,
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
+                              const SizedBox(width: 3),
+                              Text('$pct% ($count구)',
+                                  style: TextStyle(fontSize: 10, color: Colors.grey[500])),
                             ],
                           );
                         }).toList(),

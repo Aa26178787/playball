@@ -23,6 +23,9 @@ class _PlayerScreenState extends State<PlayerScreen>
   String _hitterSort = 'avg';
   String _pitcherSort = 'era';
 
+  List _teams = [];
+  int? _selectedTeamId;
+
   List _searchResults = [];
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
@@ -55,6 +58,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       if (!_tabController.indexIsChanging) return;
       if (_tabController.index == 1 && _pitchers.isEmpty) _loadPitchers();
     });
+    _loadTeams();
     _loadHitters();
   }
 
@@ -65,10 +69,17 @@ class _PlayerScreenState extends State<PlayerScreen>
     super.dispose();
   }
 
+  Future<void> _loadTeams() async {
+    try {
+      final data = await ApiService.getTeams();
+      if (mounted) setState(() => _teams = data['teams'] ?? []);
+    } catch (_) {}
+  }
+
   Future<void> _loadHitters() async {
     setState(() => _hitterLoading = true);
     try {
-      final data = await ApiService.getHitters(sortBy: _hitterSort, limit: 200);
+      final data = await ApiService.getHitters(sortBy: _hitterSort, limit: 200, teamId: _selectedTeamId);
       if (mounted) setState(() { _hitters = data['hitters'] ?? []; _hitterLoading = false; });
     } catch (_) {
       if (mounted) setState(() => _hitterLoading = false);
@@ -78,7 +89,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   Future<void> _loadPitchers() async {
     setState(() => _pitcherLoading = true);
     try {
-      final data = await ApiService.getPitchers(sortBy: _pitcherSort, limit: 200);
+      final data = await ApiService.getPitchers(sortBy: _pitcherSort, limit: 200, teamId: _selectedTeamId);
       if (mounted) setState(() { _pitchers = data['pitchers'] ?? []; _pitcherLoading = false; });
     } catch (_) {
       if (mounted) setState(() => _pitcherLoading = false);
@@ -120,6 +131,57 @@ class _PlayerScreenState extends State<PlayerScreen>
       case 'war':        return (p['war'] as num?)?.toStringAsFixed(1) ?? '-';
       default:           return '-';
     }
+  }
+
+  Widget _buildTeamFilterChips(void Function(int?) onSelect) {
+    return SizedBox(
+      height: 34,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 2, 12, 0),
+        itemCount: _teams.length + 1,
+        itemBuilder: (_, i) {
+          if (i == 0) {
+            final sel = _selectedTeamId == null;
+            return GestureDetector(
+              onTap: () => onSelect(null),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                margin: const EdgeInsets.only(right: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: sel ? const Color(0xFF1A237E) : Colors.grey.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text('전체',
+                    style: TextStyle(fontSize: 11, color: sel ? Colors.white : Colors.black87,
+                        fontWeight: sel ? FontWeight.bold : FontWeight.normal)),
+              ),
+            );
+          }
+          final t = _teams[i - 1] as Map;
+          final tid = t['id'] as int?;
+          final code = t['short_name'] as String? ?? '';
+          final sel = _selectedTeamId == tid;
+          return GestureDetector(
+            onTap: () => onSelect(tid),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              margin: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: sel ? teamColor(code) : Colors.grey.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+                border: sel ? null : Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+              ),
+              child: Text(t['short_name'] ?? t['name'] ?? '',
+                  style: TextStyle(fontSize: 11, color: sel ? Colors.white : Colors.black87,
+                      fontWeight: sel ? FontWeight.bold : FontWeight.normal)),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildSortChips(
@@ -319,7 +381,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                         setState(() { _hitterSort = val; _hitters = []; });
                         _loadHitters();
                       }),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
+                      _buildTeamFilterChips((tid) {
+                        setState(() { _selectedTeamId = tid; _hitters = []; });
+                        _loadHitters();
+                      }),
+                      const SizedBox(height: 4),
                       const Divider(height: 1),
                       Expanded(child: _buildHitterList()),
                     ],
@@ -331,7 +398,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                         setState(() { _pitcherSort = val; _pitchers = []; });
                         _loadPitchers();
                       }),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
+                      _buildTeamFilterChips((tid) {
+                        setState(() { _selectedTeamId = tid; _pitchers = []; });
+                        _loadPitchers();
+                      }),
+                      const SizedBox(height: 4),
                       const Divider(height: 1),
                       Expanded(child: _buildPitcherList()),
                     ],

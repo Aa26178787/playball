@@ -16,12 +16,14 @@ class _TeamScreenState extends State<TeamScreen>
   late TabController _tabController;
   List _teams = [];
   bool _isLoading = true;
+  Set<int> _favoriteTeamIds = {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _loadTeams();
+    _loadFavoriteTeams();
   }
 
   @override
@@ -41,6 +43,18 @@ class _TeamScreenState extends State<TeamScreen>
     } catch (e) {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _loadFavoriteTeams() async {
+    try {
+      final data = await ApiService.getFavoriteTeams();
+      final teams = (data['teams'] as List? ?? []);
+      if (mounted) {
+        setState(() {
+          _favoriteTeamIds = teams.map((t) => t['id'] as int).toSet();
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -120,10 +134,17 @@ class _TeamScreenState extends State<TeamScreen>
       rankBg = const Color(0xFF78909C); // 회색 (하위 5)
     }
 
+    final isFav = _favoriteTeamIds.contains(team['id'] as int? ?? -1);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      elevation: isFav ? 2 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: isFav
+            ? const BorderSide(color: Color(0xFF1A237E), width: 1.5)
+            : BorderSide.none,
+      ),
       child: InkWell(
         onTap: () => Navigator.push(
           context,
@@ -159,6 +180,10 @@ class _TeamScreenState extends State<TeamScreen>
                     team['name'] ?? '',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
+                  if (isFav) ...[
+                    const SizedBox(width: 6),
+                    const Icon(Icons.star, size: 16, color: Color(0xFF1A237E)),
+                  ],
                 ],
               ),
               const SizedBox(height: 10),
