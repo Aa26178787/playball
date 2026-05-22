@@ -74,7 +74,7 @@ def get_hitters(
     RATE_STATS_HITTER = {"avg", "ops", "obp", "slg", "woba", "babip", "iso", "wrc_plus"}
     qual_filter = (
         "AND (bs.at_bats + bs.walks + COALESCE(bs.hbp, 0) + COALESCE(bs.sac, 0) + COALESCE(bs.sf, 0)) "
-        ">= (SELECT GREATEST(COALESCE(MAX(games), 1), 1) * 3 FROM batter_stats WHERE season = bs.season)"
+        ">= (SELECT GREATEST(COALESCE(MAX(games), 1), 1) * 3.1 FROM batter_stats WHERE season = bs.season)"
         if sort_by in RATE_STATS_HITTER else ""
     )
 
