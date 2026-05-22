@@ -23,21 +23,21 @@ class _PlayerScreenState extends State<PlayerScreen>
   final TextEditingController _searchController = TextEditingController();
 
   static const List<Map<String, String>> _hitterSorts = [
-    {'value': 'avg',       'label': '타율',       'title': '타율왕'},
-    {'value': 'home_runs', 'label': '홈런',       'title': '홈런왕'},
-    {'value': 'rbis',      'label': '타점',       'title': '타점왕'},
-    {'value': 'hits',      'label': '안타',       'title': '안타왕'},
-    {'value': 'ops',       'label': '출루장타율', 'title': 'OPS 1위'},
-    {'value': 'war',       'label': 'WAR',        'title': 'WAR 1위'},
+    {'value': 'avg',       'label': '타율'},
+    {'value': 'home_runs', 'label': '홈런'},
+    {'value': 'rbis',      'label': '타점'},
+    {'value': 'hits',      'label': '안타'},
+    {'value': 'ops',       'label': '출루장타율'},
+    {'value': 'war',       'label': 'WAR'},
   ];
 
   static const List<Map<String, String>> _pitcherSorts = [
-    {'value': 'era',        'label': '평균자책점', 'title': 'ERA 1위'},
-    {'value': 'wins',       'label': '승',         'title': '승리왕'},
-    {'value': 'strikeouts', 'label': '탈삼진',     'title': '삼진왕'},
-    {'value': 'whip',       'label': '이닝당출루', 'title': 'WHIP 1위'},
-    {'value': 'saves',      'label': '세이브',     'title': '세이브왕'},
-    {'value': 'holds',      'label': '홀드',       'title': '홀드왕'},
+    {'value': 'era',        'label': '평균자책점'},
+    {'value': 'wins',       'label': '승'},
+    {'value': 'strikeouts', 'label': '탈삼진'},
+    {'value': 'whip',       'label': '이닝당출루'},
+    {'value': 'saves',      'label': '세이브'},
+    {'value': 'holds',      'label': '홀드'},
   ];
 
   @override
@@ -114,59 +114,44 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
   }
 
-  Widget _buildPlayerListItem(Map p, int rank, String statVal) {
-    final medalColors = [const Color(0xFFFFD700), const Color(0xFFC0C0C0), const Color(0xFFCD7F32)];
-    final rankColor = rank <= 3 ? medalColors[rank - 1] : Colors.grey;
-
+  Widget _buildPlayerListItem(Map p, String statVal, String statLabel) {
     return InkWell(
       onTap: () => Navigator.push(context,
           MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
-            SizedBox(
-              width: 26,
-              child: Text(
-                '$rank',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: rankColor,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
             CircleAvatar(
-              radius: 16,
+              radius: 18,
               backgroundImage: (p['profile_image'] != null && (p['profile_image'] as String).isNotEmpty)
                   ? NetworkImage(p['profile_image'] as String)
                   : null,
-              backgroundColor: rankColor.withValues(alpha: 0.18),
+              backgroundColor: const Color(0xFF1A237E).withValues(alpha: 0.1),
               child: (p['profile_image'] == null || (p['profile_image'] as String).isEmpty)
-                  ? Icon(Icons.person, size: 14, color: rankColor)
+                  ? const Icon(Icons.person, size: 16, color: Color(0xFF1A237E))
                   : null,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(p['name'] ?? '',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                   Text(p['team'] ?? '',
-                      style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                 ],
               ),
             ),
-            Text(
-              statVal,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: rank == 1 ? const Color(0xFF1A237E) : null,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(statVal,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(statLabel,
+                    style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+              ],
             ),
           ],
         ),
@@ -185,7 +170,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
             child: Row(
               children: [
                 Container(
@@ -212,14 +197,17 @@ class _PlayerScreenState extends State<PlayerScreen>
             ),
             child: Column(
               children: players.asMap().entries.map((entry) {
-                final rank = entry.key + 1;
+                final idx = entry.key;
                 final p = entry.value as Map;
-                final statVal = isHitter ? _hitterStatValue(p, key) : _pitcherStatValue(p, key);
+                final statVal = isHitter
+                    ? _hitterStatValue(p, key)
+                    : _pitcherStatValue(p, key);
                 return Column(
                   children: [
-                    _buildPlayerListItem(p, rank, statVal),
-                    if (rank < players.length)
-                      Divider(height: 1, indent: 52, endIndent: 16, color: Colors.grey.withValues(alpha: 0.2)),
+                    _buildPlayerListItem(p, statVal, label),
+                    if (idx < players.length - 1)
+                      Divider(height: 1, indent: 48, endIndent: 16,
+                          color: Colors.grey.withValues(alpha: 0.2)),
                   ],
                 );
               }).toList(),
