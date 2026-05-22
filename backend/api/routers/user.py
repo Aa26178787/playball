@@ -25,6 +25,35 @@ class PushToken(BaseModel):
     token: str
 
 
+class NicknameUpdate(BaseModel):
+    nickname: str
+
+
+# ===== 닉네임 변경 =====
+
+@router.put("/nickname")
+def update_nickname(body: NicknameUpdate, current_user: dict = Depends(get_current_user)):
+    nickname = body.nickname.strip()
+    if len(nickname) < 2 or len(nickname) > 20:
+        raise HTTPException(status_code=400, detail="닉네임은 2~20자여야 합니다")
+
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM users WHERE nickname = %s AND id != %s", (nickname, current_user["user_id"]))
+    if cur.fetchone():
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=400, detail="이미 사용 중인 닉네임입니다")
+
+    cur.execute("UPDATE users SET nickname = %s WHERE id = %s", (nickname, current_user["user_id"]))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"message": "닉네임 변경 완료", "nickname": nickname}
+
+
 # ===== 마이팀 =====
 
 @router.get("/favorite-teams")

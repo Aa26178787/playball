@@ -73,6 +73,26 @@ class ApiService {
     return res.data;
   }
 
+  static Future<Map<String, dynamic>> updateNickname(String nickname) async {
+    final headers = await authHeaders();
+    final res = await _dio.put('/user/nickname',
+        data: {'nickname': nickname}, options: Options(headers: headers));
+    return res.data;
+  }
+
+  static Future<void> sendPhoneCode(String phone) async {
+    final headers = await authHeaders();
+    await _dio.post('/user/phone/send-code',
+        data: {'phone_number': phone}, options: Options(headers: headers));
+  }
+
+  static Future<void> verifyPhoneCode(String phone, String code) async {
+    final headers = await authHeaders();
+    await _dio.post('/user/phone/verify',
+        data: {'phone_number': phone, 'code': code},
+        options: Options(headers: headers));
+  }
+
   // ===== 경기 API =====
   static Future<Map<String, dynamic>> getTodayGames() async {
     final res = await _dio.get('/games/today');

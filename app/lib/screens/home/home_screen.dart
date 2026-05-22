@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+
 import '../../models/game.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
@@ -9,7 +8,7 @@ import '../team/team_screen.dart';
 import '../player/player_screen.dart';
 import '../community/community_screen.dart';
 import '../calendar/calendar_screen.dart';
-import '../auth/login_screen.dart';
+import '../mypage/my_page_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -150,16 +149,12 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await context.read<AuthProvider>().logout();
-              if (context.mounted) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
-              }
-            },
+            icon: const Icon(Icons.person_outline),
+            tooltip: '마이페이지',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MyPageScreen()),
+            ),
           ),
         ],
       ),

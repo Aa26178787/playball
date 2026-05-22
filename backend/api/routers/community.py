@@ -161,6 +161,13 @@ def create_post(body: PostCreate, current_user: dict = Depends(get_current_user)
         raise HTTPException(status_code=500, detail="DB 연결 실패")
 
     cur = conn.cursor()
+    cur.execute("SELECT phone_verified FROM users WHERE id = %s", (current_user["user_id"],))
+    row = cur.fetchone()
+    if not row or not row[0]:
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=403, detail="phone_not_verified")
+
     cur.execute("""
         INSERT INTO posts (user_id, team_id, title, content, category)
         VALUES (%s, %s, %s, %s, %s)

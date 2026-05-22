@@ -196,7 +196,8 @@ def get_me(current_user: dict = Depends(get_current_user)):
     cur.execute("""
         SELECT u.id, u.email, u.nickname, u.profile_image, u.created_at,
                us.notify_game_start, us.notify_score_change,
-               us.notify_game_end, us.notify_my_team_only
+               us.notify_game_end, us.notify_my_team_only,
+               u.phone_number, u.phone_verified
         FROM users u
         LEFT JOIN user_settings us ON u.id = us.user_id
         WHERE u.id = %s
@@ -209,15 +210,17 @@ def get_me(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="유저를 찾을 수 없습니다")
 
     return {
-        "id":           row[0],
-        "email":        row[1],
-        "nickname":     row[2],
-        "profile_image": row[3],
-        "created_at":   str(row[4]),
+        "id":             row[0],
+        "email":          row[1],
+        "nickname":       row[2],
+        "profile_image":  row[3],
+        "created_at":     str(row[4]),
+        "phone_number":   row[9],
+        "phone_verified": row[10] or False,
         "settings": {
-            "notify_game_start":  row[5],
+            "notify_game_start":   row[5],
             "notify_score_change": row[6],
-            "notify_game_end":    row[7],
+            "notify_game_end":     row[7],
             "notify_my_team_only": row[8],
         }
     }
