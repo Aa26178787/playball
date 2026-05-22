@@ -67,6 +67,15 @@ def get_hitters(
     order = sort_map.get(sort_by, "avg DESC NULLS LAST")
     team_filter = "AND p.team_id = %s" if team_id else ""
     position_filter = "AND p.position = %s" if position else ""
+
+    # 비율 스탯은 규정타석(PA >= 팀 경기수 × 3.1) 필터 적용
+    RATE_STATS_HITTER = {"avg", "ops", "obp", "slg", "woba", "babip", "iso", "wrc_plus"}
+    qual_filter = (
+        "AND bs.pa >= (SELECT GREATEST(COALESCE(MAX(games), 1), 1) * 3 "
+        "              FROM batter_stats WHERE season = bs.season)"
+        if sort_by in RATE_STATS_HITTER else ""
+    )
+
     params = [season] + ([team_id] if team_id else []) + ([position] if position else []) + [limit]
 
     cur = conn.cursor()
@@ -86,6 +95,7 @@ def get_hitters(
             JOIN teams t ON p.team_id = t.id
             WHERE bs.season = %s {team_filter} {position_filter}
             AND p.player_type = '타자'
+            {qual_filter}
             ORDER BY p.id
             LIMIT 1000
         ) sub
@@ -148,6 +158,15 @@ def get_pitchers(
     order = sort_map.get(sort_by, "era ASC NULLS LAST")
     team_filter = "AND p.team_id = %s" if team_id else ""
     throws_filter = "AND p.throws = %s" if throws else ""
+
+    # 비율 스탯은 규정이닝(IP >= 팀 경기수 × 1) 필터 적용
+    RATE_STATS_PITCHER = {"era", "whip", "fip", "k_per_9", "bb_per_9", "babip"}
+    qual_filter = (
+        "AND ps.innings_pitched >= (SELECT GREATEST(COALESCE(MAX(games), 1), 1) * 1.0 "
+        "                            FROM pitcher_stats WHERE season = ps.season)"
+        if sort_by in RATE_STATS_PITCHER else ""
+    )
+
     params = [season] + ([team_id] if team_id else []) + ([throws] if throws else []) + [limit]
 
     cur = conn.cursor()
@@ -169,6 +188,7 @@ def get_pitchers(
             JOIN teams t ON p.team_id = t.id
             WHERE ps.season = %s {team_filter} {throws_filter}
             AND p.player_type = '투수'
+            {qual_filter}
             ORDER BY p.id
             LIMIT 1000
         ) sub
