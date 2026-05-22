@@ -109,6 +109,11 @@ class ApiService {
     return res.data;
   }
 
+  static Future<Map<String, dynamic>> getGamePitchTypes(int gameId) async {
+    final res = await _dio.get('/games/$gameId/pitch-types');
+    return res.data;
+  }
+
   static Future<Map<String, dynamic>?> getGameWeather(int gameId) async {
     try {
       final res = await _dio.get('/games/$gameId/weather');

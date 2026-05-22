@@ -18,6 +18,10 @@ class Game {
   final String? homeStarter;
   final String? awayStarter;
   final Map<String, dynamic>? weather;
+  final List<String> homeRecent5;
+  final List<String> awayRecent5;
+  final int? homeTeamId;
+  final int? awayTeamId;
 
   Game({
     required this.id,
@@ -39,6 +43,10 @@ class Game {
     this.homeStarter,
     this.awayStarter,
     this.weather,
+    this.homeRecent5 = const [],
+    this.awayRecent5 = const [],
+    this.homeTeamId,
+    this.awayTeamId,
   });
 
   factory Game.fromJson(Map<String, dynamic> json) {
@@ -64,6 +72,10 @@ class Game {
       weather:       json['weather'] != null
                        ? Map<String, dynamic>.from(json['weather'])
                        : null,
+      homeRecent5:   List<String>.from(json['home_recent_5'] ?? []),
+      awayRecent5:   List<String>.from(json['away_recent_5'] ?? []),
+      homeTeamId:    json['home_team_id'],
+      awayTeamId:    json['away_team_id'],
     );
   }
 }

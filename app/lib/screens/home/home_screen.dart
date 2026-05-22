@@ -77,12 +77,28 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   List _games = [];
   List _todayRosterChanges = [];
   bool _isLoading = true;
+  Set<int> _favoriteTeamIds = {};
+  bool _myTeamOnly = false;
 
   @override
   void initState() {
     super.initState();
     _loadGames();
     _loadTodayRosterChanges();
+    _loadFavoriteTeams();
+  }
+
+  Future<void> _loadFavoriteTeams() async {
+    try {
+      final data = await ApiService.getFavoriteTeams();
+      if (mounted) {
+        setState(() {
+          _favoriteTeamIds = Set.from(
+            (data['teams'] as List? ?? []).map((t) => t['id'] as int),
+          );
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadTodayRosterChanges() async {
@@ -199,25 +215,75 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
           if (_todayRosterChanges.isNotEmpty)
             _buildTodayRosterBanner(),
 
+          // 마이팀 필터
+          if (_favoriteTeamIds.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() => _myTeamOnly = !_myTeamOnly),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _myTeamOnly ? const Color(0xFF1A237E) : Colors.grey[200],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.star,
+                              size: 14,
+                              color: _myTeamOnly ? Colors.amber : Colors.grey[500]),
+                          const SizedBox(width: 4),
+                          Text(
+                            '마이팀',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: _myTeamOnly ? Colors.white : Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // 경기 목록
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _games.isEmpty
-                    ? const Center(child: Text('경기가 없습니다'))
-                    : RefreshIndicator(
-                        onRefresh: _loadGames,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _games.length,
-                          itemBuilder: (context, index) {
-                            final game = _games[index];
-                            return GameCard(game: Game.fromJson(game));
-                          },
-                        ),
-                      ),
+                : _buildGameList(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGameList() {
+    final filtered = _myTeamOnly && _favoriteTeamIds.isNotEmpty
+        ? _games.where((g) =>
+            _favoriteTeamIds.contains(g['home_team_id']) ||
+            _favoriteTeamIds.contains(g['away_team_id'])).toList()
+        : _games;
+    if (filtered.isEmpty) {
+      return Center(
+        child: Text(
+          _myTeamOnly ? '마이팀 경기가 없습니다' : '경기가 없습니다',
+          style: const TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _loadGames,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: filtered.length,
+        itemBuilder: (context, index) => GameCard(game: Game.fromJson(filtered[index])),
       ),
     );
   }
@@ -348,6 +414,35 @@ class GameCard extends StatelessWidget {
     ];
     if (parts.isEmpty) return null;
     return Text(parts.join(' '), style: const TextStyle(fontSize: 12, color: Colors.blueGrey));
+  }
+
+  Widget _buildRecentBar(List<String> recent, String teamName, bool isHome) {
+    if (recent.isEmpty) return const SizedBox.shrink();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(isHome ? '홈 ' : '원정 ',
+            style: TextStyle(fontSize: 9, color: Colors.grey[400])),
+        ...recent.map((r) {
+          Color c;
+          if (r == 'W') c = Colors.blue;
+          else if (r == 'L') c = Colors.red;
+          else c = Colors.grey;
+          return Container(
+            width: 14,
+            height: 14,
+            margin: const EdgeInsets.only(right: 2),
+            decoration: BoxDecoration(
+              color: c.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(3),
+              border: Border.all(color: c.withOpacity(0.5), width: 0.8),
+            ),
+            alignment: Alignment.center,
+            child: Text(r, style: TextStyle(fontSize: 8, color: c, fontWeight: FontWeight.bold)),
+          );
+        }),
+      ],
+    );
   }
 
   Color _statusColor() {
@@ -548,6 +643,19 @@ class GameCard extends StatelessWidget {
                     ),
                     child: const Text('라인업 확정',
                         style: TextStyle(fontSize: 11, color: Colors.green)),
+                  ),
+                ),
+
+              // 최근 5경기 W/L/D
+              if (game.homeRecent5.isNotEmpty || game.awayRecent5.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildRecentBar(game.homeRecent5, game.homeTeam, true),
+                      _buildRecentBar(game.awayRecent5, game.awayTeam, false),
+                    ],
                   ),
                 ),
             ],

@@ -4,6 +4,41 @@ from api.weather_service import get_weather, get_forecast_at
 
 router = APIRouter()
 
+
+def _batch_recent5(cur, team_ids: list) -> dict:
+    """team_id → ['W','L','D',...] 최신순 5개"""
+    if not team_ids:
+        return {}
+    cur.execute("""
+        SELECT team_id, result FROM (
+            SELECT
+                t.team_id,
+                CASE
+                    WHEN g.home_team_id = t.team_id THEN
+                        CASE WHEN g.home_score > g.away_score THEN 'W'
+                             WHEN g.home_score < g.away_score THEN 'L'
+                             ELSE 'D' END
+                    ELSE
+                        CASE WHEN g.away_score > g.home_score THEN 'W'
+                             WHEN g.away_score < g.home_score THEN 'L'
+                             ELSE 'D' END
+                END as result,
+                ROW_NUMBER() OVER (
+                    PARTITION BY t.team_id
+                    ORDER BY g.game_date DESC, g.id DESC
+                ) as rn
+            FROM UNNEST(%s::int[]) AS t(team_id)
+            JOIN games g ON (g.home_team_id = t.team_id OR g.away_team_id = t.team_id)
+            WHERE g.status = '종료'
+        ) sub
+        WHERE rn <= 5
+        ORDER BY team_id, rn
+    """, (team_ids,))
+    result: dict = {}
+    for tid, res in cur.fetchall():
+        result.setdefault(tid, []).append(res)
+    return result
+
 import requests as req
 
 NAVER_HEADERS = {
@@ -579,7 +614,8 @@ def get_today_games():
             at.name AS away_team,
             at.short_name AS away_team_code,
             s.name AS stadium,
-            g.stadium_id, g.start_time
+            g.stadium_id, g.start_time,
+            g.home_team_id, g.away_team_id
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
@@ -589,6 +625,10 @@ def get_today_games():
     """)
 
     rows = cur.fetchall()
+
+    all_team_ids = list({tid for r in rows for tid in (r[14], r[15]) if tid})
+    recent5_map = _batch_recent5(cur, all_team_ids)
+
     cur.close()
     conn.close()
 
@@ -630,6 +670,10 @@ def get_today_games():
             "stadium":        r[11],
             "stadium_id":     stadium_id,
             "weather":        weather,
+            "home_team_id":   r[14],
+            "away_team_id":   r[15],
+            "home_recent_5":  recent5_map.get(r[14], []),
+            "away_recent_5":  recent5_map.get(r[15], []),
         })
 
     return {"games": games, "count": len(games)}
@@ -880,15 +924,27 @@ def get_games_by_date(date_str: str):
 
     rows = cur.fetchall()
 
-    # stadium_id 별도 조회
+    # stadium_id + team_id 별도 조회
     game_ids = [r[0] for r in rows]
     stadium_map: dict = {}
+    home_team_id_map: dict = {}
+    away_team_id_map: dict = {}
     if game_ids:
         cur.execute(
-            "SELECT id, stadium_id FROM games WHERE id = ANY(%s)", (game_ids,)
+            "SELECT id, stadium_id, home_team_id, away_team_id FROM games WHERE id = ANY(%s)",
+            (game_ids,)
         )
-        for gid, sid in cur.fetchall():
+        for gid, sid, htid, atid in cur.fetchall():
             stadium_map[gid] = sid
+            home_team_id_map[gid] = htid
+            away_team_id_map[gid] = atid
+
+    all_team_ids_date = list({
+        tid for gid in game_ids
+        for tid in (home_team_id_map.get(gid), away_team_id_map.get(gid))
+        if tid
+    })
+    recent5_map_date = _batch_recent5(cur, all_team_ids_date)
 
     cur.close()
     conn.close()
@@ -951,6 +1007,10 @@ def get_games_by_date(date_str: str):
             "home_starter":   r[16],
             "away_starter":   r[17],
             "weather":        weather,
+            "home_team_id":   home_team_id_map.get(r[0]),
+            "away_team_id":   away_team_id_map.get(r[0]),
+            "home_recent_5":  recent5_map_date.get(home_team_id_map.get(r[0]), []),
+            "away_recent_5":  recent5_map_date.get(away_team_id_map.get(r[0]), []),
         })
 
     return {"games": games, "count": len(games)}
@@ -1047,6 +1107,37 @@ def get_game_relay(game_id: int):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"중계 데이터 조회 실패: {str(e)}")
+
+
+@router.get("/{game_id}/pitch-types")
+def get_pitch_types(game_id: int):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM games WHERE id = %s", (game_id,))
+    if not cur.fetchone():
+        raise HTTPException(status_code=404, detail="경기를 찾을 수 없습니다")
+    cur.execute("""
+        SELECT pitcher_name, stuff, COUNT(*) as cnt
+        FROM game_pitches
+        WHERE game_id = %s
+          AND type = 1
+          AND stuff IS NOT NULL AND stuff != ''
+        GROUP BY pitcher_name, stuff
+        ORDER BY pitcher_name, cnt DESC
+    """, (game_id,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    pitchers: dict = {}
+    for pitcher_name, stuff, cnt in rows:
+        pitchers.setdefault(pitcher_name, []).append({'type': stuff, 'count': int(cnt)})
+    for types in pitchers.values():
+        total = sum(t['count'] for t in types)
+        for t in types:
+            t['pct'] = round(t['count'] / total * 100)
+    return {'pitchers': pitchers}
 
 
 @router.get("/{game_id}/weather")

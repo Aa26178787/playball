@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
 import 'player_detail_screen.dart';
+import 'player_compare_screen.dart';
 
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({super.key});
@@ -338,6 +339,14 @@ class _PlayerScreenState extends State<PlayerScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('선수 기록'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.compare_arrows),
+            tooltip: '선수 비교',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const PlayerCompareScreen())),
+          ),
+        ],
         bottom: _isSearching
             ? null
             : TabBar(

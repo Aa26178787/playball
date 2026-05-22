@@ -22,10 +22,33 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Map<String, dynamic>? _recordDetailData;
   Map<String, dynamic>? _relayAllData;
   Map<String, dynamic>? _weatherData;
+  Map<String, dynamic>? _pitchTypesData;
   bool _isLoading = true;
   bool _isRelayRefreshing = false;
   Timer? _refreshTimer;
   final ScrollController _inningScrollController = ScrollController();
+
+  static const _pitchColors = {
+    '직구': Color(0xFFE53935),
+    '포심': Color(0xFFE53935),
+    '패스트볼': Color(0xFFE53935),
+    '투심': Color(0xFFFF7043),
+    '싱커': Color(0xFFFF7043),
+    '슬라이더': Color(0xFF1E88E5),
+    '커터': Color(0xFF039BE5),
+    '커브': Color(0xFF43A047),
+    '체인지업': Color(0xFF8E24AA),
+    '스플리터': Color(0xFF6D4C41),
+    '포크볼': Color(0xFF546E7A),
+    '너클볼': Color(0xFF757575),
+  };
+
+  static Color _pitchColor(String type) {
+    for (final entry in _pitchColors.entries) {
+      if (type.contains(entry.key)) return entry.value;
+    }
+    return const Color(0xFF9E9E9E);
+  }
 
   static const _pitchTypeMap = {
     'FAST': '직구', 'CURV': '커브', 'SLID': '슬라이더',
@@ -98,6 +121,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             .catchError((_) {}),
         ApiService.getGameWeather(widget.gameId)
             .then((w) { if (mounted) setState(() => _weatherData = w); })
+            .catchError((_) {}),
+        ApiService.getGamePitchTypes(widget.gameId)
+            .then((d) { if (mounted) setState(() => _pitchTypesData = d); })
             .catchError((_) {}),
       ]);
 
@@ -1774,9 +1800,63 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             ],
           ],
         ),
-        subtitle: Text(
-          '${_formatInnings(p['innings_pitched'])}이닝  자책 ${p['earned_runs']}  실점 ${p['runs_allowed'] ?? p['earned_runs']}  삼진 ${p['strikeouts']}  사사구 ${p['walks'] ?? 0}',
-          style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${_formatInnings(p['innings_pitched'])}이닝  자책 ${p['earned_runs']}  실점 ${p['runs_allowed'] ?? p['earned_runs']}  삼진 ${p['strikeouts']}  사사구 ${p['walks'] ?? 0}',
+              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+            ),
+            if (_pitchTypesData != null) ...[
+              () {
+                final pitcherName = p['name'] as String? ?? '';
+                final types = (_pitchTypesData!['pitchers'] as Map<String, dynamic>?)
+                    ?[pitcherName] as List?;
+                if (types == null || types.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: SizedBox(
+                          height: 8,
+                          child: Row(
+                            children: types.map<Widget>((t) {
+                              final pct = (t['pct'] as int? ?? 0) / 100.0;
+                              return Expanded(
+                                flex: t['pct'] as int? ?? 1,
+                                child: Container(color: _pitchColor(t['type'] as String? ?? '')),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 2,
+                        children: types.take(5).map<Widget>((t) {
+                          final color = _pitchColor(t['type'] as String? ?? '');
+                          return Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(width: 8, height: 8,
+                                  decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                              const SizedBox(width: 3),
+                              Text('${t['type']} ${t['pct']}%',
+                                  style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                );
+              }(),
+            ],
+          ],
         ),
       ),
     );
