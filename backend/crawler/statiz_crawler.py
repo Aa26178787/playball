@@ -338,6 +338,7 @@ def save_players_and_stats(players, player_type):
 
     for p in players:
         try:
+            cur.execute("SAVEPOINT sp_player")
             cur.execute("SELECT id FROM teams WHERE short_name = %s", (p["team_code"],))
             team = cur.fetchone()
             if not team:
@@ -458,12 +459,12 @@ def save_players_and_stats(players, player_type):
                     p["walks"], p["strikeouts"], p["home_runs_allowed"],
                     p["era"], p["whip"], p["war"],
                 ))
+            cur.execute("RELEASE SAVEPOINT sp_player")
             saved_stats += 1
 
         except Exception as e:
             print(f"선수 저장 오류 ({p.get('name')}): {e}")
-            conn.rollback()
-            cur = conn.cursor()
+            cur.execute("ROLLBACK TO SAVEPOINT sp_player")
             continue
 
     conn.commit()
