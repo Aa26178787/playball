@@ -23,11 +23,21 @@ class CommentCreate(BaseModel):
     content: str
 
 
+class ReportCreate(BaseModel):
+    reason: str = "기타"
+
+
 # ===== 게시글 =====
 
 @router.get("/posts")
-def get_posts(team_id: Optional[int] = None, category: Optional[str] = None, page: int = 1, limit: int = 20):
-    """게시글 목록 조회"""
+def get_posts(
+    team_id: Optional[int] = None,
+    category: Optional[str] = None,
+    sort: str = "latest",
+    q: Optional[str] = None,
+    page: int = 1,
+    limit: int = 20,
+):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -38,7 +48,7 @@ def get_posts(team_id: Optional[int] = None, category: Optional[str] = None, pag
     query = """
         SELECT p.id, p.title, p.category, p.views, p.likes,
                p.created_at, u.nickname, u.profile_image,
-               t.name AS team_name,
+               t.name AS team_name, p.team_id,
                (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count
         FROM posts p
         JOIN users u ON p.user_id = u.id
@@ -53,8 +63,16 @@ def get_posts(team_id: Optional[int] = None, category: Optional[str] = None, pag
     if category:
         query += " AND p.category = %s"
         params.append(category)
+    if q:
+        query += " AND (p.title ILIKE %s OR p.content ILIKE %s)"
+        params.extend([f'%{q}%', f'%{q}%'])
 
-    query += " ORDER BY p.created_at DESC LIMIT %s OFFSET %s"
+    if sort == "hot":
+        query += " ORDER BY p.likes DESC, p.created_at DESC"
+    else:
+        query += " ORDER BY p.created_at DESC"
+
+    query += " LIMIT %s OFFSET %s"
     params.extend([limit, offset])
 
     cur.execute(query, params)
@@ -76,7 +94,8 @@ def get_posts(team_id: Optional[int] = None, category: Optional[str] = None, pag
                 "author":        r[6],
                 "author_image":  r[7],
                 "team_name":     r[8],
-                "comment_count": r[9],
+                "team_id":       r[9],
+                "comment_count": r[10],
             }
             for r in rows
         ]
@@ -301,6 +320,56 @@ def create_comment(post_id: int, body: CommentCreate, current_user: dict = Depen
     cur.close()
     conn.close()
     return {"message": "댓글 작성 완료", "comment_id": comment_id}
+
+
+@router.post("/posts/{post_id}/report")
+def report_post(post_id: int, body: ReportCreate, current_user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+
+    cur.execute("SELECT id FROM posts WHERE id = %s", (post_id,))
+    if not cur.fetchone():
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다")
+
+    cur.execute(
+        """INSERT INTO post_reports (post_id, user_id, reason)
+           VALUES (%s, %s, %s)
+           ON CONFLICT (post_id, user_id) DO NOTHING""",
+        (post_id, current_user["user_id"], body.reason)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"message": "신고가 접수되었습니다"}
+
+
+@router.get("/my-posts")
+def get_my_posts(page: int = 1, limit: int = 20, current_user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    offset = (page - 1) * limit
+    cur.execute("""
+        SELECT p.id, p.title, p.category, p.views, p.likes, p.created_at,
+               (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id)
+        FROM posts p
+        WHERE p.user_id = %s
+        ORDER BY p.created_at DESC
+        LIMIT %s OFFSET %s
+    """, (current_user["user_id"], limit, offset))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {"posts": [
+        {"id": r[0], "title": r[1], "category": r[2], "views": r[3],
+         "likes": r[4], "created_at": str(r[5]), "comment_count": r[6]}
+        for r in rows
+    ]}
 
 
 @router.delete("/comments/{comment_id}")

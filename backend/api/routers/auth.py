@@ -185,6 +185,20 @@ def login(user: UserLogin):
     }
 
 
+@router.delete("/me")
+def delete_me(current_user: dict = Depends(get_current_user)):
+    """회원탈퇴"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("DELETE FROM users WHERE id = %s", (current_user["user_id"],))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"message": "탈퇴 완료"}
+
+
 @router.get("/me")
 def get_me(current_user: dict = Depends(get_current_user)):
     """내 정보 조회"""

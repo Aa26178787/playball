@@ -67,6 +67,32 @@ class _MyPageScreenState extends State<MyPageScreen> {
     if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
+  Future<void> _deleteAccount() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('회원탈퇴'),
+        content: const Text('탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.\n정말 탈퇴하시겠습니까?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('탈퇴', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ApiService.deleteAccount();
+      await context.read<AuthProvider>().logout();
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('탈퇴 처리 중 오류가 발생했습니다')));
+    }
+  }
+
   Future<void> _editNickname() async {
     final ctrl = TextEditingController(text: _user?['nickname'] ?? '');
     final result = await showDialog<String>(
@@ -127,6 +153,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   _buildFavoriteTeams(),
                   const SizedBox(height: 16),
                   _buildFavoritePlayers(),
+                  const SizedBox(height: 24),
+                  TextButton(
+                    onPressed: _deleteAccount,
+                    child: const Text('회원탈퇴',
+                        style: TextStyle(color: Colors.red, fontSize: 13)),
+                  ),
                 ],
               ),
             ),

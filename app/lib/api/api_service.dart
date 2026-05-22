@@ -300,14 +300,45 @@ class ApiService {
   static Future<Map<String, dynamic>> getPosts({
     int? teamId,
     String? category,
+    String sort = 'latest',
+    String? q,
     int page = 1,
   }) async {
     final res = await _dio.get('/community/posts', queryParameters: {
       if (teamId != null) 'team_id': teamId,
       if (category != null) 'category': category,
+      if (q != null && q.isNotEmpty) 'q': q,
+      'sort': sort,
       'page': page,
     });
     return res.data;
+  }
+
+  static Future<void> reportPost(int postId, {String reason = '기타'}) async {
+    final headers = await authHeaders();
+    await _dio.post('/community/posts/$postId/report',
+        data: {'reason': reason}, options: Options(headers: headers));
+  }
+
+  static Future<Map<String, dynamic>> getMyPosts({int page = 1}) async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/community/my-posts',
+        queryParameters: {'page': page}, options: Options(headers: headers));
+    return res.data;
+  }
+
+  static Future<void> sendPasswordResetCode(String email) async {
+    await _dio.post('/auth/password/send-code', data: {'email': email});
+  }
+
+  static Future<void> resetPassword(String email, String code, String newPassword) async {
+    await _dio.post('/auth/password/reset',
+        data: {'email': email, 'code': code, 'new_password': newPassword});
+  }
+
+  static Future<void> deleteAccount() async {
+    final headers = await authHeaders();
+    await _dio.delete('/auth/me', options: Options(headers: headers));
   }
 
   static Future<Map<String, dynamic>> getPostDetail(int postId) async {

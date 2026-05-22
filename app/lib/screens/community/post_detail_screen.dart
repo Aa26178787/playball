@@ -81,6 +81,33 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               _loadPost();
             },
           ),
+          PopupMenuButton<String>(
+            onSelected: (v) async {
+              if (v == 'report') {
+                final reason = await showDialog<String>(
+                  context: context,
+                  builder: (_) => SimpleDialog(
+                    title: const Text('신고 사유'),
+                    children: ['스팸', '욕설/혐오', '불법정보', '기타'].map((r) =>
+                      SimpleDialogOption(
+                        child: Text(r),
+                        onPressed: () => Navigator.pop(context, r),
+                      )).toList(),
+                  ),
+                );
+                if (reason != null) {
+                  try {
+                    await ApiService.reportPost(widget.postId, reason: reason);
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('신고가 접수되었습니다')));
+                  } catch (_) {}
+                }
+              }
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'report', child: Text('신고')),
+            ],
+          ),
         ],
       ),
       body: Column(
