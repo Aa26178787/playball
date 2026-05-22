@@ -410,73 +410,165 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     );
   }
 
+  Widget _buildPodium(List players, String Function(Map) statValue) {
+    if (players.length < 3) return const SizedBox.shrink();
+    final p1 = players[0] as Map;
+    final p2 = players[1] as Map;
+    final p3 = players[2] as Map;
+
+    Widget slot(Map p, int rank, double height, Color medalColor) {
+      final img = p['profile_image'] as String?;
+      return GestureDetector(
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                CircleAvatar(
+                  radius: rank == 1 ? 32 : 24,
+                  backgroundImage: (img != null && img.isNotEmpty) ? NetworkImage(img) : null,
+                  backgroundColor: medalColor.withValues(alpha: 0.15),
+                  child: (img == null || img.isEmpty)
+                      ? Icon(Icons.person, size: rank == 1 ? 28 : 20, color: medalColor)
+                      : null,
+                ),
+                Positioned(
+                  bottom: -6, right: -6,
+                  child: Container(
+                    width: 18, height: 18,
+                    decoration: BoxDecoration(
+                      color: medalColor, shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                      boxShadow: [BoxShadow(color: medalColor.withValues(alpha: 0.4), blurRadius: 3)],
+                    ),
+                    alignment: Alignment.center,
+                    child: Text('$rank', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(p['name'] ?? '',
+                style: TextStyle(fontSize: rank == 1 ? 13 : 11, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center, overflow: TextOverflow.ellipsis),
+            Text(p['team'] ?? '',
+                style: TextStyle(fontSize: 9, color: Colors.grey[600]), textAlign: TextAlign.center),
+            const SizedBox(height: 2),
+            Text(statValue(p),
+                style: TextStyle(fontSize: rank == 1 ? 16 : 14, fontWeight: FontWeight.bold, color: medalColor),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 6),
+            Container(
+              width: rank == 1 ? 90 : 72,
+              height: height,
+              decoration: BoxDecoration(
+                color: medalColor.withValues(alpha: 0.18),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+              ),
+              alignment: Alignment.center,
+              child: Text('$rank위', style: TextStyle(fontSize: 11, color: medalColor, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
+      decoration: BoxDecoration(
+        color: Colors.grey.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          Expanded(child: slot(p2, 2, 52, const Color(0xFFC0C0C0))),
+          Expanded(child: slot(p1, 1, 80, const Color(0xFFFFD700))),
+          Expanded(child: slot(p3, 3, 38, const Color(0xFFCD7F32))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRankingsContent(List players, String Function(Map) statValue, String label) {
+    final top3 = players.take(3).toList();
+    final rest = players.skip(3).toList();
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 16),
+      children: [
+        if (top3.length >= 3) ...[
+          _buildPodium(top3, statValue),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(children: [
+              const SizedBox(width: 32, child: Text('순위', style: TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center)),
+              const SizedBox(width: 56),
+              const Expanded(child: Text('선수', style: TextStyle(fontSize: 11, color: Colors.grey))),
+              Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              const SizedBox(width: 8),
+            ]),
+          ),
+          const Divider(height: 8),
+        ],
+        ...rest.asMap().entries.map((e) {
+          final p = e.value as Map;
+          return _buildRankRow(
+            rank: e.key + 4,
+            playerId: p['id'],
+            name: p['name'] ?? '',
+            team: p['team'] ?? '',
+            teamCode: p['team_code'] ?? '',
+            profileImage: p['profile_image'] as String?,
+            label: label,
+            value: statValue(p),
+          );
+        }),
+      ],
+    );
+  }
+
   Widget _buildHitterRankings() {
+    final label = _hitterCategories.firstWhere((c) => c['value'] == _hitterSort)['label']!;
     return Column(
       children: [
         _buildCategoryChips(_hitterCategories, _hitterSort, (val) {
           setState(() { _hitterSort = val; _hitterRankings = []; });
           _loadHitters();
         }),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Expanded(
           child: _hitterLoading
               ? const Center(child: CircularProgressIndicator())
               : _hitterRankings.isEmpty
                   ? const Center(child: Text('데이터가 없습니다'))
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _hitterRankings.length,
-                      itemBuilder: (context, index) {
-                        final p = _hitterRankings[index];
-                        final label = _hitterCategories.firstWhere((c) => c['value'] == _hitterSort)['label']!;
-                        return _buildRankRow(
-                          rank: index + 1,
-                          playerId: p['id'],
-                          name: p['name'] ?? '',
-                          team: p['team'] ?? '',
-                          teamCode: p['team_code'] ?? '',
-                          profileImage: p['profile_image'] as String?,
-                          label: label,
-                          value: _hitterStatValue(p),
-                        );
-                      },
-                    ),
+                  : _buildRankingsContent(_hitterRankings, _hitterStatValue, label),
         ),
       ],
     );
   }
 
   Widget _buildPitcherRankings() {
+    final label = _pitcherCategories.firstWhere((c) => c['value'] == _pitcherSort)['label']!;
     return Column(
       children: [
         _buildCategoryChips(_pitcherCategories, _pitcherSort, (val) {
           setState(() { _pitcherSort = val; _pitcherRankings = []; });
           _loadPitchers();
         }),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         Expanded(
           child: _pitcherLoading
               ? const Center(child: CircularProgressIndicator())
               : _pitcherRankings.isEmpty
                   ? const Center(child: Text('데이터가 없습니다'))
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _pitcherRankings.length,
-                      itemBuilder: (context, index) {
-                        final p = _pitcherRankings[index];
-                        final label = _pitcherCategories.firstWhere((c) => c['value'] == _pitcherSort)['label']!;
-                        return _buildRankRow(
-                          rank: index + 1,
-                          playerId: p['id'],
-                          name: p['name'] ?? '',
-                          team: p['team'] ?? '',
-                          teamCode: p['team_code'] ?? '',
-                          profileImage: p['profile_image'] as String?,
-                          label: label,
-                          value: _pitcherStatValue(p),
-                        );
-                      },
-                    ),
+                  : _buildRankingsContent(_pitcherRankings, _pitcherStatValue, label),
         ),
       ],
     );

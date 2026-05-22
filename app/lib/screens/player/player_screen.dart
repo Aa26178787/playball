@@ -114,127 +114,62 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
   }
 
-  Widget _buildTitleBadge(String title) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFD700), Color(0xFFFFA000)],
-        ),
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(color: Colors.amber.withValues(alpha: 0.4), blurRadius: 4, offset: const Offset(0, 1)),
-        ],
-      ),
-      child: Text(
-        title,
-        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
+  Widget _buildPlayerListItem(Map p, int rank, String statVal) {
+    final medalColors = [const Color(0xFFFFD700), const Color(0xFFC0C0C0), const Color(0xFFCD7F32)];
+    final rankColor = rank <= 3 ? medalColors[rank - 1] : Colors.grey;
 
-  Widget _buildPodium(List players, String sortKey, String title, bool isHitter) {
-    if (players.length < 3) return const SizedBox.shrink();
-    final p1 = players[0] as Map;
-    final p2 = players[1] as Map;
-    final p3 = players[2] as Map;
-
-    Widget slot(Map p, int rank, double height, Color medalColor) {
-      final statVal = isHitter
-          ? _hitterStatValue(p, sortKey)
-          : _pitcherStatValue(p, sortKey);
-
-      return GestureDetector(
-        onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
+    return InkWell(
+      onTap: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        child: Row(
           children: [
-            Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.center,
-              children: [
-                CircleAvatar(
-                  radius: rank == 1 ? 32 : 24,
-                  backgroundImage: p['profile_image'] != null
-                      ? NetworkImage(p['profile_image'])
-                      : null,
-                  backgroundColor: medalColor.withValues(alpha: 0.15),
-                  child: p['profile_image'] == null
-                      ? Icon(Icons.person, size: rank == 1 ? 28 : 20, color: medalColor)
-                      : null,
-                ),
-                Positioned(
-                  bottom: -6,
-                  right: -6,
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: medalColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
-                      boxShadow: [BoxShadow(color: medalColor.withValues(alpha: 0.4), blurRadius: 3)],
-                    ),
-                    alignment: Alignment.center,
-                    child: Text('$rank',
-                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text('${p['name']}',
-                style: TextStyle(fontSize: rank == 1 ? 13 : 11, fontWeight: FontWeight.bold),
+            SizedBox(
+              width: 26,
+              child: Text(
+                '$rank',
                 textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis),
-            Text('${p['team'] ?? ''}',
-                style: TextStyle(fontSize: 9, color: Colors.grey[600]),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 2),
-            Text(statVal,
                 style: TextStyle(
-                  fontSize: rank == 1 ? 15 : 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: medalColor,
+                  color: rankColor,
                 ),
-                textAlign: TextAlign.center),
-            if (rank == 1) ...[
-              const SizedBox(height: 2),
-              _buildTitleBadge(title),
-            ],
-            const SizedBox(height: 6),
-            Container(
-              width: rank == 1 ? 90 : 72,
-              height: height,
-              decoration: BoxDecoration(
-                color: medalColor.withValues(alpha: 0.18),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
               ),
-              alignment: Alignment.center,
-              child: Text('$rank위',
-                  style: TextStyle(fontSize: 11, color: medalColor, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(width: 10),
+            CircleAvatar(
+              radius: 16,
+              backgroundImage: (p['profile_image'] != null && (p['profile_image'] as String).isNotEmpty)
+                  ? NetworkImage(p['profile_image'] as String)
+                  : null,
+              backgroundColor: rankColor.withValues(alpha: 0.18),
+              child: (p['profile_image'] == null || (p['profile_image'] as String).isEmpty)
+                  ? Icon(Icons.person, size: 14, color: rankColor)
+                  : null,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(p['name'] ?? '',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  Text(p['team'] ?? '',
+                      style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                ],
+              ),
+            ),
+            Text(
+              statVal,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: rank == 1 ? const Color(0xFF1A237E) : null,
+              ),
             ),
           ],
         ),
-      );
-    }
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-      padding: const EdgeInsets.fromLTRB(8, 14, 8, 0),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          Expanded(child: slot(p2, 2, 52, const Color(0xFFC0C0C0))),
-          Expanded(child: slot(p1, 1, 80, const Color(0xFFFFD700))),
-          Expanded(child: slot(p3, 3, 38, const Color(0xFFCD7F32))),
-        ],
       ),
     );
   }
@@ -242,16 +177,15 @@ class _PlayerScreenState extends State<PlayerScreen>
   Widget _buildCategorySection(Map<String, String> sortInfo, bool isHitter) {
     final key = sortInfo['value']!;
     final label = sortInfo['label']!;
-    final title = sortInfo['title']!;
     final players = isHitter ? (_hitterCategories[key] ?? []) : (_pitcherCategories[key] ?? []);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: Row(
               children: [
                 Container(
@@ -269,7 +203,28 @@ class _PlayerScreenState extends State<PlayerScreen>
               ],
             ),
           ),
-          _buildPodium(players, key, title, isHitter),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+            ),
+            child: Column(
+              children: players.asMap().entries.map((entry) {
+                final rank = entry.key + 1;
+                final p = entry.value as Map;
+                final statVal = isHitter ? _hitterStatValue(p, key) : _pitcherStatValue(p, key);
+                return Column(
+                  children: [
+                    _buildPlayerListItem(p, rank, statVal),
+                    if (rank < players.length)
+                      Divider(height: 1, indent: 52, endIndent: 16, color: Colors.grey.withValues(alpha: 0.2)),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
         ],
       ),
     );
