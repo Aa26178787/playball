@@ -697,7 +697,9 @@ def get_game_detail(game_id: int):
             ht.name AS home_team,
             at.name AS away_team,
             s.name AS stadium,
-            g.naver_game_id
+            g.naver_game_id,
+            g.home_team_id,
+            g.away_team_id
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
@@ -711,6 +713,8 @@ def get_game_detail(game_id: int):
 
     status = game[2]
     naver_game_id = game[14]
+    home_team_id = game[15]
+    away_team_id = game[16]
 
     cur.execute("""
         SELECT inning, home_runs, away_runs
@@ -784,6 +788,10 @@ def get_game_detail(game_id: int):
     home_walks_calc = int(hits_row[2] or 0) if hits_row else 0
     away_walks_calc = int(hits_row[3] or 0) if hits_row else 0
 
+    recent5_map = _batch_recent5(cur, [home_team_id, away_team_id])
+    home_recent_5 = recent5_map.get(home_team_id, [])
+    away_recent_5 = recent5_map.get(away_team_id, [])
+
     cur.close()
     conn.close()
 
@@ -820,6 +828,8 @@ def get_game_detail(game_id: int):
             "home_team":      game[11],
             "away_team":      game[12],
             "stadium":        game[13],
+            "home_recent_5":  home_recent_5,
+            "away_recent_5":  away_recent_5,
         },
         "innings": [
             {"inning": r[0], "home_runs": r[1], "away_runs": r[2]}
