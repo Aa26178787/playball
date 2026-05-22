@@ -51,6 +51,65 @@ def _calc_recent_5(team_id, cur):
     return result
 
 
+def _calc_last_series(team_id, cur):
+    """최근 시리즈 결과: 같은 상대팀과 연속 경기 그룹"""
+    cur.execute("""
+        SELECT home_team_id, away_team_id, home_score, away_score
+        FROM games
+        WHERE (home_team_id = %s OR away_team_id = %s)
+          AND status = '종료'
+        ORDER BY game_date DESC, id DESC
+        LIMIT 10
+    """, (team_id, team_id))
+    games = cur.fetchall()
+    if not games:
+        return None
+
+    # 첫 경기 상대팀 기준으로 연속 경기 묶기
+    first = games[0]
+    opponent_id = first[1] if first[0] == team_id else first[0]
+
+    series_games = []
+    for home_id, away_id, hs, as_ in games:
+        opp = away_id if home_id == team_id else home_id
+        if opp != opponent_id:
+            break
+        if hs == as_:
+            series_games.append('D')
+        elif (home_id == team_id and hs > as_) or (away_id == team_id and as_ > hs):
+            series_games.append('W')
+        else:
+            series_games.append('L')
+
+    wins = series_games.count('W')
+    losses = series_games.count('L')
+    total = len(series_games)
+
+    if total == 0:
+        return None
+
+    if losses == 0 and wins >= 3:
+        label = '스윕 승'
+    elif wins >= 2 and losses > 0 and wins > losses:
+        label = '위닝 시리즈'
+    elif wins == losses:
+        label = '스플릿'
+    elif wins == 0 and losses >= 3:
+        label = '스윕 패'
+    elif losses > wins:
+        label = '루징 시리즈'
+    else:
+        label = None
+
+    return {
+        "wins": wins,
+        "losses": losses,
+        "games": total,
+        "label": label,
+        "opponent_id": opponent_id,
+    }
+
+
 def _calc_home_away(team_id, cur):
     cur.execute("""
         SELECT
@@ -94,9 +153,10 @@ def get_team_rankings():
         rank    = r[6]
         gb      = float(r[7]) if r[7] else 0
 
-        streak    = _calc_streak(team_id, cur)
-        recent_5  = _calc_recent_5(team_id, cur)
-        home_away = _calc_home_away(team_id, cur)
+        streak     = _calc_streak(team_id, cur)
+        recent_5   = _calc_recent_5(team_id, cur)
+        home_away  = _calc_home_away(team_id, cur)
+        last_series = _calc_last_series(team_id, cur)
 
         result.append({
             "id":           team_id,
@@ -114,6 +174,7 @@ def get_team_rankings():
             "recent_5":     recent_5,
             "home_record":  home_away["home"],
             "away_record":  home_away["away"],
+            "last_series":  last_series,
         })
 
     cur.close()

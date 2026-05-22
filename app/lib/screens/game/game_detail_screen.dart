@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../api/api_service.dart';
 import 'pitch_location_chart.dart';
 
@@ -24,6 +25,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Map<String, dynamic>? _relayAllData;
   Map<String, dynamic>? _weatherData;
   Map<String, dynamic>? _pitchTypesData;
+  List _highlights = [];
+  bool _highlightsLoading = false;
   Map<String, String> _playerRosterStatus = {};
   bool _isLoading = true;
   bool _isRelayRefreshing = false;
@@ -63,15 +66,28 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
     _tabController.addListener(() {
       if (_tabController.index == 0 && _relayAllData == null) {
         ApiService.getGameRelayAll(widget.gameId)
             .then((d) => setState(() => _relayAllData = d))
             .catchError((_) {});
       }
+      if (_tabController.index == 6 && _highlights.isEmpty && !_highlightsLoading) {
+        _loadHighlights();
+      }
     });
     _loadData();
+  }
+
+  Future<void> _loadHighlights() async {
+    setState(() => _highlightsLoading = true);
+    try {
+      final data = await ApiService.getGameHighlights(widget.gameId);
+      if (mounted) setState(() { _highlights = data['highlights'] ?? []; _highlightsLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _highlightsLoading = false);
+    }
   }
 
   @override
@@ -435,7 +451,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         title: Text('${game['home_team']} vs ${game['away_team']}'),
         bottom: TabBar(
           controller: _tabController,
-          isScrollable: false,
+          isScrollable: true,
           tabs: const [
             Tab(text: '이닝'),
             Tab(text: '프리뷰'),
@@ -443,6 +459,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             Tab(text: '투수'),
             Tab(text: '타자'),
             Tab(text: '기록'),
+            Tab(text: '하이라이트'),
           ],
         ),
       ),
@@ -461,6 +478,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 _buildPitchersTab(pitchers),
                 _buildBattersTab(batters),
                 _buildRecordDetailTab(),
+                _buildHighlightsTab(),
               ],
             ),
           ),
@@ -2178,5 +2196,43 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       _tableCell('${home ?? '-'}'),
       _tableCell('${away ?? '-'}'),
     ]);
+  }
+
+  Widget _buildHighlightsTab() {
+    if (_highlightsLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_highlights.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.movie_outlined, size: 48, color: Colors.grey),
+            SizedBox(height: 8),
+            Text('하이라이트가 없습니다', style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(12),
+      itemCount: _highlights.length,
+      separatorBuilder: (context2, idx) => const Divider(height: 1),
+      itemBuilder: (context2, idx) {
+        final h = _highlights[idx] as Map<String, dynamic>;
+        final title = h['title'] as String? ?? '';
+        final url = h['url'] as String? ?? '';
+        final source = h['source'] as String? ?? '';
+        return ListTile(
+          leading: const Icon(Icons.play_circle_outline, color: Color(0xFF003087), size: 32),
+          title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          subtitle: source.isNotEmpty ? Text(source, style: const TextStyle(fontSize: 12, color: Colors.grey)) : null,
+          onTap: () async {
+            final uri = Uri.tryParse(url);
+            if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+          },
+        );
+      },
+    );
   }
 }

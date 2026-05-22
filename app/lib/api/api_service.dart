@@ -435,6 +435,11 @@ class ApiService {
     return Map<String, dynamic>.from(res.data);
   }
 
+  static Future<Map<String, dynamic>> getGameHighlights(int gameId) async {
+    final res = await _dio.get('/games/$gameId/highlights');
+    return Map<String, dynamic>.from(res.data);
+  }
+
   static Future<Map<String, dynamic>> getTeamNews(int teamId, {int limit = 20}) async {
     final res = await _dio.get('/news/team/$teamId', queryParameters: {'limit': limit});
     return Map<String, dynamic>.from(res.data);

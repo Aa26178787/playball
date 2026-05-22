@@ -1353,3 +1353,69 @@ def get_game_weather(game_id: int):
     else:
         weather = get_weather(stadium_id)
     return {"weather": weather}
+
+
+@router.get("/{game_id}/highlights")
+def get_game_highlights(game_id: int):
+    conn = get_connection()
+    if not conn:
+        return {"highlights": []}
+    cur = conn.cursor()
+
+    # DB에 저장된 하이라이트 조회
+    cur.execute("""
+        SELECT title, url, source, published_at
+        FROM game_highlights
+        WHERE game_id = %s
+        ORDER BY COALESCE(published_at, crawled_at) DESC
+    """, (game_id,))
+    rows = cur.fetchall()
+
+    if not rows:
+        # DB에 없으면 실시간 Google News RSS 조회
+        cur.execute("""
+            SELECT ht.name, at2.name, g.game_date
+            FROM games g
+            JOIN teams ht ON g.home_team_id = ht.id
+            JOIN teams at2 ON g.away_team_id = at2.id
+            WHERE g.id = %s
+        """, (game_id,))
+        game_row = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if not game_row:
+            return {"highlights": []}
+
+        home_name, away_name, game_date = game_row
+        try:
+            from crawler.crawl_highlights import fetch_highlight_rss, save_highlights
+            import re
+            articles = fetch_highlight_rss(f'{home_name} {away_name} 하이라이트')
+            for a in articles:
+                if not a.get('game_id'):
+                    a['game_id'] = game_id
+            save_highlights(articles)
+            # filter relevant
+            rows = [
+                (a['title'], a['url'], a.get('source', ''), a.get('published_at'))
+                for a in articles
+                if any(kw in a['title'] for kw in [home_name[:2], away_name[:2]])
+            ]
+        except Exception:
+            rows = []
+    else:
+        cur.close()
+        conn.close()
+
+    return {
+        "highlights": [
+            {
+                "title": r[0],
+                "url": r[1],
+                "source": r[2],
+                "published_at": r[3].isoformat() if r[3] else None,
+            }
+            for r in rows
+        ]
+    }

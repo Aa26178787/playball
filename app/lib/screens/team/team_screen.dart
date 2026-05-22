@@ -111,6 +111,15 @@ class _TeamScreenState extends State<TeamScreen>
     return Colors.grey;
   }
 
+  Color _seriesLabelColor(String label) {
+    if (label.contains('스윕 승')) return const Color(0xFF1565C0);
+    if (label.contains('위닝')) return const Color(0xFF1976D2);
+    if (label.contains('스플릿')) return Colors.grey;
+    if (label.contains('루징')) return const Color(0xFFE53935);
+    if (label.contains('스윕 패')) return const Color(0xFFC62828);
+    return Colors.grey;
+  }
+
   Widget _buildTeamRow(Map<String, dynamic> team, {bool isTied = false}) {
     final code = team['short_name'] as String? ?? '';
     final gb = team['games_behind'];
@@ -135,6 +144,8 @@ class _TeamScreenState extends State<TeamScreen>
     }
 
     final isFav = _favoriteTeamIds.contains(team['id'] as int? ?? -1);
+    final lastSeries = team['last_series'] as Map<String, dynamic>?;
+    final seriesLabel = lastSeries?['label'] as String?;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -220,6 +231,21 @@ class _TeamScreenState extends State<TeamScreen>
                     const SizedBox(width: 10),
                     ...recent5.map((r) => _recentDot(r)),
                     const Spacer(),
+                    if (seriesLabel != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: _seriesLabelColor(seriesLabel).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: _seriesLabelColor(seriesLabel), width: 0.8),
+                        ),
+                        child: Text(
+                          seriesLabel,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _seriesLabelColor(seriesLabel)),
+                        ),
+                      ),
+                    ],
                     Text(
                       _streakText(streak),
                       style: TextStyle(

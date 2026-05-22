@@ -140,6 +140,13 @@ def smart_update():
                     crawl_news_for_teams(list(finished_team_ids))
                 except Exception as news_err:
                     print(f"[{datetime.now()}] 뉴스 크롤링 오류: {news_err}")
+            # 경기 종료 하이라이트 크롤링
+            for gid in newly_finished:
+                try:
+                    from crawler.crawl_highlights import crawl_highlights_for_game
+                    crawl_highlights_for_game(gid)
+                except Exception as hl_err:
+                    print(f"[{datetime.now()}] 하이라이트 크롤링 오류: {hl_err}")
 
     conn = get_connection()
     if conn:
@@ -819,6 +826,14 @@ def _is_regular_game(naver_game_id):
     return bool(re.match(pattern, naver_game_id))
 
 
+def _crawl_highlights_hourly():
+    try:
+        from crawler.crawl_highlights import crawl_highlights
+        crawl_highlights()
+    except Exception as e:
+        print(f"[{datetime.now()}] 하이라이트 크롤링 오류: {e}")
+
+
 def _crawl_news_hourly():
     try:
         from crawler.crawl_naver_news import crawl_all_team_news
@@ -852,6 +867,9 @@ def run_scheduler():
 
     # 매시간: 팀 뉴스 크롤링
     schedule.every(1).hours.do(_crawl_news_hourly)
+
+    # 매시간: 하이라이트 크롤링
+    schedule.every(1).hours.do(_crawl_highlights_hourly)
 
     print("스케줄 등록 완료!")
     print("- 1분마다 (UTC 01:00~15:00 = KST 10:00~00:00): 경기 상태/이닝/선수/투구 업데이트")
