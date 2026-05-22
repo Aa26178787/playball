@@ -207,7 +207,7 @@ def get_hitter_stats(season=2026):
                 "number":          p.get("backNumber"),
                 "season":          season,
                 "games":           p.get("hitterGameCount", 0),
-                "pa":              p.get("hitterPa", 0),
+                "pa":              (p.get("hitterAb", 0) or 0) + (p.get("hitterBb", 0) or 0) + (p.get("hitterHp", 0) or 0),
                 "at_bats":         p.get("hitterAb", 0),
                 "runs":            p.get("hitterRun", 0),
                 "hits":            p.get("hitterHit", 0),
