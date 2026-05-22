@@ -117,6 +117,8 @@ GET /games/{id}/pitch-types  → {pitchers:{name:[{type,count,pct}]}}
 GET /games/{id}/pitch-locations → {pitches:[{x,z,result,pitcher,top_sz,bot_sz}], pitchers:[...]}
   ※ x=횡위치(ft), z=높이(ft, 물리궤적 계산), result=ball/strike/swing/foul/hit/other
   ※ 진행중 경기: GREATEST(MAX(gi.inning), g.current_inning)으로 현재이닝 포함
+GET /games/{id}/highlights → {highlights:[{title,url,source,published_at}]}
+  ※ DB 우선 조회, 없으면 Google News RSS 실시간 크롤
 ```
 
 ### 선수
@@ -131,7 +133,8 @@ GET /players/{id}/daily?season=
 ### 팀
 ```
 GET /teams/
-GET /teams/rankings
+GET /teams/rankings  → 각 팀에 last_series:{wins,losses,games,label,opponent_id} 포함
+  ※ label: 스윕 승/위닝 시리즈/스플릿/루징 시리즈/스윕 패
 GET /teams/{id}/players
 GET /teams/{id}/games
 GET /teams/{id}/roster-changes?days=30
@@ -205,6 +208,10 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 ### game_innings / game_pitches / game_pitchers / game_batters / game_rosters
 (기존 스키마 유지 — 변경 없음)
 
+### game_highlights
+`id, game_id(FK→games), title, url(UNIQUE), thumbnail, source, published_at, crawled_at`
+- url_launcher로 외부 브라우저 오픈
+
 ### batter_stats
 `player_id, season, games, at_bats, runs, hits, doubles, triples, home_runs, rbis, walks, strikeouts, stolen_bases, avg, obp, slg, ops, woba, wrc_plus, babip, iso, war, pa, tb, cs, sac, sf, ibb, hbp, gdp, errors, sb_pct, mh, risp, ph_ba`
 ※ sb_pct: 0~100 퍼센트 단위 (×100 금지)
@@ -228,11 +235,12 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 - GameCard: 날씨 칩(이모지+기온+강수확률) + 팀별 최근5경기 W/L/D 뱃지
 
 ### game_detail_screen.dart
-- 탭: 이닝/프리뷰/로스터/투수/타자/기록
+- 탭: 이닝/프리뷰/로스터/투수/타자/기록/하이라이트 (7개, isScrollable)
 - 스코어 헤더: 날씨 정보 행 + 팀별 최근5경기 W/L/D 뱃지
 - 승리확률 그래프: LineChart (80pt 다운샘플)
 - 경기흐름 그래프: BarChart (이닝별 득점)
 - 투수 탭: 구종차트 바 + 범례 + **투구 위치 보기** 버튼 → PitchLocationSheet
+- 하이라이트 탭: GET /games/{id}/highlights → ListView + url_launcher 외부 브라우저
 - 자동새로고침: 30초 (진행중만)
 
 ### pitch_location_chart.dart (PitchLocationSheet)
@@ -262,6 +270,10 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 
 ### calendar_screen.dart
 - 월별 달력, 날짜 선택 → GameCard 형태 경기 목록
+
+### team_screen.dart (순위 탭)
+- 팀 카드: last_series 배지 표시 (스윕 승/위닝 시리즈/스플릿/루징 시리즈/스윕 패)
+- 색상: 스윕 승=진파랑, 위닝=파랑, 스플릿=회색, 루징=빨강, 스윕 패=진빨강
 
 ### team_detail_screen.dart
 - 탭 3개: 선수명단 / 경기일정 / 등록말소
@@ -326,10 +338,19 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - crawl_daily_register(): 1군등록/등록말소
 - crawl_trade(days): 선수이동
 
+### crawl_highlights.py
+- Google News RSS로 KBO 하이라이트 크롤 (Naver 403 우회)
+- `crawl_highlights()`: 3개 쿼리 hourly 크롤
+- `crawl_highlights_for_game(game_id)`: 경기 종료 시 트리거
+- `game_highlights` 테이블에 저장 (url UNIQUE)
+- 팀명→team_id 매핑: KT=1, KIA=2, 롯데=4, 한화=5, NC=6, 두산=7, 키움=8, LG=9, SSG=10, 삼성=11
+
 ### scheduler.py
 - 5분마다: naver_crawler
 - 경기 2시간 전~30분 전: 등록말소 크롤링
 - UTC 00:30: 등록말소 + 7일치 선수이동
+- 1시간마다: 하이라이트 크롤 (crawl_highlights)
+- 경기 종료 감지 시: crawl_highlights_for_game(game_id) 호출
 
 ## 주의사항
 - **naver_crawler.py 절대 수정 금지**
@@ -354,9 +375,16 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 4. `flutterfire configure` → `firebase_options.dart` 생성
 5. Claude에게 "FCM 활성화 마무리해줘" 요청
 
+## 구현 완료 (최근)
+- [x] 선수 기록 규정이닝/규정타석 조건 제거 (players.py)
+- [x] 팀 순위 최근 시리즈 결과 배지 (last_series: 스윕 승/위닝/스플릿/루징/스윕 패)
+- [x] 경기 상세 하이라이트 탭 (Google News RSS, url_launcher)
+- [x] Google News RSS 하이라이트 크롤러 (crawl_highlights.py)
+- [x] 팀 뉴스 탭 (team_detail_screen, /news/team/{id})
+
 ## 미구현 기능
 - [ ] FCM 활성화 (인프라 완료)
-- [ ] 비밀번호 찾기/재설정 UI (API는 구현됨: /auth/password/send-code, /auth/password/reset)
+- [x] 비밀번호 찾기/재설정 UI (forgot_password_screen.dart — 이메일→코드→재설정 3단계)
 - [ ] 커뮤니티: 이미지 첨부, 검색, 인기글 탭
 - [ ] 스프레이 차트 (타구방향 데이터 없음 — 네이버 중계 텍스트만 제공)
 - [ ] 드래프트/FA 정보

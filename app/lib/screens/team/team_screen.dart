@@ -146,6 +146,7 @@ class _TeamScreenState extends State<TeamScreen>
     final isFav = _favoriteTeamIds.contains(team['id'] as int? ?? -1);
     final lastSeries = team['last_series'] as Map<String, dynamic>?;
     final seriesLabel = lastSeries?['label'] as String?;
+    final pythag = (team['pythag_winpct'] as num?)?.toStringAsFixed(3) ?? '-';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -214,6 +215,8 @@ class _TeamScreenState extends State<TeamScreen>
                   _statCell('승률', winRate),
                   _statDivider(),
                   _statCell('게임차', gbText),
+                  _statDivider(),
+                  _statCell('피타', pythag),
                 ],
               ),
               const SizedBox(height: 8),

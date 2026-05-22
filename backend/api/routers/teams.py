@@ -110,6 +110,22 @@ def _calc_last_series(team_id, cur):
     }
 
 
+def _calc_pythagorean(team_id, cur) -> float | None:
+    cur.execute("""
+        SELECT
+            SUM(CASE WHEN home_team_id=%s THEN home_score ELSE away_score END),
+            SUM(CASE WHEN home_team_id=%s THEN away_score ELSE home_score END)
+        FROM games
+        WHERE (home_team_id=%s OR away_team_id=%s) AND status='종료'
+    """, (team_id, team_id, team_id, team_id))
+    row = cur.fetchone()
+    rs, ra = (row[0] or 0), (row[1] or 0)
+    if rs == 0 and ra == 0:
+        return None
+    denom = rs ** 2 + ra ** 2
+    return round(rs ** 2 / denom, 3) if denom > 0 else None
+
+
 def _calc_home_away(team_id, cur):
     cur.execute("""
         SELECT
@@ -153,10 +169,11 @@ def get_team_rankings():
         rank    = r[6]
         gb      = float(r[7]) if r[7] else 0
 
-        streak     = _calc_streak(team_id, cur)
-        recent_5   = _calc_recent_5(team_id, cur)
-        home_away  = _calc_home_away(team_id, cur)
-        last_series = _calc_last_series(team_id, cur)
+        streak        = _calc_streak(team_id, cur)
+        recent_5      = _calc_recent_5(team_id, cur)
+        home_away     = _calc_home_away(team_id, cur)
+        last_series   = _calc_last_series(team_id, cur)
+        pythag_winpct = _calc_pythagorean(team_id, cur)
 
         result.append({
             "id":           team_id,
@@ -175,6 +192,7 @@ def get_team_rankings():
             "home_record":  home_away["home"],
             "away_record":  home_away["away"],
             "last_series":  last_series,
+            "pythag_winpct": pythag_winpct,
         })
 
     cur.close()
