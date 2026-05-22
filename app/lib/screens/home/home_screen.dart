@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 import '../../models/game.dart';
 import '../../api/api_service.dart';
@@ -79,6 +80,9 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   bool _isLoading = true;
   Set<int> _favoriteTeamIds = {};
   bool _myTeamOnly = false;
+  Timer? _autoRefreshTimer;
+
+  bool get _hasLiveGames => _games.any((g) => g['status'] == '진행');
 
   @override
   void initState() {
@@ -86,6 +90,20 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     _loadGames();
     _loadTodayRosterChanges();
     _loadFavoriteTeams();
+    _startAutoRefresh();
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startAutoRefresh() {
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      if (mounted && _hasLiveGames) _loadGames();
+    });
   }
 
   Future<void> _loadFavoriteTeams() async {
@@ -658,8 +676,8 @@ class GameCard extends StatelessWidget {
                         ),
                 ),
 
-              // 선발투수 표시 (예정/라인업)
-              if ((game.status == '예정' || game.status == '라인업') &&
+              // 선발투수 표시 (예정/라인업/진행)
+              if ((game.status == '예정' || game.status == '라인업' || game.status == '진행') &&
                   (game.homeStarter != null || game.awayStarter != null))
                 Padding(
                   padding: const EdgeInsets.only(top: 8),

@@ -220,107 +220,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
   }
 
-  // 경기흐름 그래프 (이닝별 득점)
-  Widget _buildGameFlowChart(List innings, String homeTeam, String awayTeam) {
-    if (innings.isEmpty) return const SizedBox.shrink();
-    final homeColor = const Color(0xFF1A237E);
-    final awayColor = const Color(0xFFC62828);
-
-    final homeGroups = <BarChartGroupData>[];
-    final awayGroups = <BarChartGroupData>[];
-
-    for (int i = 0; i < innings.length; i++) {
-      final inn = innings[i];
-      final hr = (inn['home_runs'] as num?)?.toDouble() ?? 0;
-      final ar = (inn['away_runs'] as num?)?.toDouble() ?? 0;
-      homeGroups.add(BarChartGroupData(x: i, barRods: [
-        BarChartRodData(toY: hr, color: homeColor, width: 8, borderRadius: BorderRadius.circular(2)),
-      ]));
-      awayGroups.add(BarChartGroupData(x: i, barRods: [
-        BarChartRodData(toY: ar, color: awayColor, width: 8, borderRadius: BorderRadius.circular(2)),
-      ]));
-    }
-
-    final maxY = innings.fold<double>(1, (m, inn) {
-      final hr = (inn['home_runs'] as num?)?.toDouble() ?? 0;
-      final ar = (inn['away_runs'] as num?)?.toDouble() ?? 0;
-      return [m, hr, ar].reduce((a, b) => a > b ? a : b);
-    });
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 12),
-        const Text('이닝별 득점', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        const SizedBox(height: 4),
-        Row(children: [
-          Container(width: 10, height: 10, color: awayColor),
-          const SizedBox(width: 4),
-          Text(awayTeam, style: const TextStyle(fontSize: 11)),
-          const SizedBox(width: 12),
-          Container(width: 10, height: 10, color: homeColor),
-          const SizedBox(width: 4),
-          Text(homeTeam, style: const TextStyle(fontSize: 11)),
-        ]),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 120,
-          child: Stack(children: [
-            // away bars (behind)
-            BarChart(BarChartData(
-              alignment: BarChartAlignment.spaceAround,
-              maxY: maxY + 1,
-              barGroups: awayGroups,
-              titlesData: FlTitlesData(
-                leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                bottomTitles: AxisTitles(sideTitles: SideTitles(
-                  showTitles: true,
-                  getTitlesWidget: (v, _) {
-                    final idx = v.toInt();
-                    if (idx < 0 || idx >= innings.length) return const SizedBox.shrink();
-                    return Text('${innings[idx]['inning']}', style: const TextStyle(fontSize: 9));
-                  },
-                  reservedSize: 16,
-                )),
-              ),
-              gridData: const FlGridData(show: false),
-              borderData: FlBorderData(show: false),
-              barTouchData: BarTouchData(enabled: false),
-            )),
-            // home bars (in front, offset via padding)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: BarChart(BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: maxY + 1,
-                barGroups: homeGroups.map((g) => BarChartGroupData(
-                  x: g.x,
-                  barRods: [BarChartRodData(
-                    toY: g.barRods.first.toY,
-                    color: homeColor.withOpacity(0.75),
-                    width: 6,
-                    borderRadius: BorderRadius.circular(2),
-                  )],
-                )).toList(),
-                titlesData: const FlTitlesData(
-                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                ),
-                gridData: const FlGridData(show: false),
-                borderData: FlBorderData(show: false),
-                barTouchData: BarTouchData(enabled: false),
-              )),
-            ),
-          ]),
-        ),
-      ],
-    );
-  }
-
   // 승리확률 그래프
   Widget _buildWinRateChart(String homeTeam, String awayTeam) {
     final relays = _relayAllData?['relays'] as List? ?? [];
@@ -838,6 +737,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         }
       }
       flush();
+      // 하프이닝 내 누적 투구 번호 offset 계산
+      int pitchOffset = 0;
+      for (final g in result) {
+        g['pitchOffset'] = pitchOffset;
+        pitchOffset += (g['pitches'] as List).length;
+      }
       return result;
     }
 
@@ -927,9 +832,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 ],
               );
             }),
-            // 승리확률 + 경기흐름 그래프
+            // 승리확률 그래프
             _buildWinRateChart(homeTeam, awayTeam),
-            _buildGameFlowChart(innings, homeTeam, awayTeam),
             const SizedBox(height: 24),
           ],
 
@@ -1004,6 +908,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final batterName = entry['batter'] as String? ?? '';
     final pitcherName = entry['pitcher'] as String?;
     final pitches = entry['pitches'] as List? ?? [];
+    final pitchOffset = entry['pitchOffset'] as int? ?? 0;
     final resultRelay = entry['result'] as Map<String, dynamic>?;
     final events = entry['events'] as List? ?? [];
 
@@ -1105,11 +1010,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             );
           }).toList(),
 
-          ...pitches.map((r) {
+          ...pitches.asMap().entries.map((entry) {
+            final r = entry.value;
             final pitchResult = r['pitch_result'] as String?;
             final speed = _speedToString(r['speed']);
             final stuff = r['stuff'] as String?;
-            final pitchNum = r['pitch_num'];
+            final rawPitchNum = r['pitch_num'] as int?;
+            final pitchNum = rawPitchNum != null ? pitchOffset + rawPitchNum : null;
             final title = r['title'] as String?;
 
             String pitchResultText = '';
