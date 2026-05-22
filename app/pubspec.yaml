@@ -60,6 +60,9 @@ dependencies:
   # 이미지 선택
   image_picker: ^1.1.2
 
+  # URL 열기
+  url_launcher: ^6.3.1
+
   # 아이콘
   cupertino_icons: ^1.0.8
 

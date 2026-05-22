@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import '../player/player_detail_screen.dart';
@@ -17,20 +18,25 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   List _players = [];
   List _games = [];
   List _rosterChanges = [];
+  List _news = [];
   bool _playersLoading = true;
   bool _gamesLoading = false;
   bool _rosterLoading = false;
+  bool _newsLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       if (_tabController.index == 1 && _games.isEmpty && !_gamesLoading) {
         _loadGames();
       }
       if (_tabController.index == 2 && _rosterChanges.isEmpty && !_rosterLoading) {
         _loadRosterChanges();
+      }
+      if (_tabController.index == 3 && _news.isEmpty && !_newsLoading) {
+        _loadNews();
       }
     });
     _loadPlayers();
@@ -86,6 +92,21 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     }
   }
 
+  Future<void> _loadNews() async {
+    setState(() => _newsLoading = true);
+    try {
+      final data = await ApiService.getTeamNews(widget.team['id'] as int, limit: 30);
+      if (mounted) {
+        setState(() {
+          _news = data['news'] ?? [];
+          _newsLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _newsLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final team = widget.team;
@@ -107,7 +128,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
-          tabs: const [Tab(text: '선수'), Tab(text: '최근경기'), Tab(text: '등록말소')],
+          tabs: const [Tab(text: '선수'), Tab(text: '최근경기'), Tab(text: '등록말소'), Tab(text: '뉴스')],
         ),
       ),
       body: Column(
@@ -116,7 +137,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [_buildPlayers(), _buildGames(), _buildRosterChanges()],
+              children: [_buildPlayers(), _buildGames(), _buildRosterChanges(), _buildNews()],
             ),
           ),
         ],
@@ -514,5 +535,65 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
               MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId)))
           : null,
     );
+  }
+
+  Widget _buildNews() {
+    if (_newsLoading) return const Center(child: CircularProgressIndicator());
+    if (_news.isEmpty) {
+      return const Center(child: Text('뉴스가 없습니다', style: TextStyle(color: Colors.grey)));
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: _news.length,
+      separatorBuilder: (context2, idx) => const Divider(height: 1, indent: 16, endIndent: 16),
+      itemBuilder: (_, i) {
+        final n = _news[i] as Map;
+        final title = n['title'] as String? ?? '';
+        final media = n['media'] as String? ?? '';
+        final pub = n['published_at'] as String?;
+        final url = n['url'] as String? ?? '';
+
+        String dateStr = '';
+        if (pub != null) {
+          try {
+            final dt = DateTime.parse(pub).toLocal();
+            dateStr = '${dt.month}/${dt.day} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+          } catch (_) {}
+        }
+
+        return InkWell(
+          onTap: () => _openUrl(url),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, height: 1.4),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                Row(children: [
+                  if (media.isNotEmpty) ...[
+                    Text(media, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                    const SizedBox(width: 8),
+                  ],
+                  if (dateStr.isNotEmpty)
+                    Text(dateStr, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                ]),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openUrl(String url) async {
+    if (url.isEmpty) return;
+    try {
+      final uri = Uri.parse(url);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
   }
 }

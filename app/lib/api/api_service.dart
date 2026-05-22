@@ -435,6 +435,11 @@ class ApiService {
     return Map<String, dynamic>.from(res.data);
   }
 
+  static Future<Map<String, dynamic>> getTeamNews(int teamId, {int limit = 20}) async {
+    final res = await _dio.get('/news/team/$teamId', queryParameters: {'limit': limit});
+    return Map<String, dynamic>.from(res.data);
+  }
+
   static Future<String> uploadProfileImage(String filePath) async {
     final headers = await authHeaders();
     final formData = FormData.fromMap({
