@@ -319,3 +319,32 @@ def register_push_token(body: PushToken, current_user: dict = Depends(get_curren
     cur.close()
     conn.close()
     return {"message": "푸시 토큰 등록 완료"}
+
+from fastapi import UploadFile, File
+import os, uuid, shutil
+
+PROFILE_DIR = '/home/ubuntu/playball/backend/static/profiles'
+BASE_URL = 'http://168.107.61.147:8000'
+
+@router.post('/profile-image')
+async def upload_profile_image(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    ext = os.path.splitext(file.filename or 'img.jpg')[1].lower()
+    if ext not in ('.jpg', '.jpeg', '.png', '.webp'):
+        raise HTTPException(status_code=400, detail='jpg/png/webp만 허용됩니다')
+    filename = f"{current_user['user_id']}_{uuid.uuid4().hex[:8]}{ext}"
+    path = os.path.join(PROFILE_DIR, filename)
+    with open(path, 'wb') as f:
+        shutil.copyfileobj(file.file, f)
+    url = f"{BASE_URL}/static/profiles/{filename}"
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute('UPDATE users SET profile_image = %s WHERE id = %s', (url, current_user['user_id']))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {'profile_image': url}

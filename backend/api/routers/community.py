@@ -393,3 +393,28 @@ def delete_comment(comment_id: int, current_user: dict = Depends(get_current_use
     cur.close()
     conn.close()
     return {"message": "댓글 삭제 완료"}
+
+@router.get('/my-comments')
+def get_my_comments(page: int = 1, limit: int = 20, current_user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    offset = (page - 1) * limit
+    cur.execute("""
+        SELECT c.id, c.content, c.created_at,
+               p.id AS post_id, p.title AS post_title
+        FROM comments c
+        JOIN posts p ON c.post_id = p.id
+        WHERE c.user_id = %s
+        ORDER BY c.created_at DESC
+        LIMIT %s OFFSET %s
+    """, (current_user['user_id'], limit, offset))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {'comments': [
+        {'id': r[0], 'content': r[1], 'created_at': str(r[2]),
+         'post_id': r[3], 'post_title': r[4]}
+        for r in rows
+    ]}

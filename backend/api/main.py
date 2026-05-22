@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.routers import games, players, teams, auth, user, stadiums, widget, community, calendar, phone, email_verify, password_reset
+from api.routers import games, players, teams, auth, user, stadiums, widget, community, calendar, phone, email_verify, password_reset, search
+from fastapi.staticfiles import StaticFiles
 
 
 app = FastAPI(
@@ -29,6 +30,8 @@ app.include_router(calendar.router, prefix="/calendar", tags=["캘린더"])
 app.include_router(phone.router, prefix="/user/phone", tags=["전화인증"])
 app.include_router(email_verify.router, prefix="/user/email", tags=["이메일인증"])
 app.include_router(password_reset.router, prefix="/auth/password", tags=["비밀번호재설정"])
+app.include_router(search.router, prefix="/search", tags=["검색"])
+app.mount("/static", StaticFiles(directory="/home/ubuntu/playball/backend/static"), name="static")
 
 
 @app.get("/")

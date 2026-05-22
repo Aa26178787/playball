@@ -403,4 +403,41 @@ class ApiService {
           data: {'token': token}, options: Options(headers: headers));
     } catch (_) {}
   }
+
+  static Future<void> updatePost(int postId, String title, String content) async {
+    final headers = await authHeaders();
+    await _dio.put('/community/posts/$postId',
+        data: {'title': title, 'content': content},
+        options: Options(headers: headers));
+  }
+
+  static Future<void> deletePost(int postId) async {
+    final headers = await authHeaders();
+    await _dio.delete('/community/posts/$postId',
+        options: Options(headers: headers));
+  }
+
+  static Future<Map<String, dynamic>> getMyComments({int page = 1}) async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/community/my-comments',
+        queryParameters: {'page': page},
+        options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<Map<String, dynamic>> search(String q) async {
+    final res = await _dio.get('/search', queryParameters: {'q': q});
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<String> uploadProfileImage(String filePath) async {
+    final headers = await authHeaders();
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath),
+    });
+    final res = await _dio.post('/user/profile-image',
+        data: formData,
+        options: Options(headers: headers));
+    return res.data['profile_image'] as String;
+  }
 }

@@ -57,6 +57,9 @@ dependencies:
   # 날짜 포맷
   intl: ^0.20.2
 
+  # 이미지 선택
+  image_picker: ^1.1.2
+
   # 아이콘
   cupertino_icons: ^1.0.8
 

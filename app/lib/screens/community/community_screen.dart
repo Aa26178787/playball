@@ -82,9 +82,13 @@ class _PostListTabState extends State<_PostListTab>
     with AutomaticKeepAliveClientMixin {
   List _posts = [];
   bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  int _page = 1;
   String _category = '전체';
   String _searchQ = '';
   final _searchCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
 
   @override
   bool get wantKeepAlive => true;
@@ -92,27 +96,69 @@ class _PostListTabState extends State<_PostListTab>
   @override
   void initState() {
     super.initState();
+    _scrollCtrl.addListener(_onScroll);
     _load();
   }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
+  void _onScroll() {
+    if (_scrollCtrl.position.pixels >= _scrollCtrl.position.maxScrollExtent - 200
+        && !_loadingMore && _hasMore) {
+      _loadMore();
+    }
+  }
+
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() { _loading = true; _page = 1; _hasMore = true; });
     try {
       final data = await ApiService.getPosts(
         sort: widget.sort,
         teamId: widget.teamId,
         category: _category == '전체' ? null : _category,
         q: _searchQ.isEmpty ? null : _searchQ,
+        page: 1,
       );
-      if (mounted) setState(() { _posts = data['posts'] ?? []; _loading = false; });
+      if (mounted) {
+        final posts = data['posts'] as List? ?? [];
+        setState(() {
+          _posts = posts;
+          _hasMore = posts.length >= 20;
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final data = await ApiService.getPosts(
+        sort: widget.sort,
+        teamId: widget.teamId,
+        category: _category == '전체' ? null : _category,
+        q: _searchQ.isEmpty ? null : _searchQ,
+        page: _page + 1,
+      );
+      if (mounted) {
+        final more = data['posts'] as List? ?? [];
+        setState(() {
+          _posts = [..._posts, ...more];
+          _page++;
+          _hasMore = more.length >= 20;
+          _loadingMore = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingMore = false);
     }
   }
 
@@ -183,9 +229,18 @@ class _PostListTabState extends State<_PostListTab>
                           Center(child: Text('게시글이 없습니다', style: TextStyle(color: Colors.grey))),
                         ])
                       : ListView.builder(
+                          controller: _scrollCtrl,
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          itemCount: _posts.length,
-                          itemBuilder: (_, i) => _PostCard(post: _posts[i], onRefresh: _load),
+                          itemCount: _posts.length + (_loadingMore ? 1 : 0),
+                          itemBuilder: (_, i) {
+                            if (i == _posts.length) {
+                              return const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              );
+                            }
+                            return _PostCard(post: _posts[i], onRefresh: _load);
+                          },
                         ),
                 ),
         ),

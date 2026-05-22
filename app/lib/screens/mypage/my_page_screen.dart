@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../api/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/team_theme.dart';
@@ -21,7 +22,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
   List _favoriteTeams = [];
   List _favoritePlayers = [];
   List _myPosts = [];
+  List _myComments = [];
   bool _loading = true;
+  bool _uploadingImage = false;
 
   @override
   void initState() {
@@ -36,6 +39,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ApiService.getFavoriteTeams(),
         ApiService.getFavoritePlayers(),
         ApiService.getMyPosts(),
+        ApiService.getMyComments(),
       ]);
       if (mounted) {
         setState(() {
@@ -43,6 +47,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           _favoriteTeams = (results[1] as Map)['teams'] ?? [];
           _favoritePlayers = (results[2] as Map)['players'] ?? [];
           _myPosts = (results[3] as Map)['posts'] ?? [];
+          _myComments = (results[4] as Map)['comments'] ?? [];
           _loading = false;
         });
       }
@@ -130,6 +135,26 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 512);
+    if (picked == null) return;
+    setState(() => _uploadingImage = true);
+    try {
+      final url = await ApiService.uploadProfileImage(picked.path);
+      setState(() {
+        _user?['profile_image'] = url;
+        _uploadingImage = false;
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('프로필 이미지가 변경되었습니다')));
+    } catch (_) {
+      setState(() => _uploadingImage = false);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이미지 업로드 실패')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -159,6 +184,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   _buildFavoritePlayers(),
                   const SizedBox(height: 16),
                   _buildMyPosts(),
+                  const SizedBox(height: 16),
+                  _buildMyComments(),
                   const SizedBox(height: 24),
                   TextButton(
                     onPressed: _deleteAccount,
@@ -178,15 +205,43 @@ class _MyPageScreenState extends State<MyPageScreen> {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 36,
-              backgroundColor: const Color(0xFF1A237E),
-              backgroundImage: _user?['profile_image'] != null
-                  ? NetworkImage(_user!['profile_image'])
-                  : null,
-              child: _user?['profile_image'] == null
-                  ? const Icon(Icons.person, color: Colors.white, size: 36)
-                  : null,
+            GestureDetector(
+              onTap: _pickAndUploadImage,
+              child: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 36,
+                    backgroundColor: const Color(0xFF1A237E),
+                    backgroundImage: _user?['profile_image'] != null
+                        ? NetworkImage(_user!['profile_image'])
+                        : null,
+                    child: _user?['profile_image'] == null
+                        ? const Icon(Icons.person, color: Colors.white, size: 36)
+                        : null,
+                  ),
+                  if (_uploadingImage)
+                    const Positioned.fill(
+                      child: CircleAvatar(
+                        radius: 36,
+                        backgroundColor: Colors.black45,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      ),
+                    )
+                  else
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF1A237E),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                      ),
+                    ),
+                ],
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -221,7 +276,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   Widget _buildPhoneVerify() {
     final verified = _user?['phone_verified'] == true;
-    final phone = _user?['phone_number'];
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
@@ -229,9 +283,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           Icons.email_outlined,
           color: verified ? Colors.green : Colors.orange,
         ),
-        title: Text(verified
-            ? '이메일 인증 완료'
-            : '이메일 미인증'),
+        title: Text(verified ? '이메일 인증 완료' : '이메일 미인증'),
         subtitle: Text(verified
             ? (_user?['email'] ?? '')
             : '커뮤니티 글쓰기를 위해 이메일 인증하세요',
@@ -374,10 +426,58 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     '${p['category'] ?? ''}  ❤️${p['likes'] ?? 0}  💬${p['comment_count'] ?? 0}',
                     style: const TextStyle(fontSize: 11)),
                   trailing: Text(
-                    (p['created_at'] ?? '').toString().substring(0, 10),
+                    (p['created_at'] ?? '').toString().length >= 10
+                        ? (p['created_at'] as String).substring(0, 10)
+                        : '',
                     style: const TextStyle(fontSize: 11, color: Colors.grey)),
                   onTap: () => Navigator.push(context, MaterialPageRoute(
                       builder: (_) => PostDetailScreen(postId: p['id']))),
+                );
+              }).toList(),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMyComments() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Text('내 댓글', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ),
+        if (_myComments.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(
+                child: Text('작성한 댓글이 없습니다', style: TextStyle(color: Colors.grey)),
+              ),
+            ),
+          )
+        else
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Column(
+              children: _myComments.take(5).map((c) {
+                return ListTile(
+                  title: Text(c['content'] ?? '',
+                      style: const TextStyle(fontSize: 14),
+                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(
+                    c['post_title'] ?? '',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: Text(
+                    (c['created_at'] ?? '').toString().length >= 10
+                        ? (c['created_at'] as String).substring(0, 10)
+                        : '',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => PostDetailScreen(postId: c['post_id']))),
                 );
               }).toList(),
             ),
