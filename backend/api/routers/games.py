@@ -1174,6 +1174,30 @@ def get_pitch_locations(game_id: int):
     game_status = row[1]
     max_inning = row[3] or 9
 
+    # 종료 경기 → DB 우선 조회
+    if game_status == '종료':
+        cur.execute("""
+            SELECT inning, inning_half, batter_name, pitcher_name,
+                   x, z, top_sz, bot_sz, pitch_type, result, stance
+            FROM game_pitch_locations
+            WHERE game_id = %s
+            ORDER BY inning, id
+        """, (game_id,))
+        db_rows = cur.fetchall()
+        if db_rows:
+            cur.close(); conn.close()
+            all_pitches = [
+                {
+                    "inning": r[0], "inning_half": r[1], "batter": r[2],
+                    "pitcher": r[3], "x": r[4], "z": r[5],
+                    "top_sz": r[6], "bot_sz": r[7], "stuff": r[8],
+                    "result": r[9], "stance": r[10],
+                }
+                for r in db_rows
+            ]
+            pitchers = sorted({p["pitcher"] for p in all_pitches if p["pitcher"]})
+            return {"pitches": all_pitches, "pitchers": pitchers}
+
     # Build pitcher naver_id -> name cache
     cur.execute("SELECT naver_player_id, name FROM players WHERE naver_player_id IS NOT NULL")
     pitcher_cache = {str(r[0]): r[1] for r in cur.fetchall()}
@@ -1199,7 +1223,7 @@ def get_pitch_locations(game_id: int):
         if "볼" in text: return "ball"
         if "헛스윙" in text or "스윙" in text: return "swing"
         if "파울" in text: return "foul"
-        if "타격" in text or "안타" in text or "홈런" in text: return "hit"
+        if "타격" in text or "안타" in text or "홈런" in text or "2루타" in text or "3루타" in text: return "hit"
         if "스트라이크" in text: return "strike"
         return "other"
 
@@ -1254,6 +1278,14 @@ def get_pitch_locations(game_id: int):
                     "result":      classify(result_text),
                     "stance":      pts.get("stance", "R"),
                 })
+
+    # 종료 경기인데 DB 데이터 없었으면 → 방금 fetch한 데이터 저장
+    if game_status == '종료' and all_pitches:
+        try:
+            from crawler.crawl_pitch_locations import save_pitch_locations_for_game
+            save_pitch_locations_for_game(game_id, naver_game_id, max_inning)
+        except Exception:
+            pass
 
     pitchers = sorted({p["pitcher"] for p in all_pitches if p["pitcher"]})
     return {"pitches": all_pitches, "pitchers": pitchers}

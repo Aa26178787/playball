@@ -119,6 +119,14 @@ def smart_update():
                     conn_tmp.close()
                     if row_tmp and row_tmp[1]:
                         save_game_pitches(gid, row_tmp[0], row_tmp[1])
+                        # 투구 위치 데이터 저장
+                        try:
+                            from crawler.crawl_pitch_locations import save_pitch_locations_for_game
+                            max_inn = int(row_tmp[1])
+                            n = save_pitch_locations_for_game(gid, row_tmp[0], max_inn)
+                            print(f"[{datetime.now()}] pitch_locations 저장: game_id={gid} {n}구")
+                        except Exception as pl_err:
+                            print(f"[{datetime.now()}] pitch_locations 오류: {pl_err}")
             update_team_rankings()
             schedule.every(10).minutes.do(_run_once, update_finished_game_records)
             schedule.every(15).minutes.do(_run_once, update_finished_player_stats)
