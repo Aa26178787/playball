@@ -64,7 +64,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         _category,
         imageUrl: _uploadedImageUrl,
       );
-      if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context, true);
     } on DioException catch (e) {
       final detail = e.response?.data?['detail'];
       if (detail == 'phone_not_verified' && mounted) {

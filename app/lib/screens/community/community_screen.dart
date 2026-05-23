@@ -19,6 +19,7 @@ class CommunityScreen extends StatefulWidget {
 class _CommunityScreenState extends State<CommunityScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
+  final _latestKey = GlobalKey<_PostListTabState>();
 
   @override
   void initState() {
@@ -48,19 +49,19 @@ class _CommunityScreenState extends State<CommunityScreen>
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await Navigator.push(context,
+          final created = await Navigator.push<bool>(context,
               MaterialPageRoute(builder: (_) => const CreatePostScreen()));
-          // 탭 새로고침은 각 탭 내부에서 처리
+          if (created == true) _latestKey.currentState?._load();
         },
         backgroundColor: const Color(0xFF1A237E),
         child: const Icon(Icons.edit, color: Colors.white),
       ),
       body: TabBarView(
         controller: _tabCtrl,
-        children: const [
-          _PostListTab(sort: 'latest'),
-          _TeamTab(),
-          _PostListTab(sort: 'hot'),
+        children: [
+          _PostListTab(key: _latestKey, sort: 'latest'),
+          const _TeamTab(),
+          const _PostListTab(sort: 'hot'),
         ],
       ),
     );
@@ -72,7 +73,7 @@ class _CommunityScreenState extends State<CommunityScreen>
 class _PostListTab extends StatefulWidget {
   final String sort;
   final int? teamId;
-  const _PostListTab({required this.sort, this.teamId});
+  const _PostListTab({super.key, required this.sort, this.teamId});
 
   @override
   State<_PostListTab> createState() => _PostListTabState();
