@@ -211,7 +211,9 @@ def get_me(current_user: dict = Depends(get_current_user)):
         SELECT u.id, u.email, u.nickname, u.profile_image, u.created_at,
                us.notify_game_start, us.notify_score_change,
                us.notify_game_end, us.notify_my_team_only,
-               u.phone_number, u.phone_verified
+               u.phone_number, u.phone_verified,
+               us.notify_streak, us.notify_rank_change,
+               us.notify_roster, us.notify_comment
         FROM users u
         LEFT JOIN user_settings us ON u.id = us.user_id
         WHERE u.id = %s
@@ -236,5 +238,9 @@ def get_me(current_user: dict = Depends(get_current_user)):
             "notify_score_change": row[6],
             "notify_game_end":     row[7],
             "notify_my_team_only": row[8],
+            "notify_streak":       row[11] if row[11] is not None else True,
+            "notify_rank_change":  row[12] if row[12] is not None else True,
+            "notify_roster":       row[13] if row[13] is not None else True,
+            "notify_comment":      row[14] if row[14] is not None else True,
         }
     }

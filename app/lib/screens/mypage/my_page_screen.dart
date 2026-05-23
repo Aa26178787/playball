@@ -33,6 +33,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
   bool _notifyScoreChange = true;
   bool _notifyGameEnd     = true;
   bool _notifyMyTeamOnly  = false;
+  bool _notifyStreak      = true;
+  bool _notifyRankChange  = true;
+  bool _notifyRoster      = true;
+  bool _notifyComment     = true;
   bool _settingsLoaded    = false;
 
   @override
@@ -66,6 +70,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
             _notifyScoreChange = settings['notify_score_change'] as bool? ?? true;
             _notifyGameEnd     = settings['notify_game_end']     as bool? ?? true;
             _notifyMyTeamOnly  = settings['notify_my_team_only'] as bool? ?? false;
+            _notifyStreak      = settings['notify_streak']       as bool? ?? true;
+            _notifyRankChange  = settings['notify_rank_change']  as bool? ?? true;
+            _notifyRoster      = settings['notify_roster']       as bool? ?? true;
+            _notifyComment     = settings['notify_comment']      as bool? ?? true;
           }
           _settingsLoaded = true;
           _loading = false;
@@ -83,6 +91,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
         'notify_score_change': _notifyScoreChange,
         'notify_game_end':     _notifyGameEnd,
         'notify_my_team_only': _notifyMyTeamOnly,
+        'notify_streak':       _notifyStreak,
+        'notify_rank_change':  _notifyRankChange,
+        'notify_roster':       _notifyRoster,
+        'notify_comment':      _notifyComment,
       });
     } catch (_) {}
   }
@@ -627,6 +639,47 @@ class _MyPageScreenState extends State<MyPageScreen> {
               value: _notifyMyTeamOnly,
               onChanged: (v) {
                 setState(() => _notifyMyTeamOnly = v);
+                _saveSettings();
+              },
+            ),
+            const Divider(height: 1, indent: 16, endIndent: 16),
+            SwitchListTile(
+              dense: true,
+              title: const Text('연승/연패 알림', style: TextStyle(fontSize: 14)),
+              subtitle: Text('마이팀 5연승/연패 이상', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+              value: _notifyStreak,
+              onChanged: (v) {
+                setState(() => _notifyStreak = v);
+                _saveSettings();
+              },
+            ),
+            SwitchListTile(
+              dense: true,
+              title: const Text('순위 변동 알림', style: TextStyle(fontSize: 14)),
+              subtitle: Text('마이팀 순위 변동 시', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+              value: _notifyRankChange,
+              onChanged: (v) {
+                setState(() => _notifyRankChange = v);
+                _saveSettings();
+              },
+            ),
+            SwitchListTile(
+              dense: true,
+              title: const Text('등록말소 알림', style: TextStyle(fontSize: 14)),
+              subtitle: Text('즐겨찾기 선수 1군 등록/말소 시', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+              value: _notifyRoster,
+              onChanged: (v) {
+                setState(() => _notifyRoster = v);
+                _saveSettings();
+              },
+            ),
+            SwitchListTile(
+              dense: true,
+              title: const Text('댓글 알림', style: TextStyle(fontSize: 14)),
+              subtitle: Text('내 글에 댓글이 달릴 때', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+              value: _notifyComment,
+              onChanged: (v) {
+                setState(() => _notifyComment = v);
                 _saveSettings();
               },
             ),

@@ -20,6 +20,10 @@ class NotificationSettings(BaseModel):
     notify_score_change: bool
     notify_game_end: bool
     notify_my_team_only: bool
+    notify_streak: bool = True
+    notify_rank_change: bool = True
+    notify_roster: bool = True
+    notify_comment: bool = True
 
 
 class PushToken(BaseModel):
@@ -248,7 +252,8 @@ def get_settings(current_user: dict = Depends(get_current_user)):
     cur = conn.cursor()
     cur.execute("""
         SELECT notify_game_start, notify_score_change,
-               notify_game_end, notify_my_team_only
+               notify_game_end, notify_my_team_only,
+               notify_streak, notify_rank_change, notify_roster, notify_comment
         FROM user_settings
         WHERE user_id = %s
     """, (current_user["user_id"],))
@@ -266,6 +271,10 @@ def get_settings(current_user: dict = Depends(get_current_user)):
             "notify_score_change": row[1],
             "notify_game_end":     row[2],
             "notify_my_team_only": row[3],
+            "notify_streak":       row[4] if row[4] is not None else True,
+            "notify_rank_change":  row[5] if row[5] is not None else True,
+            "notify_roster":       row[6] if row[6] is not None else True,
+            "notify_comment":      row[7] if row[7] is not None else True,
         }
     }
 
@@ -284,6 +293,10 @@ def update_settings(body: NotificationSettings, current_user: dict = Depends(get
             notify_score_change = %s,
             notify_game_end = %s,
             notify_my_team_only = %s,
+            notify_streak = %s,
+            notify_rank_change = %s,
+            notify_roster = %s,
+            notify_comment = %s,
             updated_at = NOW()
         WHERE user_id = %s
     """, (
@@ -291,6 +304,10 @@ def update_settings(body: NotificationSettings, current_user: dict = Depends(get
         body.notify_score_change,
         body.notify_game_end,
         body.notify_my_team_only,
+        body.notify_streak,
+        body.notify_rank_change,
+        body.notify_roster,
+        body.notify_comment,
         current_user["user_id"]
     ))
 

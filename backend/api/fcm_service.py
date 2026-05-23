@@ -67,19 +67,29 @@ def _get_targets(notify_type: str, team_ids: list[int]) -> list[tuple[int, str]]
         conn.close()
 
 
-def _get_team_fan_targets(team_id: int) -> list[tuple[int, str]]:
-    """해당 팀 마이팀 팬의 (user_id, token)"""
+def _get_team_fan_targets(team_id: int, setting_col: str = None) -> list[tuple[int, str]]:
+    """해당 팀 마이팀 팬의 (user_id, token). setting_col 지정 시 해당 설정 ON인 유저만."""
     conn = get_connection()
     if not conn:
         return []
     try:
         cur = conn.cursor()
-        cur.execute("""
-            SELECT DISTINCT pt.user_id, pt.token
-            FROM push_tokens pt
-            JOIN user_favorite_teams uft ON uft.user_id = pt.user_id
-            WHERE uft.team_id = %s
-        """, (team_id,))
+        if setting_col:
+            cur.execute(f"""
+                SELECT DISTINCT pt.user_id, pt.token
+                FROM push_tokens pt
+                JOIN user_favorite_teams uft ON uft.user_id = pt.user_id
+                LEFT JOIN user_settings us ON us.user_id = pt.user_id
+                WHERE uft.team_id = %s
+                  AND COALESCE(us.{setting_col}, TRUE) = TRUE
+            """, (team_id,))
+        else:
+            cur.execute("""
+                SELECT DISTINCT pt.user_id, pt.token
+                FROM push_tokens pt
+                JOIN user_favorite_teams uft ON uft.user_id = pt.user_id
+                WHERE uft.team_id = %s
+            """, (team_id,))
         return cur.fetchall()
     except Exception as e:
         print(f"[FCM] 팬 토큰 조회 실패: {e}")
@@ -89,7 +99,7 @@ def _get_team_fan_targets(team_id: int) -> list[tuple[int, str]]:
 
 
 def _get_player_fan_targets(player_id: int) -> list[tuple[int, str]]:
-    """즐겨찾기 선수 팬의 (user_id, token)"""
+    """즐겨찾기 선수 팬의 (user_id, token). notify_roster ON인 유저만."""
     conn = get_connection()
     if not conn:
         return []
@@ -99,7 +109,9 @@ def _get_player_fan_targets(player_id: int) -> list[tuple[int, str]]:
             SELECT DISTINCT pt.user_id, pt.token
             FROM push_tokens pt
             JOIN user_favorite_players ufp ON ufp.user_id = pt.user_id
+            LEFT JOIN user_settings us ON us.user_id = pt.user_id
             WHERE ufp.player_id = %s
+              AND COALESCE(us.notify_roster, TRUE) = TRUE
         """, (player_id,))
         return cur.fetchall()
     except Exception as e:
@@ -110,13 +122,19 @@ def _get_player_fan_targets(player_id: int) -> list[tuple[int, str]]:
 
 
 def _get_user_targets(user_id: int) -> list[tuple[int, str]]:
-    """특정 유저의 (user_id, token) 목록"""
+    """특정 유저의 (user_id, token) 목록. notify_comment ON인 경우만."""
     conn = get_connection()
     if not conn:
         return []
     try:
         cur = conn.cursor()
-        cur.execute("SELECT %s, token FROM push_tokens WHERE user_id = %s", (user_id, user_id))
+        cur.execute("""
+            SELECT pt.user_id, pt.token
+            FROM push_tokens pt
+            LEFT JOIN user_settings us ON us.user_id = pt.user_id
+            WHERE pt.user_id = %s
+              AND COALESCE(us.notify_comment, TRUE) = TRUE
+        """, (user_id,))
         return cur.fetchall()
     except Exception:
         return []
@@ -253,8 +271,8 @@ def notify_game_cancelled(game_id: int, home_team: str, away_team: str,
 
 def notify_rank_change(team_id: int, team_name: str,
                        old_rank: int, new_rank: int, games_behind: float):
-    """순위 변동 — 해당 팀 마이팀 팬에게"""
-    targets = _get_team_fan_targets(team_id)
+    """순위 변동 — 해당 팀 마이팀 팬에게 (notify_rank_change ON)"""
+    targets = _get_team_fan_targets(team_id, 'notify_rank_change')
     direction = "▲" if new_rank < old_rank else "▼"
     gb_str = f" (1위와 {games_behind}게임차)" if new_rank > 1 and games_behind is not None else " (1위!)" if new_rank == 1 else ""
     _send(targets,
@@ -266,7 +284,7 @@ def notify_rank_change(team_id: int, team_name: str,
 # ── 연승/연패 알림 ────────────────────────────────────────────────────────────
 
 def notify_streak(team_id: int, team_name: str, count: int, is_winning: bool):
-    targets = _get_team_fan_targets(team_id)
+    targets = _get_team_fan_targets(team_id, 'notify_streak')
     if is_winning:
         _send(targets,
               f"🔥 {team_name} {count}연승!",
