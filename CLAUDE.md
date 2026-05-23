@@ -484,3 +484,5 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [ ] 스프레이 차트 (타구방향 데이터 없음 — 네이버 텍스트만 제공)
 - [ ] 드래프트/FA 정보 (데이터 소스 없음)
 - [ ] 팀별 월별 승률 추이 그래프
+- [ ] **친구 신청/수락** — friend_requests 테이블(from_user_id, to_user_id, status), FCM 친구 요청 알림, 마이페이지 친구 목록
+- [ ] **1:1 채팅** — WebSocket(FastAPI) + chat_rooms/chat_messages 테이블, 친구 관계 전제, 앱 내 채팅 UI

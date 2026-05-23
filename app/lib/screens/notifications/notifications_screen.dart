@@ -52,10 +52,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   String _typeIcon(String? type) {
     switch (type) {
-      case 'game_start':   return '⚾';
-      case 'score_change': return '🔥';
-      case 'game_end':     return '🏁';
-      default:             return '🔔';
+      case 'game_start':      return '⚾';
+      case 'score_change':    return '🔥';
+      case 'comeback':        return '⚡';
+      case 'game_end':        return '🏁';
+      case 'extra_innings':   return '🔄';
+      case 'cancelled':       return '🌧️';
+      case 'rank_change':     return '📊';
+      case 'winning_streak':  return '🔥';
+      case 'losing_streak':   return '😰';
+      case 'roster_change':   return '📋';
+      case 'new_comment':     return '💬';
+      default:                return '🔔';
     }
   }
 

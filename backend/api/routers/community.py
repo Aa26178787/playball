@@ -329,9 +329,16 @@ def create_comment(post_id: int, body: CommentCreate, current_user: dict = Depen
 
     cur = conn.cursor()
 
-    cur.execute("SELECT id FROM posts WHERE id = %s", (post_id,))
-    if not cur.fetchone():
+    cur.execute("SELECT user_id, title FROM posts WHERE id = %s", (post_id,))
+    post_row = cur.fetchone()
+    if not post_row:
         raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다")
+    post_author_id, post_title = post_row
+
+    # 댓글 작성자 닉네임
+    cur.execute("SELECT nickname FROM users WHERE id = %s", (current_user["user_id"],))
+    nick_row = cur.fetchone()
+    commenter_nickname = nick_row[0] if nick_row else "누군가"
 
     cur.execute("""
         INSERT INTO comments (post_id, user_id, content)
@@ -343,6 +350,15 @@ def create_comment(post_id: int, body: CommentCreate, current_user: dict = Depen
     conn.commit()
     cur.close()
     conn.close()
+
+    # 게시글 작성자에게 알림 (본인 댓글 제외)
+    if post_author_id != current_user["user_id"]:
+        try:
+            from api.fcm_service import notify_new_comment
+            notify_new_comment(post_author_id, post_id, post_title or "", commenter_nickname)
+        except Exception:
+            pass
+
     return {"message": "댓글 작성 완료", "comment_id": comment_id}
 
 

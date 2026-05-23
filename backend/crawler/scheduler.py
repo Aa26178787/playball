@@ -83,25 +83,52 @@ def smart_update():
 
         # FCM 알림
         try:
-            from api.fcm_service import notify_game_start, notify_score_change, notify_game_end
+            from api.fcm_service import (
+                notify_game_start, notify_score_change, notify_game_end,
+                notify_extra_innings, notify_game_cancelled, notify_streak,
+            )
             for gid, curr in curr_details.items():
                 prev = prev_details.get(gid, {})
+                cs, ps = curr['status'], prev.get('status', '')
+
+                # 우천취소
+                if cs == '취소' and ps not in ('취소', ''):
+                    notify_game_cancelled(gid, curr['home_team'], curr['away_team'],
+                                          curr['home_team_id'], curr['away_team_id'])
+                    continue
+
                 # 경기 시작
-                if curr['status'] == '진행' and prev.get('status') in ('예정', '라인업'):
+                if cs == '진행' and ps in ('예정', '라인업', ''):
                     notify_game_start(gid, curr['home_team'], curr['away_team'],
                                       curr['home_team_id'], curr['away_team_id'])
-                # 득점
-                elif (curr['status'] == '진행' and prev.get('status') == '진행' and
-                      (curr['home_score'] != prev.get('home_score') or
-                       curr['away_score'] != prev.get('away_score'))):
+
+                # 득점 변화
+                elif (cs == '진행' and ps == '진행' and
+                      (curr['home_score'] != prev.get('home_score', 0) or
+                       curr['away_score'] != prev.get('away_score', 0))):
+                    ph, pa = prev.get('home_score', 0), prev.get('away_score', 0)
+                    ch, ca = curr['home_score'], curr['away_score']
+                    # 역전: 득점 전 앞서던 팀이 뒤처짐
+                    is_comeback = ((ph > pa and ch < ca) or (pa > ph and ca < ch))
                     notify_score_change(gid, curr['home_team'], curr['away_team'],
-                                        curr['home_score'], curr['away_score'],
-                                        curr['home_team_id'], curr['away_team_id'])
+                                        ch, ca,
+                                        curr['home_team_id'], curr['away_team_id'],
+                                        is_comeback=is_comeback)
+
                 # 경기 종료
-                elif curr['status'] == '종료' and prev.get('status') == '진행':
+                elif cs == '종료' and ps == '진행':
                     notify_game_end(gid, curr['home_team'], curr['away_team'],
                                     curr['home_score'], curr['away_score'],
                                     curr['home_team_id'], curr['away_team_id'])
+
+                # 연장전 돌입 (별도 체크)
+                prev_inn = prev.get('current_inning', 0) or 0
+                curr_inn = curr.get('current_inning', 0) or 0
+                if cs == '진행' and curr_inn >= 10 and prev_inn < 10:
+                    notify_extra_innings(gid, curr['home_team'], curr['away_team'],
+                                         curr_inn,
+                                         curr['home_team_id'], curr['away_team_id'])
+
         except Exception as fcm_err:
             print(f"[FCM] 알림 처리 오류: {fcm_err}")
 
@@ -147,6 +174,23 @@ def smart_update():
                     crawl_highlights_for_game(gid)
                 except Exception as hl_err:
                     print(f"[{datetime.now()}] 하이라이트 크롤링 오류: {hl_err}")
+
+            # 연승/연패 알림 (5연승/5연패 이상, 이후 1씩 증가마다)
+            try:
+                from api.fcm_service import notify_streak
+                for team_id in finished_team_ids:
+                    streak = _get_consecutive_record(team_id)
+                    if abs(streak) >= 5:
+                        conn_s = get_connection()
+                        if conn_s:
+                            cur_s = conn_s.cursor()
+                            cur_s.execute("SELECT name FROM teams WHERE id = %s", (team_id,))
+                            row_s = cur_s.fetchone()
+                            cur_s.close(); conn_s.close()
+                            if row_s:
+                                notify_streak(team_id, row_s[0], abs(streak), streak > 0)
+            except Exception as streak_err:
+                print(f"[FCM] 연승/연패 알림 오류: {streak_err}")
 
     conn = get_connection()
     if conn:
@@ -559,34 +603,123 @@ def _get_game_statuses():
 
 
 def _get_game_details():
-    """오늘 경기의 상태 + 스코어 + 팀 정보 반환"""
+    """오늘 경기의 상태 + 스코어 + 팀 정보 + 이닝 반환"""
     conn = get_connection()
     if not conn:
         return {}
     cur = conn.cursor()
     cur.execute("""
         SELECT g.id, g.status, g.home_score, g.away_score,
-               ht.name, at2.name, g.home_team_id, g.away_team_id
+               ht.name, at2.name, g.home_team_id, g.away_team_id,
+               COALESCE(g.current_inning, 0)
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at2 ON g.away_team_id = at2.id
-        WHERE g.game_date = CURRENT_DATE AND g.status != '취소'
+        WHERE g.game_date = CURRENT_DATE
     """)
     rows = cur.fetchall()
     cur.close()
     conn.close()
     return {
         r[0]: {
-            'status': r[1],
-            'home_score': r[2] or 0,
-            'away_score': r[3] or 0,
-            'home_team': r[4],
-            'away_team': r[5],
+            'status':       r[1],
+            'home_score':   r[2] or 0,
+            'away_score':   r[3] or 0,
+            'home_team':    r[4],
+            'away_team':    r[5],
             'home_team_id': r[6],
             'away_team_id': r[7],
+            'current_inning': r[8] or 0,
         }
         for r in rows
     }
+
+
+def _get_rankings_snapshot() -> dict:
+    """팀별 현재 순위 스냅샷 {team_id: {rank, games_behind}}"""
+    conn = get_connection()
+    if not conn:
+        return {}
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, rank, games_behind, name FROM teams WHERE rank IS NOT NULL")
+        rows = cur.fetchall()
+        cur.close()
+        return {r[0]: {'rank': r[1], 'games_behind': r[2], 'name': r[3]} for r in rows}
+    except Exception:
+        return {}
+    finally:
+        conn.close()
+
+
+def _get_consecutive_record(team_id: int) -> int:
+    """최근 결과 연속 W/L 카운트 (양수=연승, 음수=연패, 0=무승부/없음)"""
+    conn = get_connection()
+    if not conn:
+        return 0
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                CASE
+                    WHEN home_team_id = %s THEN
+                        CASE WHEN home_score > away_score THEN 'W'
+                             WHEN home_score < away_score THEN 'L' ELSE 'D' END
+                    ELSE
+                        CASE WHEN away_score > home_score THEN 'W'
+                             WHEN away_score < home_score THEN 'L' ELSE 'D' END
+                END
+            FROM games
+            WHERE (home_team_id = %s OR away_team_id = %s)
+              AND status = '종료' AND home_score IS NOT NULL
+            ORDER BY game_date DESC, id DESC
+            LIMIT 10
+        """, (team_id, team_id, team_id))
+        results = [r[0] for r in cur.fetchall()]
+        cur.close()
+        if not results or results[0] == 'D':
+            return 0
+        first, count = results[0], 0
+        for r in results:
+            if r == first:
+                count += 1
+            else:
+                break
+        return count if first == 'W' else -count
+    except Exception:
+        return 0
+    finally:
+        conn.close()
+
+
+def _notify_roster_for_fans():
+    """오늘 등록말소 중 즐겨찾기 선수 → 팬에게 알림"""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT player_id, player_name, change_type
+            FROM player_roster_changes
+            WHERE change_date = CURRENT_DATE
+              AND player_id IS NOT NULL
+              AND change_type IN ('1군 등록', '1군 말소')
+        """)
+        rows = cur.fetchall()
+        cur.close()
+    except Exception:
+        return
+    finally:
+        conn.close()
+    if not rows:
+        return
+    try:
+        from api.fcm_service import notify_roster_change
+        for player_id, player_name, change_type in rows:
+            notify_roster_change(player_id, player_name, change_type)
+    except Exception as e:
+        print(f"[FCM] 로스터 알림 오류: {e}")
 
 
 def _run_once(func):
@@ -677,8 +810,21 @@ def update_finished_game_records():
 
 def update_team_rankings():
     print(f"[{datetime.now()}] 팀 순위 업데이트")
+    prev_ranks = _get_rankings_snapshot()
     teams = get_team_rankings(2026)
     save_team_rankings(teams)
+    curr_ranks = _get_rankings_snapshot()
+    # 순위 변동 알림
+    try:
+        from api.fcm_service import notify_rank_change
+        for team_id, curr in curr_ranks.items():
+            prev = prev_ranks.get(team_id, {})
+            old_r, new_r = prev.get('rank'), curr['rank']
+            if old_r and new_r and old_r != new_r:
+                notify_rank_change(team_id, curr['name'], old_r, new_r,
+                                   curr.get('games_behind') or 0)
+    except Exception as e:
+        print(f"[FCM] 순위 알림 오류: {e}")
 
 
 def _update_roster_changes():
@@ -688,6 +834,7 @@ def _update_roster_changes():
         print(f"[{datetime.now()}] 등록말소 크롤링 시작")
         run_today()
         run_trade(days=7)
+        _notify_roster_for_fans()
     except Exception as e:
         print(f"[{datetime.now()}] 등록말소 크롤링 오류: {e}")
 
