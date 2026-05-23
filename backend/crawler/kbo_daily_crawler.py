@@ -205,12 +205,12 @@ def _save_records(cur, player_id, records):
                     gdp        = COALESCE(EXCLUDED.gdp,        player_daily_stats.gdp),
                     era        = COALESCE(EXCLUDED.era,        player_daily_stats.era),
                     ip         = COALESCE(player_daily_stats.ip, EXCLUDED.ip),
-                    h          = COALESCE(EXCLUDED.h,          player_daily_stats.h),
-                    hr         = COALESCE(EXCLUDED.hr,         player_daily_stats.hr),
-                    bb         = COALESCE(EXCLUDED.bb,         player_daily_stats.bb),
-                    so         = COALESCE(EXCLUDED.so,         player_daily_stats.so),
-                    r          = COALESCE(EXCLUDED.r,          player_daily_stats.r),
-                    er         = COALESCE(EXCLUDED.er,         player_daily_stats.er)
+                    h          = COALESCE(player_daily_stats.h,  EXCLUDED.h),
+                    hr         = COALESCE(player_daily_stats.hr, EXCLUDED.hr),
+                    bb         = COALESCE(player_daily_stats.bb, EXCLUDED.bb),
+                    so         = COALESCE(player_daily_stats.so, EXCLUDED.so),
+                    r          = COALESCE(player_daily_stats.r,  EXCLUDED.r),
+                    er         = COALESCE(player_daily_stats.er, EXCLUDED.er)
             """, (
                 player_id, r.get('game_date'), r.get('opponent'),
                 r.get('result'), r.get('stat_type'),
