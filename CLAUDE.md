@@ -128,6 +128,8 @@ GET /players/hitters?season=&sort_by=&team_id=&limit=
 GET /players/pitchers?season=&sort_by=&team_id=&limit=
 GET /players/{id}            (프로필 + 시즌별 성적 + roster_status)
 GET /players/{id}/daily?season=
+GET /players/{id}/pitch-stats?season=  → {total, pitch_types:[{type,count,pct}]}
+  ※ game_pitch_locations 집계, 투수 전용
 ```
 
 ### 팀
@@ -153,6 +155,9 @@ POST       /user/email/send-code                (가입 이메일로 인증번�
 POST       /user/email/verify                   ({code}) → phone_verified=TRUE
 POST       /user/push-token                     (FCM — 활성화 대기)
 POST       /user/profile-image                  (multipart/form-data, file) → {profile_image: url}
+GET        /user/calendar-events?year=&month=   → {events:[{id,date,title,description,color}]}
+POST       /user/calendar-events                ({event_date,title,description?,color?}) → {id}
+DELETE     /user/calendar-events/{event_id}
 ```
 
 ### 커뮤니티
@@ -225,6 +230,11 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 ### pitcher_stats
 `player_id, season, games, wins, losses, saves, holds, innings_pitched, hits_allowed, runs_allowed, earned_runs, walks, strikeouts, home_runs_allowed, era, whip, fip, k_per_9, bb_per_9, babip, war, blown_saves, cg, sho, wpct, tbf, np, doubles_allowed, triples_allowed, sac, sf, ibb, hbp, wp, bk, qs, avg_against`
 
+### user_calendar_events
+`id, user_id(FK→users), event_date(DATE), title(VARCHAR200), description(TEXT), color(VARCHAR20, default='blue'), created_at`
+- color 옵션: blue/red/green/orange/purple/gray
+- INDEX: (user_id, event_date)
+
 ### player_daily_stats / player_roster_changes
 (기존 스키마 유지)
 
@@ -245,14 +255,21 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 - 스코어 헤더: 날씨 정보 행 + 팀별 최근5경기 W/L/D 뱃지
 - 승리확률 그래프: LineChart (80pt 다운샘플)
 - 경기흐름 그래프: BarChart (이닝별 득점)
-- 투수 탭: 구종차트 바 + 범례 + **투구 위치 보기** 버튼 → PitchLocationSheet
+- 투수 탭: 구종차트 바 + 범례 + **투구 위치 보기** 버튼 → PitchLocationSheet(gameStatus 전달)
 - 하이라이트 탭: GET /games/{id}/highlights → ListView + url_launcher 외부 브라우저
+- AppBar 공유 버튼: share_plus → 경기 결과/예정 텍스트 OS 공유시트
 - 자동새로고침: 30초 (진행중만)
 
 ### pitch_location_chart.dart (PitchLocationSheet)
-- 투수별 선택 칩 + 결과 필터 칩(전체/볼/스트라이크/헛스윙/파울/타격)
-- CustomPainter 스트라이크존: 타자별 ABS존(topSz/bottomSz) 평균 반영
-- 투구 좌표: Naver relay ptsOptions 물리궤적 계산 (y=0 시점 z값)
+- **3단계 필터**: ① 투수 선택(홈/원정 그룹) → ② 이닝 선택(해당 투수 이닝만) → ③ 타자 선택(해당 투수×이닝 타자만)
+- 결과 필터 칩(전체/볼/스트라이크/헛스윙/파울/타격)
+- 투수 변경 시 이닝·타자 리셋, 이닝 변경 시 타자 리셋
+- CustomPainter ABS 스트라이크존:
+  - plateHalfW = 8.5/12 ft (실제 플레이트 반폭)
+  - absHalfW = 9.95/12 ft (ABS 판정 경계 = 플레이트 + 공반지름 1.45인치)
+  - ballR = 1.45/12 ft; topAbs = topSz+ballR, botAbs = botSz-ballR
+  - 3x3 구역선 + 플레이트 모양(±8.5인치)
+- 진행중 경기 30초 자동새로고침 + LIVE 배지
 - 색상: 볼=파랑, 스트라이크=빨강, 헛스윙=주황, 파울=노랑, 타격=초록
 
 ### search_screen.dart
@@ -267,6 +284,8 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 
 ### player_detail_screen.dart
 - 한글/영어 토글: 스탯 섹션 상단 (AppBar 아님)
+- 최근 5경기 섹션 (최신순, 타자=AVG/HR/RBI, 투수=ERA/K/BB)
+- 투수 전용: 구종분포 바차트 (_buildPitchStatsCard) — /players/{id}/pitch-stats 사용
 - 시즌 트렌드 그래프 (최근 20경기)
 - 등록말소 뱃지
 
@@ -275,14 +294,21 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 - 타자 14행 / 투수 13행
 
 ### calendar_screen.dart
-- 월별 달력, 날짜 선택 → GameCard 형태 경기 목록
+- 월별 달력, 날짜 선택 → KBO 경기 목록 + 개인 일정 목록
+- 날짜 셀: 팀 컬러 점(경기) + 황색 점(개인 일정)
+- 예정/라인업 경기: 📅 아이콘 → add_2_calendar 네이티브 캘린더 추가
+- FAB(+): 선택 날짜에 개인 일정 추가 다이얼로그 (제목/메모/색상 6종)
+- 개인 일정 카드: 색상 바 + 삭제 버튼 (확인 다이얼로그)
+- API: GET/POST/DELETE /user/calendar-events
 
 ### team_screen.dart (순위 탭)
 - 팀 카드: last_series 배지 표시 (스윕 승/위닝 시리즈/스플릿/루징 시리즈/스윕 패)
 - 색상: 스윕 승=진파랑, 위닝=파랑, 스플릿=회색, 루징=빨강, 스윕 패=진빨강
 
 ### team_detail_screen.dart
-- 탭 3개: 선수명단 / 경기일정 / 등록말소
+- 탭 5개 (isScrollable): 선수명단 / 최근경기 / 등록말소 / 뉴스 / 커뮤니티
+- 커뮤니티 탭: GET /community/posts?team_id= → 글 목록(제목/닉네임/날짜/조회·좋아요·댓글) → PostDetailScreen
+- 최근경기: 시리즈별 그룹핑 + 시리즈 결과 배지
 
 ### my_page_screen.dart
 - 프로필 이미지: GestureDetector → ImagePicker(갤러리) → 업로드 (카메라 뱃지 + 스피너)
@@ -372,6 +398,9 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - TeamDetailScreen 파라미터: `team` (Map, not teamId)
 - 서버 직접 수정 후 git push 시: 로컬 scp로 동기화 먼저, 그 다음 push
 - 서버 pull 전: `git stash` 필수 (직접 수정 파일 있을 경우)
+- 커뮤니티 조회수 쓰로틀: community.py `_view_cache` in-memory dict (재시작 시 초기화됨, 의도적)
+- ABS 존 상수: plateHalfW=8.5/12, absHalfW=9.95/12, ballR=1.45/12 (ft 단위) — 변경 금지
+- share_plus 버전: ^10.0.0 (^10.1.4는 firebase_messaging 충돌)
 
 ## FCM 활성화 방법 (인프라 완료 — 수동 작업 필요)
 
@@ -381,24 +410,50 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 4. `flutterfire configure` → `firebase_options.dart` 생성
 5. Claude에게 "FCM 활성화 마무리해줘" 요청
 
-## 구현 완료 (최근)
-- [x] 선수 기록 규정이닝/규정타석 조건 제거 (players.py)
-- [x] 팀 순위 최근 시리즈 결과 배지 (last_series: 스윕 승/위닝/스플릿/루징/스윕 패)
-- [x] 경기 상세 하이라이트 탭 (Google News RSS, url_launcher)
-- [x] Google News RSS 하이라이트 크롤러 (crawl_highlights.py)
-- [x] 팀 뉴스 탭 (team_detail_screen, /news/team/{id})
-- [x] 피타고리안 승률 (teams.py _calc_pythagorean, 팀 카드 피타 컬럼 표시)
-- [x] 커뮤니티 이미지 첨부 (POST /community/posts/upload-image, posts.image_url, static/posts/)
+## 구현 완료
+
+### 경기/투구
+- [x] 경기 상세 7탭 (이닝/프리뷰/로스터/투수/타자/기록/하이라이트)
+- [x] 하이라이트 탭 (Google News RSS 크롤, url_launcher)
+- [x] 투구 위치 보기: 3단계 필터(투수→이닝→타자) + ABS존 정확 표시
+  - plateHalfW=8.5/12, absHalfW=9.95/12, ballR=1.45/12
+  - 진행중 30초 자동새로고침 + LIVE 배지
+- [x] 경기 상세 공유 버튼 (share_plus)
+- [x] 피타고리안 승률 (teams.py, 팀 카드 표시)
+
+### 선수
+- [x] 선수 상세: 최근 5경기 + 투수 구종분포 바차트
+- [x] GET /players/{id}/pitch-stats (game_pitch_locations 집계)
+- [x] 선수 기록 규정이닝/규정타석 조건 제거
+
+### 팀
+- [x] 팀 순위 최근 시리즈 결과 배지 (스윕 승/위닝/스플릿/루징/스윕 패)
+- [x] 팀 상세 5탭: 선수/최근경기/등록말소/뉴스/커뮤니티
+
+### 캘린더
+- [x] KBO 경기 → 네이티브 캘린더 추가 (add_2_calendar)
+- [x] 개인 일정 CRUD (user_calendar_events 테이블, FAB, 색상 6종)
+
+### 커뮤니티
+- [x] 조회수 IP 기반 10분 쓰로틀 (in-memory dict)
+- [x] 이미지 첨부 (POST /community/posts/upload-image)
+- [x] 검색 + 인기글 탭 (sort=hot)
+- [x] 팀 커뮤니티 탭 (team_detail_screen)
+
+### 인증/유저
+- [x] 비밀번호 찾기/재설정 (이메일→코드→재설정)
+- [x] 이메일 인증 (phone_verified 플래그, 커뮤니티 글쓰기 조건)
+- [x] 프로필 이미지 업로드
+
+### 기타
+- [x] 다크모드 (ThemeProvider, SharedPreferences)
+- [x] 마이팀 개인화 홈 (순위/연승/오늘경기)
+- [x] 통합 검색 (선수/팀)
+- [x] Google News RSS 하이라이트 크롤러
 
 ## 미구현 기능
-- [ ] FCM 활성화 (인프라 완료)
-- [x] 비밀번호 찾기/재설정 UI (forgot_password_screen.dart — 이메일→코드→재설정 3단계)
-- [x] 커뮤니티: 검색 (onSubmitted + q= 파라미터), 인기글 탭 (sort=hot)
-- [ ] 스프레이 차트 (타구방향 데이터 없음 — 네이버 중계 텍스트만 제공)
-- [ ] 드래프트/FA 정보
-- [ ] 직관 승률
-- [x] 다크모드 (ThemeProvider, SharedPreferences, MyPage SwitchListTile)
-- [x] 마이팀 개인화 홈 (home_screen 마이팀 대시보드 카드 — 순위/연승/오늘경기 표시)
+- [ ] FCM 푸시알림 (인프라/코드 완료 — Firebase 콘솔 등록만 남음)
 - [ ] 홈화면 위젯 (Android AppWidget — native kotlin 필요)
 - [ ] 카카오맵 연동 (Kakao API 키 필요)
+- [ ] 스프레이 차트 (타구방향 데이터 없음 — 네이버 텍스트만 제공)
 - [ ] 드래프트/FA 정보 (데이터 소스 없음)
