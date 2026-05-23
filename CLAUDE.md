@@ -168,6 +168,8 @@ POST   /community/posts/{id}/comments [Bearer]
 DELETE /community/comments/{id}      [Bearer, 작성자만]
 GET    /community/my-posts?page=     [Bearer]
 GET    /community/my-comments?page=  [Bearer] → {comments:[{id,content,created_at,post_id,post_title}]}
+POST   /community/posts/upload-image [Bearer, multipart] → {image_url}
+  ※ 이미지 먼저 업로드 후 image_url을 createPost 파라미터로 전달
 ```
 
 ### 검색
@@ -211,6 +213,10 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 ### game_highlights
 `id, game_id(FK→games), title, url(UNIQUE), thumbnail, source, published_at, crawled_at`
 - url_launcher로 외부 브라우저 오픈
+
+### posts
+`id, user_id, team_id, title, content, category, views, likes, created_at, updated_at, image_url`
+- image_url: /static/posts/ 경로 (커뮤니티 이미지 첨부)
 
 ### batter_stats
 `player_id, season, games, at_bats, runs, hits, doubles, triples, home_runs, rbis, walks, strikeouts, stolen_bases, avg, obp, slg, ops, woba, wrc_plus, babip, iso, war, pa, tb, cs, sac, sf, ibb, hbp, gdp, errors, sb_pct, mh, risp, ph_ba`
@@ -381,13 +387,15 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [x] 경기 상세 하이라이트 탭 (Google News RSS, url_launcher)
 - [x] Google News RSS 하이라이트 크롤러 (crawl_highlights.py)
 - [x] 팀 뉴스 탭 (team_detail_screen, /news/team/{id})
+- [x] 피타고리안 승률 (teams.py _calc_pythagorean, 팀 카드 피타 컬럼 표시)
+- [x] 커뮤니티 이미지 첨부 (POST /community/posts/upload-image, posts.image_url, static/posts/)
 
 ## 미구현 기능
 - [ ] FCM 활성화 (인프라 완료)
 - [x] 비밀번호 찾기/재설정 UI (forgot_password_screen.dart — 이메일→코드→재설정 3단계)
-- [ ] 커뮤니티: 이미지 첨부, 검색, 인기글 탭
+- [ ] 커뮤니티: 검색, 인기글 탭
 - [ ] 스프레이 차트 (타구방향 데이터 없음 — 네이버 중계 텍스트만 제공)
 - [ ] 드래프트/FA 정보
-- [ ] 피타고리안 승률, 직관 승률
+- [ ] 직관 승률
 - [ ] 다크모드, 홈화면 위젯, 카카오맵 연동
 - [ ] 마이팀 개인화 홈
