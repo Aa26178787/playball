@@ -1277,12 +1277,12 @@ def get_pitch_locations(game_id: int):
             if not pts_opts: continue
 
             pitch_txts = [o for o in txt_opts if o.get("type") == 1]
-            pitcher_name = ""
+            fallback_pitcher = ""
             for opt in txt_opts:
                 gs = opt.get("currentGameState") or {}
                 pid = str(gs.get("pitcher") or "")
                 if pid and pid in pitcher_cache:
-                    pitcher_name = pitcher_cache[pid]
+                    fallback_pitcher = pitcher_cache[pid]
                     break
 
             for i, pts in enumerate(pts_opts):
@@ -1291,10 +1291,15 @@ def get_pitch_locations(game_id: int):
                 if x is None or z is None: continue
                 result_text = ""
                 stuff = ""
+                pitcher_name = fallback_pitcher
                 if i < len(pitch_txts):
                     opt = pitch_txts[i]
                     result_text = opt.get("text") or ""
                     stuff = opt.get("stuff") or ""
+                    gs = opt.get("currentGameState") or {}
+                    pid = str(gs.get("pitcher") or "")
+                    if pid and pid in pitcher_cache:
+                        pitcher_name = pitcher_cache[pid]
                 if "고의" in result_text:
                     continue
                 all_pitches.append({

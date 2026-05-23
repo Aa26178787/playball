@@ -82,12 +82,13 @@ def save_pitch_locations_for_game(game_id, naver_game_id, max_inning):
                 continue
 
             pitch_txts = [o for o in txt_opts if o.get('type') == 1]
-            pitcher_name = ''
+            # fallback: type=8 타석시작 opt의 pitcher (교체 후 첫 타석에서 부정확할 수 있음)
+            fallback_pitcher = ''
             for opt in txt_opts:
                 gs = opt.get('currentGameState') or {}
                 pid = str(gs.get('pitcher') or '')
                 if pid and pid in pitcher_cache:
-                    pitcher_name = pitcher_cache[pid]
+                    fallback_pitcher = pitcher_cache[pid]
                     break
 
             for i, pts in enumerate(pts_opts):
@@ -97,10 +98,16 @@ def save_pitch_locations_for_game(game_id, naver_game_id, max_inning):
                     continue
                 result_text = ''
                 stuff = ''
+                pitcher_name = fallback_pitcher
                 if i < len(pitch_txts):
                     opt = pitch_txts[i]
                     result_text = opt.get('text') or ''
                     stuff = opt.get('stuff') or ''
+                    # 구마다 currentGameState.pitcher 우선 사용 (투수교체 정확도)
+                    gs = opt.get('currentGameState') or {}
+                    pid = str(gs.get('pitcher') or '')
+                    if pid and pid in pitcher_cache:
+                        pitcher_name = pitcher_cache[pid]
                 if '고의' in result_text:
                     continue
                 rows.append((
