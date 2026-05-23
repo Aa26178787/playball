@@ -50,7 +50,10 @@ void main() async {
     statusBarColor: Color(0xFF1A237E),
     statusBarIconBrightness: Brightness.light,
   ));
-  AuthRepository.initialize(appKey: 'f5b365c3d6aff5eb4640ab80783797ac');
+  AuthRepository.initialize(
+    appKey: 'f5b365c3d6aff5eb4640ab80783797ac',
+    baseUrl: 'http://playball.app',
+  );
   await _initFirebase();
   runApp(const PlayBallApp());
 }

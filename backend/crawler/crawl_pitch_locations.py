@@ -74,7 +74,7 @@ def save_pitch_locations_for_game(game_id, naver_game_id, max_inning):
         except Exception:
             continue
 
-        for item in text_relays:
+        for item in reversed(text_relays):
             pts_opts = item.get('ptsOptions', [])
             txt_opts = item.get('textOptions', [])
             batter = item.get('title', '')

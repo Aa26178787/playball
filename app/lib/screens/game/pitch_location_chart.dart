@@ -519,11 +519,10 @@ class _StrikeZonePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final topSz = _avgTopSz;
     final botSz = _avgBotSz;
-    // ABS 판정 경계: 공 중심 기준 (공반지름 포함)
-    final topAbs = topSz + ballR;
-    final botAbs = botSz - ballR;
+    // topSz/botSz = ABS 판정 경계 (이미 ball-edge 기준, 추가 ballR 불필요)
+    final topAbs = topSz;
+    final botAbs = botSz;
     // 끝면(후면) 기준 상한: 중간면보다 1.5cm 낮음
-    // 이 선 위 구역: 중간면은 통과하지만 끝면 기준 초과 가능 (볼 판정)
     final topBack = topAbs - absDropFt;
 
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
