@@ -156,13 +156,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       appBar: AppBar(
         title: const Text('게시글'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.favorite_border),
-            onPressed: () async {
-              await ApiService.toggleLike(widget.postId);
-              _loadPost();
-            },
-          ),
+          Builder(builder: (ctx) {
+            final liked = _post?['liked_by_me'] as bool? ?? false;
+            return IconButton(
+              icon: Icon(liked ? Icons.favorite : Icons.favorite_border,
+                  color: liked ? Colors.red : null),
+              onPressed: () async {
+                await ApiService.toggleLike(widget.postId);
+                _loadPost();
+              },
+            );
+          }),
           PopupMenuButton<String>(
             onSelected: (v) async {
               if (v == 'edit') {
@@ -241,6 +245,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 const SizedBox(height: 8),
                 ...comments.map((c) {
                   final isMyComment = myUserId != null && myUserId == c['user_id'];
+                  final likedByMe = c['liked_by_me'] as bool? ?? false;
+                  final likesCount = (c['likes_count'] as num?)?.toInt() ?? 0;
                   return ListTile(
                     title: MentionText(
                       text: c['content'] ?? '',
@@ -248,12 +254,35 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     ),
                     subtitle: Text('${c['author'] ?? ''}  ${(c['created_at'] ?? '').toString().length >= 10 ? (c['created_at'] as String).substring(0, 10) : ''}',
                         style: const TextStyle(fontSize: 11)),
-                    trailing: isMyComment
-                        ? IconButton(
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: () async {
+                            try {
+                              await ApiService.toggleCommentLike(c['id']);
+                              _loadPost();
+                            } catch (_) {}
+                          },
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(likedByMe ? Icons.favorite : Icons.favorite_border,
+                                  size: 16, color: likedByMe ? Colors.red : Colors.grey),
+                              if (likesCount > 0) ...[
+                                const SizedBox(width: 2),
+                                Text('$likesCount', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                              ],
+                            ],
+                          ),
+                        ),
+                        if (isMyComment)
+                          IconButton(
                             icon: const Icon(Icons.delete_outline, size: 18, color: Colors.grey),
                             onPressed: () => _deleteComment(c['id']),
-                          )
-                        : null,
+                          ),
+                      ],
+                    ),
                   );
                 }),
               ],

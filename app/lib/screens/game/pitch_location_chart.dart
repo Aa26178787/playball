@@ -28,6 +28,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
   int? _selectedInning;   // null = 전체
   String? _selectedBatter; // null = 전체
   String _filter = 'all';
+  bool _heatmap = false;
 
   bool _loading = true;
   bool _error = false;
@@ -159,6 +160,22 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                   child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                 ),
               ],
+              const Spacer(),
+              GestureDetector(
+                onTap: () => setState(() => _heatmap = !_heatmap),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _heatmap ? const Color(0xFF1A237E) : Colors.grey[200],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _heatmap ? '히트맵' : '점 모드',
+                    style: TextStyle(fontSize: 11, color: _heatmap ? Colors.white : Colors.black87, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -200,27 +217,50 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-                      child: ClipRect(child: _StrikeZoneChart(pitches: _filtered, colors: _resultColors)),
+                      child: ClipRect(
+                        child: _heatmap
+                            ? _HeatmapChart(pitches: _filtered)
+                            : _StrikeZoneChart(pitches: _filtered, colors: _resultColors),
+                      ),
                     ),
                   ),
 
                   // 범례
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Wrap(
-                      spacing: 10,
-                      runSpacing: 4,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        _legend('볼', _resultColors['ball']!),
-                        _legend('스트라이크', _resultColors['strike']!),
-                        _legend('헛스윙', _resultColors['swing']!),
-                        _legend('파울', _resultColors['foul']!),
-                        _legend('타격', _resultColors['hit']!),
-                        _legendDash('끝면 상한', Colors.orange),
-                      ],
+                  if (!_heatmap)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Wrap(
+                        spacing: 10,
+                        runSpacing: 4,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          _legend('볼', _resultColors['ball']!),
+                          _legend('스트라이크', _resultColors['strike']!),
+                          _legend('헛스윙', _resultColors['swing']!),
+                          _legend('파울', _resultColors['foul']!),
+                          _legend('타격', _resultColors['hit']!),
+                          _legendDash('끝면 상한', Colors.orange),
+                        ],
+                      ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('낮음', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          Container(
+                            width: 80, height: 10, margin: const EdgeInsets.symmetric(horizontal: 6),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [Color(0xFF2196F3), Color(0xFFFFEB3B), Color(0xFFF44336)]),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          const Text('높음', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -443,6 +483,159 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
       ],
     );
   }
+}
+
+class _HeatmapChart extends StatelessWidget {
+  final List<Map> pitches;
+  const _HeatmapChart({required this.pitches});
+
+  static const int cols = 10;
+  static const int rows = 12;
+  static const double xMin = _StrikeZonePainter.xMin;
+  static const double xMax = _StrikeZonePainter.xMax;
+  static const double zMin = _StrikeZonePainter.zMin;
+  static const double zMax = _StrikeZonePainter.zMax;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (_, constraints) => CustomPaint(
+        size: Size(constraints.maxWidth, constraints.maxHeight),
+        painter: _HeatmapPainter(pitches: pitches),
+      ),
+    );
+  }
+}
+
+class _HeatmapPainter extends CustomPainter {
+  final List<Map> pitches;
+  _HeatmapPainter({required this.pitches});
+
+  static const int cols = 10;
+  static const int rows = 12;
+  static const double xMin = _StrikeZonePainter.xMin;
+  static const double xMax = _StrikeZonePainter.xMax;
+  static const double zMin = _StrikeZonePainter.zMin;
+  static const double zMax = _StrikeZonePainter.zMax;
+  static const double plateHalfW = _StrikeZonePainter.plateHalfW;
+  static const double absHalfW = _StrikeZonePainter.absHalfW;
+  static const double absDropFt = _StrikeZonePainter.absDropFt;
+
+  double get _avgTopSz {
+    final vals = pitches.where((p) => p['top_sz'] != null).map((p) => (p['top_sz'] as num).toDouble());
+    if (vals.isEmpty) return 3.3;
+    return vals.reduce((a, b) => a + b) / vals.length;
+  }
+
+  double get _avgBotSz {
+    final vals = pitches.where((p) => p['bot_sz'] != null).map((p) => (p['bot_sz'] as num).toDouble());
+    if (vals.isEmpty) return 1.6;
+    return vals.reduce((a, b) => a + b) / vals.length;
+  }
+
+  Color _heatColor(double t) {
+    if (t < 0.5) {
+      return Color.lerp(const Color(0xFF2196F3), const Color(0xFFFFEB3B), t * 2)!;
+    } else {
+      return Color.lerp(const Color(0xFFFFEB3B), const Color(0xFFF44336), (t - 0.5) * 2)!;
+    }
+  }
+
+  Offset _toCanvas(double x, double z, Size size) {
+    final cx = (x - xMin) / (xMax - xMin) * size.width;
+    final cy = (zMax - z) / (zMax - zMin) * size.height;
+    return Offset(cx, cy);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final topSz = _avgTopSz;
+    final botSz = _avgBotSz;
+    final topAbs = topSz;
+    final botAbs = botSz;
+    final topBack = topAbs - absDropFt;
+
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()..color = const Color(0xFFF5F5F5));
+
+    // Build density grid
+    final grid = List.generate(rows, (_) => List.filled(cols, 0));
+    for (final p in pitches) {
+      final x = (p['x'] as num?)?.toDouble();
+      final z = (p['z'] as num?)?.toDouble();
+      if (x == null || z == null) continue;
+      final col = ((x - xMin) / (xMax - xMin) * cols).floor().clamp(0, cols - 1);
+      final row = ((zMax - z) / (zMax - zMin) * rows).floor().clamp(0, rows - 1);
+      grid[row][col]++;
+    }
+    final maxCount = grid.fold<int>(0, (m, row) => row.fold<int>(m, (mm, v) => v > mm ? v : mm));
+
+    final cellW = size.width / cols;
+    final cellH = size.height / rows;
+
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        final count = grid[r][c];
+        if (count == 0) continue;
+        final t = maxCount > 0 ? count / maxCount : 0.0;
+        final color = _heatColor(t).withValues(alpha: 0.7 + 0.3 * t);
+        canvas.drawRect(
+          Rect.fromLTWH(c * cellW, r * cellH, cellW, cellH),
+          Paint()..color = color,
+        );
+      }
+    }
+
+    // Zone overlay
+    final tl = _toCanvas(-absHalfW, topAbs, size);
+    final br = _toCanvas(absHalfW, botAbs, size);
+    final zoneRect = Rect.fromPoints(tl, br);
+    canvas.drawRect(zoneRect,
+        Paint()..color = Colors.white.withValues(alpha: 0.15)..style = PaintingStyle.stroke..strokeWidth = 2);
+
+    final yTopBack = _toCanvas(0, topBack, size).dy;
+    final dashPaint = Paint()
+      ..color = Colors.orange.withValues(alpha: 0.8)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+    double dx = tl.dx;
+    while (dx < br.dx) {
+      final end = dx + 4 < br.dx ? dx + 4 : br.dx;
+      canvas.drawLine(Offset(dx, yTopBack), Offset(end, yTopBack), dashPaint);
+      dx += 7;
+    }
+
+    // Grid lines 3x3
+    final zoneH = (topAbs - botAbs) / 3;
+    for (int i = 1; i <= 2; i++) {
+      final y = _toCanvas(0, botAbs + zoneH * i, size).dy;
+      canvas.drawLine(Offset(tl.dx, y), Offset(br.dx, y),
+          Paint()..color = Colors.white.withValues(alpha: 0.4)..strokeWidth = 0.5);
+    }
+    final zoneW = absHalfW * 2 / 3;
+    for (int i = 1; i <= 2; i++) {
+      final x = _toCanvas(-absHalfW + zoneW * i, 0, size).dx;
+      canvas.drawLine(Offset(x, tl.dy), Offset(x, br.dy),
+          Paint()..color = Colors.white.withValues(alpha: 0.4)..strokeWidth = 0.5);
+    }
+
+    // Count labels on cells
+    final textStyle = const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold);
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        final count = grid[r][c];
+        if (count == 0) continue;
+        final tp = TextPainter(
+          text: TextSpan(text: '$count', style: textStyle),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas, Offset(c * cellW + (cellW - tp.width) / 2, r * cellH + (cellH - tp.height) / 2));
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_HeatmapPainter old) => old.pitches != pitches;
 }
 
 class _DashLinePainter extends CustomPainter {

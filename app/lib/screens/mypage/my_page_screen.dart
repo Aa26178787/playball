@@ -24,6 +24,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   List _favoritePlayers = [];
   List _myPosts = [];
   List _myComments = [];
+  List _myLikes = [];
   bool _loading = true;
   bool _uploadingImage = false;
 
@@ -49,6 +50,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ApiService.getMyPosts(),
         ApiService.getMyComments(),
         ApiService.getSettings(),
+        ApiService.getMyLikes(),
       ]);
       if (mounted) {
         final settings = (results[5] as Map)['settings'] as Map?;
@@ -58,6 +60,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           _favoritePlayers = (results[2] as Map)['players'] ?? [];
           _myPosts = (results[3] as Map)['posts'] ?? [];
           _myComments = (results[4] as Map)['comments'] ?? [];
+          _myLikes = (results[6] as Map)['posts'] ?? [];
           if (settings != null) {
             _notifyGameStart   = settings['notify_game_start']   as bool? ?? true;
             _notifyScoreChange = settings['notify_score_change'] as bool? ?? true;
@@ -212,6 +215,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   _buildFavoritePlayers(),
                   const SizedBox(height: 16),
                   _buildMyPosts(),
+                  const SizedBox(height: 16),
+                  _buildMyLikes(),
                   const SizedBox(height: 16),
                   _buildMyComments(),
                   const SizedBox(height: 16),
@@ -463,6 +468,51 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                   subtitle: Text(
                     '${p['category'] ?? ''}  ❤️${p['likes'] ?? 0}  💬${p['comment_count'] ?? 0}',
+                    style: const TextStyle(fontSize: 11)),
+                  trailing: Text(
+                    (p['created_at'] ?? '').toString().length >= 10
+                        ? (p['created_at'] as String).substring(0, 10)
+                        : '',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => PostDetailScreen(postId: p['id']))),
+                );
+              }).toList(),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMyLikes() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Text('좋아요한 게시글', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ),
+        if (_myLikes.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(
+                child: Text('좋아요한 게시글이 없습니다', style: TextStyle(color: Colors.grey)),
+              ),
+            ),
+          )
+        else
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Column(
+              children: _myLikes.take(5).map((p) {
+                return ListTile(
+                  leading: const Icon(Icons.favorite, size: 16, color: Colors.red),
+                  title: Text(p['title'] ?? '',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(
+                    '${p['author'] ?? ''}  ❤️${p['likes'] ?? 0}  💬${p['comment_count'] ?? 0}',
                     style: const TextStyle(fontSize: 11)),
                   trailing: Text(
                     (p['created_at'] ?? '').toString().length >= 10

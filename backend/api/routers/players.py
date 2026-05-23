@@ -330,6 +330,51 @@ def get_player_pitch_stats(player_id: int, season: int = 2026):
     }
 
 
+@router.get("/matchup")
+def get_matchup_stats(batter_id: int, pitcher_id: int):
+    """타자 vs 투수 상대전적 (반대팀으로 같은 경기 출전 시 타자 성적 합산)"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("SELECT id, name, player_type FROM players WHERE id = %s", (batter_id,))
+    b = cur.fetchone()
+    cur.execute("SELECT id, name, player_type FROM players WHERE id = %s", (pitcher_id,))
+    p = cur.fetchone()
+    if not b or not p:
+        cur.close(); conn.close()
+        raise HTTPException(status_code=404, detail="선수 없음")
+    cur.execute("""
+        SELECT
+            COUNT(DISTINCT gb.game_id) as games,
+            COALESCE(SUM(gb.at_bats), 0) as at_bats,
+            COALESCE(SUM(gb.hits), 0) as hits,
+            COALESCE(SUM(gb.home_runs), 0) as home_runs,
+            COALESCE(SUM(gb.rbis), 0) as rbis,
+            COALESCE(SUM(gb.walks), 0) as walks,
+            COALESCE(SUM(gb.strikeouts), 0) as strikeouts
+        FROM game_batters gb
+        JOIN game_pitchers gp ON gb.game_id = gp.game_id AND gb.team_side != gp.team_side
+        WHERE gb.player_id = %s AND gp.player_id = %s
+    """, (batter_id, pitcher_id))
+    row = cur.fetchone()
+    cur.close(); conn.close()
+    games, ab, h, hr, rbi, bb, k = row
+    avg = round(h / ab, 3) if ab > 0 else 0.0
+    return {
+        "batter": {"id": b[0], "name": b[1]},
+        "pitcher": {"id": p[0], "name": p[1]},
+        "games": games,
+        "at_bats": ab,
+        "hits": h,
+        "home_runs": hr,
+        "rbis": rbi,
+        "walks": bb,
+        "strikeouts": k,
+        "avg": avg,
+    }
+
+
 @router.get("/{player_id}")
 def get_player_detail(player_id: int):
     conn = get_connection()

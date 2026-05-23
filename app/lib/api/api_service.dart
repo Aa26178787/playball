@@ -520,6 +520,26 @@ class ApiService {
     await _dio.delete('/user/calendar-events/$eventId', options: Options(headers: headers));
   }
 
+  static Future<void> toggleCommentLike(int commentId) async {
+    final headers = await authHeaders();
+    await _dio.post('/community/comments/$commentId/like',
+        options: Options(headers: headers));
+  }
+
+  static Future<Map<String, dynamic>> getMyLikes({int page = 1}) async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/community/my-likes',
+        queryParameters: {'page': page},
+        options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<Map<String, dynamic>> getMatchupStats(int batterId, int pitcherId) async {
+    final res = await _dio.get('/players/matchup',
+        queryParameters: {'batter_id': batterId, 'pitcher_id': pitcherId});
+    return Map<String, dynamic>.from(res.data);
+  }
+
   static Future<Map<String, dynamic>> search(String q) async {
     final res = await _dio.get('/search', queryParameters: {'q': q});
     return Map<String, dynamic>.from(res.data);

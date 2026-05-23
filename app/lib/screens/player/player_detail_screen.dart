@@ -90,6 +90,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     }
 
     final player = _playerData!;
+    final playerType = player['player_type'] as String? ?? '';
     return Scaffold(
       appBar: AppBar(
         title: Text(player['name'] ?? ''),
@@ -102,6 +103,11 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.small(
+        tooltip: '상대전적 조회',
+        onPressed: () => _showMatchupSheet(player),
+        child: const Icon(Icons.compare_arrows),
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -112,16 +118,178 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             if (_dailyStats.isNotEmpty) _buildTrendCard(player),
             PlayerStatsSection(
               statsList: (_playerData!['stats'] as List?) ?? [],
-              playerType: _playerData!['player_type'] as String? ?? '',
+              playerType: playerType,
               useEng: _useEng,
               onToggleEng: () => setState(() => _useEng = !_useEng),
               position: _playerData!['position'] as String?,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 80),
           ],
         ),
       ),
     );
+  }
+
+  void _showMatchupSheet(Map<String, dynamic> player) {
+    final playerType = player['player_type'] as String? ?? '';
+    final isBatter = playerType == '타자';
+    final searchCtrl = TextEditingController();
+    List<Map> results = [];
+    Map<String, dynamic>? matchupData;
+    bool searching = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModal) {
+          Future<void> doSearch(String q) async {
+            if (q.trim().isEmpty) return;
+            setModal(() { searching = true; matchupData = null; });
+            try {
+              final data = await ApiService.searchPlayers(q.trim(),
+                  playerType: isBatter ? '투수' : '타자');
+              setModal(() {
+                results = (data['players'] as List? ?? [])
+                    .map((p) => Map<String, dynamic>.from(p as Map)).toList();
+                searching = false;
+              });
+            } catch (_) {
+              setModal(() => searching = false);
+            }
+          }
+
+          Future<void> doMatchup(Map opponent) async {
+            setModal(() { searching = true; matchupData = null; });
+            try {
+              final data = isBatter
+                  ? await ApiService.getMatchupStats(widget.playerId, opponent['id'] as int)
+                  : await ApiService.getMatchupStats(opponent['id'] as int, widget.playerId);
+              setModal(() { matchupData = data; searching = false; results = []; });
+            } catch (_) {
+              setModal(() => searching = false);
+            }
+          }
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              left: 16, right: 16, top: 16,
+            ),
+            child: SizedBox(
+              height: 420,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('상대전적 — ${player['name']} vs ${isBatter ? '투수' : '타자'}',
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: searchCtrl,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: isBatter ? '투수 이름 검색' : '타자 이름 검색',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.search),
+                        onPressed: () => doSearch(searchCtrl.text),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    onSubmitted: doSearch,
+                  ),
+                  const SizedBox(height: 8),
+                  if (searching)
+                    const Expanded(child: Center(child: CircularProgressIndicator()))
+                  else if (matchupData != null)
+                    _buildMatchupResult(matchupData!, player['name'] as String)
+                  else
+                    Expanded(
+                      child: ListView(
+                        children: results.map((p) => ListTile(
+                          title: Text(p['name'] ?? ''),
+                          subtitle: Text('${p['team'] ?? ''} | ${p['position'] ?? ''}',
+                              style: const TextStyle(fontSize: 12)),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => doMatchup(p),
+                        )).toList(),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMatchupResult(Map<String, dynamic> data, String thisName) {
+    final batter = data['batter'] as Map;
+    final pitcher = data['pitcher'] as Map;
+    final games = data['games'] ?? 0;
+    final ab = data['at_bats'] ?? 0;
+    final h = data['hits'] ?? 0;
+    final hr = data['home_runs'] ?? 0;
+    final rbi = data['rbis'] ?? 0;
+    final bb = data['walks'] ?? 0;
+    final k = data['strikeouts'] ?? 0;
+    final avg = (data['avg'] as num?)?.toStringAsFixed(3) ?? '.000';
+
+    return Expanded(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text('${batter['name']} vs ${pitcher['name']}',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          ),
+          if (games == 0)
+            const Expanded(child: Center(
+              child: Text('상대전적 데이터가 없습니다', style: TextStyle(color: Colors.grey))))
+          else
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Text('$games경기 출전', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _statBox('타율', avg),
+                        _statBox('타수', '$ab'),
+                        _statBox('안타', '$h'),
+                        _statBox('홈런', '$hr'),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _statBox('타점', '$rbi'),
+                        _statBox('볼넷', '$bb'),
+                        _statBox('삼진', '$k'),
+                        _statBox('출루율', ab > 0 ? ((h + bb) / (ab + bb)).toStringAsFixed(3) : '.000'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statBox(String label, String value) {
+    return Column(children: [
+      Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+      Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+    ]);
   }
 
   Widget _buildRosterBadge(Map<String, dynamic> status) {

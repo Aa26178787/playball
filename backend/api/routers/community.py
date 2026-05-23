@@ -130,38 +130,54 @@ def get_post_detail(post_id: int, request: Request):
     if last_viewed is None or (now - last_viewed) > _VIEW_COOLDOWN:
         _view_cache[cache_key] = now
         cur.execute("UPDATE posts SET views = views + 1 WHERE id = %s", (post_id,))
-        # 캐시 크기 제한 (1만 건 초과 시 만료 항목 정리)
         if len(_view_cache) > 10000:
             cutoff = now - _VIEW_COOLDOWN
             expired = [k for k, v in _view_cache.items() if v < cutoff]
             for k in expired:
                 del _view_cache[k]
 
-    # 게시글 조회
+    # 선택적 인증: 댓글 liked_by_me 판단용
+    current_user_id = None
+    try:
+        auth = request.headers.get('authorization') or request.headers.get('Authorization')
+        if auth and auth.startswith('Bearer '):
+            from jose import jwt
+            from api.routers.auth import SECRET_KEY, ALGORITHM
+            payload = jwt.decode(auth.split(' ')[1], SECRET_KEY, algorithms=[ALGORITHM])
+            current_user_id = int(payload.get('sub', 0)) or None
+    except Exception:
+        pass
+
+    # 게시글 조회 + 내 좋아요 여부
     cur.execute("""
         SELECT p.id, p.title, p.content, p.category,
                p.views, p.likes, p.created_at, p.updated_at,
                u.id AS user_id, u.nickname, u.profile_image,
-               t.name AS team_name, p.image_url
+               t.name AS team_name, p.image_url,
+               EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = %s) AS liked_by_me
         FROM posts p
         JOIN users u ON p.user_id = u.id
         LEFT JOIN teams t ON p.team_id = t.id
         WHERE p.id = %s
-    """, (post_id,))
+    """, (current_user_id, post_id))
 
     row = cur.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="게시글을 찾을 수 없습니다")
 
-    # 댓글 조회
+    # 댓글 조회 + 좋아요 수 + liked_by_me
     cur.execute("""
         SELECT c.id, c.content, c.created_at,
-               u.id AS user_id, u.nickname, u.profile_image
+               u.id AS user_id, u.nickname, u.profile_image,
+               COUNT(cl.id) as likes_count,
+               MAX(CASE WHEN cl.user_id = %s THEN 1 ELSE 0 END) as liked_by_me
         FROM comments c
         JOIN users u ON c.user_id = u.id
+        LEFT JOIN comment_likes cl ON cl.comment_id = c.id
         WHERE c.post_id = %s
+        GROUP BY c.id, c.content, c.created_at, u.id, u.nickname, u.profile_image
         ORDER BY c.created_at ASC
-    """, (post_id,))
+    """, (current_user_id, post_id))
     comments = cur.fetchall()
 
     conn.commit()
@@ -182,6 +198,7 @@ def get_post_detail(post_id: int, request: Request):
         "author_image": row[10],
         "team_name":    row[11],
         "image_url":    row[12],
+        "liked_by_me":  row[13],
         "comments": [
             {
                 "id":           c[0],
@@ -190,6 +207,8 @@ def get_post_detail(post_id: int, request: Request):
                 "user_id":      c[3],
                 "author":       c[4],
                 "author_image": c[5],
+                "likes_count":  c[6],
+                "liked_by_me":  bool(c[7]),
             }
             for c in comments
         ]
@@ -456,6 +475,61 @@ def get_my_comments(page: int = 1, limit: int = 20, current_user: dict = Depends
     return {'comments': [
         {'id': r[0], 'content': r[1], 'created_at': str(r[2]),
          'post_id': r[3], 'post_title': r[4]}
+        for r in rows
+    ]}
+
+
+@router.post("/comments/{comment_id}/like")
+def toggle_comment_like(comment_id: int, current_user: dict = Depends(get_current_user)):
+    """댓글 좋아요 토글"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM comments WHERE id = %s", (comment_id,))
+    if not cur.fetchone():
+        cur.close(); conn.close()
+        raise HTTPException(status_code=404, detail="댓글을 찾을 수 없습니다")
+    cur.execute("SELECT id FROM comment_likes WHERE comment_id = %s AND user_id = %s",
+                (comment_id, current_user["user_id"]))
+    if cur.fetchone():
+        cur.execute("DELETE FROM comment_likes WHERE comment_id = %s AND user_id = %s",
+                    (comment_id, current_user["user_id"]))
+        message = "좋아요 취소"
+    else:
+        cur.execute("INSERT INTO comment_likes (comment_id, user_id) VALUES (%s, %s)",
+                    (comment_id, current_user["user_id"]))
+        message = "좋아요 추가"
+    conn.commit()
+    cur.execute("SELECT COUNT(*) FROM comment_likes WHERE comment_id = %s", (comment_id,))
+    count = cur.fetchone()[0]
+    cur.close(); conn.close()
+    return {"message": message, "likes_count": count}
+
+
+@router.get("/my-likes")
+def get_my_likes(page: int = 1, limit: int = 20, current_user: dict = Depends(get_current_user)):
+    """내가 좋아요한 게시글"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    offset = (page - 1) * limit
+    cur.execute("""
+        SELECT p.id, p.title, p.category, p.views, p.likes, p.created_at,
+               u.nickname, (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id)
+        FROM post_likes pl
+        JOIN posts p ON pl.post_id = p.id
+        JOIN users u ON p.user_id = u.id
+        WHERE pl.user_id = %s
+        ORDER BY pl.created_at DESC
+        LIMIT %s OFFSET %s
+    """, (current_user["user_id"], limit, offset))
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+    return {"posts": [
+        {"id": r[0], "title": r[1], "category": r[2], "views": r[3],
+         "likes": r[4], "created_at": str(r[5]), "author": r[6], "comment_count": r[7]}
         for r in rows
     ]}
 
