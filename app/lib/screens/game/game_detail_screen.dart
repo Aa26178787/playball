@@ -732,65 +732,68 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final sortedInnings = grouped.keys.toList()..sort();
 
     List<Map<String, dynamic>> groupByBatter(List items) {
-      // Phase 1: pitch_num 리셋으로 타석 경계 분리
-      final List<List> rawGroups = [];
-      List currentGroup = [];
-      int lastPitchNum = 0;
+      // pitch_num은 Naver 누적 카운트(타석 리셋 없음) → 결과이벤트 기반으로 타석 경계 감지
+      // 타석 종료 신호: rtype==13(결과)/rtype==23(결과) → 다음 rtype==1이 새 타석
+      // 타석 교체 신호: rtype==8 + batter_name 변경
+      final List<Map<String, dynamic>> result = [];
+
+      String? batterName;
+      String? pitcherName;
+      List currentPitches = [];
+      Map<String, dynamic>? atBatResult;
+      List currentEvents = [];
+      bool pendingNewAtBat = true;
+
+      void flush() {
+        if (batterName != null || currentPitches.isNotEmpty) {
+          result.add({
+            'batter': batterName ?? '?',
+            'pitcher': pitcherName,
+            'pitches': List.from(currentPitches),
+            'result': atBatResult,
+            'events': List.from(currentEvents),
+          });
+        }
+        currentPitches = [];
+        atBatResult = null;
+        currentEvents = [];
+        batterName = null;
+      }
 
       for (final r in items) {
         final rtype = r['type'] as int?;
         if (rtype == 0) continue;
-        if (rtype == 1) {
-          final pn = (r['pitch_num'] as int?) ?? 0;
-          if (pn > 0 && pn <= lastPitchNum && currentGroup.isNotEmpty) {
-            rawGroups.add(currentGroup);
-            currentGroup = [];
+        final bn = r['batter_name'] as String?;
+        final pn = r['pitcher_name'] as String?;
+        if (pn != null && pn.isNotEmpty) pitcherName = pn;
+
+        if (rtype == 8) {
+          // 명시적 타자 교체 이벤트
+          if (bn != null && bn.isNotEmpty && bn != batterName) {
+            flush();
+            batterName = bn;
           }
-          if (pn > 0) lastPitchNum = pn;
-        }
-        currentGroup.add(r);
-      }
-      if (currentGroup.isNotEmpty) rawGroups.add(currentGroup);
-
-      // Phase 2: 각 타석 이벤트에서 마지막 batter_name 사용 (API 교정값 반영)
-      final List<Map<String, dynamic>> result = [];
-
-      for (final group in rawGroups) {
-        String? batterName;
-        String? pitcherName;
-        final List pitches = [];
-        Map<String, dynamic>? atBatResult;
-        final List events = [];
-
-        for (final r in group) {
-          final rtype = r['type'] as int?;
-          final bn = r['batter_name'] as String?;
-          final pn = r['pitcher_name'] as String?;
-          // 마지막 유효한 이름으로 갱신 (앞쪽 이벤트 이름 오류 덮어씀)
+        } else if (rtype == 1) {
+          // 결과 이벤트 후 첫 투구 → 새 타석 시작
+          if (pendingNewAtBat && currentPitches.isNotEmpty) flush();
+          if (pendingNewAtBat) {
+            batterName = bn;
+            pendingNewAtBat = false;
+          }
+          // 타석 내 batter_name 업데이트 (앞쪽 잘못된 이름 교정)
           if (bn != null && bn.isNotEmpty) batterName = bn;
-          if (pn != null && pn.isNotEmpty) pitcherName = pn;
-
-          if (rtype == 8) continue;
-          if (rtype == 1) {
-            pitches.add(r);
-          } else if (rtype == 13 || rtype == 23) {
-            atBatResult = r as Map<String, dynamic>;
-          } else if (rtype != null &&
-              [2, 7, 14, 20, 21, 22, 24, 25, 30, 31].contains(rtype)) {
-            events.add(r);
-          }
-        }
-
-        if (batterName != null || pitches.isNotEmpty) {
-          result.add({
-            'batter': batterName ?? '?',
-            'pitcher': pitcherName,
-            'pitches': pitches,
-            'result': atBatResult,
-            'events': events,
-          });
+          currentPitches.add(r);
+        } else if (rtype == 13 || rtype == 23) {
+          if (bn != null && bn.isNotEmpty) batterName = bn;
+          atBatResult = r as Map<String, dynamic>;
+          pendingNewAtBat = true;
+        } else if (rtype != null &&
+            [2, 7, 14, 20, 21, 22, 24, 25, 30, 31].contains(rtype)) {
+          if (bn != null && bn.isNotEmpty) batterName = bn;
+          currentEvents.add(r);
         }
       }
+      flush();
       return result;
     }
 
@@ -1063,7 +1066,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             final pitchResult = r['pitch_result'] as String?;
             final speed = _speedToString(r['speed']);
             final stuff = r['stuff'] as String?;
-            final pitchNum = r['pitch_num'] as int?;
+            final pitchNum = entry.key + 1;  // 타석 내 1구부터 (누적 pitch_num 사용 안 함)
             final title = r['title'] as String?;
 
             String pitchResultText = '';
@@ -1086,7 +1089,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 children: [
                   SizedBox(
                     width: 28,
-                    child: Text(pitchNum != null ? '${pitchNum}구' : '',
+                    child: Text('${pitchNum}구',
                         style: TextStyle(fontSize: 10, color: Colors.grey[400])),
                   ),
                   Container(
