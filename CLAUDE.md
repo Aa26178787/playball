@@ -339,6 +339,13 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 ### game.dart 모델
 `id, status, homeTeam, awayTeam, homeScore, awayScore, currentInning, inningHalf, stadium, startTime, isDraw, winPitcher, losePitcher, homeStarter, awayStarter, weather, homeRecent5, awayRecent5, homeTeamId, awayTeamId`
 
+### stadium_screen.dart
+- kakao_map_plugin KakaoMap 위젯 (markers: List<Marker> 파라미터)
+- 9개 구장 하드코딩: 잠실/고척/수원/인천/대전/광주/대구/창원/사직
+- 카드 탭 → setCenter(LatLng) + setLevel(4), 전체 → level 13
+- 잠실 LG·두산 2팀 로고 동시 표시
+- KakaoMapController (not MapController)
+
 ### team_theme.dart
 `kTeamColors, kTeamLogoUrls, kTeamDisplayNames`
 `TeamLogo(teamCode, size, logoUrl)`, `teamColor(code)`, `teamDisplayName(code)`
@@ -454,9 +461,10 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 ## 진행 예정 기능
 
 ### 즉시 착수 가능
-- [ ] **카카오맵 구장 화면** — 구장 목록 + 지도 핀 (API 키 보유, kakao_map_plugin)
-  - 9개 구장 좌표 하드코딩 (서울/고척/수원/인천/대전/광주/대구/창원/사직)
-  - StadiumScreen: 구장 카드 리스트 + 지도 마커
+- [x] **카카오맵 구장 화면** — StadiumScreen, 9개 구장 마커, 카드 탭 → 지도 포커스
+  - 네이티브 앱 키: f5b365c3d6aff5eb4640ab80783797ac
+  - AuthRepository.initialize() in main.dart, AndroidManifest meta-data 등록
+  - HomeScreen AppBar 구장 아이콘(stadium_outlined) → StadiumScreen
 - [ ] **FCM 알림 기준 구현** — user_settings 기반 조건부 발송
   - notify_game_start: 경기 시작 시 (naver_crawler 진행 감지)
   - notify_score_change: 득점 변경 시 (home_score/away_score 변화)
