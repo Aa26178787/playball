@@ -289,6 +289,11 @@ class ApiService {
     return res.data;
   }
 
+  static Future<Map<String, dynamic>> getStadiumNearbyFood(int stadiumId, {int radius = 1000}) async {
+    final res = await _dio.get('/stadiums/$stadiumId/nearby-food', queryParameters: {'radius': radius});
+    return res.data;
+  }
+
   // ===== 위젯 API =====
   static Future<Map<String, dynamic>> getLiveScores() async {
     final res = await _dio.get('/widget/live-scores');

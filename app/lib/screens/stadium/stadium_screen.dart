@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../utils/team_theme.dart';
+import '../../api/api_service.dart';
 
 class StadiumScreen extends StatefulWidget {
   const StadiumScreen({super.key});
@@ -149,6 +151,21 @@ class _StadiumScreenState extends State<StadiumScreen> {
     final latLng = LatLng(s['lat'] as double, s['lng'] as double);
     _mapController?.setCenter(latLng);
     _mapController?.setLevel(4);
+
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _NearbyFoodSheet(
+        stadiumIndex: i,
+        stadiumName: s['name'] as String,
+        teamCode: (s['teams'] as List).first as String,
+      ),
+    );
   }
 
   Future<void> _resetView() async {
@@ -225,6 +242,124 @@ class _StadiumScreenState extends State<StadiumScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _NearbyFoodSheet extends StatefulWidget {
+  final int stadiumIndex;
+  final String stadiumName;
+  final String teamCode;
+
+  const _NearbyFoodSheet({
+    required this.stadiumIndex,
+    required this.stadiumName,
+    required this.teamCode,
+  });
+
+  @override
+  State<_NearbyFoodSheet> createState() => _NearbyFoodSheetState();
+}
+
+class _NearbyFoodSheetState extends State<_NearbyFoodSheet> {
+  List _places = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await ApiService.getStadiumNearbyFood(widget.stadiumIndex + 1);
+      if (mounted) setState(() { _places = data['places'] ?? []; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = '맛집 정보를 불러올 수 없습니다'; _loading = false; });
+    }
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = teamColor(widget.teamCode);
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      builder: (_, sc) => Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Row(
+              children: [
+                TeamLogo(teamCode: widget.teamCode, size: 32),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '${widget.stadiumName} 주변 맛집',
+                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                    ? Center(child: Text(_error!, style: TextStyle(color: Colors.grey[600])))
+                    : _places.isEmpty
+                        ? Center(child: Text('주변 맛집 정보가 없습니다', style: TextStyle(color: Colors.grey[600])))
+                        : ListView.separated(
+                            controller: sc,
+                            itemCount: _places.length,
+                            separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
+                            itemBuilder: (_, i) {
+                              final p = _places[i];
+                              final dist = p['distance'] as int;
+                              final distStr = dist >= 1000 ? '${(dist / 1000).toStringAsFixed(1)}km' : '${dist}m';
+                              return ListTile(
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: color.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(Icons.restaurant, color: color, size: 20),
+                                ),
+                                title: Text(p['name'] as String, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                                subtitle: Text(
+                                  '${p['category']} · $distStr${(p['phone'] as String).isNotEmpty ? '\n${p['phone']}' : ''}',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                ),
+                                isThreeLine: (p['phone'] as String).isNotEmpty,
+                                trailing: const Icon(Icons.open_in_new, size: 16, color: Colors.grey),
+                                onTap: () => _openUrl(p['url'] as String),
+                              );
+                            },
+                          ),
+          ),
+        ],
       ),
     );
   }
