@@ -358,6 +358,50 @@ def get_roster_changes(team_id: int, days: int = 30):
     }
 
 
+@router.get("/{team_id}/monthly-stats")
+def get_team_monthly_stats(team_id: int, season: int = 2026):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT
+            EXTRACT(MONTH FROM game_date)::int AS month,
+            COUNT(*) FILTER (
+                WHERE (home_team_id = %s AND home_score > away_score)
+                   OR (away_team_id = %s AND away_score > home_score)
+            ) AS wins,
+            COUNT(*) FILTER (
+                WHERE (home_team_id = %s AND home_score < away_score)
+                   OR (away_team_id = %s AND away_score < home_score)
+            ) AS losses,
+            COUNT(*) FILTER (WHERE status = '종료') AS games
+        FROM games
+        WHERE (home_team_id = %s OR away_team_id = %s)
+          AND status = '종료'
+          AND EXTRACT(YEAR FROM game_date) = %s
+        GROUP BY 1
+        ORDER BY 1
+    """, (team_id, team_id, team_id, team_id, team_id, team_id, season))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {
+        "team_id": team_id,
+        "season": season,
+        "monthly": [
+            {
+                "month": r[0],
+                "wins": r[1],
+                "losses": r[2],
+                "games": r[3],
+                "win_rate": round(r[1] / r[3], 3) if r[3] > 0 else 0.0,
+            }
+            for r in rows
+        ],
+    }
+
+
 @router.get("/roster-changes/today")
 def get_today_roster_changes():
     """오늘 전체 팀 등록말소"""

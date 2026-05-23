@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
@@ -22,18 +23,20 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   List _rosterChanges = [];
   List _news = [];
   List _communityPosts = [];
+  List _monthlyStats = [];
   bool _playersLoading = true;
   bool _gamesLoading = false;
   bool _rosterLoading = false;
   bool _newsLoading = false;
   bool _communityLoading = false;
+  bool _monthlyLoading = false;
   bool _isFav = false;
   bool _favLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(() {
       if (_tabController.index == 1 && _games.isEmpty && !_gamesLoading) {
         _loadGames();
@@ -46,6 +49,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       }
       if (_tabController.index == 4 && _communityPosts.isEmpty && !_communityLoading) {
         _loadCommunityPosts();
+      }
+      if (_tabController.index == 5 && _monthlyStats.isEmpty && !_monthlyLoading) {
+        _loadMonthlyStats();
       }
     });
     _loadPlayers();
@@ -155,6 +161,21 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     }
   }
 
+  Future<void> _loadMonthlyStats() async {
+    setState(() => _monthlyLoading = true);
+    try {
+      final data = await ApiService.getTeamMonthlyStats(widget.team['id'] as int);
+      if (mounted) {
+        setState(() {
+          _monthlyStats = data['monthly'] ?? [];
+          _monthlyLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _monthlyLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final team = widget.team;
@@ -185,7 +206,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
           isScrollable: true,
-          tabs: const [Tab(text: '선수'), Tab(text: '최근경기'), Tab(text: '등록말소'), Tab(text: '뉴스'), Tab(text: '커뮤니티')],
+          tabs: const [Tab(text: '선수'), Tab(text: '최근경기'), Tab(text: '등록말소'), Tab(text: '뉴스'), Tab(text: '커뮤니티'), Tab(text: '월별성적')],
         ),
       ),
       body: Column(
@@ -194,7 +215,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [_buildPlayers(), _buildGames(), _buildRosterChanges(), _buildNews(), _buildCommunity()],
+              children: [_buildPlayers(), _buildGames(), _buildRosterChanges(), _buildNews(), _buildCommunity(), _buildMonthlyStats()],
             ),
           ),
         ],
@@ -811,6 +832,186 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           );
         },
       ),
+    );
+  }
+
+  Widget _buildMonthlyStats() {
+    if (_monthlyLoading) return const Center(child: CircularProgressIndicator());
+    if (_monthlyStats.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('월별 성적이 없습니다', style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('새로고침'),
+              onPressed: () {
+                setState(() => _monthlyStats = []);
+                _loadMonthlyStats();
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
+    final code = widget.team['short_name'] as String? ?? '';
+    final color = teamColor(code);
+
+    final months = _monthlyStats.map((m) => (m['month'] as num).toInt()).toList();
+    final winRates = _monthlyStats.map((m) => (m['win_rate'] as num).toDouble()).toList();
+
+    const monthNames = {3:'3월', 4:'4월', 5:'5월', 6:'6월', 7:'7월', 8:'8월', 9:'9월', 10:'10월'};
+
+    final spots = List.generate(winRates.length, (i) => FlSpot(i.toDouble(), winRates[i]));
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('월별 승률 추이 (2026)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 220,
+            child: LineChart(
+              LineChartData(
+                minY: 0,
+                maxY: 1,
+                gridData: FlGridData(
+                  show: true,
+                  horizontalInterval: 0.25,
+                  getDrawingHorizontalLine: (_) => FlLine(color: Colors.grey.withOpacity(0.2), strokeWidth: 1),
+                  drawVerticalLine: false,
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                    left: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 36,
+                      interval: 0.25,
+                      getTitlesWidget: (v, _) => Text(v.toStringAsFixed(2),
+                          style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 24,
+                      getTitlesWidget: (v, _) {
+                        final idx = v.toInt();
+                        if (idx < 0 || idx >= months.length) return const SizedBox();
+                        return Text(monthNames[months[idx]] ?? '',
+                            style: TextStyle(fontSize: 11, color: Colors.grey[700]));
+                      },
+                    ),
+                  ),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipItems: (spots) => spots.map((s) {
+                      final idx = s.x.toInt();
+                      final m = monthNames[months[idx]] ?? '';
+                      final row = _monthlyStats[idx];
+                      return LineTooltipItem(
+                        '$m\n${s.y.toStringAsFixed(3)}\n${row['wins']}승 ${row['losses']}패',
+                        const TextStyle(fontSize: 12, color: Colors.white),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    color: color,
+                    barWidth: 2.5,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (_, __, ___, ____) =>
+                          FlDotCirclePainter(radius: 4, color: color, strokeWidth: 1.5, strokeColor: Colors.white),
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: color.withOpacity(0.12),
+                    ),
+                  ),
+                  // 5할 기준선
+                  LineChartBarData(
+                    spots: [FlSpot(0, 0.5), FlSpot((spots.length - 1).toDouble(), 0.5)],
+                    isCurved: false,
+                    color: Colors.grey.withOpacity(0.5),
+                    barWidth: 1,
+                    dotData: const FlDotData(show: false),
+                    dashArray: [4, 4],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text('월별 세부 성적', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Table(
+            border: TableBorder.all(color: Colors.grey.withOpacity(0.2), width: 0.5),
+            columnWidths: const {
+              0: FlexColumnWidth(1.2),
+              1: FlexColumnWidth(1),
+              2: FlexColumnWidth(1),
+              3: FlexColumnWidth(1),
+              4: FlexColumnWidth(1.2),
+            },
+            children: [
+              TableRow(
+                decoration: BoxDecoration(color: color.withOpacity(0.1)),
+                children: ['월', '경기', '승', '패', '승률'].map((h) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  child: Text(h, textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                )).toList(),
+              ),
+              ..._monthlyStats.map((row) {
+                final m = monthNames[row['month']] ?? '${row['month']}월';
+                final wr = (row['win_rate'] as num).toDouble();
+                return TableRow(
+                  children: [
+                    _tableCell(m),
+                    _tableCell('${row['games']}'),
+                    _tableCell('${row['wins']}', bold: true, color: Colors.blue[700]),
+                    _tableCell('${row['losses']}', bold: true, color: Colors.red[700]),
+                    _tableCell(wr.toStringAsFixed(3),
+                        bold: true, color: wr >= 0.5 ? Colors.blue[700] : Colors.red[700]),
+                  ],
+                );
+              }),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tableCell(String text, {bool bold = false, Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      child: Text(text,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            color: color,
+          )),
     );
   }
 
