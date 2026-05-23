@@ -262,104 +262,521 @@ class _NearbyFoodSheet extends StatefulWidget {
   State<_NearbyFoodSheet> createState() => _NearbyFoodSheetState();
 }
 
-class _NearbyFoodSheetState extends State<_NearbyFoodSheet> {
-  List _places = [];
-  bool _loading = true;
-  String? _error;
+class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  // 카카오 탭
+  List _kakaoPlaces = [];
+  bool _kakaoLoading = true;
+
+  // 팬 추천 탭
+  List _communityPlaces = [];
+  bool _communityLoading = false;
+  bool _communityLoaded = false;
+
+  // 내 투표 목록
+  final Set<int> _myVotes = {};
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.index == 1 && !_communityLoaded) _loadCommunity();
+    });
+    _loadKakao();
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadKakao() async {
     try {
       final data = await ApiService.getStadiumNearbyFood(widget.stadiumIndex + 1);
-      if (mounted) setState(() { _places = data['places'] ?? []; _loading = false; });
-    } catch (e) {
-      if (mounted) setState(() { _error = '맛집 정보를 불러올 수 없습니다'; _loading = false; });
+      if (mounted) setState(() { _kakaoPlaces = data['places'] ?? []; _kakaoLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() { _kakaoLoading = false; });
+    }
+  }
+
+  Future<void> _loadCommunity() async {
+    if (mounted) setState(() => _communityLoading = true);
+    try {
+      final data = await ApiService.getCommunityFood(widget.stadiumIndex + 1);
+      if (mounted) setState(() {
+        _communityPlaces = data['places'] ?? [];
+        _communityLoading = false;
+        _communityLoaded = true;
+      });
+    } catch (_) {
+      if (mounted) setState(() { _communityLoading = false; _communityLoaded = true; });
     }
   }
 
   Future<void> _openUrl(String url) async {
+    if (url.isEmpty) return;
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _vote(int placeId) async {
+    try {
+      final res = await ApiService.voteFoodPlace(placeId);
+      final voted = res['voted'] as bool;
+      setState(() {
+        if (voted) {
+          _myVotes.add(placeId);
+        } else {
+          _myVotes.remove(placeId);
+        }
+        final idx = _communityPlaces.indexWhere((p) => p['id'] == placeId);
+        if (idx >= 0) {
+          final cur = (_communityPlaces[idx]['upvote_count'] as int);
+          _communityPlaces[idx] = Map.from(_communityPlaces[idx])
+            ..['upvote_count'] = voted ? cur + 1 : cur - 1;
+        }
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그인이 필요합니다')),
+        );
+      }
+    }
+  }
+
+  void _showSubmitSheet(Color color) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _SubmitFoodSheet(
+        stadiumId: widget.stadiumIndex + 1,
+        color: color,
+        onSubmitted: () {
+          _communityLoaded = false;
+          _loadCommunity();
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final color = teamColor(widget.teamCode);
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.6,
-      minChildSize: 0.4,
-      maxChildSize: 0.9,
-      builder: (_, sc) => Column(
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.78,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Column(
         children: [
           Container(
             decoration: BoxDecoration(
               color: color,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             ),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TeamLogo(teamCode: widget.teamCode, size: 32),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '${widget.stadiumName} 주변 맛집',
-                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
+                Row(
+                  children: [
+                    TeamLogo(teamCode: widget.teamCode, size: 28),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${widget.stadiumName} 맛집',
+                        style: const TextStyle(
+                          color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
                 ),
+                TabBar(
+                  controller: _tabController,
+                  indicatorColor: Colors.white,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white60,
+                  labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  tabs: const [Tab(text: '카카오 추천'), Tab(text: '팬 추천')],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildKakaoTab(color),
+                _buildCommunityTab(color),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKakaoTab(Color color) {
+    if (_kakaoLoading) return const Center(child: CircularProgressIndicator());
+    if (_kakaoPlaces.isEmpty) {
+      return Center(child: Text('주변 맛집 정보가 없습니다', style: TextStyle(color: Colors.grey[600])));
+    }
+    return ListView.separated(
+      itemCount: _kakaoPlaces.length,
+      separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
+      itemBuilder: (_, i) {
+        final p = _kakaoPlaces[i];
+        final dist = p['distance'] as int;
+        final distStr = dist >= 1000 ? '${(dist / 1000).toStringAsFixed(1)}km' : '${dist}m';
+        return ListTile(
+          leading: Container(
+            width: 38, height: 38,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.restaurant, color: color, size: 18),
+          ),
+          title: Text(p['name'] as String,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          subtitle: Text(
+            '${p['category']} · $distStr${(p['phone'] as String).isNotEmpty ? '\n${p['phone']}' : ''}',
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+          isThreeLine: (p['phone'] as String).isNotEmpty,
+          trailing: const Icon(Icons.open_in_new, size: 16, color: Colors.grey),
+          onTap: () => _openUrl(p['url'] as String),
+        );
+      },
+    );
+  }
+
+  Widget _buildCommunityTab(Color color) {
+    if (_communityLoading) return const Center(child: CircularProgressIndicator());
+    return Stack(
+      children: [
+        _communityPlaces.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.restaurant_menu, size: 48, color: Colors.grey[300]),
+                    const SizedBox(height: 12),
+                    Text('아직 팬 추천 맛집이 없습니다\n첫 번째로 추천해보세요!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                  ],
+                ),
+              )
+            : ListView.separated(
+                padding: const EdgeInsets.only(bottom: 80),
+                itemCount: _communityPlaces.length,
+                separatorBuilder: (_, __) =>
+                    Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
+                itemBuilder: (_, i) {
+                  final p = _communityPlaces[i];
+                  final isApproved = p['status'] == 'approved';
+                  final votes = p['upvote_count'] as int;
+                  final voted = _myVotes.contains(p['id'] as int);
+                  return ListTile(
+                    leading: Container(
+                      width: 38, height: 38,
+                      decoration: BoxDecoration(
+                        color: isApproved
+                            ? color.withValues(alpha: 0.15)
+                            : Colors.grey.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        isApproved ? Icons.verified : Icons.restaurant,
+                        color: isApproved ? color : Colors.grey,
+                        size: 18,
+                      ),
+                    ),
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(p['name'] as String,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        ),
+                        if (isApproved)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text('인증', style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+                          ),
+                      ],
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${p['category']} · ${p['submitted_by']} 추천',
+                            style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                        if ((p['memo'] as String).isNotEmpty)
+                          Text('"${p['memo']}"',
+                              style: TextStyle(fontSize: 11, color: Colors.grey[500],
+                                  fontStyle: FontStyle.italic)),
+                      ],
+                    ),
+                    trailing: GestureDetector(
+                      onTap: () => _vote(p['id'] as int),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(voted ? Icons.thumb_up : Icons.thumb_up_outlined,
+                              size: 18, color: voted ? color : Colors.grey),
+                          Text('$votes', style: TextStyle(fontSize: 11, color: voted ? color : Colors.grey)),
+                        ],
+                      ),
+                    ),
+                    isThreeLine: (p['memo'] as String).isNotEmpty,
+                    onTap: () => _openUrl(p['url'] as String),
+                  );
+                },
+              ),
+        Positioned(
+          bottom: 16, right: 16,
+          child: FloatingActionButton.extended(
+            onPressed: () => _showSubmitSheet(color),
+            backgroundColor: color,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('맛집 제안', style: TextStyle(fontSize: 13)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── 팬 맛집 제안 시트 ────────────────────────────────────────────────────────
+
+class _SubmitFoodSheet extends StatefulWidget {
+  final int stadiumId;
+  final Color color;
+  final VoidCallback onSubmitted;
+
+  const _SubmitFoodSheet({
+    required this.stadiumId,
+    required this.color,
+    required this.onSubmitted,
+  });
+
+  @override
+  State<_SubmitFoodSheet> createState() => _SubmitFoodSheetState();
+}
+
+class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
+  final _searchCtrl = TextEditingController();
+  final _memoCtrl = TextEditingController();
+  List _results = [];
+  bool _searching = false;
+  Map? _selected;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _memoCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search() async {
+    final q = _searchCtrl.text.trim();
+    if (q.isEmpty) return;
+    setState(() { _searching = true; _results = []; _selected = null; });
+    try {
+      final data = await ApiService.searchFoodPlace(widget.stadiumId, q);
+      if (mounted) setState(() { _results = data['places'] ?? []; _searching = false; });
+    } catch (_) {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  Future<void> _submit() async {
+    if (_selected == null) return;
+    setState(() => _submitting = true);
+    try {
+      await ApiService.submitFoodPlace(widget.stadiumId, {
+        'kakao_place_id': _selected!['id'],
+        'name': _selected!['name'],
+        'category': _selected!['category'],
+        'address': _selected!['address'],
+        'phone': _selected!['phone'],
+        'url': _selected!['url'],
+        'memo': _memoCtrl.text.trim(),
+      });
+      widget.onSubmitted();
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('제안이 등록되었습니다. 팬 5명의 추천을 받으면 목록에 표시됩니다.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _submitting = false);
+        final msg = e.toString().contains('409') ? '이미 등록된 장소입니다' : '제안 실패. 로그인 상태를 확인해주세요';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('맛집 제안', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                  icon: const Icon(Icons.close, size: 20),
                   onPressed: () => Navigator.pop(context),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
               ],
             ),
-          ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                    ? Center(child: Text(_error!, style: TextStyle(color: Colors.grey[600])))
-                    : _places.isEmpty
-                        ? Center(child: Text('주변 맛집 정보가 없습니다', style: TextStyle(color: Colors.grey[600])))
-                        : ListView.separated(
-                            controller: sc,
-                            itemCount: _places.length,
-                            separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
-                            itemBuilder: (_, i) {
-                              final p = _places[i];
-                              final dist = p['distance'] as int;
-                              final distStr = dist >= 1000 ? '${(dist / 1000).toStringAsFixed(1)}km' : '${dist}m';
-                              return ListTile(
-                                leading: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: color.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(Icons.restaurant, color: color, size: 20),
-                                ),
-                                title: Text(p['name'] as String, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                                subtitle: Text(
-                                  '${p['category']} · $distStr${(p['phone'] as String).isNotEmpty ? '\n${p['phone']}' : ''}',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                                ),
-                                isThreeLine: (p['phone'] as String).isNotEmpty,
-                                trailing: const Icon(Icons.open_in_new, size: 16, color: Colors.grey),
-                                onTap: () => _openUrl(p['url'] as String),
-                              );
-                            },
-                          ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Text('구장 2km 이내 음식점만 등록 가능합니다',
+                style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchCtrl,
+                    decoration: InputDecoration(
+                      hintText: '가게 이름 검색',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      isDense: true,
+                    ),
+                    onSubmitted: (_) => _search(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _searching ? null : _search,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.color,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  child: _searching
+                      ? const SizedBox(width: 16, height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('검색'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (_selected != null) ...[
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: widget.color.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: widget.color.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_selected!['name'] as String,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text('${_selected!['category']} · ${_selected!['address']}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _memoCtrl,
+                decoration: InputDecoration(
+                  hintText: '추천 이유 (선택)',
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  isDense: true,
+                ),
+                maxLength: 50,
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _submitting ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.color,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: _submitting
+                      ? const SizedBox(width: 18, height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('제안하기'),
+                ),
+              ),
+            ] else if (_results.isNotEmpty) ...[
+              Expanded(
+                child: ListView.separated(
+                  itemCount: _results.length,
+                  separatorBuilder: (_, __) =>
+                      Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2)),
+                  itemBuilder: (_, i) {
+                    final r = _results[i];
+                    final dist = r['distance'] as int;
+                    final distStr = dist >= 1000
+                        ? '${(dist / 1000).toStringAsFixed(1)}km'
+                        : '${dist}m';
+                    return ListTile(
+                      dense: true,
+                      title: Text(r['name'] as String,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      subtitle: Text('${r['category']} · $distStr',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                      trailing: const Icon(Icons.add_circle_outline, size: 20),
+                      onTap: () => setState(() { _selected = r; _results = []; }),
+                    );
+                  },
+                ),
+              ),
+            ] else if (!_searching && _searchCtrl.text.isNotEmpty && _results.isEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: Center(
+                  child: Text('검색 결과가 없습니다. 구장 2km 이내 음식점만 검색됩니다.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

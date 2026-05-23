@@ -294,6 +294,26 @@ class ApiService {
     return res.data;
   }
 
+  static Future<Map<String, dynamic>> searchFoodPlace(int stadiumId, String q) async {
+    final res = await _dio.get('/stadiums/$stadiumId/food-places/search', queryParameters: {'q': q});
+    return res.data;
+  }
+
+  static Future<Map<String, dynamic>> getCommunityFood(int stadiumId) async {
+    final res = await _dio.get('/stadiums/$stadiumId/food-places/community');
+    return res.data;
+  }
+
+  static Future<Map<String, dynamic>> submitFoodPlace(int stadiumId, Map<String, dynamic> body) async {
+    final res = await _dio.post('/stadiums/$stadiumId/food-places', data: body);
+    return res.data;
+  }
+
+  static Future<Map<String, dynamic>> voteFoodPlace(int placeId) async {
+    final res = await _dio.post('/stadiums/food-places/$placeId/vote');
+    return res.data;
+  }
+
   // ===== 위젯 API =====
   static Future<Map<String, dynamic>> getLiveScores() async {
     final res = await _dio.get('/widget/live-scores');
