@@ -14,6 +14,7 @@ class PlayerDetailScreen extends StatefulWidget {
 class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   Map<String, dynamic>? _playerData;
   List<dynamic> _dailyStats = [];
+  Map<String, dynamic>? _pitchStats;
   bool _isLoading = true;
   bool _useEng = false;
   bool _isFav = false;
@@ -53,12 +54,20 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         ApiService.getPlayerDetail(widget.playerId),
         ApiService.getPlayerDaily(widget.playerId, season: 2026),
       ]);
+      final playerData = results[0] as Map<String, dynamic>;
       setState(() {
-        _playerData = results[0] as Map<String, dynamic>;
+        _playerData = playerData;
         final dailyData = results[1] as Map<String, dynamic>;
         _dailyStats = dailyData['daily'] ?? [];
         _isLoading = false;
       });
+      // 투수면 구종 차트도 로드
+      if (playerData['player_type'] == '투수') {
+        try {
+          final ps = await ApiService.getPlayerPitchStats(widget.playerId);
+          if (mounted) setState(() => _pitchStats = ps);
+        } catch (_) {}
+      }
     } catch (e) {
       // daily 실패해도 기본 데이터라도 표시
       try {
@@ -99,6 +108,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             _buildHeader(player),
             _buildInfoCard(player),
             if (_dailyStats.isNotEmpty) _buildRecent5Games(player),
+            if (_pitchStats != null) _buildPitchStatsCard(),
             if (_dailyStats.isNotEmpty) _buildTrendCard(player),
             PlayerStatsSection(
               statsList: (_playerData!['stats'] as List?) ?? [],
@@ -479,6 +489,70 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             ),
           );
         }),
+      ),
+    );
+  }
+
+  static const _pitchColors = {
+    '직구': Color(0xFFE53935), '포심': Color(0xFFE53935), '패스트볼': Color(0xFFE53935),
+    '투심': Color(0xFFFF7043), '싱커': Color(0xFFFF7043),
+    '슬라이더': Color(0xFF1E88E5), '커터': Color(0xFF039BE5),
+    '커브': Color(0xFF43A047), '너클커브': Color(0xFF66BB6A),
+    '체인지업': Color(0xFF8E24AA), '스플리터': Color(0xFF6D4C41),
+    '포크': Color(0xFF795548), '너클볼': Color(0xFFFF8F00),
+  };
+
+  Widget _buildPitchStatsCard() {
+    final types = (_pitchStats?['pitch_types'] as List?) ?? [];
+    final total = (_pitchStats?['total'] as num?)?.toInt() ?? 0;
+    if (types.isEmpty || total == 0) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                _sectionLabel('구종 분포'),
+                const Spacer(),
+                Text('총 $total구', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+              ]),
+              const SizedBox(height: 10),
+              ...types.map((t) {
+                final type = t['type'] as String? ?? '';
+                final pct = (t['pct'] as num?)?.toDouble() ?? 0;
+                final cnt = (t['count'] as num?)?.toInt() ?? 0;
+                final color = _pitchColors[type] ?? Colors.grey;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(children: [
+                    SizedBox(
+                      width: 56,
+                      child: Text(type, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    ),
+                    Expanded(
+                      child: Stack(children: [
+                        Container(height: 14, decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(4))),
+                        FractionallySizedBox(
+                          widthFactor: pct / 100,
+                          child: Container(height: 14, decoration: BoxDecoration(color: color.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(4))),
+                        ),
+                      ]),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 52,
+                      child: Text('${pct.toStringAsFixed(1)}% ($cnt)',
+                          style: const TextStyle(fontSize: 11), textAlign: TextAlign.right),
+                    ),
+                  ]),
+                );
+              }),
+            ],
+          ),
+        ),
       ),
     );
   }

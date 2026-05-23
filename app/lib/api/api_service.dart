@@ -446,6 +446,35 @@ class ApiService {
     return Map<String, dynamic>.from(res.data);
   }
 
+  // ===== 투수 구종 통계 =====
+  static Future<Map<String, dynamic>> getPlayerPitchStats(int playerId, {int season = 2026}) async {
+    final res = await _dio.get('/players/$playerId/pitch-stats', queryParameters: {'season': season});
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  // ===== 개인 캘린더 이벤트 =====
+  static Future<Map<String, dynamic>> getCalendarEvents(int year, int month) async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/user/calendar-events',
+        queryParameters: {'year': year, 'month': month},
+        options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<Map<String, dynamic>> createCalendarEvent(
+      String date, String title, {String? description, String color = 'blue'}) async {
+    final headers = await authHeaders();
+    final res = await _dio.post('/user/calendar-events',
+        data: {'event_date': date, 'title': title, 'description': description, 'color': color},
+        options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<void> deleteCalendarEvent(int eventId) async {
+    final headers = await authHeaders();
+    await _dio.delete('/user/calendar-events/$eventId', options: Options(headers: headers));
+  }
+
   static Future<Map<String, dynamic>> search(String q) async {
     final res = await _dio.get('/search', queryParameters: {'q': q});
     return Map<String, dynamic>.from(res.data);

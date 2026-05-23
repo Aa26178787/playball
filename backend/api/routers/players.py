@@ -293,6 +293,43 @@ def get_player_daily(player_id: int, season: int = 2026):
     }
 
 
+@router.get("/{player_id}/pitch-stats")
+def get_player_pitch_stats(player_id: int, season: int = 2026):
+    """투수 구종 분포 (game_pitch_locations 집계)"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM players WHERE id = %s", (player_id,))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        raise HTTPException(status_code=404, detail="선수 없음")
+    name = row[0]
+    cur.execute("""
+        SELECT pitch_type, COUNT(*) as cnt
+        FROM game_pitch_locations gpl
+        JOIN games g ON gpl.game_id = g.id
+        WHERE gpl.pitcher_name = %s
+          AND EXTRACT(YEAR FROM g.game_date) = %s
+          AND gpl.pitch_type IS NOT NULL AND gpl.pitch_type != ''
+        GROUP BY pitch_type
+        ORDER BY cnt DESC
+    """, (name, season))
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+    total = sum(r[1] for r in rows)
+    return {
+        "player_id": player_id,
+        "season": season,
+        "total": total,
+        "pitch_types": [
+            {"type": r[0], "count": r[1], "pct": round(r[1] / total * 100, 1) if total else 0}
+            for r in rows
+        ],
+    }
+
+
 @router.get("/{player_id}")
 def get_player_detail(player_id: int):
     conn = get_connection()

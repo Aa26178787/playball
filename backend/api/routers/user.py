@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from typing import Optional
 from database.connection import get_connection
 from api.routers.auth import get_current_user
 
@@ -348,3 +349,61 @@ async def upload_profile_image(
     cur.close()
     conn.close()
     return {'profile_image': url}
+
+
+# ===== 개인 캘린더 이벤트 =====
+class CalendarEventCreate(BaseModel):
+    event_date: str   # YYYY-MM-DD
+    title: str
+    description: Optional[str] = None
+    color: Optional[str] = 'blue'
+
+@router.get('/calendar-events')
+def get_calendar_events(year: int, month: int, current_user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, event_date, title, description, color, created_at
+        FROM user_calendar_events
+        WHERE user_id = %s
+          AND EXTRACT(YEAR FROM event_date) = %s
+          AND EXTRACT(MONTH FROM event_date) = %s
+        ORDER BY event_date, id
+    """, (current_user['user_id'], year, month))
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+    return {"events": [
+        {"id": r[0], "date": str(r[1]), "title": r[2],
+         "description": r[3], "color": r[4], "created_at": str(r[5])}
+        for r in rows
+    ]}
+
+@router.post('/calendar-events')
+def create_calendar_event(body: CalendarEventCreate, current_user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO user_calendar_events (user_id, event_date, title, description, color)
+        VALUES (%s, %s, %s, %s, %s)
+        RETURNING id
+    """, (current_user['user_id'], body.event_date, body.title, body.description, body.color or 'blue'))
+    new_id = cur.fetchone()[0]
+    conn.commit(); cur.close(); conn.close()
+    return {"id": new_id, "message": "일정 추가 완료"}
+
+@router.delete('/calendar-events/{event_id}')
+def delete_calendar_event(event_id: int, current_user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute("""
+        DELETE FROM user_calendar_events
+        WHERE id = %s AND user_id = %s
+    """, (event_id, current_user['user_id']))
+    conn.commit(); cur.close(); conn.close()
+    return {"message": "삭제 완료"}

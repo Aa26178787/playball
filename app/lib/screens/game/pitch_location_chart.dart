@@ -1,10 +1,16 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
 
 class PitchLocationSheet extends StatefulWidget {
   final int gameId;
+  final String gameStatus;
 
-  const PitchLocationSheet({super.key, required this.gameId});
+  const PitchLocationSheet({
+    super.key,
+    required this.gameId,
+    this.gameStatus = '종료',
+  });
 
   @override
   State<PitchLocationSheet> createState() => _PitchLocationSheetState();
@@ -17,10 +23,15 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
   List<String> _awayPitchers = [];
   String _homeTeam = '홈';
   String _awayTeam = '원정';
+
   String? _selectedPitcher;
+  int? _selectedInning;   // null = 전체
+  String? _selectedBatter; // null = 전체
   String _filter = 'all';
+
   bool _loading = true;
   bool _error = false;
+  Timer? _refreshTimer;
 
   static const _resultColors = {
     'ball':   Color(0xFF2196F3),
@@ -44,9 +55,19 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
   void initState() {
     super.initState();
     _load();
+    if (widget.gameStatus == '진행') {
+      _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) => _load(silent: true));
+    }
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load({bool silent = false}) async {
+    if (!silent && mounted) setState(() => _loading = true);
     try {
       final data = await ApiService.getPitchLocations(widget.gameId);
       if (mounted) {
@@ -63,27 +84,57 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
           _awayPitchers = awayPitchers;
           _homeTeam = data['home_team'] as String? ?? '홈';
           _awayTeam = data['away_team'] as String? ?? '원정';
-          _selectedPitcher = pitchers.isNotEmpty ? pitchers.first : null;
+          if (_selectedPitcher == null && pitchers.isNotEmpty) {
+            _selectedPitcher = pitchers.first;
+          }
           _loading = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() { _loading = false; _error = true; });
+      if (mounted && !silent) setState(() { _loading = false; _error = true; });
     }
+  }
+
+  // 현재 선택 투수의 이닝 목록
+  List<int> get _availableInnings {
+    final set = <int>{};
+    for (final p in _pitches) {
+      if (p['pitcher'] == _selectedPitcher && p['inning'] != null) {
+        set.add((p['inning'] as num).toInt());
+      }
+    }
+    final list = set.toList()..sort();
+    return list;
+  }
+
+  // 현재 선택 투수+이닝의 타자 목록
+  List<String> get _availableBatters {
+    final set = <String>{};
+    for (final p in _pitches) {
+      if (p['pitcher'] == _selectedPitcher) {
+        if (_selectedInning == null || (p['inning'] as num?)?.toInt() == _selectedInning) {
+          final batter = p['batter'] as String? ?? '';
+          if (batter.isNotEmpty) set.add(batter);
+        }
+      }
+    }
+    return set.toList();
   }
 
   List<Map> get _filtered {
     return _pitches.where((p) {
       final matchPitcher = _selectedPitcher == null || p['pitcher'] == _selectedPitcher;
-      final matchFilter = _filter == 'all' || p['result'] == _filter;
-      return matchPitcher && matchFilter;
+      final matchInning = _selectedInning == null || (p['inning'] as num?)?.toInt() == _selectedInning;
+      final matchBatter = _selectedBatter == null || p['batter'] == _selectedBatter;
+      final matchResult = _filter == 'all' || p['result'] == _filter;
+      return matchPitcher && matchInning && matchBatter && matchResult;
     }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: MediaQuery.of(context).size.height * 0.9,
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -95,83 +146,112 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
             width: 40, height: 4,
             decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
           ),
-          const Padding(
-            padding: EdgeInsets.only(bottom: 8),
-            child: Text('투구 위치', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('투구 위치', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              if (widget.gameStatus == '진행') ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(4)),
+                  child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ],
           ),
+          const SizedBox(height: 4),
           if (_loading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_error)
             const Expanded(child: Center(child: Text('데이터를 불러오지 못했습니다', style: TextStyle(color: Colors.grey))))
           else if (_pitches.isEmpty)
             const Expanded(child: Center(child: Text('투구 위치 데이터가 없습니다', style: TextStyle(color: Colors.grey))))
-          else ...[
-            // 투수 선택 (홈/원정 분리)
-            if (_pitchers.length > 1)
-              _buildPitcherSelector(),
-            // 결과 필터
-            _buildResultFilter(),
-            // 카운트
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                '위치 데이터 ${_filtered.length}구',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ),
-            // 차트
+          else
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: _StrikeZoneChart(pitches: _filtered, colors: _resultColors),
-              ),
-            ),
-            // 범례
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 4,
-                alignment: WrapAlignment.center,
+              child: Column(
                 children: [
-                  _legend('볼', _resultColors['ball']!),
-                  _legend('스트라이크', _resultColors['strike']!),
-                  _legend('헛스윙', _resultColors['swing']!),
-                  _legend('파울', _resultColors['foul']!),
-                  _legend('타격', _resultColors['hit']!),
+                  // 1단계: 투수 선택
+                  _buildSectionLabel('① 투수'),
+                  _buildPitcherSelector(),
+
+                  // 2단계: 이닝 선택
+                  _buildSectionLabel('② 이닝'),
+                  _buildInningSelector(),
+
+                  // 3단계: 타자 선택
+                  _buildSectionLabel('③ 타자'),
+                  _buildBatterSelector(),
+
+                  // 결과 필터
+                  _buildResultFilter(),
+
+                  // 카운트
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: Text(
+                      '${_filtered.length}구',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ),
+
+                  // 차트
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                      child: _StrikeZoneChart(pitches: _filtered, colors: _resultColors),
+                    ),
+                  ),
+
+                  // 범례
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 4,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        _legend('볼', _resultColors['ball']!),
+                        _legend('스트라이크', _resultColors['strike']!),
+                        _legend('헛스윙', _resultColors['swing']!),
+                        _legend('파울', _resultColors['foul']!),
+                        _legend('타격', _resultColors['hit']!),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildPitcherSelector() {
-    // 분류된 투수가 있으면 홈/원정 섹션으로 나눔, 없으면 단순 목록
-    final hasGrouped = _homePitchers.isNotEmpty || _awayPitchers.isNotEmpty;
-    if (!hasGrouped) {
-      return _buildPitcherRow(null, _pitchers);
-    }
+  Widget _buildSectionLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, top: 6, bottom: 2),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF1A237E))),
+      ),
+    );
+  }
 
-    // 홈/원정 어느 쪽에도 없는 투수 (fallback)
+  Widget _buildPitcherSelector() {
+    final hasGrouped = _homePitchers.isNotEmpty || _awayPitchers.isNotEmpty;
+    if (!hasGrouped) return _buildPitcherRow(null, _pitchers);
     final classified = {..._homePitchers, ..._awayPitchers};
     final others = _pitchers.where((p) => !classified.contains(p)).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_homePitchers.isNotEmpty) _buildPitcherRow(_homeTeam, _homePitchers),
-        if (_awayPitchers.isNotEmpty) _buildPitcherRow(_awayTeam, _awayPitchers),
-        if (others.isNotEmpty) _buildPitcherRow(null, others),
-      ],
-    );
+    return Column(children: [
+      if (_homePitchers.isNotEmpty) _buildPitcherRow(_homeTeam, _homePitchers),
+      if (_awayPitchers.isNotEmpty) _buildPitcherRow(_awayTeam, _awayPitchers),
+      if (others.isNotEmpty) _buildPitcherRow(null, others),
+    ]);
   }
 
   Widget _buildPitcherRow(String? teamLabel, List<String> pitcherList) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -182,10 +262,9 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                 color: const Color(0xFF1A237E).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(teamLabel,
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+              child: Text(teamLabel, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
           ],
           Expanded(
             child: SingleChildScrollView(
@@ -196,27 +275,12 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                   return Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: GestureDetector(
-                      onTap: () => setState(() => _selectedPitcher = p),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: sel ? const Color(0xFF1A237E) : Colors.grey[100],
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: sel ? const Color(0xFF1A237E) : Colors.grey[300]!,
-                            width: 1,
-                          ),
-                        ),
-                        child: Text(
-                          p,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: sel ? Colors.white : Colors.black87,
-                            fontWeight: sel ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                      ),
+                      onTap: () => setState(() {
+                        _selectedPitcher = p;
+                        _selectedInning = null;
+                        _selectedBatter = null;
+                      }),
+                      child: _chip(p, sel, const Color(0xFF1A237E)),
                     ),
                   );
                 }).toList(),
@@ -228,9 +292,91 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
     );
   }
 
+  Widget _buildInningSelector() {
+    final innings = _availableInnings;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () => setState(() { _selectedInning = null; _selectedBatter = null; }),
+              child: Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: _chip('전체', _selectedInning == null, Colors.grey[700]!),
+              ),
+            ),
+            ...innings.map((ing) {
+              final sel = _selectedInning == ing;
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: GestureDetector(
+                  onTap: () => setState(() { _selectedInning = ing; _selectedBatter = null; }),
+                  child: _chip('${ing}회', sel, Colors.grey[700]!),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBatterSelector() {
+    final batters = _availableBatters;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () => setState(() => _selectedBatter = null),
+              child: Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: _chip('전체', _selectedBatter == null, Colors.teal),
+              ),
+            ),
+            ...batters.map((b) {
+              final sel = _selectedBatter == b;
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: GestureDetector(
+                  onTap: () => setState(() => _selectedBatter = b),
+                  child: _chip(b, sel, Colors.teal),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _chip(String label, bool selected, Color color) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: selected ? color : Colors.grey[100],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: selected ? color : Colors.grey[300]!, width: 1),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          color: selected ? Colors.white : Colors.black87,
+          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+    );
+  }
+
   Widget _buildResultFilter() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -241,26 +387,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
               padding: const EdgeInsets.only(right: 6),
               child: GestureDetector(
                 onTap: () => setState(() => _filter = e.key),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: sel ? color : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: sel ? color : Colors.grey[300]!,
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    e.value,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: sel ? Colors.white : Colors.black87,
-                      fontWeight: sel ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                ),
+                child: _chip(e.value, sel, color),
               ),
             );
           }).toList(),

@@ -14,6 +14,7 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedMonth = DateTime.now();
   Map<String, List> _gamesByDate = {};
+  Map<String, List> _personalEventsByDate = {};
   bool _isLoading = false;
   DateTime? _selectedDate;
 
@@ -21,6 +22,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
     _loadCalendar();
+    _loadPersonalEvents();
   }
 
   Future<void> _loadCalendar() async {
@@ -44,30 +46,55 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  Future<void> _loadPersonalEvents() async {
+    try {
+      final data = await ApiService.getCalendarEvents(_focusedMonth.year, _focusedMonth.month);
+      final events = data['events'] as List? ?? [];
+      final byDate = <String, List>{};
+      for (final e in events) {
+        final date = e['date'] as String? ?? '';
+        byDate.putIfAbsent(date, () => []).add(e);
+      }
+      if (mounted) setState(() => _personalEventsByDate = byDate);
+    } catch (_) {}
+  }
+
   void _prevMonth() {
     setState(() => _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1));
     _loadCalendar();
+    _loadPersonalEvents();
   }
 
   void _nextMonth() {
     setState(() => _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1));
     _loadCalendar();
+    _loadPersonalEvents();
   }
 
   String _dateKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   List _gamesOn(DateTime d) => _gamesByDate[_dateKey(d)] ?? [];
+  List _eventsOn(DateTime d) => _personalEventsByDate[_dateKey(d)] ?? [];
 
   @override
   Widget build(BuildContext context) {
     final selected = _selectedDate;
     final selectedGames = selected != null ? _gamesOn(selected) : <dynamic>[];
 
+    final selectedPersonalEvents = selected != null ? _eventsOn(selected) : <dynamic>[];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('캘린더', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
       ),
+      floatingActionButton: selected != null
+          ? FloatingActionButton.small(
+              backgroundColor: const Color(0xFF1A237E),
+              onPressed: () => _showAddEventDialog(selected),
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
       body: Column(
         children: [
           // 월 헤더
@@ -112,21 +139,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
           const Divider(height: 1),
 
-          // 선택된 날짜 경기 목록
+          // 선택된 날짜 경기 + 개인 일정 목록
           Expanded(
             child: selected == null
                 ? const Center(child: Text('날짜를 선택하세요', style: TextStyle(color: Colors.grey)))
-                : selectedGames.isEmpty
+                : (selectedGames.isEmpty && selectedPersonalEvents.isEmpty)
                     ? Center(
                         child: Text(
-                          '${selected.month}/${selected.day} 경기 없음',
+                          '${selected.month}/${selected.day} 일정 없음',
                           style: const TextStyle(color: Colors.grey),
                         ),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: selectedGames.length,
-                        itemBuilder: (context, i) => _buildGameTile(selectedGames[i]),
+                    : ListView(
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
+                        children: [
+                          if (selectedGames.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4, top: 4),
+                              child: Text('KBO 경기',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                            ),
+                            ...selectedGames.map((g) => _buildGameTile(g as Map<String, dynamic>)),
+                          ],
+                          if (selectedPersonalEvents.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4, top: 12),
+                              child: Text('개인 일정',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                            ),
+                            ...selectedPersonalEvents.map((e) => _buildPersonalEventTile(e as Map)),
+                          ],
+                        ],
                       ),
           ),
         ],
@@ -152,6 +195,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             }
             final day = DateTime(_focusedMonth.year, _focusedMonth.month, dayNum);
             final games = _gamesOn(day);
+            final personalEvents = _eventsOn(day);
             final isSelected = _selectedDate != null &&
                 _selectedDate!.year == day.year &&
                 _selectedDate!.month == day.month &&
@@ -195,6 +239,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       if (games.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         _buildGameDots(games, isSelected),
+                      ],
+                      if (personalEvents.isNotEmpty) ...[
+                        const SizedBox(height: 1),
+                        Container(
+                          width: 5,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isSelected ? Colors.white70 : Colors.amber[700],
+                          ),
+                        ),
                       ],
                     ],
                   ),
@@ -252,6 +307,156 @@ class _CalendarScreenState extends State<CalendarScreen> {
       allDay: false,
     );
     Add2Calendar.addEvent2Cal(event);
+  }
+
+  static const _eventColors = {
+    'blue': Colors.blue,
+    'red': Colors.red,
+    'green': Colors.green,
+    'orange': Colors.orange,
+    'purple': Colors.purple,
+    'gray': Colors.grey,
+  };
+
+  Color _eventColor(String? colorKey) =>
+      _eventColors[colorKey ?? 'blue'] ?? Colors.blue;
+
+  Widget _buildPersonalEventTile(Map event) {
+    final title = event['title'] as String? ?? '';
+    final description = event['description'] as String?;
+    final colorKey = event['color'] as String? ?? 'blue';
+    final id = event['id'] as int?;
+    final color = _eventColor(colorKey);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: color.withOpacity(0.4), width: 1),
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 6,
+          height: 40,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        subtitle: description != null && description.isNotEmpty
+            ? Text(description, style: const TextStyle(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis)
+            : null,
+        trailing: id != null
+            ? IconButton(
+                icon: const Icon(Icons.delete_outline, size: 18, color: Colors.grey),
+                onPressed: () => _confirmDeleteEvent(id),
+              )
+            : null,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteEvent(int id) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('일정 삭제'),
+        content: const Text('이 일정을 삭제하시겠습니까?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('삭제', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      try {
+        await ApiService.deleteCalendarEvent(id);
+        await _loadPersonalEvents();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _showAddEventDialog(DateTime date) async {
+    final titleCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    String selectedColor = 'blue';
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx2, setDlgState) => AlertDialog(
+          title: Text('${date.month}/${date.day} 일정 추가'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: titleCtrl,
+                  decoration: const InputDecoration(labelText: '제목 *', hintText: '일정 제목 입력'),
+                  autofocus: true,
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: descCtrl,
+                  decoration: const InputDecoration(labelText: '메모 (선택)', hintText: '메모 입력'),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                const Text('색상', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  children: _eventColors.entries.map((e) {
+                    final isChosen = selectedColor == e.key;
+                    return GestureDetector(
+                      onTap: () => setDlgState(() => selectedColor = e.key),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: e.value,
+                          shape: BoxShape.circle,
+                          border: isChosen ? Border.all(color: Colors.black54, width: 2.5) : null,
+                        ),
+                        child: isChosen ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
+            TextButton(
+              onPressed: () async {
+                final title = titleCtrl.text.trim();
+                if (title.isEmpty) return;
+                Navigator.pop(ctx);
+                try {
+                  await ApiService.createCalendarEvent(
+                    _dateKey(date),
+                    title,
+                    description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+                    color: selectedColor,
+                  );
+                  await _loadPersonalEvents();
+                } catch (_) {}
+              },
+              child: const Text('추가'),
+            ),
+          ],
+        ),
+      ),
+    );
+    titleCtrl.dispose();
+    descCtrl.dispose();
   }
 
   Widget _buildGameTile(Map<String, dynamic> game) {

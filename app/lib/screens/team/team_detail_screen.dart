@@ -4,6 +4,7 @@ import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import '../player/player_detail_screen.dart';
 import '../game/game_detail_screen.dart';
+import '../community/post_detail_screen.dart';
 
 class TeamDetailScreen extends StatefulWidget {
   final Map<String, dynamic> team;
@@ -20,17 +21,19 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   List _games = [];
   List _rosterChanges = [];
   List _news = [];
+  List _communityPosts = [];
   bool _playersLoading = true;
   bool _gamesLoading = false;
   bool _rosterLoading = false;
   bool _newsLoading = false;
+  bool _communityLoading = false;
   bool _isFav = false;
   bool _favLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(() {
       if (_tabController.index == 1 && _games.isEmpty && !_gamesLoading) {
         _loadGames();
@@ -40,6 +43,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       }
       if (_tabController.index == 3 && _news.isEmpty && !_newsLoading) {
         _loadNews();
+      }
+      if (_tabController.index == 4 && _communityPosts.isEmpty && !_communityLoading) {
+        _loadCommunityPosts();
       }
     });
     _loadPlayers();
@@ -134,6 +140,21 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     }
   }
 
+  Future<void> _loadCommunityPosts() async {
+    setState(() => _communityLoading = true);
+    try {
+      final data = await ApiService.getPosts(teamId: widget.team['id'] as int, sort: 'latest', page: 1);
+      if (mounted) {
+        setState(() {
+          _communityPosts = data['posts'] ?? [];
+          _communityLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _communityLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final team = widget.team;
@@ -163,7 +184,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
-          tabs: const [Tab(text: '선수'), Tab(text: '최근경기'), Tab(text: '등록말소'), Tab(text: '뉴스')],
+          isScrollable: true,
+          tabs: const [Tab(text: '선수'), Tab(text: '최근경기'), Tab(text: '등록말소'), Tab(text: '뉴스'), Tab(text: '커뮤니티')],
         ),
       ),
       body: Column(
@@ -172,7 +194,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [_buildPlayers(), _buildGames(), _buildRosterChanges(), _buildNews()],
+              children: [_buildPlayers(), _buildGames(), _buildRosterChanges(), _buildNews(), _buildCommunity()],
             ),
           ),
         ],
@@ -674,6 +696,121 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildCommunity() {
+    if (_communityLoading) return const Center(child: CircularProgressIndicator());
+    if (_communityPosts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('커뮤니티 글이 없습니다', style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('새로고침'),
+              onPressed: () {
+                setState(() => _communityPosts = []);
+                _loadCommunityPosts();
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        setState(() => _communityPosts = []);
+        await _loadCommunityPosts();
+      },
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: _communityPosts.length,
+        separatorBuilder: (_, __) => const Divider(height: 1, indent: 16, endIndent: 16),
+        itemBuilder: (_, i) {
+          final post = _communityPosts[i] as Map;
+          final title = post['title'] as String? ?? '';
+          final nickname = post['nickname'] as String? ?? '';
+          final views = post['views'] as int? ?? 0;
+          final likes = post['likes'] as int? ?? 0;
+          final comments = post['comment_count'] as int? ?? 0;
+          final category = post['category'] as String? ?? '';
+          final createdAt = post['created_at'] as String?;
+          final postId = post['id'] as int?;
+
+          String dateStr = '';
+          if (createdAt != null) {
+            try {
+              final dt = DateTime.parse(createdAt).toLocal();
+              final now = DateTime.now();
+              final diff = now.difference(dt);
+              if (diff.inMinutes < 60) {
+                dateStr = '${diff.inMinutes}분 전';
+              } else if (diff.inHours < 24) {
+                dateStr = '${diff.inHours}시간 전';
+              } else {
+                dateStr = '${dt.month}/${dt.day}';
+              }
+            } catch (_) {}
+          }
+
+          return InkWell(
+            onTap: postId != null
+                ? () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => PostDetailScreen(postId: postId)))
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    if (category.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(category,
+                            style: const TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Expanded(
+                      child: Text(title,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                  ]),
+                  const SizedBox(height: 4),
+                  Row(children: [
+                    Text(nickname, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                    const SizedBox(width: 8),
+                    Text(dateStr, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                    const Spacer(),
+                    Icon(Icons.visibility_outlined, size: 12, color: Colors.grey[400]),
+                    const SizedBox(width: 2),
+                    Text('$views', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                    const SizedBox(width: 8),
+                    Icon(Icons.favorite_border, size: 12, color: Colors.grey[400]),
+                    const SizedBox(width: 2),
+                    Text('$likes', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                    const SizedBox(width: 8),
+                    Icon(Icons.comment_outlined, size: 12, color: Colors.grey[400]),
+                    const SizedBox(width: 2),
+                    Text('$comments', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                  ]),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 

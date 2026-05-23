@@ -66,6 +66,9 @@ dependencies:
   # 캘린더 일정 추가
   add_2_calendar: ^3.0.1
 
+  # 공유 기능
+  share_plus: 10.0.0
+
   # 아이콘
   cupertino_icons: ^1.0.8
 

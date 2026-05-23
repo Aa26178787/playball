@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../api/api_service.dart';
 import 'pitch_location_chart.dart';
 
@@ -449,6 +450,29 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text('${game['home_team']} vs ${game['away_team']}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () {
+              final status = game['status'] as String? ?? '';
+              final homeScore = game['home_score'] ?? 0;
+              final awayScore = game['away_score'] ?? 0;
+              final date = (game['game_date'] ?? '').toString();
+              String text;
+              if (status == '종료') {
+                text = '[KBO 2026] ${game['home_team']} $homeScore : $awayScore ${game['away_team']}\n'
+                    '📅 $date | ${game['stadium'] ?? ''}';
+              } else if (status == '진행') {
+                text = '[KBO 진행중] ${game['home_team']} $homeScore : $awayScore ${game['away_team']}\n'
+                    '${game['current_inning'] ?? ''}회 ${game['inning_half'] ?? ''}';
+              } else {
+                text = '[KBO 2026] ${game['home_team']} vs ${game['away_team']}\n'
+                    '📅 $date ${game['start_time'] ?? ''} | ${game['stadium'] ?? ''}';
+              }
+              SharePlus.instance.share(ShareParams(text: text));
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -1749,7 +1773,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 isScrollControlled: true,
                 shape: const RoundedRectangleBorder(
                     borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-                builder: (_) => PitchLocationSheet(gameId: widget.gameId),
+                builder: (_) => PitchLocationSheet(
+                  gameId: widget.gameId,
+                  gameStatus: _gameData?['game']['status'] as String? ?? '종료',
+                ),
               ),
               icon: const Icon(Icons.sports_baseball, size: 16),
               label: const Text('투구 위치 보기'),
