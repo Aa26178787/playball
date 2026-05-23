@@ -582,7 +582,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   Widget _buildRecent5Games(Map<String, dynamic> player) {
     final isHitter = player['player_type'] == '타자';
     final filtered = _dailyStats
-        .where((d) => d['stat_type'] == (isHitter ? 'hitter' : 'pitcher'))
+        .where((d) {
+          if (isHitter) return d['stat_type'] == 'hitter';
+          return d['stat_type'] == 'pitcher' && ((d['ip'] as num?) ?? 0) > 0;
+        })
         .toList();
     if (filtered.isEmpty) return const SizedBox.shrink();
     final recent = filtered.length > 5
@@ -745,8 +748,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 
   Widget _buildPitcherRows(List<dynamic> rows) {
-    final headers = ['날짜', '상대', 'ERA', '이닝', '피안타', '볼넷', '삼진'];
-    final cols = [80.0, 44.0, 44.0, 44.0, 40.0, 36.0, 36.0];
+    final headers = ['날짜', '상대', 'ERA', '이닝', '피안타', '실점', '볼넷', '삼진'];
+    final cols = [72.0, 40.0, 42.0, 40.0, 36.0, 32.0, 32.0, 32.0];
     return Column(children: [
       _tableRow(headers, cols, isHeader: true),
       ...rows.map((d) {
@@ -760,6 +763,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           era,
           _formatIp(d['ip'] as num?),
           '${(d['h'] as num?)?.toInt() ?? 0}',
+          '${(d['r'] as num?)?.toInt() ?? 0}',
           '${(d['bb'] as num?)?.toInt() ?? 0}',
           '${(d['so'] as num?)?.toInt() ?? 0}',
         ], cols);
