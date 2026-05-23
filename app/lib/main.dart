@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/game_provider.dart';
@@ -49,6 +50,7 @@ void main() async {
     statusBarColor: Color(0xFF1A237E),
     statusBarIconBrightness: Brightness.light,
   ));
+  AuthRepository.initialize(appKey: 'f5b365c3d6aff5eb4640ab80783797ac');
   await _initFirebase();
   runApp(const PlayBallApp());
 }

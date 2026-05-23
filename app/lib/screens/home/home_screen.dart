@@ -12,6 +12,7 @@ import '../community/community_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../mypage/my_page_screen.dart';
 import '../search/search_screen.dart';
+import '../stadium/stadium_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -177,6 +178,14 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.stadium_outlined),
+            tooltip: '구장',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const StadiumScreen()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.search),
             tooltip: '검색',
