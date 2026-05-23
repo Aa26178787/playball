@@ -135,9 +135,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   labelText: '내용',
                   border: OutlineInputBorder(),
                   alignLabelWithHint: true,
+                  hintText: '@경기, @선수, @팀, @구장 으로 링크를 삽입할 수 있습니다',
+                  hintStyle: TextStyle(fontSize: 12),
                 ),
               ),
             ),
+            const SizedBox(height: 6),
+            _MentionHelpRow(),
             const SizedBox(height: 12),
             // 이미지 첨부
             if (_imageFile != null)
@@ -182,6 +186,77 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MentionHelpRow extends StatefulWidget {
+  @override
+  State<_MentionHelpRow> createState() => _MentionHelpRowState();
+}
+
+class _MentionHelpRowState extends State<_MentionHelpRow> {
+  bool _expanded = false;
+
+  static const _examples = [
+    ('경기', '@경기 5/20 KT LG', '경기 상세로 이동'),
+    ('선수', '@선수 강백호', '선수 프로필로 이동'),
+    ('팀',  '@팀 두산',     '팀 상세로 이동'),
+    ('구장', '@구장 잠실',   '구장 안내로 이동'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Row(
+            children: [
+              const Icon(Icons.alternate_email, size: 14, color: Color(0xFF1A237E)),
+              const SizedBox(width: 4),
+              const Text('@ 링크 명령어 보기', style: TextStyle(fontSize: 12, color: Color(0xFF1A237E))),
+              Icon(_expanded ? Icons.expand_less : Icons.expand_more,
+                  size: 14, color: const Color(0xFF1A237E)),
+            ],
+          ),
+        ),
+        if (_expanded)
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A237E).withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF1A237E).withValues(alpha: 0.15)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: _examples.map((e) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A237E).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(e.$1, style: const TextStyle(fontSize: 10, color: Color(0xFF1A237E))),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(e.$2, style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+                    const SizedBox(width: 6),
+                    Text('→ ${e.$3}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                  ],
+                ),
+              )).toList(),
+            ),
+          ),
+      ],
     );
   }
 }

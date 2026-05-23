@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../api/api_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/mention_text.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final int postId;
@@ -216,7 +217,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   style: TextStyle(color: Colors.grey[400], fontSize: 12),
                 ),
                 const Divider(),
-                Text(_post!['content'] ?? ''),
+                MentionText(
+                  text: _post!['content'] ?? '',
+                  style: const TextStyle(fontSize: 15, height: 1.6),
+                ),
                 if (_post!['image_url'] != null) ...[
                   const SizedBox(height: 12),
                   ClipRRect(
@@ -238,7 +242,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 ...comments.map((c) {
                   final isMyComment = myUserId != null && myUserId == c['user_id'];
                   return ListTile(
-                    title: Text(c['content'] ?? ''),
+                    title: MentionText(
+                      text: c['content'] ?? '',
+                      style: const TextStyle(fontSize: 14),
+                    ),
                     subtitle: Text('${c['author'] ?? ''}  ${(c['created_at'] ?? '').toString().length >= 10 ? (c['created_at'] as String).substring(0, 10) : ''}',
                         style: const TextStyle(fontSize: 11)),
                     trailing: isMyComment
