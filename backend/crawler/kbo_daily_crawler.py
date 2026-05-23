@@ -204,7 +204,7 @@ def _save_records(cur, player_id, records):
                     strikeouts = COALESCE(EXCLUDED.strikeouts, player_daily_stats.strikeouts),
                     gdp        = COALESCE(EXCLUDED.gdp,        player_daily_stats.gdp),
                     era        = COALESCE(EXCLUDED.era,        player_daily_stats.era),
-                    ip         = COALESCE(EXCLUDED.ip,         player_daily_stats.ip),
+                    ip         = COALESCE(player_daily_stats.ip, EXCLUDED.ip),
                     h          = COALESCE(EXCLUDED.h,          player_daily_stats.h),
                     hr         = COALESCE(EXCLUDED.hr,         player_daily_stats.hr),
                     bb         = COALESCE(EXCLUDED.bb,         player_daily_stats.bb),
