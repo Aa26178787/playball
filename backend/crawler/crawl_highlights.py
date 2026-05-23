@@ -7,6 +7,8 @@ import urllib.parse as up
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
+CURRENT_YEAR = datetime.now().year
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import requests
@@ -104,9 +106,15 @@ def fetch_highlight_rss(query: str = 'KBO 야구 하이라이트') -> list[dict]
             if not any(kw in title for kw in ['하이라이트', 'HIGHLIGHT', 'highlight', '홈런', '명장면']):
                 continue
             pub = _parse_pub_date(pub_raw)
-            pub_year = pub.year if pub else datetime.now().year
+            pub_year = pub.year if pub else CURRENT_YEAR
+            # 당해연도 기사만 수집
+            if pub_year != CURRENT_YEAR:
+                continue
             t1, t2 = _parse_teams_from_title(title)
             game_date = _parse_date_from_title(title, pub_year)
+            # 날짜 파싱됐으면 연도 재확인
+            if game_date and not game_date.startswith(str(CURRENT_YEAR)):
+                continue
             articles.append({
                 'title': title,
                 'url': link,
@@ -180,10 +188,33 @@ def crawl_highlights_for_game(game_id: int) -> int:
     home_name, away_name, game_date = row
     query = f'{home_name} {away_name} 하이라이트'
     articles = fetch_highlight_rss(query)
+    # 매칭 실패 기사도 이 game_id로 강제 연결
     for a in articles:
-        if not a['game_id']:
-            a['game_id'] = game_id
-    return save_highlights(articles)
+        if not find_game_id(a['team_id1'], a['team_id2'], a['game_date']):
+            a['_force_game_id'] = game_id
+    conn2 = get_connection()
+    if not conn2:
+        return 0
+    cur2 = conn2.cursor()
+    saved = 0
+    for a in articles:
+        gid = a.get('_force_game_id') or find_game_id(a['team_id1'], a['team_id2'], a['game_date']) or game_id
+        try:
+            cur2.execute("""
+                INSERT INTO game_highlights (game_id, title, url, source, published_at)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (url) DO UPDATE SET
+                    game_id = COALESCE(EXCLUDED.game_id, game_highlights.game_id)
+            """, (gid, a['title'], a['url'], a.get('source') or None, a.get('published_at')))
+            if cur2.rowcount > 0:
+                saved += 1
+        except Exception as e:
+            print(f'  highlight insert error: {e}')
+            conn2.rollback()
+    conn2.commit()
+    cur2.close()
+    conn2.close()
+    return saved
 
 
 if __name__ == '__main__':
