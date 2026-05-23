@@ -107,18 +107,19 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
     return list;
   }
 
-  // 현재 선택 투수+이닝의 타자 목록
+  // 현재 선택 투수+이닝의 타자 목록 (첫 등장 순서 유지)
   List<String> get _availableBatters {
-    final set = <String>{};
+    final seen = <String>{};
+    final ordered = <String>[];
     for (final p in _pitches) {
       if (p['pitcher'] == _selectedPitcher) {
         if (_selectedInning == null || (p['inning'] as num?)?.toInt() == _selectedInning) {
           final batter = p['batter'] as String? ?? '';
-          if (batter.isNotEmpty) set.add(batter);
+          if (batter.isNotEmpty && seen.add(batter)) ordered.add(batter);
         }
       }
     }
-    return set.toList();
+    return ordered;
   }
 
   List<Map> get _filtered {
@@ -390,21 +391,27 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
   Widget _buildResultFilter() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: _resultLabels.entries.map((e) {
-            final sel = _filter == e.key;
-            final color = e.key == 'all' ? const Color(0xFF1A237E) : (_resultColors[e.key] ?? Colors.grey);
-            return Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: GestureDetector(
-                onTap: () => setState(() => _filter = e.key),
-                child: _chip(e.value, sel, color),
+      child: Row(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _resultLabels.entries.map((e) {
+                  final sel = _filter == e.key;
+                  final color = e.key == 'all' ? const Color(0xFF1A237E) : (_resultColors[e.key] ?? Colors.grey);
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _filter = e.key),
+                      child: _chip(e.value, sel, color),
+                    ),
+                  );
+                }).toList(),
               ),
-            );
-          }).toList(),
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
