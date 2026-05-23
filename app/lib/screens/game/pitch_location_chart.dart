@@ -435,7 +435,11 @@ class _StrikeZonePainter extends CustomPainter {
   static const double xMax = 2.5;
   static const double zMin = 0.0;
   static const double zMax = 5.5;
-  static const double plateHalfW = 17.0 / 12.0;
+  // KBO 홈플레이트 반폭 8.5인치(ft), 공 반지름 1.45인치(ft)
+  // ABS: 공 중심이 플레이트 끝 + 공반지름 이내 → strike
+  static const double plateHalfW = 8.5 / 12.0;          // 0.7083 ft
+  static const double ballR      = 1.45 / 12.0;         // 0.1208 ft
+  static const double absHalfW   = plateHalfW + ballR;  // 0.8292 ft
 
   double get _avgTopSz {
     final vals = pitches.where((p) => p['top_sz'] != null).map((p) => (p['top_sz'] as num).toDouble());
@@ -459,6 +463,9 @@ class _StrikeZonePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final topSz = _avgTopSz;
     final botSz = _avgBotSz;
+    // ABS 판정 경계: 공 중심 기준 (공반지름 포함)
+    final topAbs = topSz + ballR;
+    final botAbs = botSz - ballR;
 
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
         Paint()..color = const Color(0xFFF5F5F5));
@@ -469,28 +476,31 @@ class _StrikeZonePainter extends CustomPainter {
       Paint()..color = Colors.brown.withValues(alpha: 0.3)..strokeWidth = 1,
     );
 
-    final tl = _toCanvas(-plateHalfW, topSz, size);
-    final br = _toCanvas(plateHalfW, botSz, size);
+    // ABS 스트라이크존 (공 중심 기준 판정 경계)
+    final tl = _toCanvas(-absHalfW, topAbs, size);
+    final br = _toCanvas(absHalfW, botAbs, size);
     final zoneRect = Rect.fromPoints(tl, br);
 
     canvas.drawRect(zoneRect, Paint()..color = Colors.red.withValues(alpha: 0.06));
     canvas.drawRect(zoneRect,
         Paint()..color = Colors.red.withValues(alpha: 0.5)..style = PaintingStyle.stroke..strokeWidth = 1.5);
 
-    final zoneH = (topSz - botSz) / 3;
+    // 3x3 구역 구분선
+    final zoneH = (topAbs - botAbs) / 3;
     for (int i = 1; i <= 2; i++) {
-      final y = _toCanvas(0, botSz + zoneH * i, size).dy;
+      final y = _toCanvas(0, botAbs + zoneH * i, size).dy;
       canvas.drawLine(Offset(tl.dx, y), Offset(br.dx, y),
           Paint()..color = Colors.red.withValues(alpha: 0.2)..strokeWidth = 0.5);
     }
 
-    final zoneW = plateHalfW * 2 / 3;
+    final zoneW = absHalfW * 2 / 3;
     for (int i = 1; i <= 2; i++) {
-      final x = _toCanvas(-plateHalfW + zoneW * i, 0, size).dx;
+      final x = _toCanvas(-absHalfW + zoneW * i, 0, size).dx;
       canvas.drawLine(Offset(x, tl.dy), Offset(x, br.dy),
           Paint()..color = Colors.red.withValues(alpha: 0.2)..strokeWidth = 0.5);
     }
 
+    // 홈플레이트 실제 폭 (±8.5인치)
     final plateBottom = _toCanvas(0, 0, size);
     final plateLeft = _toCanvas(-plateHalfW, 0.15, size);
     final plateRight = _toCanvas(plateHalfW, 0.15, size);
