@@ -1,3 +1,4 @@
+import re
 import requests
 import sys
 import os
@@ -107,6 +108,10 @@ def save_game_pitches(db_game_id, naver_game_id, inning):
                 batter_record = opt.get('batterRecord') or {}
                 if batter_record.get('name'):
                     current_batter = batter_record.get('name')
+                elif rtype == 8 and text:
+                    m = re.match(r'^(?:\d+번타자|대타)\s+(\S+)', text)
+                    if m:
+                        current_batter = m.group(1).strip()
 
                 if rtype is None:
                     continue

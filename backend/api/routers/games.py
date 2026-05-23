@@ -40,6 +40,7 @@ def _batch_recent5(cur, team_ids: list) -> dict:
         result.setdefault(tid, []).append(res)
     return result
 
+import re
 import requests as req
 
 NAVER_HEADERS = {
@@ -143,12 +144,21 @@ def get_game_relay_all(game_id: int):
                                 current_pitcher = pitcher_name
 
                         batter_record = opt.get('batterRecord') or {}
+                        opt_text = opt.get('text', '') or ''
                         if batter_record.get('name'):
                             new_batter = batter_record.get('name')
                             if new_batter != current_batter:
                                 if current_batter in batter_last_pitch:
                                     del batter_last_pitch[current_batter]
                             current_batter = new_batter
+                        elif rtype == 8 and opt_text:
+                            m = re.match(r'^(?:\d+번타자|대타)\s+(\S+)', opt_text)
+                            if m:
+                                new_batter = m.group(1).strip()
+                                if new_batter != current_batter:
+                                    if current_batter in batter_last_pitch:
+                                        del batter_last_pitch[current_batter]
+                                current_batter = new_batter
 
                         if rtype is None:
                             continue

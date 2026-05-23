@@ -68,7 +68,7 @@ flutter build apk --debug   # 또는 --release
 - api/sms_service.py (미사용 — email로 교체됨)
 - api/fcm_service.py (Firebase Admin SDK — 인프라 완료, 파이어베이스 키 등록 대기)
 - database/connection.py
-- crawler/naver_crawler.py (**절대 수정 금지**)
+- crawler/naver_crawler.py
 - crawler/scheduler.py, crawl_all_games.py, crawl_past_rosters.py
 - crawler/kbo_roster_crawler.py
 - static/profiles/ (프로필 이미지 저장 디렉토리)
@@ -425,7 +425,6 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 경기 종료 감지 시: crawl_highlights_for_game(game_id) 호출
 
 ## 주의사항
-- **naver_crawler.py 절대 수정 금지**
 - 과거경기 수정: game_date < '2026-05-09' 조건 필수
 - 동명이인: team_id 기준 조회
 - 서버 백엔드 루트: ~/playball/backend/
