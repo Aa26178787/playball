@@ -393,7 +393,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 ## 미구현 기능
 - [ ] FCM 활성화 (인프라 완료)
 - [x] 비밀번호 찾기/재설정 UI (forgot_password_screen.dart — 이메일→코드→재설정 3단계)
-- [ ] 커뮤니티: 검색, 인기글 탭
+- [x] 커뮤니티: 검색 (onSubmitted + q= 파라미터), 인기글 탭 (sort=hot)
 - [ ] 스프레이 차트 (타구방향 데이터 없음 — 네이버 중계 텍스트만 제공)
 - [ ] 드래프트/FA 정보
 - [ ] 직관 승률
