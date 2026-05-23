@@ -189,10 +189,10 @@ def sync_innings_from_game_pitchers():
         UPDATE pitcher_stats ps
         SET
             games              = GREATEST(COALESCE(ps.games,0), agg.g),
-            wins               = GREATEST(COALESCE(ps.wins,0),  agg.w),
-            losses             = GREATEST(COALESCE(ps.losses,0), agg.l),
-            saves              = GREATEST(COALESCE(ps.saves,0),  agg.sv),
-            holds              = GREATEST(COALESCE(ps.holds,0),  agg.hld),
+            wins               = agg.w,
+            losses             = agg.l,
+            saves              = agg.sv,
+            holds              = agg.hld,
             innings_pitched    = GREATEST(COALESCE(ps.innings_pitched,0), agg.ip_fmt),
             strikeouts         = GREATEST(COALESCE(ps.strikeouts,0), agg.so),
             earned_runs        = GREATEST(COALESCE(ps.earned_runs,0), agg.er),

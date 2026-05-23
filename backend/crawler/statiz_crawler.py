@@ -440,10 +440,10 @@ def save_players_and_stats(players, player_type):
                     )
                     ON CONFLICT (player_id, season) DO UPDATE SET
                         games              = GREATEST(EXCLUDED.games,              pitcher_stats.games),
-                        wins               = GREATEST(COALESCE(EXCLUDED.wins, 0),  COALESCE(pitcher_stats.wins, 0)),
-                        losses             = GREATEST(COALESCE(EXCLUDED.losses, 0),COALESCE(pitcher_stats.losses, 0)),
-                        saves              = GREATEST(COALESCE(EXCLUDED.saves, 0), COALESCE(pitcher_stats.saves, 0)),
-                        holds              = COALESCE(EXCLUDED.holds,              pitcher_stats.holds),
+                        wins               = COALESCE(EXCLUDED.wins,   pitcher_stats.wins),
+                        losses             = COALESCE(EXCLUDED.losses, pitcher_stats.losses),
+                        saves              = COALESCE(EXCLUDED.saves,  pitcher_stats.saves),
+                        holds              = COALESCE(EXCLUDED.holds,  pitcher_stats.holds),
                         innings_pitched    = GREATEST(EXCLUDED.innings_pitched,    pitcher_stats.innings_pitched),
                         hits_allowed       = GREATEST(EXCLUDED.hits_allowed,       pitcher_stats.hits_allowed),
                         runs_allowed       = GREATEST(EXCLUDED.runs_allowed,       pitcher_stats.runs_allowed),
