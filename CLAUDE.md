@@ -28,7 +28,7 @@ ExecStart=/home/ubuntu/.local/bin/uvicorn api.main:app --host 0.0.0.0 --port 800
 # /etc/systemd/system/playball.service.d/email.conf
 Environment=OPENWEATHER_API_KEY=2e970a21c74205304e13657423b1625b
 Environment=EMAIL_USER=noreply.playball@gmail.com
-Environment=EMAIL_PASS=lwsc sxbs mmxg uoba
+Environment=EMAIL_PASS=tsgi xehp bgvt nawo
 ```
 
 ## 앱 설정
