@@ -652,8 +652,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final totalH  = rows.fold<int>(0, (s, d) => s + ((d['h'] as num?)?.toInt() ?? 0));
     final totalBb = rows.fold<int>(0, (s, d) => s + ((d['bb'] as num?)?.toInt() ?? 0));
     final totalSo = rows.fold<int>(0, (s, d) => s + ((d['so'] as num?)?.toInt() ?? 0));
-    final rawIp   = rows.fold<double>(0, (s, d) => s + ((d['ip'] as num?)?.toDouble() ?? 0));
-    final realIp  = _ipToDecimal(rawIp);
+    final realIp  = rows.fold<double>(0.0, (s, d) => s + _ipToDecimal((d['ip'] as num?)?.toDouble() ?? 0));
 
     final era  = realIp > 0 ? totalEr * 9 / realIp : 0.0;
     final whip = realIp > 0 ? (totalH + totalBb) / realIp : 0.0;
@@ -739,19 +738,25 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 
   Widget _buildPitcherRows(List<dynamic> rows) {
-    final headers = ['날짜', '상대', '이닝', '피안타', '자책', '볼넷', '삼진'];
-    final cols = [80.0, 44.0, 44.0, 44.0, 36.0, 36.0, 36.0];
+    final headers = ['날짜', '상대', '이닝', '피안타', 'ERA', '볼넷', '삼진'];
+    final cols = [80.0, 44.0, 44.0, 44.0, 44.0, 36.0, 36.0];
     return Column(children: [
       _tableRow(headers, cols, isHeader: true),
-      ...rows.map((d) => _tableRow([
-        _fmtDate(d['game_date'] as String?),
-        d['opponent'] as String? ?? '-',
-        _formatIp(d['ip'] as num?),
-        '${(d['h'] as num?)?.toInt() ?? 0}',
-        '${(d['er'] as num?)?.toInt() ?? 0}',
-        '${(d['bb'] as num?)?.toInt() ?? 0}',
-        '${(d['so'] as num?)?.toInt() ?? 0}',
-      ], cols)),
+      ...rows.map((d) {
+        final ip = (d['ip'] as num?)?.toDouble() ?? 0;
+        final er = (d['er'] as num?)?.toDouble() ?? 0;
+        final realIp = _ipToDecimal(ip);
+        final era = realIp > 0 ? (er * 9 / realIp).toStringAsFixed(2) : '-';
+        return _tableRow([
+          _fmtDate(d['game_date'] as String?),
+          d['opponent'] as String? ?? '-',
+          _formatIp(d['ip'] as num?),
+          '${(d['h'] as num?)?.toInt() ?? 0}',
+          era,
+          '${(d['bb'] as num?)?.toInt() ?? 0}',
+          '${(d['so'] as num?)?.toInt() ?? 0}',
+        ], cols);
+      }),
     ]);
   }
 
