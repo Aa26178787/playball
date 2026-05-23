@@ -407,3 +407,71 @@ def delete_calendar_event(event_id: int, current_user: dict = Depends(get_curren
     """, (event_id, current_user['user_id']))
     conn.commit(); cur.close(); conn.close()
     return {"message": "삭제 완료"}
+
+
+# ── 알림 타임라인 ──────────────────────────────────────────────────────────────
+
+@router.get('/notifications')
+def get_notifications(limit: int = 30, current_user: dict = Depends(get_current_user)):
+    """알림 이력 조회 (최신순)"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, title, body, type, game_id, is_read, created_at
+        FROM user_notifications
+        WHERE user_id = %s
+        ORDER BY created_at DESC
+        LIMIT %s
+    """, (current_user['user_id'], limit))
+    rows = cur.fetchall()
+    cur.execute(
+        "SELECT COUNT(*) FROM user_notifications WHERE user_id = %s AND is_read = FALSE",
+        (current_user['user_id'],)
+    )
+    unread = cur.fetchone()[0]
+    cur.close(); conn.close()
+    return {
+        "unread_count": unread,
+        "notifications": [
+            {
+                "id":         r[0],
+                "title":      r[1],
+                "body":       r[2],
+                "type":       r[3],
+                "game_id":    r[4],
+                "is_read":    r[5],
+                "created_at": str(r[6]),
+            }
+            for r in rows
+        ]
+    }
+
+
+@router.post('/notifications/read-all')
+def read_all_notifications(current_user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE user_notifications SET is_read = TRUE WHERE user_id = %s AND is_read = FALSE",
+        (current_user['user_id'],)
+    )
+    conn.commit(); cur.close(); conn.close()
+    return {"message": "모두 읽음"}
+
+
+@router.patch('/notifications/{notif_id}/read')
+def read_notification(notif_id: int, current_user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE user_notifications SET is_read = TRUE WHERE id = %s AND user_id = %s",
+        (notif_id, current_user['user_id'])
+    )
+    conn.commit(); cur.close(); conn.close()
+    return {"message": "읽음"}

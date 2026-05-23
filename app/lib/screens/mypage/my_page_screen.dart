@@ -27,6 +27,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
   bool _loading = true;
   bool _uploadingImage = false;
 
+  // 알림 설정
+  bool _notifyGameStart   = true;
+  bool _notifyScoreChange = true;
+  bool _notifyGameEnd     = true;
+  bool _notifyMyTeamOnly  = false;
+  bool _settingsLoaded    = false;
+
   @override
   void initState() {
     super.initState();
@@ -41,20 +48,40 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ApiService.getFavoritePlayers(),
         ApiService.getMyPosts(),
         ApiService.getMyComments(),
+        ApiService.getSettings(),
       ]);
       if (mounted) {
+        final settings = (results[5] as Map)['settings'] as Map?;
         setState(() {
           _user = results[0];
           _favoriteTeams = (results[1] as Map)['teams'] ?? [];
           _favoritePlayers = (results[2] as Map)['players'] ?? [];
           _myPosts = (results[3] as Map)['posts'] ?? [];
           _myComments = (results[4] as Map)['comments'] ?? [];
+          if (settings != null) {
+            _notifyGameStart   = settings['notify_game_start']   as bool? ?? true;
+            _notifyScoreChange = settings['notify_score_change'] as bool? ?? true;
+            _notifyGameEnd     = settings['notify_game_end']     as bool? ?? true;
+            _notifyMyTeamOnly  = settings['notify_my_team_only'] as bool? ?? false;
+          }
+          _settingsLoaded = true;
           _loading = false;
         });
       }
     } catch (_) {
       setState(() => _loading = false);
     }
+  }
+
+  Future<void> _saveSettings() async {
+    try {
+      await ApiService.updateSettings({
+        'notify_game_start':   _notifyGameStart,
+        'notify_score_change': _notifyScoreChange,
+        'notify_game_end':     _notifyGameEnd,
+        'notify_my_team_only': _notifyMyTeamOnly,
+      });
+    } catch (_) {}
   }
 
   Future<void> _logout() async {
@@ -188,6 +215,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   const SizedBox(height: 16),
                   _buildMyComments(),
                   const SizedBox(height: 16),
+                  _buildNotificationSettings(),
+                  const SizedBox(height: 8),
                   Consumer<ThemeProvider>(
                     builder: (ctx, tp, _) => SwitchListTile(
                       title: const Text('다크 모드'),
@@ -493,6 +522,67 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildNotificationSettings() {
+    if (!_settingsLoaded) return const SizedBox.shrink();
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 10, 16, 4),
+              child: Text('알림 설정',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+            SwitchListTile(
+              dense: true,
+              title: const Text('경기 시작 알림', style: TextStyle(fontSize: 14)),
+              value: _notifyGameStart,
+              onChanged: (v) {
+                setState(() => _notifyGameStart = v);
+                _saveSettings();
+              },
+            ),
+            SwitchListTile(
+              dense: true,
+              title: const Text('득점 알림', style: TextStyle(fontSize: 14)),
+              value: _notifyScoreChange,
+              onChanged: (v) {
+                setState(() => _notifyScoreChange = v);
+                _saveSettings();
+              },
+            ),
+            SwitchListTile(
+              dense: true,
+              title: const Text('경기 종료 알림', style: TextStyle(fontSize: 14)),
+              value: _notifyGameEnd,
+              onChanged: (v) {
+                setState(() => _notifyGameEnd = v);
+                _saveSettings();
+              },
+            ),
+            const Divider(height: 1, indent: 16, endIndent: 16),
+            SwitchListTile(
+              dense: true,
+              title: const Text('마이팀 경기만', style: TextStyle(fontSize: 14)),
+              subtitle: Text(
+                _notifyMyTeamOnly ? '즐겨찾기 팀 경기에만 알림' : '모든 경기 알림',
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+              ),
+              value: _notifyMyTeamOnly,
+              onChanged: (v) {
+                setState(() => _notifyMyTeamOnly = v);
+                _saveSettings();
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

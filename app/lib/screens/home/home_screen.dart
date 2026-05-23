@@ -13,6 +13,7 @@ import '../calendar/calendar_screen.dart';
 import '../mypage/my_page_screen.dart';
 import '../search/search_screen.dart';
 import '../stadium/stadium_screen.dart';
+import '../notifications/notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -84,6 +85,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   Set<int> _favoriteTeamIds = {};
   bool _myTeamOnly = false;
   Timer? _autoRefreshTimer;
+  int _unreadNotifCount = 0;
 
   bool get _hasLiveGames => _games.any((g) => g['status'] == '진행');
 
@@ -94,6 +96,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     _loadTodayRosterChanges();
     _loadFavoriteTeams();
     _loadRankings();
+    _loadUnreadCount();
     _startAutoRefresh();
   }
 
@@ -127,6 +130,13 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     try {
       final data = await ApiService.getTeamRankings();
       if (mounted) setState(() => _rankings = data['rankings'] ?? []);
+    } catch (_) {}
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final data = await ApiService.getNotifications(limit: 1);
+      if (mounted) setState(() => _unreadNotifCount = data['unread_count'] as int? ?? 0);
     } catch (_) {}
   }
 
@@ -178,6 +188,34 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_none),
+                if (_unreadNotifCount > 0)
+                  Positioned(
+                    top: -4, right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Colors.red, shape: BoxShape.circle),
+                      child: Text(
+                        _unreadNotifCount > 9 ? '9+' : '$_unreadNotifCount',
+                        style: const TextStyle(color: Colors.white, fontSize: 9,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            tooltip: '알림',
+            onPressed: () async {
+              await Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+              _loadUnreadCount();
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.stadium_outlined),
             tooltip: '구장',

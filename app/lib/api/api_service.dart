@@ -278,6 +278,26 @@ class ApiService {
         data: settings, options: Options(headers: headers));
   }
 
+  static Future<Map<String, dynamic>> getNotifications({int limit = 30}) async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/user/notifications',
+        queryParameters: {'limit': limit},
+        options: Options(headers: headers));
+    return res.data;
+  }
+
+  static Future<void> readAllNotifications() async {
+    final headers = await authHeaders();
+    await _dio.post('/user/notifications/read-all',
+        options: Options(headers: headers));
+  }
+
+  static Future<void> readNotification(int notifId) async {
+    final headers = await authHeaders();
+    await _dio.patch('/user/notifications/$notifId/read',
+        options: Options(headers: headers));
+  }
+
   // ===== 경기장 API =====
   static Future<Map<String, dynamic>> getStadiums() async {
     final res = await _dio.get('/stadiums/');
