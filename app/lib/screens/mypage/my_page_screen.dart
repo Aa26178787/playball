@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../api/api_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../utils/team_theme.dart';
 import '../player/player_detail_screen.dart';
 import '../team/team_detail_screen.dart';
@@ -186,7 +187,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   _buildMyPosts(),
                   const SizedBox(height: 16),
                   _buildMyComments(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+                  Consumer<ThemeProvider>(
+                    builder: (ctx, tp, _) => SwitchListTile(
+                      title: const Text('다크 모드'),
+                      secondary: Icon(tp.isDark ? Icons.dark_mode : Icons.light_mode),
+                      value: tp.isDark,
+                      onChanged: (_) => tp.toggle(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   TextButton(
                     onPressed: _deleteAccount,
                     child: const Text('회원탈퇴',
