@@ -81,12 +81,12 @@ flutter build apk --debug   # 또는 --release
 - screens/player/{player_screen,player_detail_screen,player_compare_screen}.dart
 - screens/team/{team_screen,team_detail_screen}.dart
 - screens/calendar/calendar_screen.dart
-- screens/auth/{login_screen,register_screen}.dart
+- screens/auth/{login_screen,register_screen,forgot_password_screen}.dart
 - screens/mypage/{my_page_screen,phone_verify_screen}.dart
 - screens/community/{community_screen,post_detail_screen,create_post_screen}.dart
 - screens/search/search_screen.dart  ← 통합 선수/팀 검색
 - models/game.dart, utils/team_theme.dart
-- providers/{auth,game,team}_provider.dart
+- providers/{auth,game,team,theme}_provider.dart
 
 ## API 목록
 
@@ -397,5 +397,8 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [ ] 스프레이 차트 (타구방향 데이터 없음 — 네이버 중계 텍스트만 제공)
 - [ ] 드래프트/FA 정보
 - [ ] 직관 승률
-- [ ] 다크모드, 홈화면 위젯, 카카오맵 연동
-- [ ] 마이팀 개인화 홈
+- [x] 다크모드 (ThemeProvider, SharedPreferences, MyPage SwitchListTile)
+- [x] 마이팀 개인화 홈 (home_screen 마이팀 대시보드 카드 — 순위/연승/오늘경기 표시)
+- [ ] 홈화면 위젯 (Android AppWidget — native kotlin 필요)
+- [ ] 카카오맵 연동 (Kakao API 키 필요)
+- [ ] 드래프트/FA 정보 (데이터 소스 없음)
