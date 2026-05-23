@@ -217,6 +217,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 ),
                 const Divider(),
                 Text(_post!['content'] ?? ''),
+                if (_post!['image_url'] != null) ...[
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      _post!['image_url'] as String,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Text('❤️ ${_post!['likes'] ?? 0}',
                     style: const TextStyle(color: Colors.red)),

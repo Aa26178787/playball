@@ -1,8 +1,13 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional
+import os, uuid, shutil
 from database.connection import get_connection
 from api.routers.auth import get_current_user
+
+POST_IMG_DIR = '/home/ubuntu/playball/backend/static/posts'
+BASE_URL = 'http://168.107.61.147:8000'
+os.makedirs(POST_IMG_DIR, exist_ok=True)
 
 router = APIRouter()
 
@@ -12,6 +17,7 @@ class PostCreate(BaseModel):
     content: str
     category: str = "자유"
     team_id: Optional[int] = None
+    image_url: Optional[str] = None
 
 
 class PostUpdate(BaseModel):
@@ -119,7 +125,7 @@ def get_post_detail(post_id: int):
         SELECT p.id, p.title, p.content, p.category,
                p.views, p.likes, p.created_at, p.updated_at,
                u.id AS user_id, u.nickname, u.profile_image,
-               t.name AS team_name
+               t.name AS team_name, p.image_url
         FROM posts p
         JOIN users u ON p.user_id = u.id
         LEFT JOIN teams t ON p.team_id = t.id
@@ -158,6 +164,7 @@ def get_post_detail(post_id: int):
         "author":       row[9],
         "author_image": row[10],
         "team_name":    row[11],
+        "image_url":    row[12],
         "comments": [
             {
                 "id":           c[0],
@@ -188,12 +195,12 @@ def create_post(body: PostCreate, current_user: dict = Depends(get_current_user)
         raise HTTPException(status_code=403, detail="phone_not_verified")
 
     cur.execute("""
-        INSERT INTO posts (user_id, team_id, title, content, category)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO posts (user_id, team_id, title, content, category, image_url)
+        VALUES (%s, %s, %s, %s, %s, %s)
         RETURNING id
     """, (
         current_user["user_id"], body.team_id,
-        body.title, body.content, body.category
+        body.title, body.content, body.category, body.image_url
     ))
 
     post_id = cur.fetchone()[0]
@@ -418,3 +425,19 @@ def get_my_comments(page: int = 1, limit: int = 20, current_user: dict = Depends
          'post_id': r[3], 'post_title': r[4]}
         for r in rows
     ]}
+
+
+@router.post('/posts/upload-image')
+async def upload_post_image(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    ext = os.path.splitext(file.filename or 'img.jpg')[1].lower()
+    if ext not in ('.jpg', '.jpeg', '.png', '.webp'):
+        raise HTTPException(status_code=400, detail='jpg/png/webp만 허용됩니다')
+    filename = f"post_{current_user['user_id']}_{uuid.uuid4().hex[:8]}{ext}"
+    path = os.path.join(POST_IMG_DIR, filename)
+    with open(path, 'wb') as f:
+        shutil.copyfileobj(file.file, f)
+    url = f"{BASE_URL}/static/posts/{filename}"
+    return {'image_url': url}

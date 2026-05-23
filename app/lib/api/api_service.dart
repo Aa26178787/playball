@@ -348,7 +348,7 @@ class ApiService {
 
   static Future<void> createPost(
       String title, String content, String category,
-      {int? teamId}) async {
+      {int? teamId, String? imageUrl}) async {
     final headers = await authHeaders();
     await _dio.post('/community/posts',
         data: {
@@ -356,8 +356,20 @@ class ApiService {
           'content': content,
           'category': category,
           if (teamId != null) 'team_id': teamId,
+          if (imageUrl != null) 'image_url': imageUrl,
         },
         options: Options(headers: headers));
+  }
+
+  static Future<String> uploadPostImage(String filePath) async {
+    final headers = await authHeaders();
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath),
+    });
+    final res = await _dio.post('/community/posts/upload-image',
+        data: formData,
+        options: Options(headers: headers));
+    return res.data['image_url'] as String;
   }
 
   static Future<void> toggleLike(int postId) async {
