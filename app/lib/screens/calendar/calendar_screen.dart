@@ -382,81 +382,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _showAddEventDialog(DateTime date) async {
-    final titleCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    String selectedColor = 'blue';
-
-    await showDialog(
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx2, setDlgState) => AlertDialog(
-          title: Text('${date.month}/${date.day} 일정 추가'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: titleCtrl,
-                  decoration: const InputDecoration(labelText: '제목 *', hintText: '일정 제목 입력'),
-                  autofocus: true,
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: descCtrl,
-                  decoration: const InputDecoration(labelText: '메모 (선택)', hintText: '메모 입력'),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 12),
-                const Text('색상', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  children: _eventColors.entries.map((e) {
-                    final isChosen = selectedColor == e.key;
-                    return GestureDetector(
-                      onTap: () => setDlgState(() => selectedColor = e.key),
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: e.value,
-                          shape: BoxShape.circle,
-                          border: isChosen ? Border.all(color: Colors.black54, width: 2.5) : null,
-                        ),
-                        child: isChosen ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
-            TextButton(
-              onPressed: () async {
-                final title = titleCtrl.text.trim();
-                if (title.isEmpty) return;
-                Navigator.pop(ctx);
-                try {
-                  await ApiService.createCalendarEvent(
-                    _dateKey(date),
-                    title,
-                    description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
-                    color: selectedColor,
-                  );
-                  await _loadPersonalEvents();
-                } catch (_) {}
-              },
-              child: const Text('추가'),
-            ),
-          ],
-        ),
+      builder: (_) => _AddEventDialog(
+        initialDate: date,
+        eventColors: _eventColors,
       ),
     );
-    titleCtrl.dispose();
-    descCtrl.dispose();
+    if (result != null && mounted) {
+      try {
+        await ApiService.createCalendarEvent(
+          _dateKey(result['date'] as DateTime),
+          result['title'] as String,
+          description: (result['desc'] as String).isEmpty ? null : result['desc'] as String,
+          color: result['color'] as String,
+        );
+        await _loadPersonalEvents();
+      } catch (_) {}
+    }
   }
 
   Widget _buildGameTile(Map<String, dynamic> game) {
@@ -665,6 +608,136 @@ class _CalendarScreenState extends State<CalendarScreen> {
         '${isHome ? '홈' : '원정'} $name',
         style: const TextStyle(fontSize: 10, color: Colors.indigo),
       ),
+    );
+  }
+}
+
+class _AddEventDialog extends StatefulWidget {
+  final DateTime initialDate;
+  final Map<String, Color> eventColors;
+
+  const _AddEventDialog({required this.initialDate, required this.eventColors});
+
+  @override
+  State<_AddEventDialog> createState() => _AddEventDialogState();
+}
+
+class _AddEventDialogState extends State<_AddEventDialog> {
+  late TextEditingController _titleCtrl;
+  late TextEditingController _descCtrl;
+  late DateTime _dialogDate;
+  String _selectedColor = 'blue';
+
+  @override
+  void initState() {
+    super.initState();
+    _titleCtrl = TextEditingController();
+    _descCtrl = TextEditingController();
+    _dialogDate = widget.initialDate;
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  String _fmt(DateTime d) =>
+      '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('일정 추가'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GestureDetector(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _dialogDate,
+                  firstDate: DateTime(2026, 1, 1),
+                  lastDate: DateTime(2026, 12, 31),
+                  locale: const Locale('ko', 'KR'),
+                );
+                if (picked != null) setState(() => _dialogDate = picked);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_today, size: 16, color: Color(0xFF1A237E)),
+                    const SizedBox(width: 8),
+                    Text(_fmt(_dialogDate),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                    const Spacer(),
+                    const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _titleCtrl,
+              decoration: const InputDecoration(labelText: '제목 *', hintText: '일정 제목 입력'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _descCtrl,
+              decoration: const InputDecoration(labelText: '메모 (선택)', hintText: '메모 입력'),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 12),
+            const Text('색상', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              children: widget.eventColors.entries.map((e) {
+                final isChosen = _selectedColor == e.key;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedColor = e.key),
+                  child: Container(
+                    width: 28, height: 28,
+                    decoration: BoxDecoration(
+                      color: e.value,
+                      shape: BoxShape.circle,
+                      border: isChosen ? Border.all(color: Colors.black54, width: 2.5) : null,
+                    ),
+                    child: isChosen ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        TextButton(
+          onPressed: () {
+            final title = _titleCtrl.text.trim();
+            if (title.isEmpty) return;
+            Navigator.pop(context, {
+              'date': _dialogDate,
+              'title': title,
+              'desc': _descCtrl.text.trim(),
+              'color': _selectedColor,
+            });
+          },
+          child: const Text('추가'),
+        ),
+      ],
     );
   }
 }

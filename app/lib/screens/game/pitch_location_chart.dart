@@ -199,7 +199,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-                      child: _StrikeZoneChart(pitches: _filtered, colors: _resultColors),
+                      child: ClipRect(child: _StrikeZoneChart(pitches: _filtered, colors: _resultColors)),
                     ),
                   ),
 
@@ -297,29 +297,35 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
     final innings = _availableInnings;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            GestureDetector(
-              onTap: () => setState(() { _selectedInning = null; _selectedBatter = null; }),
-              child: Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: _chip('전체', _selectedInning == null, Colors.grey[700]!),
+      child: Row(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() { _selectedInning = null; _selectedBatter = null; }),
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: _chip('전체', _selectedInning == null, Colors.grey[700]!),
+                    ),
+                  ),
+                  ...innings.map((ing) {
+                    final sel = _selectedInning == ing;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: GestureDetector(
+                        onTap: () => setState(() { _selectedInning = ing; _selectedBatter = null; }),
+                        child: _chip('${ing}회', sel, Colors.grey[700]!),
+                      ),
+                    );
+                  }),
+                ],
               ),
             ),
-            ...innings.map((ing) {
-              final sel = _selectedInning == ing;
-              return Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: GestureDetector(
-                  onTap: () => setState(() { _selectedInning = ing; _selectedBatter = null; }),
-                  child: _chip('${ing}회', sel, Colors.grey[700]!),
-                ),
-              );
-            }),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -328,29 +334,35 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
     final batters = _availableBatters;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            GestureDetector(
-              onTap: () => setState(() => _selectedBatter = null),
-              child: Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: _chip('전체', _selectedBatter == null, Colors.teal),
+      child: Row(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() => _selectedBatter = null),
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: _chip('전체', _selectedBatter == null, Colors.teal),
+                    ),
+                  ),
+                  ...batters.map((b) {
+                    final sel = _selectedBatter == b;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: GestureDetector(
+                        onTap: () => setState(() => _selectedBatter = b),
+                        child: _chip(b, sel, Colors.teal),
+                      ),
+                    );
+                  }),
+                ],
               ),
             ),
-            ...batters.map((b) {
-              final sel = _selectedBatter == b;
-              return Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: GestureDetector(
-                  onTap: () => setState(() => _selectedBatter = b),
-                  child: _chip(b, sel, Colors.teal),
-                ),
-              );
-            }),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -557,20 +569,21 @@ class _StrikeZonePainter extends CustomPainter {
           Paint()..color = Colors.red.withValues(alpha: 0.2)..strokeWidth = 0.5);
     }
 
-    // 홈플레이트 실제 폭 (±8.5인치)
-    final plateBottom = _toCanvas(0, 0, size);
+    // 홈플레이트 실제 폭 (±8.5인치) — tip을 캔버스 안에 고정
+    final plateCenter = _toCanvas(0, 0, size);
     final plateLeft = _toCanvas(-plateHalfW, 0.15, size);
     final plateRight = _toCanvas(plateHalfW, 0.15, size);
+    final plateTipY = (plateCenter.dy + 8).clamp(0.0, size.height - 1);
     final platePath = Path()
       ..moveTo(plateLeft.dx, plateLeft.dy)
       ..lineTo(plateRight.dx, plateRight.dy)
-      ..lineTo(plateBottom.dx, plateBottom.dy + 8)
+      ..lineTo(plateCenter.dx, plateTipY)
       ..close();
     canvas.drawPath(platePath, Paint()..color = Colors.grey[300]!);
     canvas.drawPath(platePath,
         Paint()..color = Colors.grey[500]!..style = PaintingStyle.stroke..strokeWidth = 1);
 
-    final centerX = _toCanvas(0, 0, size).dx;
+    final centerX = plateCenter.dx;
     canvas.drawLine(
       Offset(centerX, 0), Offset(centerX, size.height),
       Paint()..color = Colors.grey.withValues(alpha: 0.2)..strokeWidth = 0.5,

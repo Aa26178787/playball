@@ -416,37 +416,149 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _sectionLabel('최근 5경기'),
-              isHitter ? _buildHitterRows(recent) : _buildPitcherRows(recent),
-            ],
+      child: Column(
+        children: [
+          isHitter ? _buildHitterSummary(recent) : _buildPitcherSummary(recent),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionLabel('최근 5경기'),
+                  isHitter ? _buildHitterRows(recent) : _buildPitcherRows(recent),
+                ],
+              ),
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHitterSummary(List<dynamic> rows) {
+    final totalAb = rows.fold<int>(0, (s, d) => s + ((d['ab'] as num?)?.toInt() ?? 0));
+    final totalH  = rows.fold<int>(0, (s, d) => s + ((d['hits'] as num?)?.toInt() ?? 0));
+    final totalHr = rows.fold<int>(0, (s, d) => s + ((d['home_runs'] as num?)?.toInt() ?? 0));
+    final totalRbi = rows.fold<int>(0, (s, d) => s + ((d['rbi'] as num?)?.toInt() ?? 0));
+    final totalBb  = rows.fold<int>(0, (s, d) => s + ((d['walks'] as num?)?.toInt() ?? 0));
+    final totalHbp = rows.fold<int>(0, (s, d) => s + ((d['hbp'] as num?)?.toInt() ?? 0));
+    final total2b  = rows.fold<int>(0, (s, d) => s + ((d['doubles'] as num?)?.toInt() ?? 0));
+    final total3b  = rows.fold<int>(0, (s, d) => s + ((d['triples'] as num?)?.toInt() ?? 0));
+
+    final avg = totalAb > 0 ? totalH / totalAb : 0.0;
+    final tb  = totalH + total2b + 2 * total3b + 3 * totalHr;
+    final slg = totalAb > 0 ? tb / totalAb : 0.0;
+    final obpD = totalAb + totalBb + totalHbp;
+    final obp  = obpD > 0 ? (totalH + totalBb + totalHbp) / obpD : 0.0;
+    final ops  = obp + slg;
+
+    return Card(
+      color: const Color(0xFF1A237E).withValues(alpha: 0.05),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('최근 5경기 요약',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1A237E))),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _summaryBox('AVG', avg.toStringAsFixed(3)),
+                _summaryBox('OPS', ops.toStringAsFixed(3)),
+                _summaryBox('HR', '$totalHr'),
+                _summaryBox('RBI', '$totalRbi'),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
+  Widget _buildPitcherSummary(List<dynamic> rows) {
+    final totalEr = rows.fold<int>(0, (s, d) => s + ((d['er'] as num?)?.toInt() ?? 0));
+    final totalH  = rows.fold<int>(0, (s, d) => s + ((d['h'] as num?)?.toInt() ?? 0));
+    final totalBb = rows.fold<int>(0, (s, d) => s + ((d['bb'] as num?)?.toInt() ?? 0));
+    final totalSo = rows.fold<int>(0, (s, d) => s + ((d['so'] as num?)?.toInt() ?? 0));
+    final rawIp   = rows.fold<double>(0, (s, d) => s + ((d['ip'] as num?)?.toDouble() ?? 0));
+    final realIp  = _ipToDecimal(rawIp);
+
+    final era  = realIp > 0 ? totalEr * 9 / realIp : 0.0;
+    final whip = realIp > 0 ? (totalH + totalBb) / realIp : 0.0;
+
+    return Card(
+      color: const Color(0xFF1A237E).withValues(alpha: 0.05),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('최근 5경기 요약',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1A237E))),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _summaryBox('ERA', era.toStringAsFixed(2)),
+                _summaryBox('WHIP', whip.toStringAsFixed(2)),
+                _summaryBox('K', '$totalSo'),
+                _summaryBox('IP', _formatIp(rawIp as num?)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  double _ipToDecimal(double ip) {
+    final full = ip.floor();
+    final thirds = ((ip - full) * 10).round();
+    return full + thirds / 3.0;
+  }
+
+  Widget _summaryBox(String label, String value) {
+    return Column(
+      children: [
+        Text(value,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+      ],
+    );
+  }
+
   Widget _buildHitterRows(List<dynamic> rows) {
-    final headers = ['날짜', '상대', '타-안', '홈런', '타점', '볼넷', '삼진'];
-    final cols = [80.0, 44.0, 44.0, 36.0, 36.0, 36.0, 36.0];
+    final headers = ['날짜', '상대', '타수', '안타', 'HR', 'RBI', 'BB', 'OPS'];
+    final cols = [72.0, 42.0, 32.0, 32.0, 28.0, 28.0, 28.0, 44.0];
     return Column(children: [
       _tableRow(headers, cols, isHeader: true),
       ...rows.map((d) {
-        final ab = (d['ab'] as num?)?.toInt() ?? 0;
-        final h = (d['hits'] as num?)?.toInt() ?? 0;
+        final ab  = (d['ab'] as num?)?.toInt() ?? 0;
+        final h   = (d['hits'] as num?)?.toInt() ?? 0;
+        final hr  = (d['home_runs'] as num?)?.toInt() ?? 0;
+        final bb  = (d['walks'] as num?)?.toInt() ?? 0;
+        final hbp = (d['hbp'] as num?)?.toInt() ?? 0;
+        final d2b = (d['doubles'] as num?)?.toInt() ?? 0;
+        final d3b = (d['triples'] as num?)?.toInt() ?? 0;
+        final tb  = h + d2b + 2 * d3b + 3 * hr;
+        final slg = ab > 0 ? tb / ab : 0.0;
+        final obpD = ab + bb + hbp;
+        final obp  = obpD > 0 ? (h + bb + hbp) / obpD : 0.0;
+        final ops  = obp + slg;
         return _tableRow([
           _fmtDate(d['game_date'] as String?),
           d['opponent'] as String? ?? '-',
-          '$ab-$h',
-          '${(d['home_runs'] as num?)?.toInt() ?? 0}',
+          '$ab',
+          '$h',
+          '$hr',
           '${(d['rbi'] as num?)?.toInt() ?? 0}',
-          '${(d['walks'] as num?)?.toInt() ?? 0}',
-          '${(d['strikeouts'] as num?)?.toInt() ?? 0}',
+          '$bb',
+          ab > 0 ? ops.toStringAsFixed(3) : '-',
         ], cols);
       }),
     ]);

@@ -6,7 +6,7 @@ router = APIRouter()
 
 
 def _batch_recent5(cur, team_ids: list) -> dict:
-    """team_id → ['W','L','D',...] 최신순 5개"""
+    """team_id → ['W','L','D','C',...] 최신순 5개 (취소 포함)"""
     if not team_ids:
         return {}
     cur.execute("""
@@ -14,6 +14,7 @@ def _batch_recent5(cur, team_ids: list) -> dict:
             SELECT
                 t.team_id,
                 CASE
+                    WHEN g.status = '취소' THEN 'C'
                     WHEN g.home_team_id = t.team_id THEN
                         CASE WHEN g.home_score > g.away_score THEN 'W'
                              WHEN g.home_score < g.away_score THEN 'L'
@@ -29,7 +30,7 @@ def _batch_recent5(cur, team_ids: list) -> dict:
                 ) as rn
             FROM UNNEST(%s::int[]) AS t(team_id)
             JOIN games g ON (g.home_team_id = t.team_id OR g.away_team_id = t.team_id)
-            WHERE g.status = '종료'
+            WHERE g.status IN ('종료', '취소')
         ) sub
         WHERE rn <= 5
         ORDER BY team_id, rn
@@ -1195,7 +1196,13 @@ def get_pitch_locations(game_id: int):
     pitcher_sides = {r[0]: r[1] for r in cur.fetchall()}
 
     def _build_response(all_pitches_list):
-        pitchers = sorted({p["pitcher"] for p in all_pitches_list if p["pitcher"]})
+        # preserve game order (starter first = leftmost)
+        seen: dict = {}
+        for p in all_pitches_list:
+            name = p.get("pitcher")
+            if name and name not in seen:
+                seen[name] = True
+        pitchers = list(seen.keys())
         home_p = [p for p in pitchers if pitcher_sides.get(p) == 'home']
         away_p = [p for p in pitchers if pitcher_sides.get(p) == 'away']
         return {

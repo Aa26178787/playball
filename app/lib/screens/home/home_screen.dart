@@ -504,7 +504,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: recent5.reversed.map((r) {
-                  final c = r == 'W' ? Colors.blue : r == 'L' ? Colors.red : Colors.grey;
+                  final c = r == 'W' ? Colors.blue : r == 'L' ? Colors.red : r == 'C' ? Colors.orange : Colors.grey;
                   return Container(
                     width: 16, height: 16,
                     margin: const EdgeInsets.only(right: 3),
@@ -698,9 +698,9 @@ class GameCard extends StatelessWidget {
 
   Widget _buildRecentBar(List<String> recent, bool isHome) {
     if (recent.isEmpty) return const SizedBox.shrink();
-    // home: 좌→우 최신순 (index 0 = 최신 = 좌)
-    // away: 우→좌 최신순 → 렌더는 역순(좌=oldest), 최신이 우에 위치
-    final displayed = isHome ? recent : recent.reversed.toList();
+    // home: 좌→우 오래된순, 최신이 우 (rightmost)
+    // away: 좌→우 최신순, 최신이 좌 (leftmost)
+    final displayed = isHome ? recent.reversed.toList() : recent;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -709,8 +709,8 @@ class GameCard extends StatelessWidget {
         ...displayed.asMap().entries.map((e) {
           final idx = e.key;
           final r = e.value;
-          final isLatest = isHome ? idx == 0 : idx == displayed.length - 1;
-          final c = r == 'W' ? Colors.blue : r == 'L' ? Colors.red : Colors.grey;
+          final isLatest = isHome ? idx == displayed.length - 1 : idx == 0;
+          final c = r == 'W' ? Colors.blue : r == 'L' ? Colors.red : r == 'C' ? Colors.orange : Colors.grey;
           return Padding(
             padding: const EdgeInsets.only(right: 2),
             child: Stack(

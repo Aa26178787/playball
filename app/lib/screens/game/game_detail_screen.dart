@@ -583,15 +583,15 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildRecentBar(List<String> recent, bool isHome) {
     if (recent.isEmpty) return const SizedBox.shrink();
-    final displayed = isHome ? recent : recent.reversed.toList();
+    final displayed = isHome ? recent.reversed.toList() : recent;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: displayed.asMap().entries.map((e) {
         final idx = e.key;
         final r = e.value;
-        final isLatest = isHome ? idx == 0 : idx == displayed.length - 1;
-        final c = r == 'W' ? Colors.blue : r == 'L' ? Colors.red : Colors.grey;
+        final isLatest = isHome ? idx == displayed.length - 1 : idx == 0;
+        final c = r == 'W' ? Colors.blue : r == 'L' ? Colors.red : r == 'C' ? Colors.orange : Colors.grey;
         return Padding(
           padding: const EdgeInsets.only(right: 2),
           child: Stack(
