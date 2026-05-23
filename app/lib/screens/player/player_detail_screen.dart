@@ -428,7 +428,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final maxVal = values.reduce((a, b) => a > b ? a : b);
     final padding = isHitter ? 0.05 : 1.0;
     final yMin = (minVal - padding).clamp(0.0, double.infinity);
-    final yMax = maxVal + padding;
+    final yMax = isHitter ? (maxVal + padding).clamp(0.0, 1.0) : maxVal + padding;
 
     final chartColor = isHitter ? const Color(0xFF1A237E) : const Color(0xFFB71C1C);
     final chartLabel = isHitter ? '타율 (AVG)' : 'ERA';

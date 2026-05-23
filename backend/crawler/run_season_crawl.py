@@ -193,7 +193,7 @@ def sync_innings_from_game_pitchers():
             losses             = agg.l,
             saves              = agg.sv,
             holds              = agg.hld,
-            innings_pitched    = GREATEST(COALESCE(ps.innings_pitched,0), agg.ip_fmt),
+            innings_pitched    = COALESCE(ps.innings_pitched, agg.ip_fmt),
             strikeouts         = GREATEST(COALESCE(ps.strikeouts,0), agg.so),
             earned_runs        = GREATEST(COALESCE(ps.earned_runs,0), agg.er),
             walks              = GREATEST(COALESCE(ps.walks,0),  agg.bb),
