@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Request
 from pydantic import BaseModel
 from typing import Optional
 import os, uuid, shutil
+from datetime import datetime, timedelta
 from database.connection import get_connection
 from api.routers.auth import get_current_user
 
@@ -10,6 +11,10 @@ BASE_URL = 'http://168.107.61.147:8000'
 os.makedirs(POST_IMG_DIR, exist_ok=True)
 
 router = APIRouter()
+
+# 조회수 throttle: (post_id, ip) → 마지막 조회 시각
+_view_cache: dict = {}
+_VIEW_COOLDOWN = timedelta(minutes=10)
 
 
 class PostCreate(BaseModel):
@@ -109,7 +114,7 @@ def get_posts(
 
 
 @router.get("/posts/{post_id}")
-def get_post_detail(post_id: int):
+def get_post_detail(post_id: int, request: Request):
     """게시글 상세 조회"""
     conn = get_connection()
     if not conn:
@@ -117,8 +122,20 @@ def get_post_detail(post_id: int):
 
     cur = conn.cursor()
 
-    # 조회수 증가
-    cur.execute("UPDATE posts SET views = views + 1 WHERE id = %s", (post_id,))
+    # 조회수 throttle: 같은 IP에서 10분 내 재조회 시 증가 안 함
+    ip = request.client.host if request.client else "unknown"
+    cache_key = (post_id, ip)
+    now = datetime.now()
+    last_viewed = _view_cache.get(cache_key)
+    if last_viewed is None or (now - last_viewed) > _VIEW_COOLDOWN:
+        _view_cache[cache_key] = now
+        cur.execute("UPDATE posts SET views = views + 1 WHERE id = %s", (post_id,))
+        # 캐시 크기 제한 (1만 건 초과 시 만료 항목 정리)
+        if len(_view_cache) > 10000:
+            cutoff = now - _VIEW_COOLDOWN
+            expired = [k for k, v in _view_cache.items() if v < cutoff]
+            for k in expired:
+                del _view_cache[k]
 
     # 게시글 조회
     cur.execute("""

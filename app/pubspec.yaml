@@ -63,6 +63,9 @@ dependencies:
   # URL 열기
   url_launcher: ^6.3.1
 
+  # 캘린더 일정 추가
+  add_2_calendar: ^3.0.1
+
   # 아이콘
   cupertino_icons: ^1.0.8
 

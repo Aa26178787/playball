@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:add_2_calendar/add_2_calendar.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import '../game/game_detail_screen.dart';
@@ -227,6 +228,32 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  void _addToCalendar(Map<String, dynamic> game) {
+    final homeTeam = game['home_team'] as String? ?? '';
+    final awayTeam = game['away_team'] as String? ?? '';
+    final stadium = game['stadium'] as String? ?? '';
+    final startTimeStr = game['start_time'] as String? ?? '18:30';
+    final selected = _selectedDate ?? DateTime.now();
+
+    // 시작 시간 파싱 (HH:mm)
+    final parts = startTimeStr.split(':');
+    final hour = parts.isNotEmpty ? int.tryParse(parts[0]) ?? 18 : 18;
+    final minute = parts.length > 1 ? int.tryParse(parts[1]) ?? 30 : 30;
+
+    final start = DateTime(selected.year, selected.month, selected.day, hour, minute);
+    final end = start.add(const Duration(hours: 3));
+
+    final event = Event(
+      title: '$awayTeam vs $homeTeam',
+      description: 'KBO 2026 정규시즌\n경기장: $stadium',
+      location: stadium,
+      startDate: start,
+      endDate: end,
+      allDay: false,
+    );
+    Add2Calendar.addEvent2Cal(event);
+  }
+
   Widget _buildGameTile(Map<String, dynamic> game) {
     final status = game['status'] as String? ?? '';
     final homeTeam = game['home_team'] as String? ?? '';
@@ -278,7 +305,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // 상태 + 경기장
+              // 상태 + 경기장 + 캘린더 추가 버튼
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -293,7 +320,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
                     ),
                   ),
-                  Text(stadium, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Row(
+                    children: [
+                      Text(stadium, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      if (status == '예정' || status == '라인업') ...[
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => _addToCalendar(game),
+                          child: const Icon(Icons.calendar_today, size: 18, color: Color(0xFF1A237E)),
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
