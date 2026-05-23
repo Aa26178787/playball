@@ -216,6 +216,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                         _legend('헛스윙', _resultColors['swing']!),
                         _legend('파울', _resultColors['foul']!),
                         _legend('타격', _resultColors['hit']!),
+                        _legendDash('끝면 상한', Colors.orange),
                       ],
                     ),
                   ),
@@ -406,6 +407,40 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
       ],
     );
   }
+
+  Widget _legendDash(String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 18,
+          height: 10,
+          child: CustomPaint(
+            painter: _DashLinePainter(color),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 11, color: Colors.black87)),
+      ],
+    );
+  }
+}
+
+class _DashLinePainter extends CustomPainter {
+  final Color color;
+  const _DashLinePainter(this.color);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color..strokeWidth = 1.5..style = PaintingStyle.stroke;
+    double x = 0;
+    while (x < size.width) {
+      final end = x + 4 < size.width ? x + 4 : size.width;
+      canvas.drawLine(Offset(x, size.height / 2), Offset(end, size.height / 2), paint);
+      x += 7;
+    }
+  }
+  @override
+  bool shouldRepaint(_DashLinePainter old) => old.color != color;
 }
 
 class _StrikeZoneChart extends StatelessWidget {
@@ -440,6 +475,8 @@ class _StrikeZonePainter extends CustomPainter {
   static const double plateHalfW = 8.5 / 12.0;          // 0.7083 ft
   static const double ballR      = 1.45 / 12.0;         // 0.1208 ft
   static const double absHalfW   = plateHalfW + ballR;  // 0.8292 ft
+  // 끝면(후면) 높이 오프셋: 중간면보다 1.5cm 낮게 설정 (KBO ABS 공식 규정)
+  static const double absDropFt  = 1.5 / 30.48;         // 0.0492 ft
 
   double get _avgTopSz {
     final vals = pitches.where((p) => p['top_sz'] != null).map((p) => (p['top_sz'] as num).toDouble());
@@ -466,6 +503,9 @@ class _StrikeZonePainter extends CustomPainter {
     // ABS 판정 경계: 공 중심 기준 (공반지름 포함)
     final topAbs = topSz + ballR;
     final botAbs = botSz - ballR;
+    // 끝면(후면) 기준 상한: 중간면보다 1.5cm 낮음
+    // 이 선 위 구역: 중간면은 통과하지만 끝면 기준 초과 가능 (볼 판정)
+    final topBack = topAbs - absDropFt;
 
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
         Paint()..color = const Color(0xFFF5F5F5));
@@ -481,9 +521,26 @@ class _StrikeZonePainter extends CustomPainter {
     final br = _toCanvas(absHalfW, botAbs, size);
     final zoneRect = Rect.fromPoints(tl, br);
 
+    // 중간면+끝면 모두 통과 구역 (확정 스트라이크)
     canvas.drawRect(zoneRect, Paint()..color = Colors.red.withValues(alpha: 0.06));
+
+    // 끝면 기준 상한선 위 구역: 중간면 통과 but 끝면 불통 가능 (경계 영역)
+    final yTopBack = _toCanvas(0, topBack, size).dy;
+    canvas.drawRect(
+      Rect.fromLTRB(tl.dx, tl.dy, br.dx, yTopBack),
+      Paint()..color = Colors.orange.withValues(alpha: 0.13),
+    );
+
+    // 전체 존 테두리 (중간면 기준)
     canvas.drawRect(zoneRect,
         Paint()..color = Colors.red.withValues(alpha: 0.5)..style = PaintingStyle.stroke..strokeWidth = 1.5);
+
+    // 끝면 상한선: 점선
+    final dashPaint = Paint()
+      ..color = Colors.orange.withValues(alpha: 0.75)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+    _drawDashedHLine(canvas, tl.dx, br.dx, yTopBack, dashPaint);
 
     // 3x3 구역 구분선
     final zoneH = (topAbs - botAbs) / 3;
@@ -545,6 +602,16 @@ class _StrikeZonePainter extends CustomPainter {
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(canvas, Offset(2, y - 6));
+    }
+  }
+
+  void _drawDashedHLine(Canvas canvas, double x1, double x2, double y, Paint paint,
+      {double dashLen = 4, double gapLen = 3}) {
+    double x = x1;
+    while (x < x2) {
+      final end = x + dashLen < x2 ? x + dashLen : x2;
+      canvas.drawLine(Offset(x, y), Offset(end, y), paint);
+      x += dashLen + gapLen;
     }
   }
 
