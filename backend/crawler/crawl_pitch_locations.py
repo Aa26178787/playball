@@ -18,9 +18,10 @@ def compute_z(pts):
     try:
         y0, vy0, ay = pts['y0'], pts['vy0'], pts['ay']
         z0, vz0, az = pts['z0'], pts['vz0'], pts['az']
+        cross_y = pts.get('crossPlateY', 0.7083)
         A = 0.5 * ay
         B = vy0
-        C = y0
+        C = y0 - cross_y
         disc = B * B - 4 * A * C
         if disc < 0:
             return None

@@ -1246,7 +1246,8 @@ def get_pitch_locations(game_id: int):
         try:
             y0, vy0, ay = p["y0"], p["vy0"], p["ay"]
             z0, vz0, az = p["z0"], p["vz0"], p["az"]
-            A = 0.5*ay; B = vy0; C = y0
+            cross_y = p.get("crossPlateY", 0.7083)
+            A = 0.5*ay; B = vy0; C = y0 - cross_y
             disc = B*B - 4*A*C
             if disc < 0: return None
             t1 = (-B - _math.sqrt(disc))/(2*A); t2 = (-B + _math.sqrt(disc))/(2*A)
