@@ -390,7 +390,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           if (isHitter) {
             return d['stat_type'] == 'hitter' && d['avg'] != null;
           } else {
-            return d['stat_type'] == 'pitcher' && d['era'] != null;
+            final ip = (d['ip'] as num?)?.toDouble() ?? 0;
+            return d['stat_type'] == 'pitcher' && ip > 0;
           }
         })
         .toList();
@@ -406,12 +407,17 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final labels = <String>[];
     for (int i = 0; i < recent.length; i++) {
       final d = recent[i];
-      final val = isHitter
-          ? (d['avg'] as num?)?.toDouble()
-          : (d['era'] as num?)?.toDouble();
+      double? val;
+      if (isHitter) {
+        val = (d['avg'] as num?)?.toDouble();
+      } else {
+        final ip = (d['ip'] as num?)?.toDouble() ?? 0;
+        final er = (d['er'] as num?)?.toDouble() ?? 0;
+        final realIp = _ipToDecimal(ip);
+        val = realIp > 0 ? er * 9 / realIp : null;
+      }
       if (val != null) {
         spots.add(FlSpot(i.toDouble(), val));
-        // 날짜 MM/DD 형식
         final dateStr = d['game_date'] as String? ?? '';
         if (dateStr.length >= 10) {
           labels.add('${dateStr.substring(5, 7)}/${dateStr.substring(8, 10)}');
