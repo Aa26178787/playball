@@ -364,7 +364,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   Future<void> _loadHitters() async {
     setState(() => _hitterLoading = true);
     try {
-      final data = await ApiService.getHitters(sortBy: _hitterSort, limit: 10);
+      final data = await ApiService.getHitters(sortBy: _hitterSort, limit: 10, qualified: true);
       if (mounted) setState(() { _hitterRankings = data['hitters'] ?? []; _hitterLoading = false; });
     } catch (_) {
       if (mounted) setState(() => _hitterLoading = false);
@@ -374,7 +374,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   Future<void> _loadPitchers() async {
     setState(() => _pitcherLoading = true);
     try {
-      final data = await ApiService.getPitchers(sortBy: _pitcherSort, limit: 10);
+      final data = await ApiService.getPitchers(sortBy: _pitcherSort, limit: 10, qualified: true);
       if (mounted) setState(() { _pitcherRankings = data['pitchers'] ?? []; _pitcherLoading = false; });
     } catch (_) {
       if (mounted) setState(() => _pitcherLoading = false);

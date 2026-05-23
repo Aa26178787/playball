@@ -51,24 +51,33 @@ def get_hitters(
     team_id: Optional[int] = None,
     sort_by: str = "avg",
     position: Optional[str] = None,
+    qualified: bool = False,
 ):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
 
     sort_map = {
-        "avg":       "avg DESC NULLS LAST",
-        "home_runs": "home_runs DESC NULLS LAST",
-        "rbis":      "rbis DESC NULLS LAST",
-        "hits":      "hits DESC NULLS LAST",
-        "ops":       "ops DESC NULLS LAST",
-        "war":       "war DESC NULLS LAST",
+        "avg":           "avg DESC NULLS LAST",
+        "home_runs":     "home_runs DESC NULLS LAST",
+        "rbis":          "rbis DESC NULLS LAST",
+        "hits":          "hits DESC NULLS LAST",
+        "stolen_bases":  "stolen_bases DESC NULLS LAST",
+        "ops":           "ops DESC NULLS LAST",
+        "war":           "war DESC NULLS LAST",
     }
     order = sort_map.get(sort_by, "avg DESC NULLS LAST")
     team_filter = "AND p.team_id = %s" if team_id else ""
     position_filter = "AND p.position = %s" if position else ""
 
-    qual_filter = ""
+    if qualified:
+        qual_filter = f"""
+            AND bs.pa >= (
+                SELECT MAX(games) FROM batter_stats WHERE season = {season}
+            ) * 3.1
+        """
+    else:
+        qual_filter = ""
 
     params = [season] + ([team_id] if team_id else []) + ([position] if position else []) + [limit]
 
@@ -135,6 +144,7 @@ def get_pitchers(
     team_id: Optional[int] = None,
     sort_by: str = "era",
     throws: Optional[str] = None,
+    qualified: bool = False,
 ):
     conn = get_connection()
     if not conn:
@@ -153,7 +163,14 @@ def get_pitchers(
     team_filter = "AND p.team_id = %s" if team_id else ""
     throws_filter = "AND p.throws = %s" if throws else ""
 
-    qual_filter = ""
+    if qualified:
+        qual_filter = f"""
+            AND ps.innings_pitched >= (
+                SELECT MAX(games) FROM pitcher_stats WHERE season = {season}
+            ) * 1.0
+        """
+    else:
+        qual_filter = ""
 
     params = [season] + ([team_id] if team_id else []) + ([throws] if throws else []) + [limit]
 

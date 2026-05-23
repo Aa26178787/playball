@@ -155,12 +155,14 @@ class ApiService {
     int? teamId,
     String? position,
     int limit = 100,
+    bool qualified = false,
   }) async {
     final res = await _dio.get('/players/hitters', queryParameters: {
       'sort_by': sortBy,
       'limit': limit,
       if (teamId != null) 'team_id': teamId,
       if (position != null) 'position': position,
+      if (qualified) 'qualified': true,
     });
     return res.data;
   }
@@ -170,12 +172,14 @@ class ApiService {
     int? teamId,
     String? throws,
     int limit = 100,
+    bool qualified = false,
   }) async {
     final res = await _dio.get('/players/pitchers', queryParameters: {
       'sort_by': sortBy,
       'limit': limit,
       if (teamId != null) 'team_id': teamId,
       if (throws != null) 'throws': throws,
+      if (qualified) 'qualified': true,
     });
     return res.data;
   }
