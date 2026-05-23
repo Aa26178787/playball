@@ -469,7 +469,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 text = '[KBO 2026] ${game['home_team']} vs ${game['away_team']}\n'
                     '📅 $date ${game['start_time'] ?? ''} | ${game['stadium'] ?? ''}';
               }
-              SharePlus.instance.share(ShareParams(text: text));
+              // ignore: deprecated_member_use
+              Share.share(text);
             },
           ),
         ],

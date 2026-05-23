@@ -167,7 +167,7 @@ class MentionText extends StatelessWidget {
               child: ListView.builder(
                 shrinkWrap: true,
                 itemCount: players.length,
-                itemBuilder: (_, i) {
+                itemBuilder: (ctx, i) {
                   final p = players[i];
                   return ListTile(
                     dense: true,
@@ -175,7 +175,7 @@ class MentionText extends StatelessWidget {
                         style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text('${p['team'] ?? ''} · ${p['position'] ?? ''}',
                         style: const TextStyle(fontSize: 11)),
-                    onTap: () => Navigator.pop(_, p['id'] as int),
+                    onTap: () => Navigator.pop(ctx, p['id'] as int),
                   );
                 },
               ),
