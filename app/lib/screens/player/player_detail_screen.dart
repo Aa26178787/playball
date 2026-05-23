@@ -514,6 +514,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       LineChartBarData(
                         spots: spots,
                         isCurved: true,
+                        preventCurveOverShooting: true,
                         curveSmoothness: 0.25,
                         color: chartColor,
                         barWidth: 2.5,
@@ -744,8 +745,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 
   Widget _buildPitcherRows(List<dynamic> rows) {
-    final headers = ['날짜', '상대', '이닝', '피안타', 'ERA', '볼넷', '삼진'];
-    final cols = [80.0, 44.0, 44.0, 44.0, 44.0, 36.0, 36.0];
+    final headers = ['날짜', '상대', 'ERA', '이닝', '피안타', '볼넷', '삼진'];
+    final cols = [80.0, 44.0, 44.0, 44.0, 40.0, 36.0, 36.0];
     return Column(children: [
       _tableRow(headers, cols, isHeader: true),
       ...rows.map((d) {
@@ -756,9 +757,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         return _tableRow([
           _fmtDate(d['game_date'] as String?),
           d['opponent'] as String? ?? '-',
+          era,
           _formatIp(d['ip'] as num?),
           '${(d['h'] as num?)?.toInt() ?? 0}',
-          era,
           '${(d['bb'] as num?)?.toInt() ?? 0}',
           '${(d['so'] as num?)?.toInt() ?? 0}',
         ], cols);

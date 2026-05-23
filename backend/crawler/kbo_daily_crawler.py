@@ -553,6 +553,10 @@ def crawl_kbo_pitcher_season_stats(season=2026):
             ip_str = cols[i_ip] if i_ip is not None and i_ip < len(cols) else '0'
             ip_val = _parse_season_ip(ip_str)
 
+            w = _ci(i_wins)
+            l = _ci(i_loss)
+            wpct_val = round(w / (w + l), 3) if (w or 0) + (l or 0) > 0 else None
+
             cur.execute("""
                 INSERT INTO pitcher_stats (
                     player_id, season, games, wins, losses, saves, holds,
@@ -583,7 +587,7 @@ def crawl_kbo_pitcher_season_stats(season=2026):
                 _ci(i_sv),    _ci(i_hold), ip_val,
                 _ci(i_ha),    _ci(i_hra),  _ci(i_bb),
                 _ci(i_hbp),   _ci(i_so),   _ci(i_r),
-                _ci(i_er),    _cf(i_era),  _cf(i_whip), _cf(i_wpct),
+                _ci(i_er),    _cf(i_era),  _cf(i_whip), wpct_val,
             ))
             saved += 1
         except Exception:

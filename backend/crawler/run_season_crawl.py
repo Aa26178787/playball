@@ -199,7 +199,8 @@ def sync_innings_from_game_pitchers():
             walks              = GREATEST(COALESCE(ps.walks,0),  agg.bb),
             hits_allowed       = GREATEST(COALESCE(ps.hits_allowed,0), agg.ha),
             runs_allowed       = GREATEST(COALESCE(ps.runs_allowed,0), agg.ra),
-            home_runs_allowed  = GREATEST(COALESCE(ps.home_runs_allowed,0), agg.hra)
+            home_runs_allowed  = GREATEST(COALESCE(ps.home_runs_allowed,0), agg.hra),
+            wpct               = CASE WHEN agg.w + agg.l > 0 THEN ROUND(agg.w::numeric / (agg.w + agg.l), 3) ELSE ps.wpct END
         FROM (
             SELECT player_id,
                 COUNT(*) AS g,
