@@ -506,7 +506,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 _summaryBox('ERA', era.toStringAsFixed(2)),
                 _summaryBox('WHIP', whip.toStringAsFixed(2)),
                 _summaryBox('K', '$totalSo'),
-                _summaryBox('IP', _formatIp(rawIp as num?)),
+                _summaryBox('IP', _fmtRealIp(realIp)),
               ],
             ),
           ],
@@ -519,6 +519,12 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final full = ip.floor();
     final thirds = ((ip - full) * 10).round();
     return full + thirds / 3.0;
+  }
+
+  String _fmtRealIp(double realIp) {
+    final full = realIp.floor();
+    final thirds = ((realIp - full) * 3).round().clamp(0, 2);
+    return thirds == 0 ? '$full' : '$full.$thirds';
   }
 
   Widget _summaryBox(String label, String value) {
