@@ -451,9 +451,28 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [x] 통합 검색 (선수/팀)
 - [x] Google News RSS 하이라이트 크롤러
 
-## 미구현 기능
-- [ ] FCM 푸시알림 (인프라/코드 완료 — Firebase 콘솔 등록만 남음)
+## 진행 예정 기능
+
+### 즉시 착수 가능
+- [ ] **카카오맵 구장 화면** — 구장 목록 + 지도 핀 (API 키 보유, kakao_map_plugin)
+  - 9개 구장 좌표 하드코딩 (서울/고척/수원/인천/대전/광주/대구/창원/사직)
+  - StadiumScreen: 구장 카드 리스트 + 지도 마커
+- [ ] **FCM 알림 기준 구현** — user_settings 기반 조건부 발송
+  - notify_game_start: 경기 시작 시 (naver_crawler 진행 감지)
+  - notify_score_change: 득점 변경 시 (home_score/away_score 변화)
+  - notify_game_end: 경기 종료 시
+  - notify_my_team_only: 위 알림을 user_favorite_teams 경기만
+  - push_tokens 테이블 활용, fcm_service.py send_to_tokens()
+
+### 중기 작업
+- [ ] **투구 위치 히트맵** — 현재 점 → 구역별 농도(색상) 오버레이
+- [ ] **내가 좋아요한 글** — GET /community/my-likes + 마이페이지 섹션
+- [ ] **타자 vs 투수 상대전적** — game_batters/game_pitchers 집계 쿼리
+- [ ] **검색 최근 기록** — SharedPreferences 로컬 저장 (최대 10개)
+- [ ] **댓글 좋아요** — comment_likes 테이블 + POST /community/comments/{id}/like
+
+### 장기/보류
 - [ ] 홈화면 위젯 (Android AppWidget — native kotlin 필요)
-- [ ] 카카오맵 연동 (Kakao API 키 필요)
 - [ ] 스프레이 차트 (타구방향 데이터 없음 — 네이버 텍스트만 제공)
 - [ ] 드래프트/FA 정보 (데이터 소스 없음)
+- [ ] 팀별 월별 승률 추이 그래프
