@@ -98,6 +98,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           children: [
             _buildHeader(player),
             _buildInfoCard(player),
+            if (_dailyStats.isNotEmpty) _buildRecent5Games(player),
             if (_dailyStats.isNotEmpty) _buildTrendCard(player),
             PlayerStatsSection(
               statsList: (_playerData!['stats'] as List?) ?? [],
@@ -373,6 +374,111 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  String _formatIp(num? ip) {
+    if (ip == null) return '-';
+    final whole = ip.floor();
+    final frac = ((ip - whole) * 10).round();
+    if (frac == 0) return '$whole';
+    if (frac == 1) return '$whole⅓';
+    return '$whole⅔';
+  }
+
+  String _fmtDate(String? dateStr) {
+    if (dateStr == null || dateStr.length < 10) return '-';
+    final month = int.tryParse(dateStr.substring(5, 7)) ?? 0;
+    final day = int.tryParse(dateStr.substring(8, 10)) ?? 0;
+    return '$month월 ${day}일';
+  }
+
+  Widget _buildRecent5Games(Map<String, dynamic> player) {
+    final isHitter = player['player_type'] == '타자';
+    final filtered = _dailyStats
+        .where((d) => d['stat_type'] == (isHitter ? 'hitter' : 'pitcher'))
+        .toList();
+    if (filtered.isEmpty) return const SizedBox.shrink();
+    final recent = filtered.length > 5
+        ? filtered.sublist(filtered.length - 5).reversed.toList()
+        : filtered.reversed.toList();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _sectionLabel('최근 5경기'),
+              isHitter ? _buildHitterRows(recent) : _buildPitcherRows(recent),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHitterRows(List<dynamic> rows) {
+    final headers = ['날짜', '상대', '타-안', '홈런', '타점', '볼넷', '삼진'];
+    final cols = [80.0, 44.0, 44.0, 36.0, 36.0, 36.0, 36.0];
+    return Column(children: [
+      _tableRow(headers, cols, isHeader: true),
+      ...rows.map((d) {
+        final ab = (d['ab'] as num?)?.toInt() ?? 0;
+        final h = (d['hits'] as num?)?.toInt() ?? 0;
+        return _tableRow([
+          _fmtDate(d['game_date'] as String?),
+          d['opponent'] as String? ?? '-',
+          '$ab-$h',
+          '${(d['home_runs'] as num?)?.toInt() ?? 0}',
+          '${(d['rbi'] as num?)?.toInt() ?? 0}',
+          '${(d['walks'] as num?)?.toInt() ?? 0}',
+          '${(d['strikeouts'] as num?)?.toInt() ?? 0}',
+        ], cols);
+      }),
+    ]);
+  }
+
+  Widget _buildPitcherRows(List<dynamic> rows) {
+    final headers = ['날짜', '상대', '이닝', '피안타', '자책', '볼넷', '삼진'];
+    final cols = [80.0, 44.0, 44.0, 44.0, 36.0, 36.0, 36.0];
+    return Column(children: [
+      _tableRow(headers, cols, isHeader: true),
+      ...rows.map((d) => _tableRow([
+        _fmtDate(d['game_date'] as String?),
+        d['opponent'] as String? ?? '-',
+        _formatIp(d['ip'] as num?),
+        '${(d['h'] as num?)?.toInt() ?? 0}',
+        '${(d['er'] as num?)?.toInt() ?? 0}',
+        '${(d['bb'] as num?)?.toInt() ?? 0}',
+        '${(d['so'] as num?)?.toInt() ?? 0}',
+      ], cols)),
+    ]);
+  }
+
+  Widget _tableRow(List<String> cells, List<double> widths, {bool isHeader = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: List.generate(cells.length, (i) {
+          final isFirst = i == 0;
+          return SizedBox(
+            width: widths[i],
+            child: Text(
+              cells[i],
+              style: TextStyle(
+                fontSize: isFirst ? 12 : 12,
+                fontWeight: isHeader ? FontWeight.w700 : FontWeight.normal,
+                color: isHeader ? const Color(0xFF1A237E) : null,
+              ),
+              textAlign: isFirst ? TextAlign.left : TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
+        }),
       ),
     );
   }
