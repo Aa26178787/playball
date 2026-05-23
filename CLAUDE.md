@@ -66,25 +66,29 @@ flutter build apk --debug   # 또는 --release
 - api/weather_service.py (OpenWeatherMap 5분 캐시)
 - api/email_service.py (Gmail SMTP, noreply.playball@gmail.com 발신)
 - api/sms_service.py (미사용 — email로 교체됨)
-- api/fcm_service.py (Firebase Admin SDK — 활성화 대기)
+- api/fcm_service.py (Firebase Admin SDK — 인프라 완료, 파이어베이스 키 등록 대기)
 - database/connection.py
 - crawler/naver_crawler.py (**절대 수정 금지**)
 - crawler/scheduler.py, crawl_all_games.py, crawl_past_rosters.py
 - crawler/kbo_roster_crawler.py
 - static/profiles/ (프로필 이미지 저장 디렉토리)
+- static/posts/ (커뮤니티 이미지 저장 디렉토리)
 
 ### 앱 (app/lib/)
 - main.dart, api/api_service.dart
 - screens/home/home_screen.dart
 - screens/game/game_detail_screen.dart
-- screens/game/pitch_location_chart.dart  ← 투구 위치 시각화 (스트라이크존)
+- screens/game/pitch_location_chart.dart  ← 투구 위치 시각화 (스트라이크존 + ABS 끝면)
 - screens/player/{player_screen,player_detail_screen,player_compare_screen}.dart
 - screens/team/{team_screen,team_detail_screen}.dart
 - screens/calendar/calendar_screen.dart
 - screens/auth/{login_screen,register_screen,forgot_password_screen}.dart
 - screens/mypage/{my_page_screen,phone_verify_screen}.dart
 - screens/community/{community_screen,post_detail_screen,create_post_screen}.dart
+- screens/notifications/notifications_screen.dart  ← 알림 타임라인
+- screens/stadium/stadium_screen.dart  ← 카카오맵 구장 + 맛집 탭
 - screens/search/search_screen.dart  ← 통합 선수/팀 검색
+- widgets/mention_text.dart  ← 커뮤니티 @멘션 하이퍼링크
 - models/game.dart, utils/team_theme.dart
 - providers/{auth,game,team,theme}_provider.dart
 
@@ -158,6 +162,9 @@ POST       /user/profile-image                  (multipart/form-data, file) → 
 GET        /user/calendar-events?year=&month=   → {events:[{id,date,title,description,color}]}
 POST       /user/calendar-events                ({event_date,title,description?,color?}) → {id}
 DELETE     /user/calendar-events/{event_id}
+GET        /user/notifications?limit=50         → {notifications:[{id,title,body,type,game_id,is_read,created_at}], unread_count}
+POST       /user/notifications/read-all
+PATCH      /user/notifications/{id}/read
 ```
 
 ### 커뮤니티
@@ -182,9 +189,20 @@ POST   /community/posts/upload-image [Bearer, multipart] → {image_url}
 GET /search?q=  → {players:[{id,name,player_type,position,profile_image,team,team_code}], teams:[{id,name,short_name}]}
 ```
 
+### 구장 / 맛집
+```
+GET  /stadiums/, /stadiums/{id}
+GET  /stadiums/{stadium_id}/food-places/search?q=   (Kakao 키워드 검색)
+GET  /stadiums/{stadium_id}/food-places/community   (커뮤니티 추천 맛집: approved + pending_vote)
+POST /stadiums/{stadium_id}/food-places [Bearer]    (맛집 제보, pending_vote 상태)
+POST /stadiums/food-places/{id}/vote [Bearer]       (추천 토글, 5표 도달 시 pending_admin)
+PUT  /stadiums/food-places/{id}/admin?action=approve|reject&pw=playball1234
+GET  /stadiums/food-places/pending?pw=playball1234  (관리자 검수 대기 목록)
+```
+※ 팬 맛집 상태 흐름: pending_vote → (5표) → pending_admin → admin approve → approved
+
 ### 기타
 ```
-GET /stadiums/, /stadiums/{id}
 GET /widget/live-scores, /widget/my-team-scores/{team_id}
 GET /calendar/{year}/{month}
 ```
@@ -235,6 +253,18 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 - color 옵션: blue/red/green/orange/purple/gray
 - INDEX: (user_id, event_date)
 
+### user_notifications
+`id, user_id(FK→users, CASCADE), title(VARCHAR200), body(TEXT), type(VARCHAR30), game_id(FK→games, SET NULL), is_read(bool, default=false), created_at`
+- type: game_start/score_change/comeback/game_end/extra_innings/cancelled/rank_change/winning_streak/losing_streak/roster_change/new_comment
+- INDEX: (user_id, created_at DESC)
+
+### stadium_food_places (구장 맛집)
+`id, stadium_id(FK→stadiums), name, category, address, kakao_place_id, memo, status(pending_vote/pending_admin/approved/rejected), vote_count, submitted_by(FK→users), created_at`
+
+### stadium_food_votes
+`id, place_id(FK→stadium_food_places), user_id(FK→users), created_at`
+- UNIQUE(place_id, user_id)
+
 ### player_daily_stats / player_roster_changes
 (기존 스키마 유지)
 
@@ -248,7 +278,10 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 - 날짜 이동 + 날짜 선택기
 - 당일 등록말소 배너 (접기/펼치기)
 - ★ 마이팀 필터 토글 (즐겨찾기 팀 있을 때만 표시)
+- AppBar 벨 아이콘: 읽지 않은 알림 수 빨간 뱃지 → NotificationsScreen
 - GameCard: 날씨 칩(이모지+기온+강수확률) + 팀별 최근5경기 W/L/D 뱃지
+  - 홈팀: 좌→우 최신순 (index 0 = 최신 = 좌), 빨간점 좌단
+  - 원정팀: 우→좌 최신순 (index 0 = 최신 = 우), 빨간점 우단
 
 ### game_detail_screen.dart
 - 탭: 이닝/프리뷰/로스터/투수/타자/기록/하이라이트 (7개, isScrollable)
@@ -465,24 +498,19 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
   - 네이티브 앱 키: f5b365c3d6aff5eb4640ab80783797ac
   - AuthRepository.initialize() in main.dart, AndroidManifest meta-data 등록
   - HomeScreen AppBar 구장 아이콘(stadium_outlined) → StadiumScreen
-- [ ] **FCM 알림 기준 구현** — user_settings 기반 조건부 발송
-  - notify_game_start: 경기 시작 시 (naver_crawler 진행 감지)
-  - notify_score_change: 득점 변경 시 (home_score/away_score 변화)
-  - notify_game_end: 경기 종료 시
-  - notify_my_team_only: 위 알림을 user_favorite_teams 경기만
-  - push_tokens 테이블 활용, fcm_service.py send_to_tokens()
+- [x] **FCM 알림 기준 구현** — scheduler.py 완전 연동, 실제 발송 확인(성공:1 실패:0)
+  - notify_game_start/score_change/game_end/extra_innings/cancelled/streak/rank_change/roster_change
+  - user_settings(notify_my_team_only 등) 반영, push_tokens 2개 등록 확인
 
 ### 중기 작업
-- [ ] **투구 위치 히트맵** — 현재 점 → 구역별 농도(색상) 오버레이
-- [ ] **내가 좋아요한 글** — GET /community/my-likes + 마이페이지 섹션
-- [ ] **타자 vs 투수 상대전적** — game_batters/game_pitchers 집계 쿼리
-- [ ] **검색 최근 기록** — SharedPreferences 로컬 저장 (최대 10개)
-- [ ] **댓글 좋아요** — comment_likes 테이블 + POST /community/comments/{id}/like
+- [x] **투구 위치 히트맵** — 점↔히트맵 토글, 10×12 그리드 밀도 색상(_HeatmapChart/_HeatmapPainter)
+- [x] **내가 좋아요한 글** — GET /community/my-likes + 마이페이지 _buildMyLikes 섹션
+- [x] **타자 vs 투수 상대전적** — GET /players/matchup?batter_id=&pitcher_id= + player_detail FAB
+- [x] **검색 최근 기록** — SharedPreferences 로컬 저장 (최대 10개, 검색 미입력 시 표시)
+- [x] **댓글 좋아요** — comment_likes 테이블 + POST /community/comments/{id}/like + 하트 버튼 UI
 
 ### 장기/보류
 - [ ] 홈화면 위젯 (Android AppWidget — native kotlin 필요)
-- [ ] 스프레이 차트 (타구방향 데이터 없음 — 네이버 텍스트만 제공)
-- [ ] 드래프트/FA 정보 (데이터 소스 없음)
-- [ ] 팀별 월별 승률 추이 그래프
+- [x] 팀별 월별 승률 추이 그래프 — GET /teams/{id}/monthly-stats + LineChart (팀 상세 '월별성적' 탭)
 - [ ] **친구 신청/수락** — friend_requests 테이블(from_user_id, to_user_id, status), FCM 친구 요청 알림, 마이페이지 친구 목록
 - [ ] **1:1 채팅** — WebSocket(FastAPI) + chat_rooms/chat_messages 테이블, 친구 관계 전제, 앱 내 채팅 UI
