@@ -512,8 +512,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildScoreHeader(Map<String, dynamic> game) {
-    final homeRecent = List<String>.from(game['home_recent_5'] ?? []).reversed.toList();
-    final awayRecent = List<String>.from(game['away_recent_5'] ?? []).reversed.toList();
+    final homeRecent = List<String>.from(game['home_recent_5'] ?? []);
+    final awayRecent = List<String>.from(game['away_recent_5'] ?? []);
     return Container(
       padding: const EdgeInsets.all(20),
       color: const Color(0xFF1A237E),
@@ -532,7 +532,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         textAlign: TextAlign.center),
                     if (homeRecent.isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      _buildRecentBar(homeRecent),
+                      _buildRecentBar(homeRecent, true),
                     ],
                   ],
                 ),
@@ -557,7 +557,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         textAlign: TextAlign.center),
                     if (awayRecent.isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      _buildRecentBar(awayRecent),
+                      _buildRecentBar(awayRecent, false),
                     ],
                   ],
                 ),
@@ -580,23 +580,41 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     );
   }
 
-  Widget _buildRecentBar(List<String> recent) {
+  Widget _buildRecentBar(List<String> recent, bool isHome) {
+    if (recent.isEmpty) return const SizedBox.shrink();
+    final displayed = isHome ? recent : recent.reversed.toList();
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
-      children: recent.map((r) {
+      children: displayed.asMap().entries.map((e) {
+        final idx = e.key;
+        final r = e.value;
+        final isLatest = isHome ? idx == 0 : idx == displayed.length - 1;
         final c = r == 'W' ? Colors.blue : r == 'L' ? Colors.red : Colors.grey;
-        return Container(
-          width: 14,
-          height: 14,
-          margin: const EdgeInsets.only(right: 2),
-          decoration: BoxDecoration(
-            color: c.withOpacity(0.25),
-            borderRadius: BorderRadius.circular(3),
-            border: Border.all(color: c.withOpacity(0.7), width: 0.8),
+        return Padding(
+          padding: const EdgeInsets.only(right: 2),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: c.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(color: c.withOpacity(0.7), width: 0.8),
+                ),
+                alignment: Alignment.center,
+                child: Text(r, style: TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+              if (isLatest)
+                const Positioned(
+                  top: -3,
+                  right: -1,
+                  child: CircleAvatar(radius: 2.5, backgroundColor: Colors.red),
+                ),
+            ],
           ),
-          alignment: Alignment.center,
-          child: Text(r, style: TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
         );
       }).toList(),
     );
@@ -714,76 +732,64 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final sortedInnings = grouped.keys.toList()..sort();
 
     List<Map<String, dynamic>> groupByBatter(List items) {
-      final List<Map<String, dynamic>> result = [];
-      String? currentBatter;
-      List<dynamic> currentPitches = [];
-      Map<String, dynamic>? currentResult;
-      String? currentPitcher;
-      List<dynamic> currentEvents = [];
-
-      void flush() {
-        if (currentBatter != null) {
-          result.add({
-            'batter': currentBatter,
-            'pitcher': currentPitcher,
-            'pitches': List.from(currentPitches),
-            'result': currentResult,
-            'events': List.from(currentEvents),
-          });
-        }
-        currentPitches = [];
-        currentResult = null;
-        currentEvents = [];
-      }
+      // Phase 1: pitch_num 리셋으로 타석 경계 분리
+      final List<List> rawGroups = [];
+      List currentGroup = [];
+      int lastPitchNum = 0;
 
       for (final r in items) {
-        final batterName = r['batter_name'] as String?;
         final rtype = r['type'] as int?;
-        final pitcherName = r['pitcher_name'] as String?;
-
         if (rtype == 0) continue;
-
-        if (rtype == 8) {
-          if (batterName != null && batterName != currentBatter) {
-            flush();
-            currentBatter = batterName;
-            currentPitcher = pitcherName;
-          } else if (currentResult != null) {
-            flush();
-            currentPitcher = pitcherName;
-          }
-          continue;
-        }
-
-        if (batterName != null && batterName != currentBatter) {
-          flush();
-          currentBatter = batterName;
-          currentPitcher = pitcherName;
-        }
-
         if (rtype == 1) {
-          final pitchNum = r['pitch_num'] as int?;
-          final lastPitchNum = currentPitches.isNotEmpty
-              ? (currentPitches.last['pitch_num'] as int? ?? 0)
-              : 0;
-          if (pitchNum != null && pitchNum <= lastPitchNum && currentPitches.isNotEmpty) {
-            flush();
-            currentPitcher = pitcherName;
+          final pn = (r['pitch_num'] as int?) ?? 0;
+          if (pn > 0 && pn <= lastPitchNum && currentGroup.isNotEmpty) {
+            rawGroups.add(currentGroup);
+            currentGroup = [];
           }
-          currentPitches.add(r);
-          if (pitcherName != null) currentPitcher = pitcherName;
-        } else if (rtype == 13 || rtype == 23) {
-          currentResult = r as Map<String, dynamic>;
-        } else if (rtype != null && [2, 7, 14, 20, 21, 22, 24, 25, 30, 31].contains(rtype)) {
-          currentEvents.add(r);
+          if (pn > 0) lastPitchNum = pn;
         }
+        currentGroup.add(r);
       }
-      flush();
-      // 하프이닝 내 누적 투구 번호 offset 계산
-      int pitchOffset = 0;
-      for (final g in result) {
-        g['pitchOffset'] = pitchOffset;
-        pitchOffset += (g['pitches'] as List).length;
+      if (currentGroup.isNotEmpty) rawGroups.add(currentGroup);
+
+      // Phase 2: 각 타석 이벤트에서 마지막 batter_name 사용 (API 교정값 반영)
+      final List<Map<String, dynamic>> result = [];
+
+      for (final group in rawGroups) {
+        String? batterName;
+        String? pitcherName;
+        final List pitches = [];
+        Map<String, dynamic>? atBatResult;
+        final List events = [];
+
+        for (final r in group) {
+          final rtype = r['type'] as int?;
+          final bn = r['batter_name'] as String?;
+          final pn = r['pitcher_name'] as String?;
+          // 마지막 유효한 이름으로 갱신 (앞쪽 이벤트 이름 오류 덮어씀)
+          if (bn != null && bn.isNotEmpty) batterName = bn;
+          if (pn != null && pn.isNotEmpty) pitcherName = pn;
+
+          if (rtype == 8) continue;
+          if (rtype == 1) {
+            pitches.add(r);
+          } else if (rtype == 13 || rtype == 23) {
+            atBatResult = r as Map<String, dynamic>;
+          } else if (rtype != null &&
+              [2, 7, 14, 20, 21, 22, 24, 25, 30, 31].contains(rtype)) {
+            events.add(r);
+          }
+        }
+
+        if (batterName != null || pitches.isNotEmpty) {
+          result.add({
+            'batter': batterName ?? '?',
+            'pitcher': pitcherName,
+            'pitches': pitches,
+            'result': atBatResult,
+            'events': events,
+          });
+        }
       }
       return result;
     }
@@ -950,7 +956,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final batterName = entry['batter'] as String? ?? '';
     final pitcherName = entry['pitcher'] as String?;
     final pitches = entry['pitches'] as List? ?? [];
-    final pitchOffset = entry['pitchOffset'] as int? ?? 0;
+
     final resultRelay = entry['result'] as Map<String, dynamic>?;
     final events = entry['events'] as List? ?? [];
 
@@ -1057,8 +1063,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             final pitchResult = r['pitch_result'] as String?;
             final speed = _speedToString(r['speed']);
             final stuff = r['stuff'] as String?;
-            final rawPitchNum = r['pitch_num'] as int?;
-            final pitchNum = rawPitchNum != null ? pitchOffset + rawPitchNum : null;
+            final pitchNum = r['pitch_num'] as int?;
             final title = r['title'] as String?;
 
             String pitchResultText = '';

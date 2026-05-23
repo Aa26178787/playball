@@ -696,29 +696,45 @@ class GameCard extends StatelessWidget {
     return Text(parts.join(' '), style: const TextStyle(fontSize: 12, color: Colors.blueGrey));
   }
 
-  Widget _buildRecentBar(List<String> recent, String teamName, bool isHome) {
+  Widget _buildRecentBar(List<String> recent, bool isHome) {
     if (recent.isEmpty) return const SizedBox.shrink();
+    // home: 좌→우 최신순 (index 0 = 최신 = 좌)
+    // away: 우→좌 최신순 → 렌더는 역순(좌=oldest), 최신이 우에 위치
+    final displayed = isHome ? recent : recent.reversed.toList();
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(isHome ? '홈 ' : '원정 ',
             style: TextStyle(fontSize: 9, color: Colors.grey[400])),
-        ...recent.map((r) {
-          Color c;
-          if (r == 'W') c = Colors.blue;
-          else if (r == 'L') c = Colors.red;
-          else c = Colors.grey;
-          return Container(
-            width: 14,
-            height: 14,
-            margin: const EdgeInsets.only(right: 2),
-            decoration: BoxDecoration(
-              color: c.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(3),
-              border: Border.all(color: c.withOpacity(0.5), width: 0.8),
+        ...displayed.asMap().entries.map((e) {
+          final idx = e.key;
+          final r = e.value;
+          final isLatest = isHome ? idx == 0 : idx == displayed.length - 1;
+          final c = r == 'W' ? Colors.blue : r == 'L' ? Colors.red : Colors.grey;
+          return Padding(
+            padding: const EdgeInsets.only(right: 2),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: c.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(3),
+                    border: Border.all(color: c.withOpacity(0.5), width: 0.8),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(r, style: TextStyle(fontSize: 8, color: c, fontWeight: FontWeight.bold)),
+                ),
+                if (isLatest)
+                  const Positioned(
+                    top: -3,
+                    right: -1,
+                    child: CircleAvatar(radius: 2.5, backgroundColor: Colors.red),
+                  ),
+              ],
             ),
-            alignment: Alignment.center,
-            child: Text(r, style: TextStyle(fontSize: 8, color: c, fontWeight: FontWeight.bold)),
           );
         }),
       ],
@@ -955,8 +971,8 @@ class GameCard extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildRecentBar(game.homeRecent5.reversed.toList(), game.homeTeam, true),
-                      _buildRecentBar(game.awayRecent5.reversed.toList(), game.awayTeam, false),
+                      _buildRecentBar(game.homeRecent5, true),
+                      _buildRecentBar(game.awayRecent5, false),
                     ],
                   ),
                 ),
