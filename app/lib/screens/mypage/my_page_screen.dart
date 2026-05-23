@@ -33,11 +33,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
   bool _notifyScoreChange = true;
   bool _notifyGameEnd     = true;
   bool _notifyMyTeamOnly  = false;
-  bool _notifyStreak      = true;
-  bool _notifyRankChange  = true;
-  bool _notifyRoster      = true;
-  bool _notifyComment     = true;
-  bool _settingsLoaded    = false;
+  bool _notifyStreak       = true;
+  bool _notifyRankChange   = true;
+  bool _notifyRoster       = true;
+  bool _notifyComment      = true;
+  bool _notifyPennantRace  = true;
+  bool _settingsLoaded     = false;
 
   @override
   void initState() {
@@ -70,10 +71,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
             _notifyScoreChange = settings['notify_score_change'] as bool? ?? true;
             _notifyGameEnd     = settings['notify_game_end']     as bool? ?? true;
             _notifyMyTeamOnly  = settings['notify_my_team_only'] as bool? ?? false;
-            _notifyStreak      = settings['notify_streak']       as bool? ?? true;
+            _notifyStreak      = settings['notify_streak']        as bool? ?? true;
             _notifyRankChange  = settings['notify_rank_change']  as bool? ?? true;
             _notifyRoster      = settings['notify_roster']       as bool? ?? true;
             _notifyComment     = settings['notify_comment']      as bool? ?? true;
+            _notifyPennantRace = settings['notify_pennant_race'] as bool? ?? true;
           }
           _settingsLoaded = true;
           _loading = false;
@@ -91,10 +93,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
         'notify_score_change': _notifyScoreChange,
         'notify_game_end':     _notifyGameEnd,
         'notify_my_team_only': _notifyMyTeamOnly,
-        'notify_streak':       _notifyStreak,
-        'notify_rank_change':  _notifyRankChange,
-        'notify_roster':       _notifyRoster,
-        'notify_comment':      _notifyComment,
+        'notify_streak':        _notifyStreak,
+        'notify_rank_change':   _notifyRankChange,
+        'notify_roster':        _notifyRoster,
+        'notify_comment':       _notifyComment,
+        'notify_pennant_race':  _notifyPennantRace,
       });
     } catch (_) {}
   }
@@ -680,6 +683,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
               value: _notifyComment,
               onChanged: (v) {
                 setState(() => _notifyComment = v);
+                _saveSettings();
+              },
+            ),
+            SwitchListTile(
+              dense: true,
+              title: const Text('선두 추격 알림', style: TextStyle(fontSize: 14)),
+              subtitle: Text('마이팀이 1위일 때 2위와 게임차 좁혀질 때', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+              value: _notifyPennantRace,
+              onChanged: (v) {
+                setState(() => _notifyPennantRace = v);
                 _saveSettings();
               },
             ),

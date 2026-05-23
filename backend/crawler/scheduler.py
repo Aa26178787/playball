@@ -826,6 +826,24 @@ def update_team_rankings():
     except Exception as e:
         print(f"[FCM] 순위 알림 오류: {e}")
 
+    # 1위 마이팀 추격전 알림 (2위와 게임차 좁혀질 때)
+    try:
+        from api.fcm_service import notify_pennant_race
+        first_curr = [(tid, d) for tid, d in curr_ranks.items() if d.get('rank') == 1]
+        first_prev = [(tid, d) for tid, d in prev_ranks.items() if d.get('rank') == 1]
+        if first_curr and first_prev:
+            first_tid, first_data = first_curr[0]
+            # 2위 games_behind 비교 (prev vs curr)
+            sec_curr = [d for d in curr_ranks.values() if d.get('rank') == 2]
+            sec_prev = [d for d in prev_ranks.values() if d.get('rank') == 2]
+            if sec_curr and sec_prev:
+                curr_gap = float(sec_curr[0].get('games_behind') or 0)
+                prev_gap = float(sec_prev[0].get('games_behind') or 0)
+                if curr_gap < prev_gap and curr_gap >= 0:
+                    notify_pennant_race(first_tid, first_data['name'], curr_gap, prev_gap)
+    except Exception as e:
+        print(f"[FCM] 페넌트레이스 알림 오류: {e}")
+
 
 def _update_roster_changes():
     """오늘 등록말소 + 선수이동 크롤링"""

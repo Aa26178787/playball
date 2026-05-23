@@ -311,6 +311,17 @@ def notify_roster_change(player_id: int, player_name: str, change_type: str):
           {"player_id": str(player_id), "type": "roster_change"}, "roster_change", None)
 
 
+# ── 페넌트레이스 알림 ─────────────────────────────────────────────────────────
+
+def notify_pennant_race(team_id: int, team_name: str, curr_gap: float, prev_gap: float):
+    """1위 마이팀 + 2위 게임차 좁혀질 때 — notify_pennant_race ON 팬에게"""
+    targets = _get_team_fan_targets(team_id, 'notify_pennant_race')
+    _send(targets,
+          f"⚠️ {team_name} 추격 받는 중!",
+          f"2위와의 게임차가 {prev_gap:.1f} → {curr_gap:.1f}게임으로 좁혀졌습니다.",
+          {"team_id": str(team_id), "type": "pennant_race"}, "pennant_race", None)
+
+
 # ── 커뮤니티 알림 (user_settings 무관, 직접 수신) ────────────────────────────
 
 def notify_new_comment(post_author_id: int, post_id: int,
