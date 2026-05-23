@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import '../player/player_detail_screen.dart';
+import '../game/game_detail_screen.dart';
 
 class TeamDetailScreen extends StatefulWidget {
   final Map<String, dynamic> team;
@@ -23,6 +24,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   bool _gamesLoading = false;
   bool _rosterLoading = false;
   bool _newsLoading = false;
+  bool _isFav = false;
+  bool _favLoading = false;
 
   @override
   void initState() {
@@ -40,6 +43,30 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       }
     });
     _loadPlayers();
+    _loadFavStatus();
+  }
+
+  Future<void> _loadFavStatus() async {
+    try {
+      final data = await ApiService.getFavoriteTeams();
+      final teams = data['teams'] as List? ?? [];
+      final id = widget.team['id'] as int;
+      if (mounted) setState(() => _isFav = teams.any((t) => t['id'] == id));
+    } catch (_) {}
+  }
+
+  Future<void> _toggleFav() async {
+    setState(() => _favLoading = true);
+    try {
+      final id = widget.team['id'] as int;
+      if (_isFav) {
+        await ApiService.removeFavoriteTeam(id);
+      } else {
+        await ApiService.addFavoriteTeam(id);
+      }
+      if (mounted) setState(() => _isFav = !_isFav);
+    } catch (_) {}
+    if (mounted) setState(() => _favLoading = false);
   }
 
   @override
@@ -123,6 +150,14 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
         title: Text(team['name'] ?? ''),
         backgroundColor: color,
         foregroundColor: Colors.white,
+        actions: [
+          _favLoading
+              ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
+              : IconButton(
+                  icon: Icon(_isFav ? Icons.star : Icons.star_border, color: Colors.white),
+                  onPressed: _toggleFav,
+                ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,
@@ -308,6 +343,24 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     );
   }
 
+  String? _seriesLabel(int wins, int losses, int total) {
+    if (losses == 0 && wins >= 3) return '스윕 승';
+    if (wins >= 2 && losses > 0 && wins > losses) return '위닝 시리즈';
+    if (wins == losses && total >= 2) return '스플릿';
+    if (wins == 0 && losses >= 3) return '스윕 패';
+    if (losses > wins && losses >= 2) return '루징 시리즈';
+    return null;
+  }
+
+  Color _seriesLabelColor(String label) {
+    if (label.contains('스윕 승')) return const Color(0xFF1565C0);
+    if (label.contains('위닝')) return const Color(0xFF1976D2);
+    if (label.contains('스플릿')) return Colors.grey;
+    if (label.contains('루징')) return const Color(0xFFE53935);
+    if (label.contains('스윕 패')) return const Color(0xFFC62828);
+    return Colors.grey;
+  }
+
   List<List<Map>> _groupIntoSeries(List games, String teamName) {
     final sorted = List<Map>.from(games)
       ..sort((a, b) => (a['game_date'] as String).compareTo(b['game_date'] as String));
@@ -393,6 +446,21 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                       Text('$losses패', style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
                     if (draws > 0)
                       Text(' $draws무', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                    Builder(builder: (_) {
+                      final label = _seriesLabel(wins, losses, s.length);
+                      if (label == null) return const SizedBox.shrink();
+                      final c = _seriesLabelColor(label);
+                      return Container(
+                        margin: const EdgeInsets.only(left: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: c.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: c, width: 0.8),
+                        ),
+                        child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: c)),
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -403,33 +471,42 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 final isWin = (myScore as num) > (oppScore as num);
                 final isLoss = myScore < oppScore;
                 final dateStr = (g['game_date'] as String? ?? '').replaceAll('-', '.');
+                final gameId = g['id'] as int?;
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: isWin ? Colors.blue : isLoss ? Colors.red : Colors.grey,
-                          borderRadius: BorderRadius.circular(5),
+                return InkWell(
+                  onTap: gameId != null
+                      ? () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: gameId)))
+                      : null,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: isWin ? Colors.blue : isLoss ? Colors.red : Colors.grey,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            isWin ? '승' : isLoss ? '패' : '무',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
                         ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          isWin ? '승' : isLoss ? '패' : '무',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text('$myScore : $oppScore',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                      const SizedBox(width: 10),
-                      Text(isHome ? '홈' : '원정',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                      const Spacer(),
-                      Text(dateStr, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                    ],
+                        const SizedBox(width: 10),
+                        Text('$myScore : $oppScore',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        const SizedBox(width: 10),
+                        Text(isHome ? '홈' : '원정',
+                            style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                        const Spacer(),
+                        Text(dateStr, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+                      ],
+                    ),
                   ),
                 );
               }),

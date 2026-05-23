@@ -16,11 +16,35 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   List<dynamic> _dailyStats = [];
   bool _isLoading = true;
   bool _useEng = false;
+  bool _isFav = false;
+  bool _favLoading = false;
 
   @override
   void initState() {
     super.initState();
     _loadPlayer();
+    _loadFavStatus();
+  }
+
+  Future<void> _loadFavStatus() async {
+    try {
+      final data = await ApiService.getFavoritePlayers();
+      final players = data['players'] as List? ?? [];
+      if (mounted) setState(() => _isFav = players.any((p) => p['id'] == widget.playerId));
+    } catch (_) {}
+  }
+
+  Future<void> _toggleFav() async {
+    setState(() => _favLoading = true);
+    try {
+      if (_isFav) {
+        await ApiService.removeFavoritePlayer(widget.playerId);
+      } else {
+        await ApiService.addFavoritePlayer(widget.playerId);
+      }
+      if (mounted) setState(() => _isFav = !_isFav);
+    } catch (_) {}
+    if (mounted) setState(() => _favLoading = false);
   }
 
   Future<void> _loadPlayer() async {
@@ -60,6 +84,14 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(player['name'] ?? ''),
+        actions: [
+          _favLoading
+              ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+              : IconButton(
+                  icon: Icon(_isFav ? Icons.star : Icons.star_border, color: Colors.amber),
+                  onPressed: _toggleFav,
+                ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
