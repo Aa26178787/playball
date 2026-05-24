@@ -233,6 +233,123 @@ def get_pitchers(
     }
 
 
+@router.get("/rankings")
+def get_player_rankings(season: int = 2026):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+
+    cur.execute("SELECT MAX(games) FROM batter_stats WHERE season = %s", (season,))
+    max_games = cur.fetchone()[0] or 0
+    qual_pa = max_games * 3.1
+    qual_ip = float(max_games) * 1.0
+
+    cur.execute("""
+        SELECT DISTINCT ON (p.id)
+            p.id, p.name, t.name, p.profile_image,
+            bs.games, bs.at_bats, bs.hits,
+            bs.home_runs, bs.rbis, bs.runs,
+            bs.walks, bs.strikeouts, bs.stolen_bases,
+            bs.avg, bs.obp, bs.slg, bs.ops,
+            bs.woba, bs.wrc_plus, bs.babip, bs.iso, bs.war,
+            p.position, t.short_name, bs.pa
+        FROM batter_stats bs
+        JOIN players p ON bs.player_id = p.id
+        JOIN teams t ON p.team_id = t.id
+        WHERE bs.season = %s AND p.player_type = '타자'
+        ORDER BY p.id
+    """, (season,))
+    hitter_rows = cur.fetchall()
+
+    cur.execute("""
+        SELECT DISTINCT ON (p.id)
+            p.id, p.name, t.name, p.profile_image,
+            ps.games, ps.wins, ps.losses,
+            ps.saves, ps.holds, ps.innings_pitched,
+            ps.strikeouts, ps.walks,
+            ps.hits_allowed, ps.home_runs_allowed,
+            ps.era, ps.whip, ps.fip,
+            ps.k_per_9, ps.bb_per_9, ps.babip, ps.war,
+            ps.blown_saves, ps.qs,
+            p.throws, t.short_name
+        FROM pitcher_stats ps
+        JOIN players p ON ps.player_id = p.id
+        JOIN teams t ON p.team_id = t.id
+        WHERE ps.season = %s AND p.player_type = '투수'
+        ORDER BY p.id
+    """, (season,))
+    pitcher_rows = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    def hd(r):
+        return {
+            "id": r[0], "name": r[1], "team": r[2], "profile_image": r[3],
+            "games": r[4], "at_bats": r[5], "hits": r[6],
+            "home_runs": r[7], "rbis": r[8], "runs": r[9],
+            "walks": r[10], "strikeouts": r[11], "stolen_bases": r[12],
+            "avg":      float(r[13]) if r[13] else 0,
+            "obp":      float(r[14]) if r[14] else 0,
+            "slg":      float(r[15]) if r[15] else 0,
+            "ops":      float(r[16]) if r[16] else 0,
+            "woba":     float(r[17]) if r[17] else 0,
+            "wrc_plus": r[18], "babip": float(r[19]) if r[19] else 0,
+            "iso":      float(r[20]) if r[20] else 0,
+            "war":      float(r[21]) if r[21] else 0,
+            "position": r[22], "team_code": r[23], "pa": r[24] or 0,
+        }
+
+    def pd(r):
+        return {
+            "id": r[0], "name": r[1], "team": r[2], "profile_image": r[3],
+            "games": r[4], "wins": r[5], "losses": r[6],
+            "saves": r[7], "holds": r[8],
+            "innings_pitched": float(r[9]) if r[9] else 0,
+            "strikeouts": r[10], "walks": r[11],
+            "hits_allowed": r[12], "home_runs_allowed": r[13],
+            "era":     float(r[14]) if r[14] else 0,
+            "whip":    float(r[15]) if r[15] else 0,
+            "fip":     float(r[16]) if r[16] else 0,
+            "k_per_9": float(r[17]) if r[17] else 0,
+            "bb_per_9": float(r[18]) if r[18] else 0,
+            "babip":   float(r[19]) if r[19] else 0,
+            "war":     float(r[20]) if r[20] else 0,
+            "blown_saves": r[21], "qs": r[22],
+            "throws": r[23], "team_code": r[24],
+        }
+
+    hitters = [hd(r) for r in hitter_rows]
+    pitchers = [pd(r) for r in pitcher_rows]
+    qual_h = [h for h in hitters if h['pa'] >= qual_pa] if qual_pa > 0 else hitters
+    qual_p = [p for p in pitchers if p['innings_pitched'] >= qual_ip] if qual_ip > 0 else pitchers
+
+    def top10(lst, key, asc=False):
+        return sorted(lst, key=lambda x: x[key] or 0, reverse=not asc)[:10]
+
+    return {
+        "hitters": {
+            "avg":          top10(qual_h, 'avg'),
+            "home_runs":    top10(hitters, 'home_runs'),
+            "rbis":         top10(hitters, 'rbis'),
+            "hits":         top10(hitters, 'hits'),
+            "stolen_bases": top10(hitters, 'stolen_bases'),
+            "ops":          top10(qual_h, 'ops'),
+            "war":          top10(hitters, 'war'),
+        },
+        "pitchers": {
+            "era":        top10(qual_p, 'era', asc=True),
+            "wins":       top10(pitchers, 'wins'),
+            "strikeouts": top10(pitchers, 'strikeouts'),
+            "saves":      top10(pitchers, 'saves'),
+            "holds":      top10(pitchers, 'holds'),
+            "whip":       top10(qual_p, 'whip', asc=True),
+            "war":        top10(pitchers, 'war'),
+        },
+    }
+
+
 @router.get("/{player_id}/daily")
 def get_player_daily(player_id: int, season: int = 2026):
     """선수 일자별 기록"""
