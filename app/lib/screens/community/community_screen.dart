@@ -313,15 +313,11 @@ class _TeamTabState extends State<_TeamTab> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(t['short_name'] ?? '',
+                      Text(t['name'] ?? '',
                           style: TextStyle(
                               fontSize: 11,
                               color: selected ? Colors.white : Colors.black87,
                               fontWeight: FontWeight.bold)),
-                      Text(t['name'] ?? '',
-                          style: TextStyle(
-                              fontSize: 10,
-                              color: selected ? Colors.white70 : Colors.grey)),
                     ],
                   ),
                 ),

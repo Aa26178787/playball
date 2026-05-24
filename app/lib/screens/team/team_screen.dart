@@ -346,8 +346,10 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   Future<void> _loadHitters() async {
     setState(() => _hitterLoading = true);
+    // avg/ops: 규정타석 필터. 홈런/타점/안타/도루/WAR: 필터 없이 전체
+    final qualified = _hitterSort == 'avg' || _hitterSort == 'ops';
     try {
-      final data = await ApiService.getHitters(sortBy: _hitterSort, limit: 10, qualified: true);
+      final data = await ApiService.getHitters(sortBy: _hitterSort, limit: 10, qualified: qualified);
       if (mounted) setState(() { _hitterRankings = data['hitters'] ?? []; _hitterLoading = false; });
     } catch (_) {
       if (mounted) setState(() => _hitterLoading = false);
@@ -356,8 +358,10 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   Future<void> _loadPitchers() async {
     setState(() => _pitcherLoading = true);
+    // era/whip: 규정이닝 필터. 세이브/홀드/승/탈삼진/WAR: 필터 없이 전체
+    final qualified = _pitcherSort == 'era' || _pitcherSort == 'whip';
     try {
-      final data = await ApiService.getPitchers(sortBy: _pitcherSort, limit: 10, qualified: true);
+      final data = await ApiService.getPitchers(sortBy: _pitcherSort, limit: 10, qualified: qualified);
       if (mounted) setState(() { _pitcherRankings = data['pitchers'] ?? []; _pitcherLoading = false; });
     } catch (_) {
       if (mounted) setState(() => _pitcherLoading = false);

@@ -174,7 +174,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 borderRadius: BorderRadius.circular(14),
                 border: sel ? null : Border.all(color: Colors.grey.withValues(alpha: 0.25)),
               ),
-              child: Text(t['short_name'] ?? t['name'] ?? '',
+              child: Text(t['name'] ?? '',
                   style: TextStyle(fontSize: 11, color: sel ? Colors.white : Colors.black87,
                       fontWeight: sel ? FontWeight.bold : FontWeight.normal)),
             ),

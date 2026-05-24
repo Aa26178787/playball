@@ -166,7 +166,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ..._teams.map((t) => ListTile(
             leading: TeamLogo(teamCode: t['short_name'] ?? '', size: 36),
             title: Text(t['name'] ?? ''),
-            subtitle: Text(t['short_name'] ?? ''),
+            subtitle: null,
             onTap: () => Navigator.push(context, MaterialPageRoute(
                 builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(t)))),
           )),
