@@ -20,6 +20,9 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _hitterLoading = false;
   bool _pitcherLoading = false;
 
+  int _hitterReqId = 0;
+  int _pitcherReqId = 0;
+
   String _hitterSort = 'avg';
   String _pitcherSort = 'era';
 
@@ -77,22 +80,28 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Future<void> _loadHitters() async {
-    setState(() => _hitterLoading = true);
+    final reqId = ++_hitterReqId;
+    setState(() { _hitterLoading = true; _hitters = []; });
     try {
       final data = await ApiService.getHitters(sortBy: _hitterSort, limit: 200, teamId: _selectedTeamId);
-      if (mounted) setState(() { _hitters = data['hitters'] ?? []; _hitterLoading = false; });
+      if (mounted && reqId == _hitterReqId) {
+        setState(() { _hitters = data['hitters'] ?? []; _hitterLoading = false; });
+      }
     } catch (_) {
-      if (mounted) setState(() => _hitterLoading = false);
+      if (mounted && reqId == _hitterReqId) setState(() => _hitterLoading = false);
     }
   }
 
   Future<void> _loadPitchers() async {
-    setState(() => _pitcherLoading = true);
+    final reqId = ++_pitcherReqId;
+    setState(() { _pitcherLoading = true; _pitchers = []; });
     try {
       final data = await ApiService.getPitchers(sortBy: _pitcherSort, limit: 200, teamId: _selectedTeamId);
-      if (mounted) setState(() { _pitchers = data['pitchers'] ?? []; _pitcherLoading = false; });
+      if (mounted && reqId == _pitcherReqId) {
+        setState(() { _pitchers = data['pitchers'] ?? []; _pitcherLoading = false; });
+      }
     } catch (_) {
-      if (mounted) setState(() => _pitcherLoading = false);
+      if (mounted && reqId == _pitcherReqId) setState(() => _pitcherLoading = false);
     }
   }
 
@@ -378,12 +387,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                     children: [
                       const SizedBox(height: 6),
                       _buildSortChips(_hitterSorts, _hitterSort, (val) {
-                        setState(() { _hitterSort = val; _hitters = []; });
+                        setState(() => _hitterSort = val);
                         _loadHitters();
                       }),
                       const SizedBox(height: 4),
                       _buildTeamFilterChips((tid) {
-                        setState(() { _selectedTeamId = tid; _hitters = []; });
+                        setState(() => _selectedTeamId = tid);
                         _loadHitters();
                       }),
                       const SizedBox(height: 4),
@@ -395,12 +404,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                     children: [
                       const SizedBox(height: 6),
                       _buildSortChips(_pitcherSorts, _pitcherSort, (val) {
-                        setState(() { _pitcherSort = val; _pitchers = []; });
+                        setState(() => _pitcherSort = val);
                         _loadPitchers();
                       }),
                       const SizedBox(height: 4),
                       _buildTeamFilterChips((tid) {
-                        setState(() { _selectedTeamId = tid; _pitchers = []; });
+                        setState(() => _selectedTeamId = tid);
                         _loadPitchers();
                       }),
                       const SizedBox(height: 4),
