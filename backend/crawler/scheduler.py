@@ -25,8 +25,87 @@ from crawler.statiz_crawler import (
 )
 from database.connection import get_connection
 from datetime import datetime, timezone
+import json
 
 _game_hr_cache: dict = {}  # {game_id: {player_id: hr_count}} — HR 중복 알림 방지
+
+# ===== 헬스체크 =====
+_HEALTH_FILE = os.path.join(os.path.dirname(__file__), '../health.json')
+_ALERT_COOLDOWN = 3600  # 같은 오류 1시간 내 재알림 금지
+_last_alert_time: float = 0.0
+
+
+def _update_health(key: str):
+    """크롤 성공 시 타임스탬프 갱신"""
+    try:
+        path = os.path.abspath(_HEALTH_FILE)
+        data = {}
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                data = json.load(f)
+        data[key] = datetime.now(timezone.utc).isoformat()
+        with open(path, 'w') as f:
+            json.dump(data, f)
+    except Exception:
+        pass
+
+
+def _send_alert(subject: str, body: str):
+    """이메일 알림 (쿨다운 적용)"""
+    global _last_alert_time
+    now = datetime.now(timezone.utc).timestamp()
+    if now - _last_alert_time < _ALERT_COOLDOWN:
+        return
+    try:
+        import smtplib, os as _os
+        from email.message import EmailMessage
+        user = _os.environ.get('EMAIL_USER', '')
+        pw   = _os.environ.get('EMAIL_PASS', '')
+        admin = _os.environ.get('ADMIN_EMAIL', user)
+        if not user or not pw:
+            print(f'[HEALTH ALERT] {subject}: {body}')
+            return
+        msg = EmailMessage()
+        msg['Subject'] = f'[PlayBall 알림] {subject}'
+        msg['From'] = user
+        msg['To'] = admin
+        msg.set_content(body)
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(user, pw)
+            smtp.send_message(msg)
+        _last_alert_time = now
+        print(f'[HEALTH] 알림 발송: {subject}')
+    except Exception as e:
+        print(f'[HEALTH] 알림 실패: {e}')
+
+
+def _health_check():
+    """15분마다 실행 — 경기 시간대에 크롤러 침묵 감지"""
+    now_utc = datetime.now(timezone.utc)
+    hour = now_utc.hour
+    # KST 10:00~24:00 = UTC 01:00~15:00 (경기 시간대)
+    if not (1 <= hour < 15):
+        return
+    try:
+        path = os.path.abspath(_HEALTH_FILE)
+        if not os.path.exists(path):
+            _send_alert('크롤러 헬스파일 없음', '경기 시간대인데 health.json이 없습니다. 크롤러를 확인하세요.')
+            return
+        with open(path, 'r') as f:
+            data = json.load(f)
+        last_str = data.get('smart_update')
+        if not last_str:
+            _send_alert('smart_update 기록 없음', '경기 시간대인데 smart_update 성공 기록이 없습니다.')
+            return
+        last_dt = datetime.fromisoformat(last_str)
+        elapsed = (now_utc - last_dt).total_seconds()
+        if elapsed > 600:  # 10분 초과
+            _send_alert(
+                f'크롤러 {int(elapsed//60)}분 침묵',
+                f'smart_update 마지막 성공: {last_str}\n경과: {int(elapsed//60)}분\n서버를 확인하세요.'
+            )
+    except Exception as e:
+        print(f'[HEALTH] 헬스체크 오류: {e}')
 
 
 def kill_zombie_chrome():
@@ -170,11 +249,13 @@ def smart_update():
     conn.close()
 
     if today_games == 0:
+        _update_health('smart_update')
         return
 
     prev_details = _get_game_details()
     _update_today_games()
     curr_details = _get_game_details()
+    _update_health('smart_update')
 
     prev_statuses = {gid: d['status'] for gid, d in prev_details.items()}
     curr_statuses = {gid: d['status'] for gid, d in curr_details.items()}
@@ -1164,6 +1245,9 @@ def run_scheduler():
 
     # 매시간: 하이라이트 크롤링
     schedule.every(1).hours.do(_crawl_highlights_hourly)
+
+    # 15분마다: 크롤러 헬스체크
+    schedule.every(15).minutes.do(_health_check)
 
     print("스케줄 등록 완료!")
     print("- 1분마다 (UTC 01:00~15:00 = KST 10:00~00:00): 경기 상태/이닝/선수/투구 업데이트")
