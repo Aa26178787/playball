@@ -545,10 +545,53 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     }
 
     if (filtered.isEmpty) {
-      return Center(
-        child: Text(
-          _myTeamOnly ? '마이팀 경기가 없습니다' : '경기가 없습니다',
-          style: const TextStyle(color: Colors.grey),
+      final isToday = _selectedDate.year == DateTime.now().year &&
+          _selectedDate.month == DateTime.now().month &&
+          _selectedDate.day == DateTime.now().day;
+      final isPast = _selectedDate.isBefore(DateTime.now().subtract(const Duration(days: 1)));
+      return RefreshIndicator(
+        onRefresh: _loadGames,
+        child: ListView(
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+            Column(
+              children: [
+                Icon(
+                  _myTeamOnly ? Icons.star_border : Icons.sports_baseball,
+                  size: 64, color: Colors.grey[300],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _myTeamOnly ? '마이팀 경기가 없습니다' : '경기가 없는 날입니다',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black54),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _myTeamOnly
+                      ? '마이팀 필터를 해제하면 전체 경기를 볼 수 있습니다'
+                      : isToday
+                          ? 'KBO 휴식일입니다'
+                          : isPast
+                              ? '이 날은 경기가 없었습니다'
+                              : '이 날은 경기가 예정되어 있지 않습니다',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                ),
+                if (_myTeamOnly) ...[
+                  const SizedBox(height: 20),
+                  OutlinedButton.icon(
+                    onPressed: () => setState(() => _myTeamOnly = false),
+                    icon: const Icon(Icons.sports_baseball, size: 16),
+                    label: const Text('전체 경기 보기'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF1A237E),
+                      side: const BorderSide(color: Color(0xFF1A237E)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
         ),
       );
     }

@@ -182,9 +182,31 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
           if (_loading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_error)
-            const Expanded(child: Center(child: Text('데이터를 불러오지 못했습니다', style: TextStyle(color: Colors.grey))))
+            Expanded(child: Center(child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.wifi_off_rounded, size: 48, color: Colors.grey[350]),
+                const SizedBox(height: 12),
+                const Text('데이터를 불러오지 못했습니다', style: TextStyle(color: Colors.grey, fontSize: 14)),
+              ],
+            )))
           else if (_pitches.isEmpty)
-            const Expanded(child: Center(child: Text('투구 위치 데이터가 없습니다', style: TextStyle(color: Colors.grey))))
+            Expanded(child: Center(child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.sports_baseball, size: 52, color: Colors.grey[300]),
+                const SizedBox(height: 14),
+                Text(
+                  widget.gameStatus == '예정' ? '경기가 아직 시작되지 않았습니다' : '투구 위치 데이터가 없습니다',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black54),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  widget.gameStatus == '예정' ? '경기 시작 후 데이터가 표시됩니다' : '이 경기의 투구 데이터가 제공되지 않습니다',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                ),
+              ],
+            )))
           else
             Expanded(
               child: Column(
