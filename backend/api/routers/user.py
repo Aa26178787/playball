@@ -25,6 +25,9 @@ class NotificationSettings(BaseModel):
     notify_roster: bool = True
     notify_comment: bool = True
     notify_pennant_race: bool = True
+    notify_fav_hr: bool = True
+    notify_walkoff: bool = True
+    notify_starter_ko: bool = True
 
 
 class PushToken(BaseModel):
@@ -255,7 +258,7 @@ def get_settings(current_user: dict = Depends(get_current_user)):
         SELECT notify_game_start, notify_score_change,
                notify_game_end, notify_my_team_only,
                notify_streak, notify_rank_change, notify_roster, notify_comment,
-               notify_pennant_race
+               notify_pennant_race, notify_fav_hr, notify_walkoff, notify_starter_ko
         FROM user_settings
         WHERE user_id = %s
     """, (current_user["user_id"],))
@@ -278,6 +281,9 @@ def get_settings(current_user: dict = Depends(get_current_user)):
             "notify_roster":        row[6] if row[6] is not None else True,
             "notify_comment":       row[7] if row[7] is not None else True,
             "notify_pennant_race":  row[8] if row[8] is not None else True,
+            "notify_fav_hr":        row[9]  if row[9]  is not None else True,
+            "notify_walkoff":       row[10] if row[10] is not None else True,
+            "notify_starter_ko":    row[11] if row[11] is not None else True,
         }
     }
 
@@ -301,6 +307,9 @@ def update_settings(body: NotificationSettings, current_user: dict = Depends(get
             notify_roster = %s,
             notify_comment = %s,
             notify_pennant_race = %s,
+            notify_fav_hr = %s,
+            notify_walkoff = %s,
+            notify_starter_ko = %s,
             updated_at = NOW()
         WHERE user_id = %s
     """, (
@@ -313,6 +322,9 @@ def update_settings(body: NotificationSettings, current_user: dict = Depends(get
         body.notify_roster,
         body.notify_comment,
         body.notify_pennant_race,
+        body.notify_fav_hr,
+        body.notify_walkoff,
+        body.notify_starter_ko,
         current_user["user_id"]
     ))
 

@@ -37,7 +37,8 @@ def _get_targets(notify_type: str, team_ids: list[int]) -> list[tuple[int, str]]
     경기 알림용. user_settings(notify_{type}, notify_my_team_only) 반영.
     user_settings 미설정 → 기본값(전부 ON, my_team_only=OFF).
     """
-    allowed = ('notify_game_start', 'notify_score_change', 'notify_game_end')
+    allowed = ('notify_game_start', 'notify_score_change', 'notify_game_end',
+               'notify_walkoff', 'notify_starter_ko')
     if notify_type not in allowed:
         return []
     conn = get_connection()
@@ -98,20 +99,20 @@ def _get_team_fan_targets(team_id: int, setting_col: str = None) -> list[tuple[i
         conn.close()
 
 
-def _get_player_fan_targets(player_id: int) -> list[tuple[int, str]]:
-    """즐겨찾기 선수 팬의 (user_id, token). notify_roster ON인 유저만."""
+def _get_player_fan_targets(player_id: int, setting_col: str = 'notify_roster') -> list[tuple[int, str]]:
+    """즐겨찾기 선수 팬의 (user_id, token). setting_col ON인 유저만."""
     conn = get_connection()
     if not conn:
         return []
     try:
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(f"""
             SELECT DISTINCT pt.user_id, pt.token
             FROM push_tokens pt
             JOIN user_favorite_players ufp ON ufp.user_id = pt.user_id
             LEFT JOIN user_settings us ON us.user_id = pt.user_id
             WHERE ufp.player_id = %s
-              AND COALESCE(us.notify_roster, TRUE) = TRUE
+              AND COALESCE(us.{setting_col}, TRUE) = TRUE
         """, (player_id,))
         return cur.fetchall()
     except Exception as e:
@@ -331,3 +332,42 @@ def notify_new_comment(post_author_id: int, post_id: int,
           f"💬 새 댓글",
           f"{commenter_nickname}님이 '{post_title[:20]}...' 에 댓글을 달았습니다",
           {"post_id": str(post_id), "type": "new_comment"}, "new_comment", None)
+
+
+# ── 즐겨찾기 선수 홈런 ──────────────────────────────────────────────────────────
+
+def notify_fav_hr(player_id: int, player_name: str, team_name: str, game_id: int):
+    """즐겨찾기 선수 홈런 — notify_fav_hr ON 팬에게"""
+    targets = _get_player_fan_targets(player_id, 'notify_fav_hr')
+    if not targets:
+        return
+    _send(targets,
+          f"⚾ {player_name} 홈런!",
+          f"{team_name} {player_name}이(가) 홈런을 쳤습니다!",
+          {"game_id": str(game_id), "player_id": str(player_id), "type": "fav_hr"},
+          "fav_hr", game_id)
+
+
+# ── 끝내기 승리 알림 ──────────────────────────────────────────────────────────
+
+def notify_walkoff(game_id: int, home_team: str, away_team: str,
+                   home_score: int, away_score: int,
+                   home_team_id: int, away_team_id: int):
+    """끝내기 승리 — notify_walkoff ON 유저에게"""
+    targets = _get_targets('notify_walkoff', [home_team_id, away_team_id])
+    _send(targets,
+          f"🎉 끝내기! {home_team} 승리!",
+          f"{home_team} {home_score}:{away_score} {away_team} — 극적인 끝내기 승리!",
+          {"game_id": str(game_id), "type": "walkoff"}, "walkoff", game_id)
+
+
+# ── 선발투수 조기강판 알림 ─────────────────────────────────────────────────────
+
+def notify_starter_ko(game_id: int, pitcher_name: str, team_name: str,
+                      ip_str: str, home_team_id: int, away_team_id: int):
+    """선발투수 5이닝 미만 강판 — notify_starter_ko ON 유저에게"""
+    targets = _get_targets('notify_starter_ko', [home_team_id, away_team_id])
+    _send(targets,
+          f"📢 선발 조기강판",
+          f"{team_name} 선발 {pitcher_name} {ip_str}이닝 만에 강판",
+          {"game_id": str(game_id), "type": "starter_ko"}, "starter_ko", game_id)

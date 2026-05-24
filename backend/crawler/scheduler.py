@@ -26,6 +26,8 @@ from crawler.statiz_crawler import (
 from database.connection import get_connection
 from datetime import datetime, timezone
 
+_game_hr_cache: dict = {}  # {game_id: {player_id: hr_count}} — HR 중복 알림 방지
+
 
 def kill_zombie_chrome():
     """좀비 크롬 프로세스 정리"""
@@ -34,6 +36,113 @@ def kill_zombie_chrome():
         subprocess.run(['pkill', '-f', 'chrome'], capture_output=True)
     except Exception:
         pass
+
+
+def _check_new_hrs(game_id: int, home_team_id: int, away_team_id: int):
+    """HR 증가 감지 → 즐겨찾기 선수 팬에게 알림"""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT gb.player_id, gb.home_runs, p.name, t.name
+            FROM game_batters gb
+            JOIN players p ON p.id = gb.player_id
+            JOIN teams t ON t.id = p.team_id
+            WHERE gb.game_id = %s AND gb.home_runs > 0
+        """, (game_id,))
+        rows = cur.fetchall()
+        cur.close()
+    except Exception:
+        return
+    finally:
+        conn.close()
+
+    prev_hrs = _game_hr_cache.get(game_id, {})
+    curr_hrs: dict = {}
+    new_hr_players = []
+    for player_id, hr_count, player_name, team_name in rows:
+        curr_hrs[player_id] = hr_count
+        if hr_count > prev_hrs.get(player_id, 0):
+            new_hr_players.append((player_id, player_name, team_name))
+    _game_hr_cache[game_id] = curr_hrs
+
+    if not new_hr_players:
+        return
+    try:
+        from api.fcm_service import notify_fav_hr
+        for player_id, player_name, team_name in new_hr_players:
+            notify_fav_hr(player_id, player_name, team_name, game_id)
+    except Exception as e:
+        print(f"[FCM] HR 알림 오류: {e}")
+
+
+def _is_walkoff(game_id: int) -> bool:
+    """끝내기 판정: 마지막 이닝에 홈팀 득점이 있으면 True"""
+    conn = get_connection()
+    if not conn:
+        return False
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT home_runs FROM game_innings
+            WHERE game_id = %s
+            ORDER BY inning DESC LIMIT 1
+        """, (game_id,))
+        row = cur.fetchone()
+        cur.close()
+        return row is not None and (row[0] or 0) > 0
+    except Exception:
+        return False
+    finally:
+        conn.close()
+
+
+def _check_starter_ko(game_id: int, game_info: dict):
+    """선발투수 5이닝 미만 강판 감지 → 알림"""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT gp.player_id, p.name, gp.innings_pitched, gp.team_side
+            FROM game_pitchers gp
+            JOIN players p ON p.id = gp.player_id
+            WHERE gp.game_id = %s AND gp.pitching_order = 1
+        """, (game_id,))
+        starters = cur.fetchall()
+        cur.close()
+    except Exception:
+        return
+    finally:
+        conn.close()
+
+    if not starters:
+        return
+
+    def _parse_ip(ip_val) -> float:
+        try:
+            parts = str(ip_val).strip().split('.')
+            inn = int(parts[0]) if parts[0] else 0
+            outs = int(parts[1]) if len(parts) > 1 and parts[1] else 0
+            return inn + outs / 3
+        except Exception:
+            return 0.0
+
+    try:
+        from api.fcm_service import notify_starter_ko
+        for player_id, name, ip, side in starters:
+            parsed = _parse_ip(ip)
+            if 0 < parsed < 5.0:
+                team_name = game_info.get('home_team') if side == 'home' else game_info.get('away_team')
+                notify_starter_ko(game_id, name, team_name or '',
+                                  str(ip) if ip else '0',
+                                  game_info.get('home_team_id', 0),
+                                  game_info.get('away_team_id', 0))
+    except Exception as e:
+        print(f"[FCM] 조기강판 알림 오류: {e}")
 
 
 def smart_update():
@@ -114,6 +223,7 @@ def smart_update():
                                         ch, ca,
                                         curr['home_team_id'], curr['away_team_id'],
                                         is_comeback=is_comeback)
+                    _check_new_hrs(gid, curr['home_team_id'], curr['away_team_id'])
 
                 # 경기 종료
                 elif cs == '종료' and ps == '진행':
@@ -191,6 +301,25 @@ def smart_update():
                                 notify_streak(team_id, row_s[0], abs(streak), streak > 0)
             except Exception as streak_err:
                 print(f"[FCM] 연승/연패 알림 오류: {streak_err}")
+
+        # 끝내기 승리 알림
+        for gid in newly_finished:
+            try:
+                curr = curr_details.get(gid, {})
+                if curr.get('home_score', 0) > curr.get('away_score', 0) and _is_walkoff(gid):
+                    from api.fcm_service import notify_walkoff
+                    notify_walkoff(gid, curr['home_team'], curr['away_team'],
+                                   curr['home_score'], curr['away_score'],
+                                   curr['home_team_id'], curr['away_team_id'])
+            except Exception as wo_err:
+                print(f"[FCM] 끝내기 알림 오류: {wo_err}")
+
+        # 선발 조기강판 알림
+        for gid in newly_finished:
+            try:
+                _check_starter_ko(gid, curr_details.get(gid, {}))
+            except Exception as ko_err:
+                print(f"[FCM] 조기강판 알림 오류: {ko_err}")
 
     conn = get_connection()
     if conn:

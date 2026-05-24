@@ -38,6 +38,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
   bool _notifyRoster       = true;
   bool _notifyComment      = true;
   bool _notifyPennantRace  = true;
+  bool _notifyFavHr        = true;
+  bool _notifyWalkoff      = true;
+  bool _notifyStarterKo    = true;
   bool _settingsLoaded     = false;
 
   @override
@@ -76,6 +79,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
             _notifyRoster      = settings['notify_roster']       as bool? ?? true;
             _notifyComment     = settings['notify_comment']      as bool? ?? true;
             _notifyPennantRace = settings['notify_pennant_race'] as bool? ?? true;
+            _notifyFavHr       = settings['notify_fav_hr']       as bool? ?? true;
+            _notifyWalkoff     = settings['notify_walkoff']      as bool? ?? true;
+            _notifyStarterKo   = settings['notify_starter_ko']   as bool? ?? true;
           }
           _settingsLoaded = true;
           _loading = false;
@@ -98,6 +104,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
         'notify_roster':        _notifyRoster,
         'notify_comment':       _notifyComment,
         'notify_pennant_race':  _notifyPennantRace,
+        'notify_fav_hr':        _notifyFavHr,
+        'notify_walkoff':       _notifyWalkoff,
+        'notify_starter_ko':    _notifyStarterKo,
       });
     } catch (_) {}
   }
@@ -594,111 +603,81 @@ class _MyPageScreenState extends State<MyPageScreen> {
     if (!_settingsLoaded) return const SizedBox.shrink();
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 10, 16, 4),
-              child: Text('알림 설정',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Text('알림 설정',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ),
+          _notifCategory(Icons.sports_baseball, '경기 알림', [
+            _notifTile('경기 시작', null, _notifyGameStart,
+                (v) { setState(() => _notifyGameStart = v); _saveSettings(); }),
+            _notifTile('득점', null, _notifyScoreChange,
+                (v) { setState(() => _notifyScoreChange = v); _saveSettings(); }),
+            _notifTile('경기 종료', null, _notifyGameEnd,
+                (v) { setState(() => _notifyGameEnd = v); _saveSettings(); }),
+            _notifTile('끝내기 승리', '홈팀 끝내기 승리 시', _notifyWalkoff,
+                (v) { setState(() => _notifyWalkoff = v); _saveSettings(); }),
+            _notifTile('선발 조기강판', '선발투수 5이닝 미만 강판 시', _notifyStarterKo,
+                (v) { setState(() => _notifyStarterKo = v); _saveSettings(); }),
+            _notifTile(
+              '마이팀 경기만',
+              _notifyMyTeamOnly ? '즐겨찾기 팀 경기에만 알림' : '모든 경기 알림',
+              _notifyMyTeamOnly,
+              (v) { setState(() => _notifyMyTeamOnly = v); _saveSettings(); },
             ),
-            SwitchListTile(
-              dense: true,
-              title: const Text('경기 시작 알림', style: TextStyle(fontSize: 14)),
-              value: _notifyGameStart,
-              onChanged: (v) {
-                setState(() => _notifyGameStart = v);
-                _saveSettings();
-              },
-            ),
-            SwitchListTile(
-              dense: true,
-              title: const Text('득점 알림', style: TextStyle(fontSize: 14)),
-              value: _notifyScoreChange,
-              onChanged: (v) {
-                setState(() => _notifyScoreChange = v);
-                _saveSettings();
-              },
-            ),
-            SwitchListTile(
-              dense: true,
-              title: const Text('경기 종료 알림', style: TextStyle(fontSize: 14)),
-              value: _notifyGameEnd,
-              onChanged: (v) {
-                setState(() => _notifyGameEnd = v);
-                _saveSettings();
-              },
-            ),
-            const Divider(height: 1, indent: 16, endIndent: 16),
-            SwitchListTile(
-              dense: true,
-              title: const Text('마이팀 경기만', style: TextStyle(fontSize: 14)),
-              subtitle: Text(
-                _notifyMyTeamOnly ? '즐겨찾기 팀 경기에만 알림' : '모든 경기 알림',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-              ),
-              value: _notifyMyTeamOnly,
-              onChanged: (v) {
-                setState(() => _notifyMyTeamOnly = v);
-                _saveSettings();
-              },
-            ),
-            const Divider(height: 1, indent: 16, endIndent: 16),
-            SwitchListTile(
-              dense: true,
-              title: const Text('연승/연패 알림', style: TextStyle(fontSize: 14)),
-              subtitle: Text('마이팀 5연승/연패 이상', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-              value: _notifyStreak,
-              onChanged: (v) {
-                setState(() => _notifyStreak = v);
-                _saveSettings();
-              },
-            ),
-            SwitchListTile(
-              dense: true,
-              title: const Text('순위 변동 알림', style: TextStyle(fontSize: 14)),
-              subtitle: Text('마이팀 순위 변동 시', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-              value: _notifyRankChange,
-              onChanged: (v) {
-                setState(() => _notifyRankChange = v);
-                _saveSettings();
-              },
-            ),
-            SwitchListTile(
-              dense: true,
-              title: const Text('등록말소 알림', style: TextStyle(fontSize: 14)),
-              subtitle: Text('즐겨찾기 선수 1군 등록/말소 시', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-              value: _notifyRoster,
-              onChanged: (v) {
-                setState(() => _notifyRoster = v);
-                _saveSettings();
-              },
-            ),
-            SwitchListTile(
-              dense: true,
-              title: const Text('댓글 알림', style: TextStyle(fontSize: 14)),
-              subtitle: Text('내 글에 댓글이 달릴 때', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-              value: _notifyComment,
-              onChanged: (v) {
-                setState(() => _notifyComment = v);
-                _saveSettings();
-              },
-            ),
-            SwitchListTile(
-              dense: true,
-              title: const Text('선두 추격 알림', style: TextStyle(fontSize: 14)),
-              subtitle: Text('마이팀이 1위일 때 2위와 게임차 좁혀질 때', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-              value: _notifyPennantRace,
-              onChanged: (v) {
-                setState(() => _notifyPennantRace = v);
-                _saveSettings();
-              },
-            ),
-          ],
-        ),
+          ]),
+          _notifCategory(Icons.leaderboard, '팀 알림', [
+            _notifTile('연승/연패', '마이팀 5연승/연패 이상', _notifyStreak,
+                (v) { setState(() => _notifyStreak = v); _saveSettings(); }),
+            _notifTile('순위 변동', '마이팀 순위 변동 시', _notifyRankChange,
+                (v) { setState(() => _notifyRankChange = v); _saveSettings(); }),
+            _notifTile('선두 추격', '마이팀이 1위일 때 2위와 게임차 좁혀질 때', _notifyPennantRace,
+                (v) { setState(() => _notifyPennantRace = v); _saveSettings(); }),
+          ]),
+          _notifCategory(Icons.person_outline, '선수 알림', [
+            _notifTile('즐겨찾기 선수 홈런', '즐겨찾기 선수가 홈런 칠 때', _notifyFavHr,
+                (v) { setState(() => _notifyFavHr = v); _saveSettings(); }),
+            _notifTile('등록말소', '즐겨찾기 선수 1군 등록/말소 시', _notifyRoster,
+                (v) { setState(() => _notifyRoster = v); _saveSettings(); }),
+          ]),
+          _notifCategory(Icons.forum, '커뮤니티 알림', [
+            _notifTile('댓글', '내 글에 댓글이 달릴 때', _notifyComment,
+                (v) { setState(() => _notifyComment = v); _saveSettings(); }),
+          ]),
+        ],
       ),
+    );
+  }
+
+  Widget _notifCategory(IconData icon, String title, List<Widget> children) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        leading: Icon(icon, size: 20),
+        title: Text(title,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+        childrenPadding: EdgeInsets.zero,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _notifTile(
+      String title, String? subtitle, bool value, ValueChanged<bool> onChanged) {
+    return SwitchListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.only(left: 32, right: 16),
+      title: Text(title, style: const TextStyle(fontSize: 13)),
+      subtitle: subtitle != null
+          ? Text(subtitle,
+              style: TextStyle(fontSize: 11, color: Colors.grey[600]))
+          : null,
+      value: value,
+      onChanged: onChanged,
     );
   }
 }
