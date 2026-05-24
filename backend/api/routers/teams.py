@@ -402,6 +402,85 @@ def get_team_monthly_stats(team_id: int, season: int = 2026):
     }
 
 
+@router.get("/{team_id}/batting-order")
+def get_batting_order_stats(team_id: int, season: int = 2026):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    # 타순별 집계
+    cur.execute("""
+        SELECT
+            gb.batting_order,
+            COUNT(DISTINCT gb.game_id) AS games,
+            SUM(gb.at_bats)    AS at_bats,
+            SUM(gb.hits)       AS hits,
+            SUM(gb.runs)       AS runs,
+            SUM(gb.rbis)       AS rbis,
+            SUM(gb.home_runs)  AS home_runs,
+            SUM(gb.walks)      AS walks,
+            SUM(gb.strikeouts) AS strikeouts
+        FROM game_batters gb
+        JOIN games g ON g.id = gb.game_id
+        WHERE ((g.home_team_id = %s AND gb.team_side = 'home')
+            OR (g.away_team_id = %s AND gb.team_side = 'away'))
+          AND g.status = '종료'
+          AND EXTRACT(YEAR FROM g.game_date) = %s
+          AND gb.batting_order BETWEEN 1 AND 9
+        GROUP BY gb.batting_order
+        ORDER BY gb.batting_order
+    """, (team_id, team_id, season))
+    rows = cur.fetchall()
+
+    # 타순별 최다 출전 선수
+    cur.execute("""
+        WITH slot_players AS (
+            SELECT gb.batting_order, p.name AS player_name,
+                   COUNT(*) AS apps,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY gb.batting_order ORDER BY COUNT(*) DESC
+                   ) AS rn
+            FROM game_batters gb
+            JOIN games g ON g.id = gb.game_id
+            JOIN players p ON p.id = gb.player_id
+            WHERE ((g.home_team_id = %s AND gb.team_side = 'home')
+                OR (g.away_team_id = %s AND gb.team_side = 'away'))
+              AND g.status = '종료'
+              AND EXTRACT(YEAR FROM g.game_date) = %s
+              AND gb.batting_order BETWEEN 1 AND 9
+              AND gb.at_bats > 0
+            GROUP BY gb.batting_order, p.name
+        )
+        SELECT batting_order, player_name FROM slot_players WHERE rn = 1
+    """, (team_id, team_id, season))
+    top_players = {r[0]: r[1] for r in cur.fetchall()}
+
+    cur.close()
+    conn.close()
+
+    stats = []
+    for r in rows:
+        order, games, ab, h, runs, rbi, hr, bb, so = r
+        avg = round(h / ab, 3) if ab > 0 else 0.0
+        obp = round((h + bb) / (ab + bb), 3) if (ab + bb) > 0 else 0.0
+        slg = round((h + hr) / ab, 3) if ab > 0 else 0.0  # simplified (no 2B/3B)
+        stats.append({
+            "batting_order": order,
+            "games":         games,
+            "at_bats":       ab,
+            "hits":          h,
+            "runs":          runs,
+            "rbis":          rbi,
+            "home_runs":     hr,
+            "walks":         bb,
+            "strikeouts":    so,
+            "avg":           avg,
+            "obp":           obp,
+            "top_player":    top_players.get(order),
+        })
+    return {"team_id": team_id, "season": season, "stats": stats}
+
+
 @router.get("/{team_id}/head-to-head")
 def get_head_to_head(team_id: int, season: int = 2026):
     conn = get_connection()

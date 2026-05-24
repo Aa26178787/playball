@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -14,6 +15,17 @@ class StadiumScreen extends StatefulWidget {
 class _StadiumScreenState extends State<StadiumScreen> {
   KakaoMapController? _mapController;
   int _selected = -1;
+  bool _mapCreated = false;
+  bool _mapTimeout = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 8초 내 onMapCreated 미호출 시 에러 표시
+    Future.delayed(const Duration(seconds: 8), () {
+      if (mounted && !_mapCreated) setState(() => _mapTimeout = true);
+    });
+  }
 
   static const _stadiums = [
     {
@@ -125,14 +137,44 @@ class _StadiumScreenState extends State<StadiumScreen> {
         children: [
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.38,
-            child: KakaoMap(
-              onMapCreated: (controller) {
-                _mapController = controller;
-              },
-              markers: _markers.toList(),
-              center: _koreaCenter,
-              currentLevel: 13,
-            ),
+            child: _mapCreated
+                ? KakaoMap(
+                    onMapCreated: (controller) {
+                      _mapController = controller;
+                      debugPrint('[KakaoMap] onMapCreated 호출됨 ✓');
+                    },
+                    markers: _markers.toList(),
+                    center: _koreaCenter,
+                    currentLevel: 13,
+                  )
+                : Stack(children: [
+                    KakaoMap(
+                      onMapCreated: (controller) {
+                        debugPrint('[KakaoMap] onMapCreated 호출됨 ✓');
+                        _mapController = controller;
+                        if (mounted) setState(() => _mapCreated = true);
+                      },
+                      markers: _markers.toList(),
+                      center: _koreaCenter,
+                      currentLevel: 13,
+                    ),
+                    if (_mapTimeout)
+                      Container(
+                        color: Colors.grey[100],
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.map_outlined, size: 40, color: Colors.grey),
+                              SizedBox(height: 8),
+                              Text('지도 로드 실패\n카카오 콘솔 Web 플랫폼\nhttp://localhost 등록 확인',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ]),
           ),
           Expanded(
             child: ListView.builder(
@@ -151,8 +193,10 @@ class _StadiumScreenState extends State<StadiumScreen> {
     final latLng = LatLng(s['lat'] as double, s['lng'] as double);
     _mapController?.setCenter(latLng);
     _mapController?.setLevel(4);
+  }
 
-    if (!mounted) return;
+  void _openFoodSheet(int i) {
+    final s = _stadiums[i];
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -235,10 +279,24 @@ class _StadiumScreenState extends State<StadiumScreen> {
                 ],
               ),
             ),
-            Icon(
-              isSelected ? Icons.location_on : Icons.location_on_outlined,
-              size: 20,
-              color: isSelected ? color : Colors.grey[400],
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isSelected ? Icons.location_on : Icons.location_on_outlined,
+                  size: 20,
+                  color: isSelected ? color : Colors.grey[400],
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: Icon(Icons.restaurant_menu, size: 20,
+                      color: isSelected ? color : Colors.grey[400]),
+                  tooltip: '맛집 보기',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => _openFoodSheet(i),
+                ),
+              ],
             ),
           ],
         ),

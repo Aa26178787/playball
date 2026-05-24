@@ -26,6 +26,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   List _communityPosts = [];
   List _monthlyStats = [];
   List _h2hRecords = [];
+  List _battingOrderStats = [];
   bool _playersLoading = true;
   bool _gamesLoading = false;
   bool _rosterLoading = false;
@@ -33,13 +34,14 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   bool _communityLoading = false;
   bool _monthlyLoading = false;
   bool _h2hLoading = false;
+  bool _battingOrderLoading = false;
   bool _isFav = false;
   bool _favLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 7, vsync: this);
+    _tabController = TabController(length: 8, vsync: this);
     _tabController.addListener(() {
       if (_tabController.index == 1 && _games.isEmpty && !_gamesLoading) {
         _loadGames();
@@ -58,6 +60,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       }
       if (_tabController.index == 6 && _h2hRecords.isEmpty && !_h2hLoading) {
         _loadH2H();
+      }
+      if (_tabController.index == 7 && _battingOrderStats.isEmpty && !_battingOrderLoading) {
+        _loadBattingOrder();
       }
     });
     _loadPlayers();
@@ -201,6 +206,21 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     }
   }
 
+  Future<void> _loadBattingOrder() async {
+    setState(() => _battingOrderLoading = true);
+    try {
+      final data = await ApiService.getTeamBattingOrder(widget.team['id'] as int);
+      if (mounted) {
+        setState(() {
+          _battingOrderStats = data['stats'] ?? [];
+          _battingOrderLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _battingOrderLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final team = widget.team;
@@ -231,7 +251,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
           isScrollable: true,
-          tabs: const [Tab(text: '선수'), Tab(text: '최근경기'), Tab(text: '등록말소'), Tab(text: '뉴스'), Tab(text: '커뮤니티'), Tab(text: '월별성적'), Tab(text: '상대전적')],
+          tabs: const [Tab(text: '선수'), Tab(text: '최근경기'), Tab(text: '등록말소'), Tab(text: '뉴스'), Tab(text: '커뮤니티'), Tab(text: '월별성적'), Tab(text: '상대전적'), Tab(text: '타순별')],
         ),
       ),
       body: Column(
@@ -240,7 +260,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [_buildPlayers(), _buildGames(), _buildRosterChanges(), _buildNews(), _buildCommunity(), _buildMonthlyStats(), _buildHeadToHead()],
+              children: [_buildPlayers(), _buildGames(), _buildRosterChanges(), _buildNews(), _buildCommunity(), _buildMonthlyStats(), _buildHeadToHead(), _buildBattingOrder()],
             ),
           ),
         ],
@@ -1195,6 +1215,180 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
         Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
         Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
       ],
+    );
+  }
+
+  Widget _buildBattingOrder() {
+    if (_battingOrderLoading) return const Center(child: CircularProgressIndicator());
+    if (_battingOrderStats.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('타순별 성적 데이터가 없습니다', style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: _loadBattingOrder,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('다시 시도'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final code = widget.team['short_name'] as String? ?? '';
+    final color = teamColor(code);
+
+    // AVG 범위 계산 (색상 스케일용)
+    final avgs = _battingOrderStats.map((s) => (s['avg'] as num).toDouble()).toList();
+    final maxAvg = avgs.isNotEmpty ? avgs.reduce((a, b) => a > b ? a : b) : 0.3;
+    final minAvg = avgs.isNotEmpty ? avgs.reduce((a, b) => a < b ? a : b) : 0.2;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // 헤더 설명
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text('2026 시즌 타순별 누적 성적',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+        ),
+        // 컬럼 헤더
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              _boHeader('타순', 36, CrossAxisAlignment.center),
+              _boHeader('주요 타자', 90, CrossAxisAlignment.start),
+              _boHeader('타율', 52, CrossAxisAlignment.end),
+              _boHeader('출루율', 52, CrossAxisAlignment.end),
+              _boHeader('홈런', 40, CrossAxisAlignment.end),
+              _boHeader('타점', 40, CrossAxisAlignment.end),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        // 타순별 행
+        ..._battingOrderStats.map((s) {
+          final order = s['batting_order'] as int;
+          final avg = (s['avg'] as num).toDouble();
+          final obp = (s['obp'] as num).toDouble();
+          final hr = s['home_runs'] as int? ?? 0;
+          final rbi = s['rbis'] as int? ?? 0;
+          final topPlayer = s['top_player'] as String? ?? '-';
+
+          // AVG 기반 배경색 (높을수록 진한 파랑)
+          final t = maxAvg > minAvg ? (avg - minAvg) / (maxAvg - minAvg) : 0.5;
+          final bgColor = Color.lerp(Colors.grey.shade100, color.withOpacity(0.18), t)!;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 36,
+                  child: Center(
+                    child: Container(
+                      width: 26, height: 26,
+                      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                      alignment: Alignment.center,
+                      child: Text('$order',
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 90,
+                  child: Text(topPlayer,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                ),
+                _boValue(avg.toStringAsFixed(3), 52,
+                    avg >= 0.300 ? Colors.blue.shade700 : avg < 0.230 ? Colors.red.shade400 : null),
+                _boValue(obp.toStringAsFixed(3), 52,
+                    obp >= 0.370 ? Colors.blue.shade700 : null),
+                _boValue('$hr', 40, hr >= 5 ? Colors.deepOrange : null),
+                _boValue('$rbi', 40, rbi >= 30 ? Colors.deepOrange : null),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 12),
+        // AVG 바 차트
+        const Text('타순별 타율', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 120,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: _battingOrderStats.map((s) {
+              final order = s['batting_order'] as int;
+              final avg = (s['avg'] as num).toDouble();
+              final barH = maxAvg > 0 ? (avg / maxAvg) * 90 : 0.0;
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(avg.toStringAsFixed(3),
+                      style: TextStyle(fontSize: 8, color: Colors.grey.shade600)),
+                  const SizedBox(height: 2),
+                  Container(
+                    width: 26,
+                    height: barH,
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.7),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text('$order번',
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _boHeader(String label, double width, CrossAxisAlignment align) {
+    return SizedBox(
+      width: width,
+      child: Align(
+        alignment: align == CrossAxisAlignment.end
+            ? Alignment.centerRight
+            : align == CrossAxisAlignment.center
+                ? Alignment.center
+                : Alignment.centerLeft,
+        child: Text(label,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black54)),
+      ),
+    );
+  }
+
+  Widget _boValue(String value, double width, Color? color) {
+    return SizedBox(
+      width: width,
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Text(value,
+            style: TextStyle(
+                fontSize: 13,
+                fontWeight: color != null ? FontWeight.bold : FontWeight.normal,
+                color: color)),
+      ),
     );
   }
 }

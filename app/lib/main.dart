@@ -51,8 +51,8 @@ void main() async {
     statusBarIconBrightness: Brightness.light,
   ));
   AuthRepository.initialize(
-    appKey: 'f5b365c3d6aff5eb4640ab80783797ac',
-    baseUrl: 'http://playball.app',
+    appKey: '28893522eb71ed933caf1bb2e080bbf6',
+    baseUrl: 'http://localhost',
   );
   await _initFirebase();
   runApp(const PlayBallApp());
