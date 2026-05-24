@@ -79,6 +79,7 @@ class TodayGamesTab extends StatefulWidget {
 class _TodayGamesTabState extends State<TodayGamesTab> {
   DateTime _selectedDate = DateTime.now();
   List _games = [];
+  List _tomorrowGames = [];
   List _todayRosterChanges = [];
   List _rankings = [];
   bool _isLoading = true;
@@ -97,6 +98,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     _loadFavoriteTeams();
     _loadRankings();
     _loadUnreadCount();
+    _loadTomorrowGames();
     _startAutoRefresh();
   }
 
@@ -144,6 +146,16 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     try {
       final data = await ApiService.getTodayRosterChanges();
       if (mounted) setState(() => _todayRosterChanges = data['changes'] ?? []);
+    } catch (_) {}
+  }
+
+  Future<void> _loadTomorrowGames() async {
+    try {
+      final tomorrow = DateTime.now().add(const Duration(days: 1));
+      final dateStr =
+          '${tomorrow.year}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}';
+      final data = await ApiService.getGamesByDate(dateStr);
+      if (mounted) setState(() => _tomorrowGames = data['games'] ?? []);
     } catch (_) {}
   }
 
@@ -595,17 +607,139 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
         ),
       );
     }
+    final isToday = _selectedDate.year == DateTime.now().year &&
+        _selectedDate.month == DateTime.now().month &&
+        _selectedDate.day == DateTime.now().day;
+    final showTomorrow = isToday && _tomorrowGames.isNotEmpty;
+
     return RefreshIndicator(
       onRefresh: _loadGames,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: filtered.length,
+        itemCount: filtered.length + (showTomorrow ? 1 : 0),
         itemBuilder: (context, index) {
+          if (index == filtered.length) return _buildTomorrowPreview();
           final g = filtered[index];
           final isMyTeam = _favoriteTeamIds.contains(g['home_team_id']) ||
               _favoriteTeamIds.contains(g['away_team_id']);
           return GameCard(game: Game.fromJson(g), isMyTeam: isMyTeam && !_myTeamOnly);
         },
+      ),
+    );
+  }
+
+  Widget _buildTomorrowPreview() {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final label = '${tomorrow.month}/${tomorrow.day} 내일 경기 예고';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 10),
+          child: Row(
+            children: [
+              const Icon(Icons.upcoming_outlined, size: 15, color: Color(0xFF1A237E)),
+              const SizedBox(width: 5),
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 130,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _tomorrowGames.length,
+            itemBuilder: (ctx, i) => _buildTomorrowCard(_tomorrowGames[i] as Map),
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _buildTomorrowCard(Map g) {
+    final homeTeam = g['home_team'] as String? ?? '';
+    final awayTeam = g['away_team'] as String? ?? '';
+    final homeCode = g['home_team_code'] as String? ?? '';
+    final awayCode = g['away_team_code'] as String? ?? '';
+    final homeId = g['home_team_id'] as int? ?? 0;
+    final awayId = g['away_team_id'] as int? ?? 0;
+    final startTime = g['start_time'] as String? ?? '';
+    final homeStarter = g['home_starter'] as String?;
+    final awayStarter = g['away_starter'] as String?;
+    final gameId = g['id'] as int;
+    final isMy = _favoriteTeamIds.contains(homeId) || _favoriteTeamIds.contains(awayId);
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: gameId)),
+      ),
+      child: Container(
+        width: 160,
+        margin: const EdgeInsets.only(right: 10),
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isMy
+                ? const Color(0xFF1A237E).withOpacity(0.5)
+                : Colors.grey.withOpacity(0.2),
+            width: isMy ? 1.5 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // 시간
+            Text(startTime,
+                style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500)),
+            // 팀 로고 + vs
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Column(children: [
+                  TeamLogo(teamCode: homeCode, size: 30),
+                  const SizedBox(height: 2),
+                  Text(homeTeam, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const Text('홈', style: TextStyle(fontSize: 8, color: Colors.grey)),
+                ]),
+                const Text('vs', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                Column(children: [
+                  TeamLogo(teamCode: awayCode, size: 30),
+                  const SizedBox(height: 2),
+                  Text(awayTeam, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const Text('원정', style: TextStyle(fontSize: 8, color: Colors.grey)),
+                ]),
+              ],
+            ),
+            // 선발투수
+            if (homeStarter != null || awayStarter != null)
+              Column(
+                children: [
+                  if (homeStarter != null)
+                    Text('홈 $homeStarter',
+                        style: const TextStyle(fontSize: 9, color: Colors.indigo),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  if (awayStarter != null)
+                    Text('원정 $awayStarter',
+                        style: const TextStyle(fontSize: 9, color: Colors.indigo),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              )
+            else
+              Text('선발 미정',
+                  style: TextStyle(fontSize: 9, color: Colors.grey.shade400)),
+          ],
+        ),
       ),
     );
   }
