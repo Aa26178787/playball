@@ -296,7 +296,9 @@ class PlayerRankingsTab extends StatefulWidget {
 }
 
 class _PlayerRankingsTabState extends State<PlayerRankingsTab>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   late TabController _tabController;
 
   static const List<Map<String, String>> _hitterCategories = [
@@ -341,30 +343,41 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   Future<void> _loadAll() async {
     setState(() => _loading = true);
-    await Future.wait([
-      ..._hitterCategories.map((c) => _fetchHitter(c['value']!)),
-      ..._pitcherCategories.map((c) => _fetchPitcher(c['value']!)),
-    ]);
-    if (mounted) setState(() => _loading = false);
+    final hitterResults = await Future.wait(
+      _hitterCategories.map((c) => _fetchHitter(c['value']!)),
+    );
+    final pitcherResults = await Future.wait(
+      _pitcherCategories.map((c) => _fetchPitcher(c['value']!)),
+    );
+    if (!mounted) return;
+    setState(() {
+      for (int i = 0; i < _hitterCategories.length; i++) {
+        _hitterCache[_hitterCategories[i]['value']!] = hitterResults[i];
+      }
+      for (int i = 0; i < _pitcherCategories.length; i++) {
+        _pitcherCache[_pitcherCategories[i]['value']!] = pitcherResults[i];
+      }
+      _loading = false;
+    });
   }
 
-  Future<void> _fetchHitter(String sort) async {
+  Future<List> _fetchHitter(String sort) async {
     final qualified = sort == 'avg' || sort == 'ops';
     try {
       final data = await ApiService.getHitters(sortBy: sort, limit: 10, qualified: qualified);
-      if (mounted) setState(() => _hitterCache[sort] = data['hitters'] ?? []);
+      return data['hitters'] ?? [];
     } catch (_) {
-      if (mounted) setState(() => _hitterCache[sort] = []);
+      return [];
     }
   }
 
-  Future<void> _fetchPitcher(String sort) async {
+  Future<List> _fetchPitcher(String sort) async {
     final qualified = sort == 'era' || sort == 'whip';
     try {
       final data = await ApiService.getPitchers(sortBy: sort, limit: 10, qualified: qualified);
-      if (mounted) setState(() => _pitcherCache[sort] = data['pitchers'] ?? []);
+      return data['pitchers'] ?? [];
     } catch (_) {
-      if (mounted) setState(() => _pitcherCache[sort] = []);
+      return [];
     }
   }
 
@@ -396,6 +409,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Column(
       children: [
         TabBar(
