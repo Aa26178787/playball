@@ -299,7 +299,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  final List<Map<String, String>> _hitterCategories = [
+  static const List<Map<String, String>> _hitterCategories = [
     {'value': 'avg',          'label': '타율'},
     {'value': 'home_runs',    'label': '홈런'},
     {'value': 'rbis',         'label': '타점'},
@@ -309,7 +309,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     {'value': 'war',          'label': '대체승리기여'},
   ];
 
-  final List<Map<String, String>> _pitcherCategories = [
+  static const List<Map<String, String>> _pitcherCategories = [
     {'value': 'era',        'label': '평균자책점'},
     {'value': 'wins',       'label': '승리'},
     {'value': 'strikeouts', 'label': '탈삼진'},
@@ -321,21 +321,16 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   String _hitterSort = 'avg';
   String _pitcherSort = 'era';
-  List _hitterRankings = [];
-  List _pitcherRankings = [];
-  bool _hitterLoading = false;
-  bool _pitcherLoading = false;
+
+  final Map<String, List> _hitterCache = {};
+  final Map<String, List> _pitcherCache = {};
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (_tabController.index == 1 && _pitcherRankings.isEmpty) {
-        _loadPitchers();
-      }
-    });
-    _loadHitters();
+    _loadAll();
   }
 
   @override
@@ -344,27 +339,32 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     super.dispose();
   }
 
-  Future<void> _loadHitters() async {
-    setState(() => _hitterLoading = true);
-    // avg/ops: 규정타석 필터. 홈런/타점/안타/도루/WAR: 필터 없이 전체
-    final qualified = _hitterSort == 'avg' || _hitterSort == 'ops';
+  Future<void> _loadAll() async {
+    setState(() => _loading = true);
+    await Future.wait([
+      ..._hitterCategories.map((c) => _fetchHitter(c['value']!)),
+      ..._pitcherCategories.map((c) => _fetchPitcher(c['value']!)),
+    ]);
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _fetchHitter(String sort) async {
+    final qualified = sort == 'avg' || sort == 'ops';
     try {
-      final data = await ApiService.getHitters(sortBy: _hitterSort, limit: 10, qualified: qualified);
-      if (mounted) setState(() { _hitterRankings = data['hitters'] ?? []; _hitterLoading = false; });
+      final data = await ApiService.getHitters(sortBy: sort, limit: 10, qualified: qualified);
+      if (mounted) setState(() => _hitterCache[sort] = data['hitters'] ?? []);
     } catch (_) {
-      if (mounted) setState(() => _hitterLoading = false);
+      if (mounted) setState(() => _hitterCache[sort] = []);
     }
   }
 
-  Future<void> _loadPitchers() async {
-    setState(() => _pitcherLoading = true);
-    // era/whip: 규정이닝 필터. 세이브/홀드/승/탈삼진/WAR: 필터 없이 전체
-    final qualified = _pitcherSort == 'era' || _pitcherSort == 'whip';
+  Future<void> _fetchPitcher(String sort) async {
+    final qualified = sort == 'era' || sort == 'whip';
     try {
-      final data = await ApiService.getPitchers(sortBy: _pitcherSort, limit: 10, qualified: qualified);
-      if (mounted) setState(() { _pitcherRankings = data['pitchers'] ?? []; _pitcherLoading = false; });
+      final data = await ApiService.getPitchers(sortBy: sort, limit: 10, qualified: qualified);
+      if (mounted) setState(() => _pitcherCache[sort] = data['pitchers'] ?? []);
     } catch (_) {
-      if (mounted) setState(() => _pitcherLoading = false);
+      if (mounted) setState(() => _pitcherCache[sort] = []);
     }
   }
 
@@ -577,19 +577,18 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   Widget _buildHitterRankings() {
     final label = _hitterCategories.firstWhere((c) => c['value'] == _hitterSort)['label']!;
+    final rankings = _hitterCache[_hitterSort] ?? [];
     return Column(
       children: [
-        _buildCategoryChips(_hitterCategories, _hitterSort, (val) {
-          setState(() { _hitterSort = val; _hitterRankings = []; });
-          _loadHitters();
-        }),
+        _buildCategoryChips(_hitterCategories, _hitterSort,
+            (val) => setState(() => _hitterSort = val)),
         const SizedBox(height: 4),
         Expanded(
-          child: _hitterLoading
+          child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : _hitterRankings.isEmpty
+              : rankings.isEmpty
                   ? const Center(child: Text('데이터가 없습니다'))
-                  : _buildRankingsContent(_hitterRankings, _hitterStatValue, label),
+                  : _buildRankingsContent(rankings, _hitterStatValue, label),
         ),
       ],
     );
@@ -597,19 +596,18 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   Widget _buildPitcherRankings() {
     final label = _pitcherCategories.firstWhere((c) => c['value'] == _pitcherSort)['label']!;
+    final rankings = _pitcherCache[_pitcherSort] ?? [];
     return Column(
       children: [
-        _buildCategoryChips(_pitcherCategories, _pitcherSort, (val) {
-          setState(() { _pitcherSort = val; _pitcherRankings = []; });
-          _loadPitchers();
-        }),
+        _buildCategoryChips(_pitcherCategories, _pitcherSort,
+            (val) => setState(() => _pitcherSort = val)),
         const SizedBox(height: 4),
         Expanded(
-          child: _pitcherLoading
+          child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : _pitcherRankings.isEmpty
+              : rankings.isEmpty
                   ? const Center(child: Text('데이터가 없습니다'))
-                  : _buildRankingsContent(_pitcherRankings, _pitcherStatValue, label),
+                  : _buildRankingsContent(rankings, _pitcherStatValue, label),
         ),
       ],
     );
