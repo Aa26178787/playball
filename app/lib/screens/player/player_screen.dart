@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
@@ -16,19 +15,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  List _allHitters = [];
+  List _allPitchers = [];
   List _hitters = [];
   List _pitchers = [];
   bool _hitterLoading = true;
   bool _pitcherLoading = true;
-
-  int _hitterReqId = 0;
-  int _pitcherReqId = 0;
-
-  bool _hitterEverLoaded = false;
-  bool _pitcherEverLoaded = false;
-
-  Timer? _hitterDebounce;
-  Timer? _pitcherDebounce;
 
   String _hitterSort = 'avg';
   String _pitcherSort = 'era';
@@ -73,8 +65,6 @@ class _PlayerScreenState extends State<PlayerScreen>
   void dispose() {
     _tabController.dispose();
     _searchController.dispose();
-    _hitterDebounce?.cancel();
-    _pitcherDebounce?.cancel();
     super.dispose();
   }
 
@@ -86,32 +76,104 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Future<void> _loadHitters() async {
-    final reqId = ++_hitterReqId;
     setState(() => _hitterLoading = true);
     try {
-      final data = await ApiService.getHitters(sortBy: _hitterSort, limit: 200, teamId: _selectedTeamId);
-      if (mounted && reqId == _hitterReqId) {
+      final data = await ApiService.getHitters(sortBy: 'avg', limit: 500, teamId: null);
+      if (mounted) {
         final fresh = data['hitters'] as List? ?? [];
-        setState(() { if (fresh.isNotEmpty) { _hitters = fresh; _hitterEverLoaded = true; } _hitterLoading = false; });
+        _allHitters = fresh;
+        _applyHitterFilter();
+        setState(() => _hitterLoading = false);
       }
     } catch (_) {
-      if (mounted && reqId == _hitterReqId) setState(() => _hitterLoading = false);
+      if (mounted) setState(() => _hitterLoading = false);
     }
   }
 
   Future<void> _loadPitchers() async {
-    final reqId = ++_pitcherReqId;
     setState(() => _pitcherLoading = true);
     try {
-      final data = await ApiService.getPitchers(sortBy: _pitcherSort, limit: 200, teamId: _selectedTeamId);
-      if (mounted && reqId == _pitcherReqId) {
+      final data = await ApiService.getPitchers(sortBy: 'era', limit: 500, teamId: null);
+      if (mounted) {
         final fresh = data['pitchers'] as List? ?? [];
-        setState(() { if (fresh.isNotEmpty) { _pitchers = fresh; _pitcherEverLoaded = true; } _pitcherLoading = false; });
+        _allPitchers = fresh;
+        _applyPitcherFilter();
+        setState(() => _pitcherLoading = false);
       }
     } catch (_) {
-      if (mounted && reqId == _pitcherReqId) setState(() => _pitcherLoading = false);
+      if (mounted) setState(() => _pitcherLoading = false);
     }
   }
+
+  void _applyHitterFilter() {
+    List filtered = _selectedTeamId == null
+        ? List.from(_allHitters)
+        : _allHitters.where((p) {
+            final code = (p as Map)['team_code'] as String? ?? '';
+            return _teams.any((t) =>
+                (t as Map)['id'] == _selectedTeamId &&
+                (t as Map)['short_name'] == code);
+          }).toList();
+
+    filtered.sort((a, b) {
+      final am = a as Map;
+      final bm = b as Map;
+      switch (_hitterSort) {
+        case 'avg':          return _cmpDesc(bm['avg'],          am['avg']);
+        case 'home_runs':    return _cmpDesc(bm['home_runs'],    am['home_runs']);
+        case 'rbis':         return _cmpDesc(bm['rbis'],         am['rbis']);
+        case 'hits':         return _cmpDesc(bm['hits'],         am['hits']);
+        case 'stolen_bases': return _cmpDesc(bm['stolen_bases'], am['stolen_bases']);
+        case 'ops':          return _cmpDesc(bm['ops'],          am['ops']);
+        case 'war':          return _cmpDesc(bm['war'],          am['war']);
+        default:             return 0;
+      }
+    });
+
+    _hitters = filtered;
+  }
+
+  void _applyPitcherFilter() {
+    List filtered = _selectedTeamId == null
+        ? List.from(_allPitchers)
+        : _allPitchers.where((p) {
+            final code = (p as Map)['team_code'] as String? ?? '';
+            return _teams.any((t) =>
+                (t as Map)['id'] == _selectedTeamId &&
+                (t as Map)['short_name'] == code);
+          }).toList();
+
+    filtered.sort((a, b) {
+      final am = a as Map;
+      final bm = b as Map;
+      switch (_pitcherSort) {
+        case 'era':
+          // ascending; 0 (no IP) goes to bottom
+          final ae = (am['era'] as num?)?.toDouble() ?? 0;
+          final be = (bm['era'] as num?)?.toDouble() ?? 0;
+          final ae2 = ae == 0 ? 99.99 : ae;
+          final be2 = be == 0 ? 99.99 : be;
+          return ae2.compareTo(be2);
+        case 'whip':
+          final aw = (am['whip'] as num?)?.toDouble() ?? 0;
+          final bw = (bm['whip'] as num?)?.toDouble() ?? 0;
+          final aw2 = aw == 0 ? 99.99 : aw;
+          final bw2 = bw == 0 ? 99.99 : bw;
+          return aw2.compareTo(bw2);
+        case 'wins':       return _cmpDesc(bm['wins'],       am['wins']);
+        case 'strikeouts': return _cmpDesc(bm['strikeouts'], am['strikeouts']);
+        case 'saves':      return _cmpDesc(bm['saves'],      am['saves']);
+        case 'holds':      return _cmpDesc(bm['holds'],      am['holds']);
+        case 'war':        return _cmpDesc(bm['war'],        am['war']);
+        default:           return 0;
+      }
+    });
+
+    _pitchers = filtered;
+  }
+
+  int _cmpDesc(dynamic b, dynamic a) =>
+      ((b as num?) ?? 0).compareTo((a as num?) ?? 0);
 
   Future<void> _search(String query) async {
     if (query.isEmpty) {
@@ -150,7 +212,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
   }
 
-  Widget _buildTeamFilterChips(void Function(int?) onSelect) {
+  Widget _buildTeamFilterChips(VoidCallback onSelect) {
     return SizedBox(
       height: 34,
       child: ListView.builder(
@@ -161,7 +223,10 @@ class _PlayerScreenState extends State<PlayerScreen>
           if (i == 0) {
             final sel = _selectedTeamId == null;
             return GestureDetector(
-              onTap: () => onSelect(null),
+              onTap: () {
+                setState(() => _selectedTeamId = null);
+                onSelect();
+              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 margin: const EdgeInsets.only(right: 6),
@@ -181,7 +246,10 @@ class _PlayerScreenState extends State<PlayerScreen>
           final code = t['short_name'] as String? ?? '';
           final sel = _selectedTeamId == tid;
           return GestureDetector(
-            onTap: () => onSelect(tid),
+            onTap: () {
+              setState(() => _selectedTeamId = tid);
+              onSelect();
+            },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               margin: const EdgeInsets.only(right: 6),
@@ -295,29 +363,25 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Widget _buildHitterList() {
-    if (_hitters.isEmpty) {
-      if (_hitterLoading || _hitterEverLoaded) return const Center(child: CircularProgressIndicator());
-      return const Center(child: Text('데이터가 없습니다'));
-    }
+    if (_hitterLoading) return const Center(child: CircularProgressIndicator());
+    if (_hitters.isEmpty) return const Center(child: Text('데이터가 없습니다'));
     final label = _hitterSorts.firstWhere((s) => s['value'] == _hitterSort)['label']!;
     return ListView.separated(
       padding: const EdgeInsets.only(bottom: 24),
       itemCount: _hitters.length,
-      separatorBuilder: (context2, idx) => Divider(height: 1, indent: 52, endIndent: 16, color: Colors.grey.withValues(alpha: 0.15)),
+      separatorBuilder: (_, __) => Divider(height: 1, indent: 52, endIndent: 16, color: Colors.grey.withValues(alpha: 0.15)),
       itemBuilder: (_, i) => _buildPlayerRow(_hitters[i] as Map, _hitterStat(_hitters[i] as Map), label),
     );
   }
 
   Widget _buildPitcherList() {
-    if (_pitchers.isEmpty) {
-      if (_pitcherLoading || _pitcherEverLoaded) return const Center(child: CircularProgressIndicator());
-      return const Center(child: Text('데이터가 없습니다'));
-    }
+    if (_pitcherLoading) return const Center(child: CircularProgressIndicator());
+    if (_pitchers.isEmpty) return const Center(child: Text('데이터가 없습니다'));
     final label = _pitcherSorts.firstWhere((s) => s['value'] == _pitcherSort)['label']!;
     return ListView.separated(
       padding: const EdgeInsets.only(bottom: 24),
       itemCount: _pitchers.length,
-      separatorBuilder: (context2, idx) => Divider(height: 1, indent: 52, endIndent: 16, color: Colors.grey.withValues(alpha: 0.15)),
+      separatorBuilder: (_, __) => Divider(height: 1, indent: 52, endIndent: 16, color: Colors.grey.withValues(alpha: 0.15)),
       itemBuilder: (_, i) => _buildPlayerRow(_pitchers[i] as Map, _pitcherStat(_pitchers[i] as Map), label),
     );
   }
@@ -399,14 +463,14 @@ class _PlayerScreenState extends State<PlayerScreen>
                     children: [
                       const SizedBox(height: 6),
                       _buildSortChips(_hitterSorts, _hitterSort, (val) {
-                        setState(() => _hitterSort = val);
-                        _hitterDebounce?.cancel();
-                        _hitterDebounce = Timer(const Duration(milliseconds: 250), _loadHitters);
+                        setState(() {
+                          _hitterSort = val;
+                          _applyHitterFilter();
+                        });
                       }),
                       const SizedBox(height: 4),
-                      _buildTeamFilterChips((tid) {
-                        setState(() => _selectedTeamId = tid);
-                        _loadHitters();
+                      _buildTeamFilterChips(() {
+                        setState(_applyHitterFilter);
                       }),
                       const SizedBox(height: 4),
                       const Divider(height: 1),
@@ -417,14 +481,14 @@ class _PlayerScreenState extends State<PlayerScreen>
                     children: [
                       const SizedBox(height: 6),
                       _buildSortChips(_pitcherSorts, _pitcherSort, (val) {
-                        setState(() => _pitcherSort = val);
-                        _pitcherDebounce?.cancel();
-                        _pitcherDebounce = Timer(const Duration(milliseconds: 250), _loadPitchers);
+                        setState(() {
+                          _pitcherSort = val;
+                          _applyPitcherFilter();
+                        });
                       }),
                       const SizedBox(height: 4),
-                      _buildTeamFilterChips((tid) {
-                        setState(() => _selectedTeamId = tid);
-                        _loadPitchers();
+                      _buildTeamFilterChips(() {
+                        setState(_applyPitcherFilter);
                       }),
                       const SizedBox(height: 4),
                       const Divider(height: 1),
