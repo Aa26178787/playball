@@ -1888,6 +1888,55 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               '${_formatInnings(p['innings_pitched'])}이닝  자책 ${p['earned_runs']}  실점 ${p['runs_allowed'] ?? p['earned_runs']}  삼진 ${p['strikeouts']}  사사구 ${p['walks'] ?? 0}',
               style: TextStyle(fontSize: 11, color: Colors.grey[500]),
             ),
+            () {
+              final strikes = (p['strikes'] as num?)?.toInt() ?? 0;
+              final balls = (p['balls'] as num?)?.toInt() ?? 0;
+              final total = strikes + balls;
+              if (total == 0) return const SizedBox.shrink();
+              final strikePct = (strikes / total * 100).round();
+              return Padding(
+                padding: const EdgeInsets.only(top: 5),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: SizedBox(
+                        height: 10,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: strikes,
+                              child: Container(color: Colors.red[400]),
+                            ),
+                            Expanded(
+                              flex: balls,
+                              child: Container(color: Colors.blue[400]),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Container(width: 7, height: 7,
+                            decoration: BoxDecoration(color: Colors.red[400], shape: BoxShape.circle)),
+                        const SizedBox(width: 3),
+                        Text('스트라이크 $strikePct% ($strikes)',
+                            style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                        const SizedBox(width: 10),
+                        Container(width: 7, height: 7,
+                            decoration: BoxDecoration(color: Colors.blue[400], shape: BoxShape.circle)),
+                        const SizedBox(width: 3),
+                        Text('볼 ${100 - strikePct}% ($balls)',
+                            style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }(),
             if (_pitchTypesData != null) ...[
               () {
                 final pitcherName = p['name'] as String? ?? '';

@@ -772,6 +772,17 @@ def get_game_detail(game_id: int):
     pitchers = cur.fetchall()
 
     cur.execute("""
+        SELECT pitcher_name,
+            COUNT(CASE WHEN result IN ('스트라이크','헛스윙','파울','타격') THEN 1 END) AS strikes,
+            COUNT(CASE WHEN result = '볼' THEN 1 END) AS balls,
+            COUNT(*) AS total
+        FROM game_pitches
+        WHERE game_id = %s AND type = 1 AND pitcher_name IS NOT NULL
+        GROUP BY pitcher_name
+    """, (game_id,))
+    sb_map = {r[0]: {'strikes': int(r[1]), 'balls': int(r[2]), 'total': int(r[3])} for r in cur.fetchall()}
+
+    cur.execute("""
         SELECT p.name, gb.batting_order, gb.position,
             gb.at_bats, gb.hits, gb.rbis,
             gb.home_runs, gb.avg, gb.team_side
@@ -861,6 +872,8 @@ def get_game_detail(game_id: int):
                 "home_runs_allowed": r[10] or 0,
                 "pitch_count":       r[11] or 0,
                 "profile_image":     r[12],
+                "strikes":           sb_map.get(r[0], {}).get('strikes', 0),
+                "balls":             sb_map.get(r[0], {}).get('balls', 0),
             }
             for r in pitchers
         ],
