@@ -13,4 +13,4 @@
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen|keyguard"
     android:previewLayout="@layout/widget_medium"
-    android:description="PlayBall 위젯" />
+    android:description="@string/widget_description" />
