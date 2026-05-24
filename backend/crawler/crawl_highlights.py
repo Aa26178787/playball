@@ -14,7 +14,16 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import requests
 from database.connection import get_connection
 
-HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Referer': 'https://sports.naver.com/',
+}
+
+# KBO 관련 YouTube 채널 ID 목록
+KBO_YOUTUBE_CHANNELS = [
+    'UCJkCKfxJVS_2jGGOqPTqBxw',  # KBO TV (공식)
+    'UCPZTalFKDPvkDiYi0CeIyMg',  # 네이버 스포츠 야구
+]
 
 # 팀명 → team_id 매핑 (DB 기준)
 TEAM_NAME_MAP = {
@@ -155,13 +164,161 @@ def save_highlights(articles: list[dict]) -> int:
     return saved
 
 
+# ── YouTube RSS 하이라이트 ──────────────────────────────────────────────────────
+
+_YT_NS = {
+    'atom':  'http://www.w3.org/2005/Atom',
+    'yt':    'http://www.youtube.com/xml/schemas/2015',
+    'media': 'http://search.yahoo.com/mrss/',
+}
+_KBO_KW = ['하이라이트', 'KBO', '야구', '홈런', '명장면', 'Shorts', '#Shorts', 'vs', 'VS', '경기']
+
+
+def fetch_youtube_highlights(today: str | None = None) -> list[dict]:
+    """KBO YouTube 채널 RSS → 당일 영상 수집 (Shorts 포함)"""
+    if today is None:
+        today = datetime.now().strftime('%Y-%m-%d')
+    articles = []
+    for channel_id in KBO_YOUTUBE_CHANNELS:
+        try:
+            url = f'https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}'
+            r = requests.get(url, headers=HEADERS, timeout=10)
+            if r.status_code != 200:
+                continue
+            root = ET.fromstring(r.content)
+            for entry in root.findall('atom:entry', _YT_NS):
+                title_el   = entry.find('atom:title',     _YT_NS)
+                link_el    = entry.find('atom:link',      _YT_NS)
+                pub_el     = entry.find('atom:published', _YT_NS)
+                vid_el     = entry.find('yt:videoId',     _YT_NS)
+                if title_el is None or link_el is None:
+                    continue
+                title    = title_el.text or ''
+                link     = link_el.get('href', '')
+                pub_str  = pub_el.text if pub_el is not None else ''
+                video_id = vid_el.text if vid_el is not None else ''
+                # 당일 영상만
+                if pub_str[:10] != today:
+                    continue
+                # KBO 관련 키워드 없으면 스킵
+                if not any(kw in title for kw in _KBO_KW):
+                    continue
+                # Shorts는 /shorts/ URL 사용
+                is_shorts = '#Shorts' in title or 'Shorts' in title
+                video_url = (f'https://www.youtube.com/shorts/{video_id}'
+                             if is_shorts and video_id else link)
+                t1, t2 = _parse_teams_from_title(title)
+                try:
+                    pub_dt = datetime.fromisoformat(pub_str.replace('Z', '+00:00')).replace(tzinfo=None)
+                except Exception:
+                    pub_dt = datetime.now()
+                articles.append({
+                    'title': title,
+                    'url':   video_url,
+                    'source': 'youtube',
+                    'published_at': pub_dt,
+                    'team_id1': t1,
+                    'team_id2': t2,
+                    'game_date': today,
+                })
+        except Exception as e:
+            print(f'[YouTube RSS] 채널 {channel_id} 오류: {e}')
+    return articles
+
+
+# ── Naver 스포츠 하이라이트 ────────────────────────────────────────────────────
+
+_NAVER_HL_APIS = [
+    'https://api-gw.sports.naver.com/contents/video?category=KBO&count=30&page=1',
+    'https://sports.naver.com/kbo/highlights/index',
+]
+
+
+def fetch_naver_highlights(today: str | None = None) -> list[dict]:
+    """Naver 스포츠 KBO 하이라이트 수집"""
+    if today is None:
+        today = datetime.now().strftime('%Y-%m-%d')
+    articles = []
+    try:
+        # API 방식 시도
+        r = requests.get(_NAVER_HL_APIS[0], headers=HEADERS, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            items = data.get('result', {}).get('list', []) or data.get('list', []) or []
+            for item in items:
+                title = item.get('title', '') or item.get('videoTitle', '')
+                url   = item.get('videoUrl', '') or item.get('linkUrl', '')
+                pub   = item.get('playDate', '') or item.get('regDate', '')
+                if not title or not url:
+                    continue
+                # 당일 기사만
+                if pub and pub[:10] != today:
+                    continue
+                t1, t2 = _parse_teams_from_title(title)
+                articles.append({
+                    'title': title,
+                    'url': url,
+                    'source': 'naver_sports',
+                    'published_at': datetime.now(),
+                    'team_id1': t1,
+                    'team_id2': t2,
+                    'game_date': today,
+                })
+    except Exception:
+        pass
+
+    if not articles:
+        # HTML 파싱 fallback
+        try:
+            r = requests.get(_NAVER_HL_APIS[1], headers=HEADERS, timeout=10)
+            if r.status_code == 200:
+                html = r.text
+                # 하이라이트 링크 패턴 추출
+                patterns = [
+                    re.compile(r'href="(https?://(?:tv|v)\.naver\.com/v/[^"]+)"[^>]*>([^<]+)</a>'),
+                    re.compile(r'href="(/kbo/highlights/video\?[^"]+)"[^>]*title="([^"]+)"'),
+                ]
+                for pat in patterns:
+                    for m in pat.finditer(html):
+                        href, title = m.group(1), m.group(2)
+                        url = href if href.startswith('http') else f'https://sports.naver.com{href}'
+                        t1, t2 = _parse_teams_from_title(title)
+                        articles.append({
+                            'title': title,
+                            'url': url,
+                            'source': 'naver_sports',
+                            'published_at': datetime.now(),
+                            'team_id1': t1,
+                            'team_id2': t2,
+                            'game_date': today,
+                        })
+        except Exception as e:
+            print(f'[Naver 하이라이트] HTML 파싱 오류: {e}')
+    return articles
+
+
 def crawl_highlights():
+    today = datetime.now().strftime('%Y-%m-%d')
     total = 0
+
+    # 1) Google News RSS (기존)
     for q in ['KBO 야구 하이라이트', 'KBO 하이라이트 TVING', 'KBO 경기 명장면']:
         articles = fetch_highlight_rss(q)
-        n = save_highlights(articles)
-        total += n
+        total += save_highlights(articles)
         time.sleep(0.5)
+
+    # 2) YouTube 채널 RSS (당일 쇼츠 + 하이라이트)
+    yt_articles = fetch_youtube_highlights(today)
+    if yt_articles:
+        total += save_highlights(yt_articles)
+        print(f'[YouTube] {len(yt_articles)}건 수집')
+
+    # 3) Naver 스포츠 하이라이트
+    nv_articles = fetch_naver_highlights(today)
+    if nv_articles:
+        total += save_highlights(nv_articles)
+        print(f'[Naver] {len(nv_articles)}건 수집')
+
     print(f'[{datetime.now()}] 하이라이트 크롤링 완료: {total}건')
     return total
 
