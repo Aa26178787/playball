@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from database.connection import get_connection
 from typing import Optional
+from api.cache import cached
 
 router = APIRouter()
 
@@ -234,6 +235,7 @@ def get_pitchers(
 
 
 @router.get("/rankings")
+@cached(300)
 def get_player_rankings(season: int = 2026):
     conn = get_connection()
     if not conn:

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from database.connection import get_connection
+from api.cache import cached
 
 router = APIRouter()
 
@@ -146,6 +147,7 @@ def _calc_home_away(team_id, cur):
 
 
 @router.get("/rankings")
+@cached(60)
 def get_team_rankings():
     conn = get_connection()
     if not conn:

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from database.connection import get_connection
 from api.weather_service import get_weather, get_forecast_at
+from api.cache import cached
 
 router = APIRouter()
 
@@ -614,6 +615,7 @@ def get_game_roster(game_id: int):
 
 
 @router.get("/today")
+@cached(30)
 def get_today_games():
     conn = get_connection()
     if not conn:
@@ -900,6 +902,7 @@ def get_game_detail(game_id: int):
 
 
 @router.get("/date/{date_str}")
+@cached(30)
 def get_games_by_date(date_str: str):
     conn = get_connection()
     if not conn:
