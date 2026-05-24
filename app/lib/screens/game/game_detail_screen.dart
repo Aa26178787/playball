@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'dart:async';
+import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../api/api_service.dart';
+import '../../utils/team_theme.dart';
 import 'pitch_location_chart.dart';
 
 class GameDetailScreen extends StatefulWidget {
@@ -453,25 +458,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
-            onPressed: () {
-              final status = game['status'] as String? ?? '';
-              final homeScore = game['home_score'] ?? 0;
-              final awayScore = game['away_score'] ?? 0;
-              final date = (game['game_date'] ?? '').toString();
-              String text;
-              if (status == '종료') {
-                text = '[KBO 2026] ${game['home_team']} $homeScore : $awayScore ${game['away_team']}\n'
-                    '📅 $date | ${game['stadium'] ?? ''}';
-              } else if (status == '진행') {
-                text = '[KBO 진행중] ${game['home_team']} $homeScore : $awayScore ${game['away_team']}\n'
-                    '${game['current_inning'] ?? ''}회 ${game['inning_half'] ?? ''}';
-              } else {
-                text = '[KBO 2026] ${game['home_team']} vs ${game['away_team']}\n'
-                    '📅 $date ${game['start_time'] ?? ''} | ${game['stadium'] ?? ''}';
-              }
-              // ignore: deprecated_member_use
-              Share.share(text);
-            },
+            onPressed: () => showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              builder: (_) => _GameShareSheet(game: game),
+            ),
           ),
         ],
         bottom: TabBar(
@@ -2318,6 +2312,287 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           },
         );
       },
+    );
+  }
+}
+
+
+class _GameShareSheet extends StatefulWidget {
+  final Map<String, dynamic> game;
+  const _GameShareSheet({required this.game});
+
+  @override
+  State<_GameShareSheet> createState() => _GameShareSheetState();
+}
+
+class _GameShareSheetState extends State<_GameShareSheet> {
+  final _cardKey = GlobalKey();
+  bool _sharing = false;
+
+  Map<String, dynamic> get g => widget.game;
+
+  Future<void> _captureAndShare() async {
+    if (_sharing) return;
+    setState(() => _sharing = true);
+    try {
+      await Future.delayed(const Duration(milliseconds: 50));
+      final boundary =
+          _cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final bytes = byteData!.buffer.asUint8List();
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/playball_game.png');
+      await file.writeAsBytes(bytes);
+      // ignore: deprecated_member_use
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: _buildText(),
+      );
+    } catch (e) {
+      _shareText();
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
+
+  void _shareText() {
+    // ignore: deprecated_member_use
+    Share.share(_buildText());
+  }
+
+  String _buildText() {
+    final status = g['status'] as String? ?? '';
+    final hs = g['home_score'] ?? 0;
+    final as_ = g['away_score'] ?? 0;
+    final date = (g['game_date'] ?? '').toString();
+    if (status == '종료') {
+      return '⚾ [KBO 2026] ${g['home_team']} $hs : $as_ ${g['away_team']}\n'
+          '📅 $date | ${g['stadium'] ?? ''}\nPlayBall 앱에서 확인하세요';
+    } else if (status == '진행') {
+      return '⚾ [KBO 진행중] ${g['home_team']} $hs : $as_ ${g['away_team']}\n'
+          '${g['current_inning'] ?? ''}회 ${g['inning_half'] ?? ''}\nPlayBall 앱에서 확인하세요';
+    }
+    return '⚾ [KBO 2026] ${g['home_team']} vs ${g['away_team']}\n'
+        '📅 $date ${g['start_time'] ?? ''} | ${g['stadium'] ?? ''}\nPlayBall 앱에서 확인하세요';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40, height: 4,
+            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(height: 20),
+          RepaintBoundary(
+            key: _cardKey,
+            child: _buildCard(),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _shareText,
+                  icon: const Icon(Icons.text_fields, size: 16),
+                  label: const Text('텍스트 공유'),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF1A237E)),
+                    foregroundColor: const Color(0xFF1A237E),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _sharing ? null : _captureAndShare,
+                  icon: _sharing
+                      ? const SizedBox(width: 16, height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.image, size: 16),
+                  label: const Text('이미지 공유'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1A237E),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCard() {
+    final status = g['status'] as String? ?? '';
+    final hs = g['home_score'] as int? ?? 0;
+    final as_ = g['away_score'] as int? ?? 0;
+    final homeTeam = g['home_team'] as String? ?? '';
+    final awayTeam = g['away_team'] as String? ?? '';
+    final homeCode = g['home_team_code'] as String? ?? '';
+    final awayCode = g['away_team_code'] as String? ?? '';
+    final date = (g['game_date'] ?? '').toString();
+    final stadium = g['stadium'] as String? ?? '';
+    final startTime = g['start_time'] as String? ?? '';
+    final winPitcher = g['win_pitcher'] as String?;
+    final losePitcher = g['lose_pitcher'] as String?;
+    final isDraw = g['is_draw'] == true;
+
+    Color statusColor;
+    String statusLabel;
+    switch (status) {
+      case '종료':   statusColor = Colors.white70; statusLabel = '경기 종료'; break;
+      case '진행':   statusColor = Colors.greenAccent; statusLabel = '경기 진행중'; break;
+      case '취소':   statusColor = Colors.redAccent; statusLabel = '경기 취소'; break;
+      case '라인업': statusColor = Colors.lightGreenAccent; statusLabel = '라인업 확정'; break;
+      default:       statusColor = Colors.white70; statusLabel = '경기 예정';
+    }
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1A237E), Color(0xFF283593)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header
+          Row(
+            children: [
+              const Text('⚾', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 6),
+              const Text('PlayBall  KBO 2026',
+                  style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: statusColor.withOpacity(0.5)),
+                ),
+                child: Text(statusLabel, style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Teams + Score
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    _teamColorBlock(homeCode, 48),
+                    const SizedBox(height: 6),
+                    Text(homeTeam,
+                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center),
+                    const Text('홈', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                  ],
+                ),
+              ),
+              Column(
+                children: [
+                  Text(
+                    status == '예정' ? 'VS' : '$hs : $as_',
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold,
+                        letterSpacing: 2),
+                  ),
+                  if (status == '예정' && startTime.isNotEmpty)
+                    Text(startTime, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    _teamColorBlock(awayCode, 48),
+                    const SizedBox(height: 6),
+                    Text(awayTeam,
+                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center),
+                    const Text('원정', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Date + Stadium
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '📅 $date${stadium.isNotEmpty ? '  •  $stadium' : ''}',
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          // Pitcher info (종료)
+          if (status == '종료') ...[
+            const SizedBox(height: 10),
+            if (isDraw)
+              const Text('무승부', style: TextStyle(color: Colors.white70, fontSize: 12))
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (winPitcher != null)
+                    _pitcherChip('승 $winPitcher', Colors.blue.shade300),
+                  if (winPitcher != null && losePitcher != null)
+                    const SizedBox(width: 8),
+                  if (losePitcher != null)
+                    _pitcherChip('패 $losePitcher', Colors.red.shade300),
+                ],
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _teamColorBlock(String code, double size) {
+    final color = teamColor(code);
+    return Container(
+      width: size, height: size,
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.25),
+        shape: BoxShape.circle,
+        border: Border.all(color: color.withOpacity(0.6), width: 2),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        code.length >= 2 ? code.substring(0, 2) : code,
+        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: size * 0.3),
+      ),
+    );
+  }
+
+  Widget _pitcherChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
     );
   }
 }

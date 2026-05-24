@@ -69,6 +69,9 @@ dependencies:
   # 공유 기능
   share_plus: 10.0.0
 
+  # 임시 디렉토리 (이미지 공유용)
+  path_provider: ^2.1.4
+
   # 아이콘
   cupertino_icons: ^1.0.8
 
