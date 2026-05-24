@@ -772,11 +772,11 @@ def get_game_detail(game_id: int):
 
     cur.execute("""
         SELECT pitcher_name,
-            COUNT(CASE WHEN result IN ('스트라이크','헛스윙','파울','타격') THEN 1 END) AS strikes,
-            COUNT(CASE WHEN result = '볼' THEN 1 END) AS balls,
+            COUNT(CASE WHEN pitch_result IN ('S','F','X') THEN 1 END) AS strikes,
+            COUNT(CASE WHEN pitch_result = 'B' THEN 1 END) AS balls,
             COUNT(*) AS total
         FROM game_pitches
-        WHERE game_id = %s AND type = 1 AND pitcher_name IS NOT NULL
+        WHERE game_id = %s AND pitcher_name IS NOT NULL AND pitch_result IS NOT NULL
         GROUP BY pitcher_name
     """, (game_id,))
     sb_map = {r[0]: {'strikes': int(r[1]), 'balls': int(r[2]), 'total': int(r[3])} for r in cur.fetchall()}
