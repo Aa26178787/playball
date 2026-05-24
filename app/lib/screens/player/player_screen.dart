@@ -57,12 +57,9 @@ class _PlayerScreenState extends State<PlayerScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) return;
-      if (_tabController.index == 1 && _pitchers.isEmpty) _loadPitchers();
-    });
     _loadTeams();
     _loadHitters();
+    _loadPitchers();
   }
 
   @override
