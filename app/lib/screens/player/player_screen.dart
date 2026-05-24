@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
@@ -22,6 +23,9 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   int _hitterReqId = 0;
   int _pitcherReqId = 0;
+
+  Timer? _hitterDebounce;
+  Timer? _pitcherDebounce;
 
   String _hitterSort = 'avg';
   String _pitcherSort = 'era';
@@ -66,6 +70,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   void dispose() {
     _tabController.dispose();
     _searchController.dispose();
+    _hitterDebounce?.cancel();
+    _pitcherDebounce?.cancel();
     super.dispose();
   }
 
@@ -389,7 +395,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                       const SizedBox(height: 6),
                       _buildSortChips(_hitterSorts, _hitterSort, (val) {
                         setState(() => _hitterSort = val);
-                        _loadHitters();
+                        _hitterDebounce?.cancel();
+                        _hitterDebounce = Timer(const Duration(milliseconds: 250), _loadHitters);
                       }),
                       const SizedBox(height: 4),
                       _buildTeamFilterChips((tid) {
@@ -406,7 +413,8 @@ class _PlayerScreenState extends State<PlayerScreen>
                       const SizedBox(height: 6),
                       _buildSortChips(_pitcherSorts, _pitcherSort, (val) {
                         setState(() => _pitcherSort = val);
-                        _loadPitchers();
+                        _pitcherDebounce?.cancel();
+                        _pitcherDebounce = Timer(const Duration(milliseconds: 250), _loadPitchers);
                       }),
                       const SizedBox(height: 4),
                       _buildTeamFilterChips((tid) {
