@@ -20,7 +20,7 @@ import java.net.URL
 const val ACTION_UPDATE = "com.playball.app.UPDATE_WIDGET"
 const val PREFS_NAME = "FlutterSharedPreferences"
 const val KEY_TEAM_ID = "flutter.widget_team_id"
-const val BASE_URL = "http://168.107.61.147:8000"
+const val BASE_URL = "https://playball.duckdns.org"
 const val NOTIF_CHANNEL_ID = "playball_live"
 const val NOTIF_ID = 7788
 
