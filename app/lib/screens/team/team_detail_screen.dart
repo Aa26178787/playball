@@ -286,10 +286,13 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 Builder(builder: (_) {
                   final hw = (hr['wins'] as int? ?? 0);
                   final hl = (hr['losses'] as int? ?? 0);
+                  final aw = (ar['wins'] as int? ?? 0);
+                  final al = (ar['losses'] as int? ?? 0);
                   final homeWinPct = (hw + hl) > 0 ? (hw / (hw + hl)).toStringAsFixed(3) : '-';
+                  final awayWinPct = (aw + al) > 0 ? (aw / (aw + al)).toStringAsFixed(3) : '-';
                   final pythag = (team['pythag_winpct'] as num?)?.toStringAsFixed(3) ?? '-';
                   return Text(
-                    '직관 승률 $homeWinPct  피타고리안 $pythag',
+                    '홈 승률 $homeWinPct  원정 승률 $awayWinPct  피타고리안 $pythag',
                     style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                   );
                 }),

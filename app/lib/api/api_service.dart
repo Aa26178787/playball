@@ -298,6 +298,21 @@ class ApiService {
         options: Options(headers: headers));
   }
 
+  static Future<Map<String, dynamic>> getStadiumRecord() async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/user/stadium-record',
+        options: Options(headers: headers));
+    return res.data;
+  }
+
+  static Future<Map<String, dynamic>> updateStadiumRecord(int wins, int losses, int draws) async {
+    final headers = await authHeaders();
+    final res = await _dio.put('/user/stadium-record',
+        data: {'wins': wins, 'losses': losses, 'draws': draws},
+        options: Options(headers: headers));
+    return res.data;
+  }
+
   // ===== 경기장 API =====
   static Future<Map<String, dynamic>> getStadiums() async {
     final res = await _dio.get('/stadiums/');

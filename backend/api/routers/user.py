@@ -38,6 +38,12 @@ class NicknameUpdate(BaseModel):
     nickname: str
 
 
+class StadiumRecord(BaseModel):
+    wins: int
+    losses: int
+    draws: int
+
+
 # ===== 닉네임 변경 =====
 
 @router.put("/nickname")
@@ -509,3 +515,36 @@ def read_notification(notif_id: int, current_user: dict = Depends(get_current_us
     )
     conn.commit(); cur.close(); conn.close()
     return {"message": "읽음"}
+
+
+# ===== 직관 기록 =====
+
+@router.get('/stadium-record')
+def get_stadium_record(current_user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT stadium_wins, stadium_losses, stadium_draws FROM users WHERE id = %s",
+        (current_user['user_id'],)
+    )
+    row = cur.fetchone()
+    cur.close(); conn.close()
+    return {"wins": row[0] or 0, "losses": row[1] or 0, "draws": row[2] or 0}
+
+
+@router.put('/stadium-record')
+def update_stadium_record(body: StadiumRecord, current_user: dict = Depends(get_current_user)):
+    if body.wins < 0 or body.losses < 0 or body.draws < 0:
+        raise HTTPException(status_code=400, detail="음수 불가")
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE users SET stadium_wins=%s, stadium_losses=%s, stadium_draws=%s WHERE id=%s",
+        (body.wins, body.losses, body.draws, current_user['user_id'])
+    )
+    conn.commit(); cur.close(); conn.close()
+    return {"wins": body.wins, "losses": body.losses, "draws": body.draws}
