@@ -17,8 +17,8 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   List _hitters = [];
   List _pitchers = [];
-  bool _hitterLoading = false;
-  bool _pitcherLoading = false;
+  bool _hitterLoading = true;
+  bool _pitcherLoading = true;
 
   int _hitterReqId = 0;
   int _pitcherReqId = 0;
