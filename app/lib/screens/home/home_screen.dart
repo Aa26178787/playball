@@ -946,32 +946,42 @@ class GameCard extends StatelessWidget {
                           child: const Text('무승부',
                               style: TextStyle(fontSize: 11, color: Colors.grey)),
                         )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (game.winPitcher != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                margin: const EdgeInsets.only(right: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text('승 ${game.winPitcher}',
-                                    style: const TextStyle(fontSize: 11, color: Colors.blue)),
-                              ),
-                            if (game.losePitcher != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text('패 ${game.losePitcher}',
-                                    style: const TextStyle(fontSize: 11, color: Colors.red)),
-                              ),
-                          ],
-                        ),
+                      : () {
+                          final homeWon = game.homeScore > game.awayScore;
+                          final homePitcher = homeWon ? game.winPitcher : game.losePitcher;
+                          final awayPitcher = homeWon ? game.losePitcher : game.winPitcher;
+                          final homeColor = homeWon ? Colors.blue : Colors.red;
+                          final awayColor = homeWon ? Colors.red : Colors.blue;
+                          final homeLabel = homeWon ? '승' : '패';
+                          final awayLabel = homeWon ? '패' : '승';
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              homePitcher != null
+                                  ? Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: homeColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text('$homeLabel $homePitcher',
+                                          style: TextStyle(fontSize: 11, color: homeColor)),
+                                    )
+                                  : const SizedBox.shrink(),
+                              awayPitcher != null
+                                  ? Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: awayColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text('$awayLabel $awayPitcher',
+                                          style: TextStyle(fontSize: 11, color: awayColor)),
+                                    )
+                                  : const SizedBox.shrink(),
+                            ],
+                          );
+                        }(),
                 ),
 
               // 선발투수 표시 (예정/라인업/진행)
