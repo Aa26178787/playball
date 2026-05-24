@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import '../player/player_detail_screen.dart';
@@ -81,8 +82,47 @@ class _TeamScreenState extends State<TeamScreen>
     );
   }
 
+  Widget _buildTeamShimmer() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final base = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final highlight = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+      itemCount: 10,
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: base,
+        highlightColor: highlight,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              Container(width: 28, height: 28, color: Colors.white),
+              const SizedBox(width: 10),
+              Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+              const SizedBox(width: 10),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: 60, height: 13, color: Colors.white),
+                  const SizedBox(height: 5),
+                  Container(width: 80, height: 10, color: Colors.white),
+                ],
+              )),
+              Container(width: 50, height: 13, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTeamRankings() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_isLoading) return _buildTeamShimmer();
     final rankCounts = <int, int>{};
     for (final t in _teams) {
       final r = t['rank'] as int? ?? 0;
@@ -601,7 +641,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
         const SizedBox(height: 4),
         Expanded(
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? _buildRankShimmer()
               : rankings.isEmpty
                   ? const Center(child: Text('데이터가 없습니다'))
                   : _buildRankingsContent(rankings, _hitterStatValue, label),
@@ -620,12 +660,51 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
         const SizedBox(height: 4),
         Expanded(
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? _buildRankShimmer()
               : rankings.isEmpty
                   ? const Center(child: Text('데이터가 없습니다'))
                   : _buildRankingsContent(rankings, _pitcherStatValue, label),
         ),
       ],
+    );
+  }
+
+  Widget _buildRankShimmer() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final base = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final highlight = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+      itemCount: 10,
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: base,
+        highlightColor: highlight,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          margin: const EdgeInsets.only(bottom: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Container(width: 32, height: 15, color: Colors.white),
+              const SizedBox(width: 8),
+              Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+              const SizedBox(width: 10),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: 70, height: 13, color: Colors.white),
+                  const SizedBox(height: 5),
+                  Container(width: 45, height: 10, color: Colors.white),
+                ],
+              )),
+              Container(width: 40, height: 18, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

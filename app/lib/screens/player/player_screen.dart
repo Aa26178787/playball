@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import 'player_detail_screen.dart';
@@ -363,8 +364,40 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
+  Widget _buildPlayerShimmer(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final base = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final highlight = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 24),
+      itemCount: 12,
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: base,
+        highlightColor: highlight,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              Container(width: 40, height: 40, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: 80, height: 13, color: Colors.white),
+                  const SizedBox(height: 5),
+                  Container(width: 50, height: 10, color: Colors.white),
+                ],
+              )),
+              Container(width: 36, height: 20, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildHitterList() {
-    if (_hitterLoading) return const Center(child: CircularProgressIndicator());
+    if (_hitterLoading) return _buildPlayerShimmer(context);
     if (_hitters.isEmpty) return const Center(child: Text('데이터가 없습니다'));
     final label = _hitterSorts.firstWhere((s) => s['value'] == _hitterSort)['label']!;
     return ListView.separated(
@@ -376,7 +409,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Widget _buildPitcherList() {
-    if (_pitcherLoading) return const Center(child: CircularProgressIndicator());
+    if (_pitcherLoading) return _buildPlayerShimmer(context);
     if (_pitchers.isEmpty) return const Center(child: Text('데이터가 없습니다'));
     final label = _pitcherSorts.firstWhere((s) => s['value'] == _pitcherSort)['label']!;
     return ListView.separated(

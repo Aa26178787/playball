@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:shimmer/shimmer.dart';
 
 import '../../models/game.dart';
 import '../../api/api_service.dart';
@@ -350,7 +351,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
           // 경기 목록
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? _buildGameShimmer()
                 : _buildGameList(),
           ),
         ],
@@ -532,6 +533,50 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGameShimmer() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final base = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final highlight = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: 4,
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: base,
+        highlightColor: highlight,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(children: [
+                    Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+                    const SizedBox(width: 8),
+                    Container(width: 60, height: 14, color: Colors.white),
+                  ]),
+                  Container(width: 40, height: 20, color: Colors.white),
+                  Row(children: [
+                    Container(width: 60, height: 14, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+                  ]),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Container(width: double.infinity, height: 10, color: Colors.white),
+            ],
+          ),
         ),
       ),
     );
