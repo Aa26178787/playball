@@ -389,7 +389,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final filtered = _dailyStats
         .where((d) {
           if (isHitter) {
-            return d['stat_type'] == 'hitter' && d['avg'] != null;
+            return d['stat_type'] == 'hitter' && ((d['pa'] as num?) ?? 0) > 0;
           } else {
             final ip = (d['ip'] as num?)?.toDouble() ?? 0;
             return d['stat_type'] == 'pitcher' && ip > 0;
@@ -584,7 +584,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final isHitter = player['player_type'] == '타자';
     final filtered = _dailyStats
         .where((d) {
-          if (isHitter) return d['stat_type'] == 'hitter';
+          if (isHitter) {
+            return d['stat_type'] == 'hitter' && ((d['pa'] as num?) ?? 0) > 0;
+          }
           return d['stat_type'] == 'pitcher' && ((d['ip'] as num?) ?? 0) > 0;
         })
         .toList();
