@@ -44,6 +44,12 @@ class StadiumRecord(BaseModel):
     draws: int
 
 
+class StadiumVisitCreate(BaseModel):
+    game_id: int
+    result: str  # win / loss / draw
+    memo: Optional[str] = None
+
+
 # ===== 닉네임 변경 =====
 
 @router.put("/nickname")
@@ -393,44 +399,54 @@ async def upload_profile_image(
 
 # ===== 개인 캘린더 이벤트 =====
 class CalendarEventCreate(BaseModel):
-    event_date: str   # YYYY-MM-DD
+    event_date: str          # YYYY-MM-DD (시작일)
+    end_date: Optional[str] = None  # YYYY-MM-DD (종료일, 없으면 시작일과 동일)
     title: str
     description: Optional[str] = None
     color: Optional[str] = 'blue'
 
 @router.get('/calendar-events')
 def get_calendar_events(year: int, month: int, current_user: dict = Depends(get_current_user)):
+    from datetime import date, timedelta
+    import calendar as cal
+    month_start = date(year, month, 1)
+    month_end = date(year, month, cal.monthrange(year, month)[1])
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail='DB 연결 실패')
     cur = conn.cursor()
+    # 해당 월에 걸치는 모든 이벤트 (시작일 <= 월말 AND 종료일 >= 월초)
     cur.execute("""
-        SELECT id, event_date, title, description, color, created_at
+        SELECT id, event_date, COALESCE(end_date, event_date), title, description, color, created_at
         FROM user_calendar_events
         WHERE user_id = %s
-          AND EXTRACT(YEAR FROM event_date) = %s
-          AND EXTRACT(MONTH FROM event_date) = %s
+          AND event_date <= %s
+          AND COALESCE(end_date, event_date) >= %s
         ORDER BY event_date, id
-    """, (current_user['user_id'], year, month))
+    """, (current_user['user_id'], month_end, month_start))
     rows = cur.fetchall()
     cur.close(); conn.close()
     return {"events": [
-        {"id": r[0], "date": str(r[1]), "title": r[2],
-         "description": r[3], "color": r[4], "created_at": str(r[5])}
+        {"id": r[0], "start_date": str(r[1]), "end_date": str(r[2]),
+         "date": str(r[1]),  # 하위 호환
+         "title": r[3], "description": r[4], "color": r[5], "created_at": str(r[6])}
         for r in rows
     ]}
 
 @router.post('/calendar-events')
 def create_calendar_event(body: CalendarEventCreate, current_user: dict = Depends(get_current_user)):
+    end = body.end_date or body.event_date
+    if end < body.event_date:
+        end = body.event_date
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail='DB 연결 실패')
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO user_calendar_events (user_id, event_date, title, description, color)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO user_calendar_events (user_id, event_date, end_date, title, description, color)
+        VALUES (%s, %s, %s, %s, %s, %s)
         RETURNING id
-    """, (current_user['user_id'], body.event_date, body.title, body.description, body.color or 'blue'))
+    """, (current_user['user_id'], body.event_date, end, body.title, body.description, body.color or 'blue'))
     new_id = cur.fetchone()[0]
     conn.commit(); cur.close(); conn.close()
     return {"id": new_id, "message": "일정 추가 완료"}
@@ -525,26 +541,89 @@ def get_stadium_record(current_user: dict = Depends(get_current_user)):
     if not conn:
         raise HTTPException(status_code=500, detail='DB 연결 실패')
     cur = conn.cursor()
-    cur.execute(
-        "SELECT stadium_wins, stadium_losses, stadium_draws FROM users WHERE id = %s",
-        (current_user['user_id'],)
-    )
+    cur.execute("""
+        SELECT
+            COUNT(*) FILTER (WHERE result='win') AS wins,
+            COUNT(*) FILTER (WHERE result='loss') AS losses,
+            COUNT(*) FILTER (WHERE result='draw') AS draws
+        FROM user_stadium_visits WHERE user_id=%s
+    """, (current_user['user_id'],))
     row = cur.fetchone()
     cur.close(); conn.close()
     return {"wins": row[0] or 0, "losses": row[1] or 0, "draws": row[2] or 0}
 
 
-@router.put('/stadium-record')
-def update_stadium_record(body: StadiumRecord, current_user: dict = Depends(get_current_user)):
-    if body.wins < 0 or body.losses < 0 or body.draws < 0:
-        raise HTTPException(status_code=400, detail="음수 불가")
+# ===== 직관 방문 기록 =====
+
+@router.get('/stadium-visits')
+def get_stadium_visits(limit: int = 20, current_user: dict = Depends(get_current_user)):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail='DB 연결 실패')
     cur = conn.cursor()
-    cur.execute(
-        "UPDATE users SET stadium_wins=%s, stadium_losses=%s, stadium_draws=%s WHERE id=%s",
-        (body.wins, body.losses, body.draws, current_user['user_id'])
-    )
+    cur.execute("""
+        SELECT v.id, v.game_id, v.result, v.memo, v.created_at,
+               g.game_date, g.home_score, g.away_score, g.status,
+               ht.name AS home_team, ht.short_name AS home_code,
+               at2.name AS away_team, at2.short_name AS away_code
+        FROM user_stadium_visits v
+        JOIN games g ON g.id = v.game_id
+        JOIN teams ht ON ht.id = g.home_team_id
+        JOIN teams at2 ON at2.id = g.away_team_id
+        WHERE v.user_id = %s
+        ORDER BY v.created_at DESC
+        LIMIT %s
+    """, (current_user['user_id'], limit))
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+    visits = []
+    for r in rows:
+        visits.append({
+            "id": r[0], "game_id": r[1], "result": r[2], "memo": r[3],
+            "created_at": r[4].isoformat() if r[4] else None,
+            "game_date": r[5].isoformat() if r[5] else None,
+            "home_score": r[6], "away_score": r[7], "status": r[8],
+            "home_team": r[9], "home_code": r[10],
+            "away_team": r[11], "away_code": r[12],
+        })
+    return {"visits": visits}
+
+
+@router.post('/stadium-visits')
+def add_stadium_visit(body: StadiumVisitCreate, current_user: dict = Depends(get_current_user)):
+    if body.result not in ('win', 'loss', 'draw'):
+        raise HTTPException(status_code=400, detail="result는 win/loss/draw 중 하나")
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO user_stadium_visits (user_id, game_id, result, memo)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (user_id, game_id) DO UPDATE SET result=EXCLUDED.result, memo=EXCLUDED.memo
+            RETURNING id
+        """, (current_user['user_id'], body.game_id, body.result, body.memo))
+        visit_id = cur.fetchone()[0]
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cur.close(); conn.close()
+    return {"id": visit_id}
+
+
+@router.delete('/stadium-visits/{visit_id}')
+def delete_stadium_visit(visit_id: int, current_user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute("DELETE FROM user_stadium_visits WHERE id=%s AND user_id=%s RETURNING id",
+                (visit_id, current_user['user_id']))
+    deleted = cur.fetchone()
     conn.commit(); cur.close(); conn.close()
-    return {"wins": body.wins, "losses": body.losses, "draws": body.draws}
+    if not deleted:
+        raise HTTPException(status_code=404, detail="기록 없음")
+    return {"ok": True}

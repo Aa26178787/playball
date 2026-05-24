@@ -15,6 +15,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedMonth = DateTime.now();
   Map<String, List> _gamesByDate = {};
   List<Map> _personalEvents = [];
+  Map<int, Map> _visitedGames = {}; // gameId → visit {id, result, memo}
   bool _isLoading = false;
   DateTime? _selectedDate;
 
@@ -48,10 +49,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Future<void> _loadPersonalEvents() async {
     try {
-      final data = await ApiService.getCalendarEvents(_focusedMonth.year, _focusedMonth.month);
-      final events = (data['events'] as List? ?? []).cast<Map>();
-      if (mounted) setState(() => _personalEvents = events);
-    } catch (_) {}
+      final results = await Future.wait([
+        ApiService.getCalendarEvents(_focusedMonth.year, _focusedMonth.month),
+        ApiService.getStadiumVisits(limit: 200),
+      ]);
+      final events = ((results[0] as Map)['events'] as List? ?? []).cast<Map>();
+      final visits = ((results[1] as Map)['visits'] as List? ?? []).cast<Map>();
+      final visitMap = <int, Map>{};
+      for (final v in visits) {
+        final gid = v['game_id'] as int?;
+        if (gid != null) visitMap[gid] = v;
+      }
+      if (mounted) setState(() { _personalEvents = events; _visitedGames = visitMap; });
+    } catch (_) {
+      try {
+        final data = await ApiService.getCalendarEvents(_focusedMonth.year, _focusedMonth.month);
+        final events = (data['events'] as List? ?? []).cast<Map>();
+        if (mounted) setState(() => _personalEvents = events);
+      } catch (_) {}
+    }
   }
 
   void _prevMonth() {
@@ -545,6 +561,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           child: const Icon(Icons.calendar_today, size: 18, color: Color(0xFF1A237E)),
                         ),
                       ],
+                      if (status == '종료') ...[
+                        const SizedBox(width: 8),
+                        _buildVisitButton(id),
+                      ],
                     ],
                   ),
                 ],
@@ -660,6 +680,141 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildVisitButton(int gameId) {
+    final visit = _visitedGames[gameId];
+    final Color color;
+    final IconData icon;
+    if (visit == null) {
+      color = Colors.grey.shade400;
+      icon = Icons.stadium_outlined;
+    } else {
+      final result = visit['result'] as String;
+      color = result == 'win' ? Colors.blue : result == 'loss' ? Colors.red : Colors.grey;
+      icon = Icons.stadium;
+    }
+    return GestureDetector(
+      onTap: () => _showVisitDialog(gameId, visit),
+      child: Icon(icon, size: 20, color: color),
+    );
+  }
+
+  Future<void> _showVisitDialog(int gameId, Map? existing) async {
+    if (existing != null) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('직관 기록'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('결과: ${existing['result'] == 'win' ? '승리' : existing['result'] == 'loss' ? '패배' : '무승부'}'),
+              if ((existing['memo'] as String?)?.isNotEmpty == true)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('메모: ${existing['memo']}'),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('닫기'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('기록 삭제'),
+            ),
+          ],
+        ),
+      );
+      if (ok == true && mounted) {
+        try {
+          await ApiService.deleteStadiumVisit(existing['id'] as int);
+          setState(() => _visitedGames.remove(gameId));
+        } catch (_) {}
+      }
+      return;
+    }
+
+    // 새 직관 기록
+    String selectedResult = 'win';
+    final memoCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('직관 기록 추가'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('경기 결과', style: TextStyle(fontSize: 13, color: Colors.grey)),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _resultChip('win', '승리', Colors.blue, selectedResult, (v) => setS(() => selectedResult = v)),
+                  _resultChip('loss', '패배', Colors.red, selectedResult, (v) => setS(() => selectedResult = v)),
+                  _resultChip('draw', '무승부', Colors.grey, selectedResult, (v) => setS(() => selectedResult = v)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: memoCtrl,
+                decoration: const InputDecoration(
+                  labelText: '메모 (선택)',
+                  hintText: '직관 후기 입력',
+                  isDense: true,
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('저장')),
+          ],
+        ),
+      ),
+    );
+    if (ok == true && mounted) {
+      try {
+        final res = await ApiService.addStadiumVisit(
+          gameId, selectedResult, memo: memoCtrl.text.trim().isEmpty ? null : memoCtrl.text.trim());
+        setState(() {
+          _visitedGames[gameId] = {
+            'id': res['id'],
+            'game_id': gameId,
+            'result': selectedResult,
+            'memo': memoCtrl.text.trim(),
+          };
+        });
+      } catch (_) {}
+    }
+    memoCtrl.dispose();
+  }
+
+  Widget _resultChip(String value, String label, Color color, String selected, void Function(String) onTap) {
+    final isSelected = value == selected;
+    return GestureDetector(
+      onTap: () => onTap(value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? color : color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? color : Colors.transparent),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                color: isSelected ? Colors.white : color,
+                fontWeight: FontWeight.w600,
+                fontSize: 13)),
       ),
     );
   }

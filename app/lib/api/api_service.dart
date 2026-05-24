@@ -586,10 +586,10 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> createCalendarEvent(
-      String date, String title, {String? description, String color = 'blue'}) async {
+      String date, String title, {String? endDate, String? description, String color = 'blue'}) async {
     final headers = await authHeaders();
     final res = await _dio.post('/user/calendar-events',
-        data: {'event_date': date, 'title': title, 'description': description, 'color': color},
+        data: {'event_date': date, 'end_date': endDate ?? date, 'title': title, 'description': description, 'color': color},
         options: Options(headers: headers));
     return Map<String, dynamic>.from(res.data);
   }
@@ -597,6 +597,28 @@ class ApiService {
   static Future<void> deleteCalendarEvent(int eventId) async {
     final headers = await authHeaders();
     await _dio.delete('/user/calendar-events/$eventId', options: Options(headers: headers));
+  }
+
+  static Future<Map<String, dynamic>> getStadiumVisits({int limit = 50}) async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/user/stadium-visits',
+        queryParameters: {'limit': limit},
+        options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<Map<String, dynamic>> addStadiumVisit(
+      int gameId, String result, {String? memo}) async {
+    final headers = await authHeaders();
+    final res = await _dio.post('/user/stadium-visits',
+        data: {'game_id': gameId, 'result': result, 'memo': memo},
+        options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<void> deleteStadiumVisit(int visitId) async {
+    final headers = await authHeaders();
+    await _dio.delete('/user/stadium-visits/$visitId', options: Options(headers: headers));
   }
 
   static Future<void> toggleCommentLike(int commentId) async {

@@ -25,11 +25,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
   List _myPosts = [];
   List _myComments = [];
   List _myLikes = [];
+  List _stadiumVisits = [];
   bool _loading = true;
   bool _uploadingImage = false;
-  int _stadiumWins = 0;
-  int _stadiumLosses = 0;
-  int _stadiumDraws = 0;
 
   // 알림 설정
   bool _notifyGameStart   = true;
@@ -62,11 +60,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ApiService.getMyComments(),
         ApiService.getSettings(),
         ApiService.getMyLikes(),
-        ApiService.getStadiumRecord(),
+        ApiService.getStadiumVisits(limit: 20),
       ]);
       if (mounted) {
         final settings = (results[5] as Map)['settings'] as Map?;
-        final sr = results[7] as Map;
         setState(() {
           _user = results[0];
           _favoriteTeams = (results[1] as Map)['teams'] ?? [];
@@ -74,9 +71,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           _myPosts = (results[3] as Map)['posts'] ?? [];
           _myComments = (results[4] as Map)['comments'] ?? [];
           _myLikes = (results[6] as Map)['posts'] ?? [];
-          _stadiumWins   = (sr['wins']   as num?)?.toInt() ?? 0;
-          _stadiumLosses = (sr['losses'] as num?)?.toInt() ?? 0;
-          _stadiumDraws  = (sr['draws']  as num?)?.toInt() ?? 0;
+          _stadiumVisits = (results[7] as Map)['visits'] ?? [];
           if (settings != null) {
             _notifyGameStart   = settings['notify_game_start']   as bool? ?? true;
             _notifyScoreChange = settings['notify_score_change'] as bool? ?? true;
@@ -475,10 +470,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Widget _buildStadiumRecord() {
-    final total = _stadiumWins + _stadiumLosses + _stadiumDraws;
-    final winPct = total > 0
-        ? (_stadiumWins / total * 100).toStringAsFixed(1)
-        : '-';
+    final wins   = _stadiumVisits.where((v) => v['result'] == 'win').length;
+    final losses = _stadiumVisits.where((v) => v['result'] == 'loss').length;
+    final draws  = _stadiumVisits.where((v) => v['result'] == 'draw').length;
+    final total  = wins + losses + draws;
+    final winPct = total > 0 ? (wins / total * 100).toStringAsFixed(1) : '-';
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -489,23 +485,18 @@ class _MyPageScreenState extends State<MyPageScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.sports_baseball, size: 18),
+                const Icon(Icons.stadium, size: 18),
                 const SizedBox(width: 8),
                 const Text('직관 기록', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const Spacer(),
-                TextButton(
-                  onPressed: _editStadiumRecord,
-                  child: const Text('편집'),
-                ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _stadiumStat('승', _stadiumWins, Colors.blue),
-                _stadiumStat('패', _stadiumLosses, Colors.red),
-                _stadiumStat('무', _stadiumDraws, Colors.grey),
+                _stadiumStat('승', wins, Colors.blue),
+                _stadiumStat('패', losses, Colors.red),
+                _stadiumStat('무', draws, Colors.grey),
                 Column(children: [
                   Text(winPct == '-' ? '-' : '$winPct%',
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -513,8 +504,60 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 ]),
               ],
             ),
+            if (_stadiumVisits.isNotEmpty) ...[
+              const Divider(height: 20),
+              ..._stadiumVisits.take(5).map((v) => _buildVisitTile(v)),
+            ],
+            if (_stadiumVisits.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Center(
+                  child: Text('캘린더에서 직관 기록을 추가해보세요',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                ),
+              ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildVisitTile(Map visit) {
+    final result = visit['result'] as String;
+    final color = result == 'win' ? Colors.blue : result == 'loss' ? Colors.red : Colors.grey;
+    final label = result == 'win' ? '승' : result == 'loss' ? '패' : '무';
+    final date = (visit['game_date'] as String? ?? '').replaceAll('-', '.').substring(0, 10);
+    final home = visit['home_team'] as String? ?? '';
+    final away = visit['away_team'] as String? ?? '';
+    final hs = visit['home_score'] as int? ?? 0;
+    final as_ = visit['away_score'] as int? ?? 0;
+    final memo = visit['memo'] as String?;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 28, height: 28,
+            decoration: BoxDecoration(color: color.withOpacity(0.15), shape: BoxShape.circle),
+            child: Center(child: Text(label,
+                style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13))),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('$away $as_  :  $hs $home',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                Text(date, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                if (memo != null && memo.isNotEmpty)
+                  Text(memo, style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -525,63 +568,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
         Text('$value', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
         Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
       ],
-    );
-  }
-
-  Future<void> _editStadiumRecord() async {
-    final wCtrl = TextEditingController(text: '$_stadiumWins');
-    final lCtrl = TextEditingController(text: '$_stadiumLosses');
-    final dCtrl = TextEditingController(text: '$_stadiumDraws');
-
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('직관 기록 편집'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _recordField('승', wCtrl, Colors.blue),
-            const SizedBox(height: 8),
-            _recordField('패', lCtrl, Colors.red),
-            const SizedBox(height: 8),
-            _recordField('무', dCtrl, Colors.grey),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('저장')),
-        ],
-      ),
-    );
-
-    if (ok != true) return;
-    final w = int.tryParse(wCtrl.text) ?? _stadiumWins;
-    final l = int.tryParse(lCtrl.text) ?? _stadiumLosses;
-    final d = int.tryParse(dCtrl.text) ?? _stadiumDraws;
-    if (w < 0 || l < 0 || d < 0) return;
-
-    try {
-      final res = await ApiService.updateStadiumRecord(w, l, d);
-      if (mounted) {
-        setState(() {
-          _stadiumWins   = (res['wins']   as num?)?.toInt() ?? w;
-          _stadiumLosses = (res['losses'] as num?)?.toInt() ?? l;
-          _stadiumDraws  = (res['draws']  as num?)?.toInt() ?? d;
-        });
-      }
-    } catch (_) {}
-  }
-
-  Widget _recordField(String label, TextEditingController ctrl, Color color) {
-    return TextField(
-      controller: ctrl,
-      keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: color),
-        border: const OutlineInputBorder(),
-        isDense: true,
-      ),
     );
   }
 
