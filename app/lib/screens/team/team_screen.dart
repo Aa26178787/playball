@@ -343,24 +343,29 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   Future<void> _loadAll() async {
     setState(() => _loading = true);
-    final hitterResults = await Future.wait(
-      _hitterCategories.map((c) => _fetchHitter(c['value']!)),
-    );
-    final pitcherResults = await Future.wait(
-      _pitcherCategories.map((c) => _fetchPitcher(c['value']!)),
-    );
+    var pendingH = _hitterCategories.map((c) => c['value']!).toList();
+    var pendingP = _pitcherCategories.map((c) => c['value']!).toList();
+    for (int attempt = 0; attempt < 3; attempt++) {
+      if (pendingH.isEmpty && pendingP.isEmpty) break;
+      final hR = await Future.wait(pendingH.map((s) => _fetchHitter(s)));
+      final pR = await Future.wait(pendingP.map((s) => _fetchPitcher(s)));
+      if (!mounted) return;
+      final stillH = <String>[], stillP = <String>[];
+      for (int i = 0; i < pendingH.length; i++) {
+        if (hR[i].isNotEmpty) _hitterCache[pendingH[i]] = hR[i];
+        else stillH.add(pendingH[i]);
+      }
+      for (int i = 0; i < pendingP.length; i++) {
+        if (pR[i].isNotEmpty) _pitcherCache[pendingP[i]] = pR[i];
+        else stillP.add(pendingP[i]);
+      }
+      pendingH = stillH;
+      pendingP = stillP;
+    }
     if (!mounted) return;
-    setState(() {
-      for (int i = 0; i < _hitterCategories.length; i++) {
-        final r = hitterResults[i];
-        if (r.isNotEmpty) _hitterCache[_hitterCategories[i]['value']!] = r;
-      }
-      for (int i = 0; i < _pitcherCategories.length; i++) {
-        final r = pitcherResults[i];
-        if (r.isNotEmpty) _pitcherCache[_pitcherCategories[i]['value']!] = r;
-      }
-      _loading = false;
-    });
+    for (final c in _hitterCategories) _hitterCache.putIfAbsent(c['value']!, () => []);
+    for (final c in _pitcherCategories) _pitcherCache.putIfAbsent(c['value']!, () => []);
+    setState(() => _loading = false);
   }
 
   Future<List> _fetchHitter(String sort) async {
