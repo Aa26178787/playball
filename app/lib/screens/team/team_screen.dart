@@ -343,12 +343,27 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   Future<void> _loadAll() async {
     setState(() => _loading = true);
-    final hitterResults = await Future.wait(
+    var hitterResults = await Future.wait(
       _hitterCategories.map((c) => _fetchHitter(c['value']!)),
     );
-    final pitcherResults = await Future.wait(
+    var pitcherResults = await Future.wait(
       _pitcherCategories.map((c) => _fetchPitcher(c['value']!)),
     );
+    // 실패한 항목 자동 1회 재시도
+    final failedHIdx = List.generate(_hitterCategories.length, (i) => i)
+        .where((i) => hitterResults[i] == null).toList();
+    final failedPIdx = List.generate(_pitcherCategories.length, (i) => i)
+        .where((i) => pitcherResults[i] == null).toList();
+    if (failedHIdx.isNotEmpty || failedPIdx.isNotEmpty) {
+      final retryH = await Future.wait(failedHIdx.map((i) => _fetchHitter(_hitterCategories[i]['value']!)));
+      final retryP = await Future.wait(failedPIdx.map((i) => _fetchPitcher(_pitcherCategories[i]['value']!)));
+      final mH = List<List?>.from(hitterResults);
+      final mP = List<List?>.from(pitcherResults);
+      for (int i = 0; i < failedHIdx.length; i++) mH[failedHIdx[i]] = retryH[i];
+      for (int i = 0; i < failedPIdx.length; i++) mP[failedPIdx[i]] = retryP[i];
+      hitterResults = mH;
+      pitcherResults = mP;
+    }
     if (!mounted) return;
     setState(() {
       for (int i = 0; i < _hitterCategories.length; i++) {

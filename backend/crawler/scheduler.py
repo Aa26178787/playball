@@ -536,6 +536,7 @@ def _sync_batter_stats_from_daily():
             SUM(pa)         AS total_pa
           FROM player_daily_stats
           WHERE stat_type = 'hitter'
+          AND game_date >= '2026-03-28'
           AND EXTRACT(YEAR FROM game_date) = 2026
           GROUP BY player_id
         ) sub
@@ -615,6 +616,7 @@ def _save_player_daily_stats_today():
         JOIN teams at2 ON g.away_team_id = at2.id
         WHERE g.game_date = CURRENT_DATE
         AND g.status = '종료'
+        AND g.game_date >= '2026-03-28'
     """)
     games = cur.fetchall()
 
