@@ -1036,7 +1036,7 @@ def get_games_by_date(date_str: str):
             "stadium":        r[12],
             "win_pitcher":    win_pitcher,
             "lose_pitcher":   lose_pitcher,
-            "is_draw":        r[2] == '종료' and not win_pitcher and not lose_pitcher,
+            "is_draw":        r[2] == '종료' and r[3] == r[4],
             "home_starter":   r[16],
             "away_starter":   r[17],
             "weather":        weather,
