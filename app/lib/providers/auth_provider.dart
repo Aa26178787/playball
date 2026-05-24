@@ -17,6 +17,7 @@ class AuthProvider extends ChangeNotifier {
 
   // 앱 시작 시 로그인 상태 확인
   Future<void> checkLoginStatus() async {
+    ApiService.initInterceptor(() async => logout());
     final token = await ApiService.getToken();
     if (token != null) {
       try {
@@ -40,6 +41,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final data = await ApiService.register(email, password, nickname);
       await ApiService.saveToken(data['access_token']);
+      if (data['refresh_token'] != null) await ApiService.saveRefreshToken(data['refresh_token']);
       _user = User(
         id: data['user_id'],
         email: email,
@@ -70,6 +72,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final data = await ApiService.login(email, password);
       await ApiService.saveToken(data['access_token']);
+      if (data['refresh_token'] != null) await ApiService.saveRefreshToken(data['refresh_token']);
       _user = User(
         id: data['user_id'],
         email: email,
@@ -93,6 +96,10 @@ class AuthProvider extends ChangeNotifier {
 
   // 로그아웃
   Future<void> logout() async {
+    final prefs = await ApiService.getRefreshToken();
+    if (prefs != null) {
+      try { await ApiService.serverLogout(prefs); } catch (_) {}
+    }
     await ApiService.deleteToken();
     _user = null;
     _isLoggedIn = false;

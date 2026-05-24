@@ -1,25 +1,24 @@
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from jose import JWTError, jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from database.connection import get_connection
 import bcrypt
+import hashlib
+import os
+import secrets
 
 router = APIRouter()
 
-# 비밀번호 해시 설정
-# pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# JWT 설정
-SECRET_KEY = "playball_secret_key_2026"  # 나중에 환경변수로 변경
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "playball_secret_key_2026_fallback")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7일
+ACCESS_TOKEN_EXPIRE_MINUTES = 60       # 1시간
+REFRESH_TOKEN_EXPIRE_DAYS = 30
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-# 요청/응답 모델
 class UserRegister(BaseModel):
     email: str
     password: str
@@ -31,36 +30,47 @@ class UserLogin(BaseModel):
     password: str
 
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 
-# 비밀번호 해시 함수
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(
-        plain_password.encode('utf-8'),
-        hashed_password.encode('utf-8')
-    )
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 
-# JWT 토큰 생성
 def create_access_token(user_id: int, email: str) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    data = {
-        "sub": str(user_id),
-        "email": email,
-        "exp": expire
-    }
-    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    return jwt.encode({"sub": str(user_id), "email": email, "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
 
 
-# 현재 로그인 유저 가져오기
+def create_refresh_token(user_id: int) -> str:
+    raw = secrets.token_hex(32)
+    token_hash = hashlib.sha256(raw.encode()).hexdigest()
+    expires_at = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    conn = get_connection()
+    if conn:
+        cur = conn.cursor()
+        # 유저당 최대 5개 유지 (오래된 것 삭제)
+        cur.execute("""
+            DELETE FROM refresh_tokens WHERE id IN (
+                SELECT id FROM refresh_tokens WHERE user_id=%s AND revoked=FALSE
+                ORDER BY created_at ASC
+                OFFSET 4
+            )
+        """, (user_id,))
+        cur.execute(
+            "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (%s, %s, %s)",
+            (user_id, token_hash, expires_at)
+        )
+        conn.commit(); cur.close(); conn.close()
+    return raw
+
+
 def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -140,11 +150,12 @@ def register(user: UserRegister):
     cur.close()
     conn.close()
 
-    # 토큰 발급
-    token = create_access_token(user_id, user.email)
+    access_token = create_access_token(user_id, user.email)
+    refresh_token = create_refresh_token(user_id)
     return {
         "message": "회원가입 성공",
-        "access_token": token,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
         "user_id": user_id,
         "nickname": user.nickname
@@ -175,14 +186,58 @@ def login(user: UserLogin):
     if not verify_password(user.password, password_hash):
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 틀렸습니다")
 
-    token = create_access_token(user_id, email)
+    access_token = create_access_token(user_id, email)
+    refresh_token = create_refresh_token(user_id)
     return {
         "message": "로그인 성공",
-        "access_token": token,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
         "user_id": user_id,
         "nickname": nickname
     }
+
+
+@router.post("/refresh")
+def refresh_token(body: RefreshRequest):
+    """Refresh token으로 새 access token 발급"""
+    token_hash = hashlib.sha256(body.refresh_token.encode()).hexdigest()
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT rt.user_id, u.email
+        FROM refresh_tokens rt
+        JOIN users u ON rt.user_id = u.id
+        WHERE rt.token_hash = %s
+          AND rt.revoked = FALSE
+          AND rt.expires_at > NOW()
+    """, (token_hash,))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        raise HTTPException(status_code=401, detail="refresh token이 유효하지 않습니다")
+    user_id, email = row
+    # 기존 토큰 revoke (rotation)
+    cur.execute("UPDATE refresh_tokens SET revoked=TRUE WHERE token_hash=%s", (token_hash,))
+    conn.commit(); cur.close(); conn.close()
+
+    new_access = create_access_token(user_id, email)
+    new_refresh = create_refresh_token(user_id)
+    return {"access_token": new_access, "refresh_token": new_refresh, "token_type": "bearer"}
+
+
+@router.post("/logout")
+def logout(body: RefreshRequest):
+    """Refresh token revoke"""
+    token_hash = hashlib.sha256(body.refresh_token.encode()).hexdigest()
+    conn = get_connection()
+    if conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE refresh_tokens SET revoked=TRUE WHERE token_hash=%s", (token_hash,))
+        conn.commit(); cur.close(); conn.close()
+    return {"message": "로그아웃 완료"}
 
 
 @router.delete("/me")

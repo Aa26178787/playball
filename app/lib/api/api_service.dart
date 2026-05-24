@@ -8,6 +8,50 @@ class ApiService {
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 10),
   ));
+  static bool _interceptorAdded = false;
+
+  static void initInterceptor(Future<void> Function() onLogout) {
+    if (_interceptorAdded) return;
+    _interceptorAdded = true;
+    _dio.interceptors.add(InterceptorsWrapper(
+      onError: (err, handler) async {
+        if (err.response?.statusCode == 401) {
+          final refreshed = await _tryRefresh();
+          if (refreshed) {
+            // 원래 요청 재시도
+            final opts = err.requestOptions;
+            final token = await getToken();
+            opts.headers['Authorization'] = 'Bearer $token';
+            try {
+              final res = await _dio.fetch(opts);
+              return handler.resolve(res);
+            } catch (_) {}
+          }
+          // refresh 실패 → 로그아웃
+          await onLogout();
+        }
+        return handler.next(err);
+      },
+    ));
+  }
+
+  static Future<bool> _tryRefresh() async {
+    final prefs = await SharedPreferences.getInstance();
+    final refreshToken = prefs.getString('refresh_token');
+    if (refreshToken == null) return false;
+    try {
+      final res = await Dio(BaseOptions(baseUrl: baseUrl)).post(
+        '/auth/refresh',
+        data: {'refresh_token': refreshToken},
+      );
+      final data = res.data as Map<String, dynamic>;
+      await prefs.setString('access_token', data['access_token']);
+      await prefs.setString('refresh_token', data['refresh_token']);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 
   // ===== 토큰 관리 =====
   static Future<String?> getToken() async {
@@ -20,9 +64,24 @@ class ApiService {
     await prefs.setString('access_token', token);
   }
 
+  static Future<void> saveRefreshToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('refresh_token', token);
+  }
+
+  static Future<String?> getRefreshToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('refresh_token');
+  }
+
   static Future<void> deleteToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
+    await prefs.remove('refresh_token');
+  }
+
+  static Future<void> serverLogout(String refreshToken) async {
+    await _dio.post('/auth/logout', data: {'refresh_token': refreshToken});
   }
 
   static Future<Map<String, String>> authHeaders() async {
