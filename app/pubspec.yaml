@@ -73,7 +73,7 @@ dependencies:
   path_provider: ^2.1.4
 
   # 이미지 캐싱
-  cached_network_image: ^3.4.1
+  cached_network_image: ^3.4.0
 
   # 스켈레톤 로딩
   shimmer: ^3.0.0
