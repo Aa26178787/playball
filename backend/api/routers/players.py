@@ -166,7 +166,7 @@ def get_pitchers(
     if qualified:
         qual_filter = f"""
             AND ps.innings_pitched >= (
-                SELECT MAX(games) FROM pitcher_stats WHERE season = {season}
+                SELECT MAX(games) FROM batter_stats WHERE season = {season}
             ) * 1.0
         """
     else:
