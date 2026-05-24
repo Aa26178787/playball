@@ -351,6 +351,9 @@ def smart_update():
             update_team_rankings()
             schedule.every(10).minutes.do(_run_once, update_finished_game_records)
             schedule.every(15).minutes.do(_run_once, update_finished_player_stats)
+            # 경기 종료 25분 후 출전 선수 KBO 크롤
+            for gid in newly_finished:
+                schedule.every(25).minutes.do(_run_once, _crawl_kbo_stats_for_game, gid)
             # 경기 종료 팀 뉴스 크롤링
             if finished_team_ids:
                 try:
@@ -1120,8 +1123,8 @@ def _update_roster_changes():
         print(f"[{datetime.now()}] 등록말소 크롤링 오류: {e}")
 
 
-def update_kbo_player_stats():
-    """KBO 사이트에서 선수 2026 시즌 스탯 업데이트"""
+def update_kbo_player_stats(player_ids=None):
+    """KBO 사이트에서 선수 2026 시즌 스탯 업데이트. player_ids 지정 시 해당 선수만."""
     try:
         from selenium.webdriver.common.by import By
         from crawler.crawl_kbo_player_info import (
@@ -1140,18 +1143,27 @@ def update_kbo_player_stats():
         print(f"[{datetime.now()}] KBO 선수 스탯 업데이트 건너뜀 (모듈 없음): {e}")
         return
 
-    print(f"[{datetime.now()}] KBO 선수 스탯 업데이트 시작")
+    label = f"{len(player_ids)}명" if player_ids else "전체"
+    print(f"[{datetime.now()}] KBO 선수 스탯 업데이트 시작 ({label})")
 
     conn = get_connection()
     if not conn:
         return
     cur = conn.cursor()
-    cur.execute("""
-        SELECT id, name, naver_player_id, player_type
-        FROM players
-        WHERE naver_player_id IS NOT NULL
-        ORDER BY id
-    """)
+    if player_ids:
+        cur.execute("""
+            SELECT id, name, naver_player_id, player_type
+            FROM players
+            WHERE naver_player_id IS NOT NULL AND id = ANY(%s)
+            ORDER BY id
+        """, (player_ids,))
+    else:
+        cur.execute("""
+            SELECT id, name, naver_player_id, player_type
+            FROM players
+            WHERE naver_player_id IS NOT NULL
+            ORDER BY id
+        """)
     players = cur.fetchall()
     cur.close()
     conn.close()
@@ -1209,6 +1221,30 @@ def update_kbo_player_stats():
 
     driver.quit()
     print(f"[{datetime.now()}] KBO 선수 스탯 업데이트 완료 ({updated}명)")
+
+
+def _crawl_kbo_stats_for_game(game_id):
+    """경기 종료 후 해당 경기 출전 선수만 KBO 크롤링"""
+    try:
+        conn = get_connection()
+        if not conn:
+            return
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT DISTINCT player_id FROM game_pitchers WHERE game_id = %s
+            UNION
+            SELECT DISTINCT player_id FROM game_batters WHERE game_id = %s
+        """, (game_id, game_id))
+        player_ids = [r[0] for r in cur.fetchall()]
+        cur.close()
+        conn.close()
+        if not player_ids:
+            print(f"[{datetime.now()}] game_id={game_id} 출전 선수 없음, KBO 크롤 건너뜀")
+            return
+        print(f"[{datetime.now()}] game_id={game_id} 출전 선수 {len(player_ids)}명 KBO 크롤 시작")
+        update_kbo_player_stats(player_ids=player_ids)
+    except Exception as e:
+        print(f"[{datetime.now()}] 경기별 KBO 크롤 오류 (game_id={game_id}): {e}")
 
 
 def update_player_stats():
@@ -1362,8 +1398,8 @@ def _send_pregame_notifications():
 def run_scheduler():
     print("PlayBall 스케줄러 시작!")
 
-    # 1분마다 (UTC 01:00~15:00에만 동작)
-    schedule.every(1).minutes.do(smart_update)
+    # 30초마다 (UTC 01:00~15:00에만 동작)
+    schedule.every(30).seconds.do(smart_update)
 
     # 매일 UTC 01:00 (KST 10:00): 네이버 선수 통계
     schedule.every().day.at("01:00").do(update_player_stats)
@@ -1371,7 +1407,7 @@ def run_scheduler():
     # 매일 UTC 15:00 (KST 00:00): 자정 기록/팀순위 + KBO 선수 스탯
     schedule.every().day.at("15:00").do(update_finished_game_records)
     schedule.every().day.at("15:00").do(update_team_rankings)
-    schedule.every().day.at("15:30").do(update_kbo_player_stats)
+    schedule.every().monday.at("15:00").do(update_kbo_player_stats)  # KST 월요일 00:00
 
     # 매일 UTC 00:30 (KST 09:30): 등록말소 크롤링
     schedule.every().day.at("00:30").do(_update_roster_changes)
@@ -1395,20 +1431,20 @@ def run_scheduler():
     schedule.every(5).minutes.do(_send_pregame_notifications)
 
     print("스케줄 등록 완료!")
-    print("- 1분마다 (UTC 01:00~15:00 = KST 10:00~00:00): 경기 상태/이닝/선수/투구 업데이트")
+    print("- 30초마다 (UTC 01:00~15:00 = KST 10:00~00:00): 경기 상태/이닝/선수/투구 업데이트")
     print("- start_time 2시간 전: 로스터 크롤링 (후보야수/불펜)")
     print("- start_time 1시간 전 ~ 경기 시작: 선발 타자 없으면 10분마다 재크롤링")
     print("- 진행 중 선발 타자 없으면 10분마다 재크롤링")
     print("- 경기 종료 감지: 팀순위 즉시 + 10분 후 기록 업데이트")
     print("- UTC 01:00 (KST 10:00): 네이버 선수 통계 업데이트")
     print("- UTC 15:00 (KST 00:00): 자정 기록/팀순위 정기 업데이트")
-    print("- UTC 15:30 (KST 00:30): KBO 선수 스탯 업데이트")
+    print("- 매주 월요일 UTC 15:00 (KST 00:00): KBO 전체 선수 스탯 업데이트")
     print("- 매주 월요일 UTC 03:00: 시즌 일정 업데이트")
     print("- 매시간: 좀비 크롬 정리")
 
     while True:
         schedule.run_pending()
-        time.sleep(30)
+        time.sleep(10)
 
 
 if __name__ == "__main__":
