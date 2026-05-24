@@ -413,14 +413,14 @@ def save_players_and_stats(players, player_type):
                         walks        = GREATEST(EXCLUDED.walks,        batter_stats.walks),
                         strikeouts   = GREATEST(EXCLUDED.strikeouts,   batter_stats.strikeouts),
                         stolen_bases = GREATEST(EXCLUDED.stolen_bases, batter_stats.stolen_bases),
-                        avg          = EXCLUDED.avg,
-                        obp          = EXCLUDED.obp,
-                        slg          = EXCLUDED.slg,
-                        ops          = EXCLUDED.ops,
-                        woba         = EXCLUDED.woba,
-                        wrc_plus     = EXCLUDED.wrc_plus,
-                        babip        = EXCLUDED.babip,
-                        iso          = EXCLUDED.iso,
+                        avg          = CASE WHEN EXCLUDED.avg  > 0 THEN EXCLUDED.avg  ELSE batter_stats.avg  END,
+                        obp          = CASE WHEN EXCLUDED.obp  > 0 THEN EXCLUDED.obp  ELSE batter_stats.obp  END,
+                        slg          = CASE WHEN EXCLUDED.slg  > 0 THEN EXCLUDED.slg  ELSE batter_stats.slg  END,
+                        ops          = CASE WHEN EXCLUDED.ops  > 0 THEN EXCLUDED.ops  ELSE batter_stats.ops  END,
+                        woba         = CASE WHEN EXCLUDED.woba > 0 THEN EXCLUDED.woba ELSE batter_stats.woba END,
+                        wrc_plus     = CASE WHEN EXCLUDED.wrc_plus <> 0 THEN EXCLUDED.wrc_plus ELSE batter_stats.wrc_plus END,
+                        babip        = CASE WHEN EXCLUDED.babip > 0 THEN EXCLUDED.babip ELSE batter_stats.babip END,
+                        iso          = CASE WHEN EXCLUDED.iso  > 0 THEN EXCLUDED.iso  ELSE batter_stats.iso  END,
                         war          = EXCLUDED.war
                 """, (
                     player_db_id, p["season"], p["games"], p.get("pa", 0), p["at_bats"],
@@ -451,8 +451,8 @@ def save_players_and_stats(players, player_type):
                         walks              = GREATEST(EXCLUDED.walks,              pitcher_stats.walks),
                         strikeouts         = GREATEST(EXCLUDED.strikeouts,         pitcher_stats.strikeouts),
                         home_runs_allowed  = GREATEST(EXCLUDED.home_runs_allowed,  pitcher_stats.home_runs_allowed),
-                        era                = EXCLUDED.era,
-                        whip               = EXCLUDED.whip,
+                        era                = CASE WHEN EXCLUDED.era  > 0 THEN EXCLUDED.era  ELSE pitcher_stats.era  END,
+                        whip               = CASE WHEN EXCLUDED.whip > 0 THEN EXCLUDED.whip ELSE pitcher_stats.whip END,
                         war                = EXCLUDED.war
                 """, (
                     player_db_id, p["season"], p["games"], p["wins"],

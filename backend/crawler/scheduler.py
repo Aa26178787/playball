@@ -543,6 +543,57 @@ def _sync_batter_stats_from_daily():
         AND bs.season = 2026
     """)
     updated = cur.rowcount
+
+    # PA/OBP/SLG/OPS 파생 스탯 보완
+    cur.execute("""
+        UPDATE batter_stats SET
+            pa = COALESCE(at_bats,0) + COALESCE(walks,0) + COALESCE(hbp,0) + COALESCE(sac,0) + COALESCE(sf,0)
+        WHERE season = 2026
+          AND COALESCE(at_bats, 0) > COALESCE(pa, 0)
+    """)
+    cur.execute("""
+        UPDATE batter_stats SET
+            obp = CASE
+                WHEN (COALESCE(at_bats,0) + COALESCE(walks,0) + COALESCE(hbp,0) + COALESCE(sf,0)) > 0
+                THEN ROUND(
+                    (COALESCE(hits,0) + COALESCE(walks,0) + COALESCE(hbp,0))::numeric /
+                    (COALESCE(at_bats,0) + COALESCE(walks,0) + COALESCE(hbp,0) + COALESCE(sf,0)),
+                    3)
+                ELSE 0 END,
+            slg = CASE
+                WHEN COALESCE(at_bats,0) > 0
+                THEN ROUND(
+                    (COALESCE(hits,0) + COALESCE(doubles,0) + 2*COALESCE(triples,0) + 3*COALESCE(home_runs,0))::numeric /
+                    at_bats, 3)
+                ELSE 0 END
+        WHERE season = 2026
+          AND (obp IS NULL OR obp = 0)
+          AND COALESCE(at_bats, 0) > 0
+    """)
+    cur.execute("""
+        UPDATE batter_stats SET ops = ROUND(COALESCE(obp,0) + COALESCE(slg,0), 3)
+        WHERE season = 2026
+          AND (ops IS NULL OR ops = 0)
+          AND (COALESCE(obp,0) > 0 OR COALESCE(slg,0) > 0)
+    """)
+    cur.execute("""
+        UPDATE pitcher_stats SET
+            era = ROUND(earned_runs * 9.0 /
+                (FLOOR(innings_pitched) + (innings_pitched - FLOOR(innings_pitched)) * 10.0 / 3.0), 2)
+        WHERE season = 2026
+          AND (era IS NULL OR era = 0)
+          AND COALESCE(innings_pitched, 0) > 0
+          AND COALESCE(earned_runs, 0) > 0
+    """)
+    cur.execute("""
+        UPDATE pitcher_stats SET
+            whip = ROUND((COALESCE(walks,0) + COALESCE(hits_allowed,0))::numeric /
+                (FLOOR(innings_pitched) + (innings_pitched - FLOOR(innings_pitched)) * 10.0 / 3.0), 2)
+        WHERE season = 2026
+          AND (whip IS NULL OR whip = 0)
+          AND COALESCE(innings_pitched, 0) > 0
+    """)
+
     conn.commit()
     cur.close()
     conn.close()
