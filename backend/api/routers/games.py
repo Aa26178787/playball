@@ -80,28 +80,36 @@ def get_game_relay_all(game_id: int):
     }
 
     if status == '진행':
+        from concurrent.futures import ThreadPoolExecutor
+
+        # Pre-load all pitcher names once (avoid per-event DB calls)
+        conn2 = get_connection()
         pitcher_cache = {}
+        if conn2:
+            cur2 = conn2.cursor()
+            cur2.execute("SELECT naver_player_id, name FROM players WHERE naver_player_id IS NOT NULL")
+            pitcher_cache = {str(r[0]): r[1] for r in cur2.fetchall()}
+            cur2.close()
+            conn2.close()
 
         def get_pitcher_name(naver_id):
-            if not naver_id:
-                return None
-            naver_id = str(naver_id)
-            if naver_id in pitcher_cache:
-                return pitcher_cache[naver_id]
-            conn2 = get_connection()
-            if conn2:
-                cur2 = conn2.cursor()
-                cur2.execute(
-                    "SELECT name FROM players WHERE naver_player_id = %s LIMIT 1",
-                    (naver_id,)
-                )
-                row2 = cur2.fetchone()
-                cur2.close()
-                conn2.close()
-                if row2:
-                    pitcher_cache[naver_id] = row2[0]
-                    return row2[0]
-            return None
+            if not naver_id: return None
+            return pitcher_cache.get(str(naver_id))
+
+        # Parallel fetch all innings
+        max_inning_live = current_inning or 1
+        def _fetch_inning(inning):
+            url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/relay?inning={inning}"
+            try:
+                res = req.get(url, headers=NAVER_HEADERS, timeout=10)
+                if res.status_code == 200:
+                    return inning, res.json()
+            except Exception:
+                pass
+            return inning, None
+
+        with ThreadPoolExecutor(max_workers=max_inning_live) as _ex:
+            _fetched = dict(_ex.map(_fetch_inning, range(1, max_inning_live + 1)))
 
         all_relays = []
         current_batter = None
@@ -111,14 +119,12 @@ def get_game_relay_all(game_id: int):
         last_win_rate = None
 
         try:
-            for inning in range(1, (current_inning or 1) + 1):
+            for inning in range(1, max_inning_live + 1):
+                data = _fetched.get(inning)
+                if not data:
+                    continue
                 batter_last_pitch = {}
                 prev_inning_half = None
-                url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/relay?inning={inning}"
-                res = req.get(url, headers=NAVER_HEADERS, timeout=10)
-                if res.status_code != 200:
-                    continue
-                data = res.json()
                 relay = data.get('result', {}).get('textRelayData', {})
                 text_relays = relay.get('textRelays', [])
                 if relay.get('lastValidMetricOption'):
@@ -1289,16 +1295,17 @@ def get_pitch_locations(game_id: int):
         if "스트라이크" in text: return "strike"
         return "other"
 
-    all_pitches = []
-    for inning in range(1, max_inning + 1):
+    def _fetch_and_parse_inning(inning):
         try:
             url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/relay?inning={inning}"
             res = req.get(url, headers=NAVER_HEADERS, timeout=8)
-            if res.status_code != 200: continue
+            if res.status_code != 200:
+                return inning, []
             text_relays = res.json().get("result", {}).get("textRelayData", {}).get("textRelays", [])
         except Exception:
-            continue
+            return inning, []
 
+        pitches = []
         for item in reversed(text_relays):
             pts_opts = item.get("ptsOptions", [])
             txt_opts = item.get("textOptions", [])
@@ -1332,7 +1339,7 @@ def get_pitch_locations(game_id: int):
                         pitcher_name = pitcher_cache[pid]
                 if "고의" in result_text:
                     continue
-                all_pitches.append({
+                pitches.append({
                     "inning":      inning,
                     "inning_half": inning_half,
                     "batter":      batter,
@@ -1347,6 +1354,14 @@ def get_pitch_locations(game_id: int):
                     "result":      classify(result_text),
                     "stance":      pts.get("stance", "R"),
                 })
+        return inning, pitches
+
+    from concurrent.futures import ThreadPoolExecutor
+    all_pitches = []
+    with ThreadPoolExecutor(max_workers=max_inning) as _ex:
+        _results = sorted(_ex.map(_fetch_and_parse_inning, range(1, max_inning + 1)), key=lambda x: x[0])
+    for _, pitches in _results:
+        all_pitches.extend(pitches)
 
     # 종료 경기인데 DB 데이터 없었으면 → 방금 fetch한 데이터 저장
     if game_status == '종료' and all_pitches:
