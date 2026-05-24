@@ -19,11 +19,8 @@ HEADERS = {
     'Referer': 'https://sports.naver.com/',
 }
 
-# KBO 관련 YouTube 채널 ID 목록
-KBO_YOUTUBE_CHANNELS = [
-    'UCJkCKfxJVS_2jGGOqPTqBxw',  # KBO TV (공식)
-    'UCPZTalFKDPvkDiYi0CeIyMg',  # 네이버 스포츠 야구
-]
+KBO_YT_CHANNEL_ID = 'UCCukBKvH5IN67IpsTB_IevQ'  # KBO 공식 (@kbo)
+_YT_API_KEY = os.environ.get('YOUTUBE_API_KEY', '')
 
 # 팀명 → team_id 매핑 (DB 기준)
 TEAM_NAME_MAP = {
@@ -164,57 +161,68 @@ def save_highlights(articles: list[dict]) -> int:
     return saved
 
 
-# ── YouTube RSS 하이라이트 ──────────────────────────────────────────────────────
+# ── YouTube Data API v3 하이라이트 ────────────────────────────────────────────
 
-_YT_NS = {
-    'atom':  'http://www.w3.org/2005/Atom',
-    'yt':    'http://www.youtube.com/xml/schemas/2015',
-    'media': 'http://search.yahoo.com/mrss/',
-}
 _KBO_KW = ['하이라이트', 'KBO', '야구', '홈런', '명장면', 'Shorts', '#Shorts', 'vs', 'VS', '경기']
 
 
 def fetch_youtube_highlights(today: str | None = None) -> list[dict]:
-    """KBO YouTube 채널 RSS → 당일 영상 수집 (Shorts 포함)"""
+    """YouTube Data API v3 → KBO 당일 영상 수집"""
     if today is None:
         today = datetime.now().strftime('%Y-%m-%d')
+    if not _YT_API_KEY:
+        print('[YouTube] API 키 없음, 스킵')
+        return []
     articles = []
-    for channel_id in KBO_YOUTUBE_CHANNELS:
+    published_after = f'{today}T00:00:00Z'
+    # 1) KBO 공식 채널 업로드
+    # 2) 전체 KBO 하이라이트 키워드 검색
+    queries = [
+        {'channelId': KBO_YT_CHANNEL_ID, 'q': None},
+        {'channelId': None, 'q': 'KBO 하이라이트'},
+    ]
+    seen_ids: set = set()
+    for q in queries:
         try:
-            url = f'https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}'
-            r = requests.get(url, headers=HEADERS, timeout=10)
+            params = {
+                'part': 'snippet',
+                'type': 'video',
+                'publishedAfter': published_after,
+                'maxResults': 50,
+                'order': 'date',
+                'key': _YT_API_KEY,
+            }
+            if q['channelId']:
+                params['channelId'] = q['channelId']
+            if q['q']:
+                params['q'] = q['q']
+            r = requests.get('https://www.googleapis.com/youtube/v3/search',
+                             params=params, timeout=10)
             if r.status_code != 200:
+                print(f'[YouTube API] {r.status_code}: {r.text[:200]}')
                 continue
-            root = ET.fromstring(r.content)
-            for entry in root.findall('atom:entry', _YT_NS):
-                title_el   = entry.find('atom:title',     _YT_NS)
-                link_el    = entry.find('atom:link',      _YT_NS)
-                pub_el     = entry.find('atom:published', _YT_NS)
-                vid_el     = entry.find('yt:videoId',     _YT_NS)
-                if title_el is None or link_el is None:
+            items = r.json().get('items', [])
+            for item in items:
+                video_id = item.get('id', {}).get('videoId', '')
+                if not video_id or video_id in seen_ids:
                     continue
-                title    = title_el.text or ''
-                link     = link_el.get('href', '')
-                pub_str  = pub_el.text if pub_el is not None else ''
-                video_id = vid_el.text if vid_el is not None else ''
-                # 당일 영상만
-                if pub_str[:10] != today:
-                    continue
-                # KBO 관련 키워드 없으면 스킵
+                seen_ids.add(video_id)
+                snippet = item.get('snippet', {})
+                title = snippet.get('title', '')
+                pub_str = snippet.get('publishedAt', '')
                 if not any(kw in title for kw in _KBO_KW):
                     continue
-                # Shorts는 /shorts/ URL 사용
                 is_shorts = '#Shorts' in title or 'Shorts' in title
                 video_url = (f'https://www.youtube.com/shorts/{video_id}'
-                             if is_shorts and video_id else link)
-                t1, t2 = _parse_teams_from_title(title)
+                             if is_shorts else f'https://www.youtube.com/watch?v={video_id}')
                 try:
                     pub_dt = datetime.fromisoformat(pub_str.replace('Z', '+00:00')).replace(tzinfo=None)
                 except Exception:
                     pub_dt = datetime.now()
+                t1, t2 = _parse_teams_from_title(title)
                 articles.append({
                     'title': title,
-                    'url':   video_url,
+                    'url': video_url,
                     'source': 'youtube',
                     'published_at': pub_dt,
                     'team_id1': t1,
@@ -222,7 +230,7 @@ def fetch_youtube_highlights(today: str | None = None) -> list[dict]:
                     'game_date': today,
                 })
         except Exception as e:
-            print(f'[YouTube RSS] 채널 {channel_id} 오류: {e}')
+            print(f'[YouTube API] 오류: {e}')
     return articles
 
 

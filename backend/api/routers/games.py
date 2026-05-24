@@ -235,7 +235,6 @@ def get_game_relay_all(game_id: int):
     cur.close()
     conn.close()
 
-    import re
     pitch_title_pattern = re.compile(r'^(\d+)구\s+(.+?)\s+(\d+)km/h\s+(.+)$')
 
     def parse_pitch_result(title):
