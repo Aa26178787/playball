@@ -90,7 +90,31 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   Timer? _autoRefreshTimer;
   int _unreadNotifCount = 0;
 
+  final ScrollController _dateScrollController = ScrollController();
+  static final _seasonStart = DateTime(2026, 3, 1);
+  static final _seasonEnd   = DateTime(2026, 10, 31);
+  static const _itemW = 50.0;
+
   bool get _hasLiveGames => _games.any((g) => g['status'] == '진행');
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  int get _totalDays => _seasonEnd.difference(_seasonStart).inDays + 1;
+
+  int _dateIndex(DateTime d) => d.difference(_seasonStart).inDays.clamp(0, _totalDays - 1);
+
+  void _scrollToSelected() {
+    if (!_dateScrollController.hasClients) return;
+    final idx = _dateIndex(_selectedDate);
+    final screenW = MediaQuery.of(context).size.width;
+    final offset = (idx * _itemW) - (screenW / 2) + (_itemW / 2);
+    _dateScrollController.animateTo(
+      offset.clamp(0.0, _dateScrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
 
   @override
   void initState() {
@@ -102,11 +126,13 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     _loadUnreadCount();
     _loadTomorrowGames();
     _startAutoRefresh();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
   }
 
   @override
   void dispose() {
     _autoRefreshTimer?.cancel();
+    _dateScrollController.dispose();
     super.dispose();
   }
 
@@ -192,18 +218,84 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     }
   }
 
-  Future<void> _selectDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2026, 3, 1),
-      lastDate: DateTime(2026, 10, 31),
-      locale: const Locale('ko', 'KR'),
+  Widget _buildDateStrip() {
+    final today = DateTime.now();
+    const dayNames = ['월', '화', '수', '목', '금', '토', '일'];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return SizedBox(
+      height: 70,
+      child: ListView.builder(
+        controller: _dateScrollController,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        itemCount: _totalDays,
+        itemBuilder: (_, i) {
+          final date = _seasonStart.add(Duration(days: i));
+          final isSelected = _isSameDay(date, _selectedDate);
+          final isToday = _isSameDay(date, today);
+          final dayName = dayNames[date.weekday - 1];
+          final isSat = date.weekday == DateTime.saturday;
+          final isSun = date.weekday == DateTime.sunday;
+
+          Color nameColor;
+          if (isSelected) {
+            nameColor = Colors.white70;
+          } else if (isSun) {
+            nameColor = Colors.red[400]!;
+          } else if (isSat) {
+            nameColor = Colors.blue[400]!;
+          } else {
+            nameColor = isDark ? Colors.grey[400]! : Colors.grey[500]!;
+          }
+
+          return GestureDetector(
+            onTap: () {
+              if (!isSelected) {
+                setState(() => _selectedDate = date);
+                _loadGames();
+                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+              }
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: _itemW - 6,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF1A237E) : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(dayName,
+                      style: TextStyle(fontSize: 11, color: nameColor, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${date.day}',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected
+                          ? Colors.white
+                          : (isDark ? Colors.white : Colors.black87),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Container(
+                    width: 4, height: 4,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isToday && !isSelected ? Colors.red : Colors.transparent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
-    if (picked != null) {
-      setState(() => _selectedDate = picked);
-      _loadGames();
-    }
   }
 
   @override
@@ -274,51 +366,8 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       ),
       body: Column(
         children: [
-          // 날짜 선택 바
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: () {
-                    setState(() {
-                      _selectedDate =
-                          _selectedDate.subtract(const Duration(days: 1));
-                    });
-                    _loadGames();
-                  },
-                ),
-                GestureDetector(
-                  onTap: _selectDate,
-                  child: Row(
-                    children: [
-                      const Icon(Icons.calendar_today, size: 16),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${_selectedDate.year}.${_selectedDate.month.toString().padLeft(2, '0')}.${_selectedDate.day.toString().padLeft(2, '0')}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: () {
-                    setState(() {
-                      _selectedDate =
-                          _selectedDate.add(const Duration(days: 1));
-                    });
-                    _loadGames();
-                  },
-                ),
-              ],
-            ),
-          ),
+          // 날짜 스크롤 스트립
+          _buildDateStrip(),
 
           // 당일 등록말소 배너
           if (_todayRosterChanges.isNotEmpty)
