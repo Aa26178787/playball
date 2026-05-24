@@ -352,32 +352,34 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     if (!mounted) return;
     setState(() {
       for (int i = 0; i < _hitterCategories.length; i++) {
-        _hitterCache[_hitterCategories[i]['value']!] = hitterResults[i];
+        final r = hitterResults[i];
+        if (r != null) _hitterCache[_hitterCategories[i]['value']!] = r;
       }
       for (int i = 0; i < _pitcherCategories.length; i++) {
-        _pitcherCache[_pitcherCategories[i]['value']!] = pitcherResults[i];
+        final r = pitcherResults[i];
+        if (r != null) _pitcherCache[_pitcherCategories[i]['value']!] = r;
       }
       _loading = false;
     });
   }
 
-  Future<List> _fetchHitter(String sort) async {
+  Future<List?> _fetchHitter(String sort) async {
     final qualified = sort == 'avg' || sort == 'ops';
     try {
       final data = await ApiService.getHitters(sortBy: sort, limit: 10, qualified: qualified);
       return data['hitters'] ?? [];
     } catch (_) {
-      return [];
+      return null;
     }
   }
 
-  Future<List> _fetchPitcher(String sort) async {
+  Future<List?> _fetchPitcher(String sort) async {
     final qualified = sort == 'era' || sort == 'whip';
     try {
       final data = await ApiService.getPitchers(sortBy: sort, limit: 10, qualified: qualified);
       return data['pitchers'] ?? [];
     } catch (_) {
-      return [];
+      return null;
     }
   }
 
@@ -591,7 +593,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   Widget _buildHitterRankings() {
     final label = _hitterCategories.firstWhere((c) => c['value'] == _hitterSort)['label']!;
-    final rankings = _hitterCache[_hitterSort] ?? [];
+    final rankings = _hitterCache[_hitterSort];
     return Column(
       children: [
         _buildCategoryChips(_hitterCategories, _hitterSort,
@@ -600,9 +602,14 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : rankings.isEmpty
-                  ? const Center(child: Text('데이터가 없습니다'))
-                  : _buildRankingsContent(rankings, _hitterStatValue, label),
+              : rankings == null
+                  ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      const Text('로드 실패'),
+                      TextButton(onPressed: _loadAll, child: const Text('다시 시도')),
+                    ]))
+                  : rankings.isEmpty
+                      ? const Center(child: Text('데이터가 없습니다'))
+                      : _buildRankingsContent(rankings, _hitterStatValue, label),
         ),
       ],
     );
@@ -610,7 +617,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   Widget _buildPitcherRankings() {
     final label = _pitcherCategories.firstWhere((c) => c['value'] == _pitcherSort)['label']!;
-    final rankings = _pitcherCache[_pitcherSort] ?? [];
+    final rankings = _pitcherCache[_pitcherSort];
     return Column(
       children: [
         _buildCategoryChips(_pitcherCategories, _pitcherSort,
@@ -619,9 +626,14 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : rankings.isEmpty
-                  ? const Center(child: Text('데이터가 없습니다'))
-                  : _buildRankingsContent(rankings, _pitcherStatValue, label),
+              : rankings == null
+                  ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      const Text('로드 실패'),
+                      TextButton(onPressed: _loadAll, child: const Text('다시 시도')),
+                    ]))
+                  : rankings.isEmpty
+                      ? const Center(child: Text('데이터가 없습니다'))
+                      : _buildRankingsContent(rankings, _pitcherStatValue, label),
         ),
       ],
     );

@@ -52,49 +52,46 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _load() async {
-    try {
-      final results = await Future.wait([
-        ApiService.getMe(),
-        ApiService.getFavoriteTeams(),
-        ApiService.getFavoritePlayers(),
-        ApiService.getMyPosts(),
-        ApiService.getMyComments(),
-        ApiService.getSettings(),
-        ApiService.getMyLikes(),
-        ApiService.getStadiumVisits(limit: 20),
-      ]);
-      if (mounted) {
-        final settings = (results[5] as Map)['settings'] as Map?;
-        setState(() {
-          _user = results[0];
-          _favoriteTeams = (results[1] as Map)['teams'] ?? [];
-          _favoritePlayers = (results[2] as Map)['players'] ?? [];
-          _myPosts = (results[3] as Map)['posts'] ?? [];
-          _myComments = (results[4] as Map)['comments'] ?? [];
-          _myLikes = (results[6] as Map)['posts'] ?? [];
-          _stadiumVisits = (results[7] as Map)['visits'] ?? [];
-          if (settings != null) {
-            _notifyGameStart   = settings['notify_game_start']   as bool? ?? true;
-            _notifyScoreChange = settings['notify_score_change'] as bool? ?? true;
-            _notifyGameEnd     = settings['notify_game_end']     as bool? ?? true;
-            _notifyMyTeamOnly  = settings['notify_my_team_only'] as bool? ?? false;
-            _notifyStreak      = settings['notify_streak']        as bool? ?? true;
-            _notifyRankChange  = settings['notify_rank_change']  as bool? ?? true;
-            _notifyRoster      = settings['notify_roster']       as bool? ?? true;
-            _notifyComment     = settings['notify_comment']      as bool? ?? true;
-            _notifyPennantRace = settings['notify_pennant_race'] as bool? ?? true;
-            _notifyFavHr       = settings['notify_fav_hr']       as bool? ?? true;
-            _notifyWalkoff     = settings['notify_walkoff']      as bool? ?? true;
-            _notifyStarterKo     = settings['notify_starter_ko']      as bool? ?? true;
-            _notifyBeforeMinutes = (settings['notify_before_minutes'] as num?)?.toInt() ?? 60;
-          }
-          _settingsLoaded = true;
-          _loading = false;
-        });
+    final empty = <String, dynamic>{};
+    final results = await Future.wait([
+      ApiService.getMe().catchError((_) => empty),
+      ApiService.getFavoriteTeams().catchError((_) => empty),
+      ApiService.getFavoritePlayers().catchError((_) => empty),
+      ApiService.getMyPosts().catchError((_) => empty),
+      ApiService.getMyComments().catchError((_) => empty),
+      ApiService.getSettings().catchError((_) => empty),
+      ApiService.getMyLikes().catchError((_) => empty),
+      ApiService.getStadiumVisits(limit: 20).catchError((_) => empty),
+    ]);
+    if (!mounted) return;
+    final settings = (results[5] as Map)['settings'] as Map?;
+    setState(() {
+      final me = results[0] as Map;
+      if (me.isNotEmpty) _user = me as Map<String, dynamic>;
+      _favoriteTeams = (results[1] as Map)['teams'] ?? _favoriteTeams;
+      _favoritePlayers = (results[2] as Map)['players'] ?? _favoritePlayers;
+      _myPosts = (results[3] as Map)['posts'] ?? _myPosts;
+      _myComments = (results[4] as Map)['comments'] ?? _myComments;
+      _myLikes = (results[6] as Map)['posts'] ?? _myLikes;
+      _stadiumVisits = (results[7] as Map)['visits'] ?? _stadiumVisits;
+      if (settings != null) {
+        _notifyGameStart   = settings['notify_game_start']   as bool? ?? true;
+        _notifyScoreChange = settings['notify_score_change'] as bool? ?? true;
+        _notifyGameEnd     = settings['notify_game_end']     as bool? ?? true;
+        _notifyMyTeamOnly  = settings['notify_my_team_only'] as bool? ?? false;
+        _notifyStreak      = settings['notify_streak']        as bool? ?? true;
+        _notifyRankChange  = settings['notify_rank_change']  as bool? ?? true;
+        _notifyRoster      = settings['notify_roster']       as bool? ?? true;
+        _notifyComment     = settings['notify_comment']      as bool? ?? true;
+        _notifyPennantRace = settings['notify_pennant_race'] as bool? ?? true;
+        _notifyFavHr       = settings['notify_fav_hr']       as bool? ?? true;
+        _notifyWalkoff     = settings['notify_walkoff']      as bool? ?? true;
+        _notifyStarterKo     = settings['notify_starter_ko']      as bool? ?? true;
+        _notifyBeforeMinutes = (settings['notify_before_minutes'] as num?)?.toInt() ?? 60;
       }
-    } catch (_) {
-      setState(() => _loading = false);
-    }
+      _settingsLoaded = true;
+      _loading = false;
+    });
   }
 
   Future<void> _saveSettings() async {
