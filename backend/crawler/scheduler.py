@@ -1217,6 +1217,95 @@ def _crawl_news_hourly():
         print(f"[{datetime.now()}] 뉴스 시간별 크롤링 오류: {e}")
 
 
+def _send_pregame_notifications():
+    """경기 시작 전 알림 — 유저별 notify_before_minutes(30/60/120) 기준"""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        for minutes in (30, 60, 120):
+            cur.execute("""
+                SELECT g.id, g.home_team_id, g.away_team_id,
+                       ht.name AS home_team, at2.name AS away_team
+                FROM games g
+                JOIN teams ht  ON ht.id  = g.home_team_id
+                JOIN teams at2 ON at2.id = g.away_team_id
+                WHERE g.game_date = CURRENT_DATE
+                  AND g.status IN ('예정', '라인업')
+                  AND g.start_time IS NOT NULL
+                  AND g.start_time >= (CURRENT_TIME AT TIME ZONE 'Asia/Seoul')
+                                      + (%s * INTERVAL '1 minute')
+                                      - INTERVAL '2 minutes 30 seconds'
+                  AND g.start_time <  (CURRENT_TIME AT TIME ZONE 'Asia/Seoul')
+                                      + (%s * INTERVAL '1 minute')
+                                      + INTERVAL '2 minutes 30 seconds'
+            """, (minutes, minutes))
+            games = cur.fetchall()
+
+            for game_id, home_tid, away_tid, home_team, away_team in games:
+                cur.execute("""
+                    SELECT DISTINCT pt.user_id, pt.token
+                    FROM push_tokens pt
+                    LEFT JOIN user_settings us ON us.user_id = pt.user_id
+                    WHERE COALESCE(us.notify_game_start, TRUE) = TRUE
+                      AND COALESCE(us.notify_before_minutes, 60) = %s
+                      AND (
+                        COALESCE(us.notify_my_team_only, FALSE) = FALSE
+                        OR EXISTS (
+                            SELECT 1 FROM user_favorite_teams uft
+                            WHERE uft.user_id = pt.user_id
+                              AND uft.team_id = ANY(%s)
+                        )
+                      )
+                      AND NOT EXISTS (
+                        SELECT 1 FROM pregame_notifications_sent pns
+                        WHERE pns.user_id = pt.user_id AND pns.game_id = %s
+                      )
+                """, (minutes, [home_tid, away_tid], game_id))
+                targets = cur.fetchall()
+                if not targets:
+                    continue
+
+                label = '2시간' if minutes == 120 else '1시간' if minutes == 60 else '30분'
+                title = f"⚾ {away_team} vs {home_team} {label} 전"
+                body = f"{label} 뒤에 경기가 시작됩니다"
+
+                user_ids = [t[0] for t in targets]
+                cur.executemany(
+                    "INSERT INTO user_notifications (user_id, title, body, type, game_id)"
+                    " VALUES (%s,%s,%s,%s,%s)",
+                    [(uid, title, body, 'game_start', game_id) for uid in user_ids]
+                )
+                cur.executemany(
+                    "INSERT INTO pregame_notifications_sent (user_id, game_id)"
+                    " VALUES (%s,%s) ON CONFLICT DO NOTHING",
+                    [(uid, game_id) for uid in user_ids]
+                )
+                conn.commit()
+
+                try:
+                    from api.fcm_service import _get_app
+                    if _get_app() is not None:
+                        from firebase_admin import messaging
+                        tokens = [t[1] for t in targets]
+                        msg = messaging.MulticastMessage(
+                            notification=messaging.Notification(title=title, body=body),
+                            data={'type': 'game_start', 'game_id': str(game_id)},
+                            tokens=tokens,
+                        )
+                        messaging.send_each_for_multicast(msg)
+                except Exception as e:
+                    print(f"[FCM] 경기전 알림 발송 오류: {e}")
+
+                print(f"[pregame] {label} 전 알림: {away_team} vs {home_team} → {len(user_ids)}명")
+        cur.close()
+    except Exception as e:
+        print(f"[pregame_notif] 오류: {e}")
+    finally:
+        conn.close()
+
+
 def run_scheduler():
     print("PlayBall 스케줄러 시작!")
 
@@ -1248,6 +1337,9 @@ def run_scheduler():
 
     # 15분마다: 크롤러 헬스체크
     schedule.every(15).minutes.do(_health_check)
+
+    # 5분마다: 경기 시작 전 알림 (30분/1시간/2시간 전)
+    schedule.every(5).minutes.do(_send_pregame_notifications)
 
     print("스케줄 등록 완료!")
     print("- 1분마다 (UTC 01:00~15:00 = KST 10:00~00:00): 경기 상태/이닝/선수/투구 업데이트")

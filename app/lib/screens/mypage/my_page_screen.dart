@@ -30,19 +30,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
   bool _uploadingImage = false;
 
   // 알림 설정
-  bool _notifyGameStart   = true;
-  bool _notifyScoreChange = true;
-  bool _notifyGameEnd     = true;
-  bool _notifyMyTeamOnly  = false;
-  bool _notifyStreak       = true;
-  bool _notifyRankChange   = true;
-  bool _notifyRoster       = true;
-  bool _notifyComment      = true;
-  bool _notifyPennantRace  = true;
-  bool _notifyFavHr        = true;
-  bool _notifyWalkoff      = true;
-  bool _notifyStarterKo    = true;
-  bool _settingsLoaded     = false;
+  bool _notifyGameStart    = true;
+  bool _notifyScoreChange  = true;
+  bool _notifyGameEnd      = true;
+  bool _notifyMyTeamOnly   = false;
+  bool _notifyStreak        = true;
+  bool _notifyRankChange    = true;
+  bool _notifyRoster        = true;
+  bool _notifyComment       = true;
+  bool _notifyPennantRace   = true;
+  bool _notifyFavHr         = true;
+  bool _notifyWalkoff       = true;
+  bool _notifyStarterKo     = true;
+  int  _notifyBeforeMinutes = 60;
+  bool _settingsLoaded      = false;
 
   @override
   void initState() {
@@ -84,7 +85,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
             _notifyPennantRace = settings['notify_pennant_race'] as bool? ?? true;
             _notifyFavHr       = settings['notify_fav_hr']       as bool? ?? true;
             _notifyWalkoff     = settings['notify_walkoff']      as bool? ?? true;
-            _notifyStarterKo   = settings['notify_starter_ko']   as bool? ?? true;
+            _notifyStarterKo     = settings['notify_starter_ko']      as bool? ?? true;
+            _notifyBeforeMinutes = (settings['notify_before_minutes'] as num?)?.toInt() ?? 60;
           }
           _settingsLoaded = true;
           _loading = false;
@@ -98,18 +100,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Future<void> _saveSettings() async {
     try {
       await ApiService.updateSettings({
-        'notify_game_start':   _notifyGameStart,
-        'notify_score_change': _notifyScoreChange,
-        'notify_game_end':     _notifyGameEnd,
-        'notify_my_team_only': _notifyMyTeamOnly,
-        'notify_streak':        _notifyStreak,
-        'notify_rank_change':   _notifyRankChange,
-        'notify_roster':        _notifyRoster,
-        'notify_comment':       _notifyComment,
-        'notify_pennant_race':  _notifyPennantRace,
-        'notify_fav_hr':        _notifyFavHr,
-        'notify_walkoff':       _notifyWalkoff,
-        'notify_starter_ko':    _notifyStarterKo,
+        'notify_game_start':      _notifyGameStart,
+        'notify_score_change':    _notifyScoreChange,
+        'notify_game_end':        _notifyGameEnd,
+        'notify_my_team_only':    _notifyMyTeamOnly,
+        'notify_streak':          _notifyStreak,
+        'notify_rank_change':     _notifyRankChange,
+        'notify_roster':          _notifyRoster,
+        'notify_comment':         _notifyComment,
+        'notify_pennant_race':    _notifyPennantRace,
+        'notify_fav_hr':          _notifyFavHr,
+        'notify_walkoff':         _notifyWalkoff,
+        'notify_starter_ko':      _notifyStarterKo,
+        'notify_before_minutes':  _notifyBeforeMinutes,
       });
     } catch (_) {}
   }
@@ -722,6 +725,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           _notifCategory(Icons.sports_baseball, '경기 알림', [
             _notifTile('경기 시작', null, _notifyGameStart,
                 (v) { setState(() => _notifyGameStart = v); _saveSettings(); }),
+            _buildBeforeMinutesTile(),
             _notifTile('득점', null, _notifyScoreChange,
                 (v) { setState(() => _notifyScoreChange = v); _saveSettings(); }),
             _notifTile('경기 종료', null, _notifyGameEnd,
@@ -769,6 +773,35 @@ class _MyPageScreenState extends State<MyPageScreen> {
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
         childrenPadding: EdgeInsets.zero,
         children: children,
+      ),
+    );
+  }
+
+  Widget _buildBeforeMinutesTile() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 4, 16, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text('알림 시간',
+                style: TextStyle(fontSize: 13, color: _notifyGameStart ? null : Colors.grey)),
+          ),
+          SegmentedButton<int>(
+            segments: const [
+              ButtonSegment(value: 30, label: Text('30분', style: TextStyle(fontSize: 11))),
+              ButtonSegment(value: 60, label: Text('1시간', style: TextStyle(fontSize: 11))),
+              ButtonSegment(value: 120, label: Text('2시간', style: TextStyle(fontSize: 11))),
+            ],
+            selected: {_notifyBeforeMinutes},
+            onSelectionChanged: _notifyGameStart
+                ? (s) { setState(() => _notifyBeforeMinutes = s.first); _saveSettings(); }
+                : null,
+            style: ButtonStyle(
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
       ),
     );
   }
