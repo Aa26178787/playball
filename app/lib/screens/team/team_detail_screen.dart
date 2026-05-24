@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
+import '../../services/widget_service.dart';
 import '../player/player_detail_screen.dart';
 import '../game/game_detail_screen.dart';
 import '../community/post_detail_screen.dart';
@@ -73,8 +74,12 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       final id = widget.team['id'] as int;
       if (_isFav) {
         await ApiService.removeFavoriteTeam(id);
+        final currentWidgetTeam = await WidgetService.getTeamId();
+        if (currentWidgetTeam == id) await WidgetService.setTeamId(null);
       } else {
         await ApiService.addFavoriteTeam(id);
+        final currentWidgetTeam = await WidgetService.getTeamId();
+        if (currentWidgetTeam == null) await WidgetService.setTeamId(id);
       }
       if (mounted) setState(() => _isFav = !_isFav);
     } catch (_) {}
