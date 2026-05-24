@@ -10,6 +10,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.service.quicksettings.TileService
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import org.json.JSONObject
@@ -104,7 +105,7 @@ class PlayBallWidget : AppWidgetProvider() {
 
                     // 타일 갱신 요청
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        PlayBallTileService.requestListeningState(
+                        TileService.requestListeningState(
                             context, ComponentName(context, PlayBallTileService::class.java)
                         )
                     }
