@@ -44,8 +44,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? get _pwError {
     final v = _pwCtrl.text;
     if (v.isEmpty) return null;
-    if (v.length < 6) return '비밀번호는 6자 이상이어야 합니다';
+    if (v.length < 8) return '8자 이상이어야 합니다';
+    if (!RegExp(r'[A-Za-z]').hasMatch(v)) return '영문자를 포함해야 합니다';
+    if (!RegExp(r'[0-9]').hasMatch(v)) return '숫자를 포함해야 합니다';
     return null;
+  }
+
+  // 0=취약 1=보통 2=강함
+  int get _pwStrength {
+    final v = _pwCtrl.text;
+    if (v.length < 8) return 0;
+    int score = 0;
+    if (RegExp(r'[A-Za-z]').hasMatch(v)) score++;
+    if (RegExp(r'[0-9]').hasMatch(v)) score++;
+    if (RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(v)) score++;
+    if (v.length >= 12) score++;
+    if (score <= 1) return 0;
+    if (score == 2) return 1;
+    return 2;
   }
 
   String? get _pwConfirmError {
@@ -122,6 +138,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (available == null) return const SizedBox.shrink();
     return Icon(available ? Icons.check_circle : Icons.cancel,
         color: available ? Colors.green : Colors.red, size: 20);
+  }
+
+  Widget _buildStrengthMeter() {
+    final s = _pwStrength;
+    final labels = ['취약', '보통', '강함'];
+    final colors = [Colors.red, Colors.orange, Colors.green];
+    return Row(children: [
+      Expanded(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: (s + 1) / 3,
+            backgroundColor: Colors.grey[200],
+            color: colors[s],
+            minHeight: 6,
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Text(labels[s], style: TextStyle(fontSize: 11, color: colors[s], fontWeight: FontWeight.bold)),
+    ]);
   }
 
   Widget _hint(String? msg, bool? ok) {
@@ -210,7 +247,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 obscureText: _obscure,
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
-                  labelText: '비밀번호 (6자 이상)',
+                  labelText: '비밀번호 (8자 이상, 영문+숫자)',
                   prefixIcon: const Icon(Icons.lock_outline),
                   border: const OutlineInputBorder(),
                   errorText: _pwError,
@@ -220,6 +257,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
               ),
+              if (_pwCtrl.text.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                _buildStrengthMeter(),
+              ],
               const SizedBox(height: 14),
 
               // ── 비밀번호 확인 ──

@@ -34,6 +34,16 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+def validate_password(password: str):
+    import re
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="비밀번호는 8자 이상이어야 합니다")
+    if not re.search(r'[A-Za-z]', password):
+        raise HTTPException(status_code=400, detail="비밀번호에 영문자가 포함되어야 합니다")
+    if not re.search(r'[0-9]', password):
+        raise HTTPException(status_code=400, detail="비밀번호에 숫자가 포함되어야 합니다")
+
+
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
@@ -130,7 +140,7 @@ def register(user: UserRegister):
     if cur.fetchone():
         raise HTTPException(status_code=400, detail="이미 사용 중인 닉네임입니다")
 
-    # 비밀번호 해시 후 저장
+    validate_password(user.password)
     hashed_pw = hash_password(user.password)
     cur.execute("""
         INSERT INTO users (email, password_hash, nickname)

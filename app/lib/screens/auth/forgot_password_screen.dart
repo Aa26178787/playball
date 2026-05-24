@@ -40,8 +40,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       setState(() => _error = '비밀번호가 일치하지 않습니다');
       return;
     }
-    if (pw.length < 6) {
-      setState(() => _error = '비밀번호는 6자 이상이어야 합니다');
+    if (pw.length < 8) {
+      setState(() => _error = '비밀번호는 8자 이상이어야 합니다');
+      return;
+    }
+    if (!RegExp(r'[A-Za-z]').hasMatch(pw)) {
+      setState(() => _error = '비밀번호에 영문자를 포함해야 합니다');
+      return;
+    }
+    if (!RegExp(r'[0-9]').hasMatch(pw)) {
+      setState(() => _error = '비밀번호에 숫자를 포함해야 합니다');
       return;
     }
     setState(() { _loading = true; _error = null; });
