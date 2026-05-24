@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
+import '../../utils/local_cache.dart';
 import '../player/player_detail_screen.dart';
 import 'team_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -35,15 +36,19 @@ class _TeamScreenState extends State<TeamScreen>
   }
 
   Future<void> _loadTeams() async {
-    setState(() => _isLoading = true);
+    final cached = await LocalCache.get('team_rankings') as List?;
+    if (cached != null && mounted) {
+      setState(() { _teams = cached; _isLoading = false; });
+    } else {
+      if (mounted) setState(() => _isLoading = true);
+    }
     try {
       final data = await ApiService.getTeamRankings();
-      setState(() {
-        _teams = data['rankings'] ?? [];
-        _isLoading = false;
-      });
+      final rankings = data['rankings'] as List? ?? [];
+      await LocalCache.set('team_rankings', rankings);
+      if (mounted) setState(() { _teams = rankings; _isLoading = false; });
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -383,10 +388,28 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   }
 
   Future<void> _loadAll() async {
-    setState(() => _loading = true);
+    // Phase 1: 캐시에서 즉시 표시
+    final cached = await LocalCache.get('player_rankings') as Map?;
+    if (cached != null && mounted) {
+      final h = (cached['hitters'] as Map?) ?? {};
+      final p = (cached['pitchers'] as Map?) ?? {};
+      setState(() {
+        for (final c in _hitterCategories) {
+          _hitterCache[c['value']!] = (h[c['value']!] as List?) ?? [];
+        }
+        for (final c in _pitcherCategories) {
+          _pitcherCache[c['value']!] = (p[c['value']!] as List?) ?? [];
+        }
+        _loading = false;
+      });
+    } else {
+      if (mounted) setState(() => _loading = true);
+    }
+    // Phase 2: 백그라운드 갱신
     try {
       final data = await ApiService.getPlayerRankings();
       if (!mounted) return;
+      await LocalCache.set('player_rankings', data);
       final h = (data['hitters'] as Map?) ?? {};
       final p = (data['pitchers'] as Map?) ?? {};
       setState(() {

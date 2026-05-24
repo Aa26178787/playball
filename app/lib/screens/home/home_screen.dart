@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:shimmer/shimmer.dart';
 
 import '../../models/game.dart';
+import '../../utils/local_cache.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import '../game/game_detail_screen.dart';
@@ -117,22 +118,32 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   }
 
   Future<void> _loadFavoriteTeams() async {
+    final cached = await LocalCache.get('favorite_teams') as List?;
+    if (cached != null && mounted) {
+      setState(() {
+        _favoriteTeamIds = Set.from(cached.map((t) => (t as Map)['id'] as int));
+      });
+    }
     try {
       final data = await ApiService.getFavoriteTeams();
+      final teams = data['teams'] as List? ?? [];
+      await LocalCache.set('favorite_teams', teams);
       if (mounted) {
         setState(() {
-          _favoriteTeamIds = Set.from(
-            (data['teams'] as List? ?? []).map((t) => t['id'] as int),
-          );
+          _favoriteTeamIds = Set.from(teams.map((t) => (t as Map)['id'] as int));
         });
       }
     } catch (_) {}
   }
 
   Future<void> _loadRankings() async {
+    final cached = await LocalCache.get('team_rankings') as List?;
+    if (cached != null && mounted) setState(() => _rankings = cached);
     try {
       final data = await ApiService.getTeamRankings();
-      if (mounted) setState(() => _rankings = data['rankings'] ?? []);
+      final rankings = data['rankings'] as List? ?? [];
+      await LocalCache.set('team_rankings', rankings);
+      if (mounted) setState(() => _rankings = rankings);
     } catch (_) {}
   }
 
@@ -161,17 +172,23 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   }
 
   Future<void> _loadGames() async {
-    setState(() => _isLoading = true);
+    final dateStr =
+        "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+
+    final cached = await LocalCache.get('games_$dateStr', maxAgeSeconds: 300) as List?;
+    if (cached != null && mounted) {
+      setState(() { _games = cached; _isLoading = false; });
+    } else {
+      if (mounted) setState(() => _isLoading = true);
+    }
+
     try {
-      final dateStr =
-          "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
       final data = await ApiService.getGamesByDate(dateStr);
-      setState(() {
-        _games = data['games'] ?? [];
-        _isLoading = false;
-      });
+      final games = data['games'] as List? ?? [];
+      await LocalCache.set('games_$dateStr', games);
+      if (mounted) setState(() { _games = games; _isLoading = false; });
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

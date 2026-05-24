@@ -6,6 +6,7 @@ import '../../api/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../utils/team_theme.dart';
+import '../../utils/local_cache.dart';
 import '../player/player_detail_screen.dart';
 import '../team/team_detail_screen.dart';
 import '../community/post_detail_screen.dart';
@@ -49,10 +50,50 @@ class _MyPageScreenState extends State<MyPageScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _loadFromCache().then((_) => _refreshFromApi());
   }
 
-  Future<void> _load() async {
+  void _applySettings(Map settings) {
+    _notifyGameStart     = settings['notify_game_start']     as bool? ?? true;
+    _notifyScoreChange   = settings['notify_score_change']   as bool? ?? true;
+    _notifyGameEnd       = settings['notify_game_end']       as bool? ?? true;
+    _notifyMyTeamOnly    = settings['notify_my_team_only']   as bool? ?? false;
+    _notifyStreak        = settings['notify_streak']         as bool? ?? true;
+    _notifyRankChange    = settings['notify_rank_change']    as bool? ?? true;
+    _notifyRoster        = settings['notify_roster']         as bool? ?? true;
+    _notifyComment       = settings['notify_comment']        as bool? ?? true;
+    _notifyPennantRace   = settings['notify_pennant_race']   as bool? ?? true;
+    _notifyFavHr         = settings['notify_fav_hr']         as bool? ?? true;
+    _notifyWalkoff       = settings['notify_walkoff']        as bool? ?? true;
+    _notifyStarterKo     = settings['notify_starter_ko']     as bool? ?? true;
+    _notifyBeforeMinutes = (settings['notify_before_minutes'] as num?)?.toInt() ?? 60;
+  }
+
+  Future<void> _loadFromCache() async {
+    final me          = await LocalCache.get('me')               as Map?;
+    final favTeams    = await LocalCache.get('favorite_teams')   as List?;
+    final favPlayers  = await LocalCache.get('favorite_players') as List?;
+    final myPosts     = await LocalCache.get('my_posts')         as List?;
+    final myComments  = await LocalCache.get('my_comments')      as List?;
+    final myLikes     = await LocalCache.get('my_likes')         as List?;
+    final settings    = await LocalCache.get('user_settings')    as Map?;
+
+    if (!mounted) return;
+    if (me != null || favTeams != null) {
+      setState(() {
+        if (me != null)         _user          = Map<String, dynamic>.from(me);
+        if (favTeams != null)   _favoriteTeams  = favTeams;
+        if (favPlayers != null) _favoritePlayers = favPlayers;
+        if (myPosts != null)    _myPosts        = myPosts;
+        if (myComments != null) _myComments     = myComments;
+        if (myLikes != null)    _myLikes        = myLikes;
+        if (settings != null)   { _applySettings(settings); _settingsLoaded = true; }
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _refreshFromApi() async {
     final empty = <String, dynamic>{};
     final results = await Future.wait([
       ApiService.getMe().catchError((_) => empty),
@@ -65,35 +106,38 @@ class _MyPageScreenState extends State<MyPageScreen> {
       ApiService.getStadiumVisits(limit: 20).catchError((_) => empty),
     ]);
     if (!mounted) return;
+
+    final me       = results[0] as Map;
+    final teams    = (results[1] as Map)['teams']    as List? ?? [];
+    final players  = (results[2] as Map)['players']  as List? ?? [];
+    final posts    = (results[3] as Map)['posts']    as List? ?? [];
+    final comments = (results[4] as Map)['comments'] as List? ?? [];
     final settings = (results[5] as Map)['settings'] as Map?;
+    final likes    = (results[6] as Map)['posts']    as List? ?? [];
+    final visits   = (results[7] as Map)['visits']   as List? ?? [];
+
+    if (me.isNotEmpty) await LocalCache.set('me', me);
+    await LocalCache.set('favorite_teams',   teams);
+    await LocalCache.set('favorite_players', players);
+    await LocalCache.set('my_posts',         posts);
+    await LocalCache.set('my_comments',      comments);
+    await LocalCache.set('my_likes',         likes);
+    if (settings != null) await LocalCache.set('user_settings', settings);
+
     setState(() {
-      final me = results[0] as Map;
       if (me.isNotEmpty) _user = me as Map<String, dynamic>;
-      _favoriteTeams = (results[1] as Map)['teams'] ?? _favoriteTeams;
-      _favoritePlayers = (results[2] as Map)['players'] ?? _favoritePlayers;
-      _myPosts = (results[3] as Map)['posts'] ?? _myPosts;
-      _myComments = (results[4] as Map)['comments'] ?? _myComments;
-      _myLikes = (results[6] as Map)['posts'] ?? _myLikes;
-      _stadiumVisits = (results[7] as Map)['visits'] ?? _stadiumVisits;
-      if (settings != null) {
-        _notifyGameStart   = settings['notify_game_start']   as bool? ?? true;
-        _notifyScoreChange = settings['notify_score_change'] as bool? ?? true;
-        _notifyGameEnd     = settings['notify_game_end']     as bool? ?? true;
-        _notifyMyTeamOnly  = settings['notify_my_team_only'] as bool? ?? false;
-        _notifyStreak      = settings['notify_streak']        as bool? ?? true;
-        _notifyRankChange  = settings['notify_rank_change']  as bool? ?? true;
-        _notifyRoster      = settings['notify_roster']       as bool? ?? true;
-        _notifyComment     = settings['notify_comment']      as bool? ?? true;
-        _notifyPennantRace = settings['notify_pennant_race'] as bool? ?? true;
-        _notifyFavHr       = settings['notify_fav_hr']       as bool? ?? true;
-        _notifyWalkoff     = settings['notify_walkoff']      as bool? ?? true;
-        _notifyStarterKo     = settings['notify_starter_ko']      as bool? ?? true;
-        _notifyBeforeMinutes = (settings['notify_before_minutes'] as num?)?.toInt() ?? 60;
-      }
-      _settingsLoaded = true;
+      _favoriteTeams  = teams;
+      _favoritePlayers = players;
+      _myPosts        = posts;
+      _myComments     = comments;
+      _myLikes        = likes;
+      _stadiumVisits  = visits;
+      if (settings != null) { _applySettings(settings); _settingsLoaded = true; }
       _loading = false;
     });
   }
+
+  Future<void> _load() => _refreshFromApi();
 
   Future<void> _saveSettings() async {
     try {

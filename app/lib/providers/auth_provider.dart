@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../api/api_service.dart';
 import '../models/user.dart';
+import '../utils/local_cache.dart';
 
 class AuthProvider extends ChangeNotifier {
   User? _user;
@@ -101,6 +102,7 @@ class AuthProvider extends ChangeNotifier {
       try { await ApiService.serverLogout(prefs); } catch (_) {}
     }
     await ApiService.deleteToken();
+    await LocalCache.clearUser();
     _user = null;
     _isLoggedIn = false;
     notifyListeners();
