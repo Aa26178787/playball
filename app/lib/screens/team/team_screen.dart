@@ -3,6 +3,7 @@ import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import '../player/player_detail_screen.dart';
 import 'team_detail_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class TeamScreen extends StatefulWidget {
   const TeamScreen({super.key});
@@ -486,7 +487,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
               children: [
                 CircleAvatar(
                   radius: rank == 1 ? 32 : 24,
-                  backgroundImage: (img != null && img.isNotEmpty) ? NetworkImage(img) : null,
+                  backgroundImage: (img != null && img.isNotEmpty) ? CachedNetworkImageProvider(img) : null,
                   backgroundColor: medalColor.withValues(alpha: 0.15),
                   child: (img == null || img.isEmpty)
                       ? Icon(Icons.person, size: rank == 1 ? 28 : 20, color: medalColor)
@@ -676,7 +677,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
               radius: 18,
               backgroundColor: color,
               backgroundImage: (profileImage != null && profileImage.isNotEmpty)
-                  ? NetworkImage(profileImage)
+                  ? CachedNetworkImageProvider(profileImage)
                   : null,
               child: (profileImage == null || profileImage.isEmpty)
                   ? Text(

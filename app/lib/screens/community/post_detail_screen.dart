@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../api/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/mention_text.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final int postId;
@@ -229,10 +230,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   const SizedBox(height: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      _post!['image_url'] as String,
+                    child: CachedNetworkImage(imageUrl: _post!['image_url'] as String,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
                     ),
                   ),
                 ],

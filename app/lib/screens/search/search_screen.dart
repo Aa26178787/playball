@@ -4,6 +4,7 @@ import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import '../player/player_detail_screen.dart';
 import '../team/team_detail_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -181,7 +182,7 @@ class _SearchScreenState extends State<SearchScreen> {
             leading: CircleAvatar(
               radius: 20,
               backgroundImage: p['profile_image'] != null
-                  ? NetworkImage(p['profile_image']) : null,
+                  ? CachedNetworkImageProvider(p['profile_image']) : null,
               backgroundColor: Colors.grey[200],
               child: p['profile_image'] == null
                   ? const Icon(Icons.person, size: 20) : null,

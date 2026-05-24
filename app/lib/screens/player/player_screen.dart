@@ -3,6 +3,7 @@ import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import 'player_detail_screen.dart';
 import 'player_compare_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({super.key});
@@ -323,7 +324,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             CircleAvatar(
               radius: 20,
               backgroundColor: teamColor(code).withValues(alpha: 0.15),
-              backgroundImage: (img != null && img.isNotEmpty) ? NetworkImage(img) : null,
+              backgroundImage: (img != null && img.isNotEmpty) ? CachedNetworkImageProvider(img) : null,
               child: (img == null || img.isEmpty)
                   ? Text(
                       teamDisplayName(code).characters.take(2).string,
@@ -396,7 +397,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         final img = p['profile_image'] as String?;
         return ListTile(
           leading: CircleAvatar(
-            backgroundImage: (img != null && img.isNotEmpty) ? NetworkImage(img) : null,
+            backgroundImage: (img != null && img.isNotEmpty) ? CachedNetworkImageProvider(img) : null,
             child: (img == null || img.isEmpty) ? const Icon(Icons.person) : null,
           ),
           title: Text('${p['name']}', style: const TextStyle(fontWeight: FontWeight.w600)),

@@ -10,6 +10,7 @@ import '../player/player_detail_screen.dart';
 import '../team/team_detail_screen.dart';
 import '../community/post_detail_screen.dart';
 import 'phone_verify_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -286,7 +287,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     radius: 36,
                     backgroundColor: const Color(0xFF1A237E),
                     backgroundImage: _user?['profile_image'] != null
-                        ? NetworkImage(_user!['profile_image'])
+                        ? CachedNetworkImageProvider(_user!['profile_image'])
                         : null,
                     child: _user?['profile_image'] == null
                         ? const Icon(Icons.person, color: Colors.white, size: 36)
@@ -449,7 +450,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   leading: CircleAvatar(
                     radius: 20,
                     backgroundImage: p['profile_image'] != null
-                        ? NetworkImage(p['profile_image'])
+                        ? CachedNetworkImageProvider(p['profile_image'])
                         : null,
                     backgroundColor: Colors.grey[200],
                     child: p['profile_image'] == null

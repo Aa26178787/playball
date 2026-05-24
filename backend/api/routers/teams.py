@@ -203,6 +203,7 @@ def get_team_rankings():
 
 
 @router.get("/")
+@cached(3600)
 def get_teams():
     conn = get_connection()
     if not conn:

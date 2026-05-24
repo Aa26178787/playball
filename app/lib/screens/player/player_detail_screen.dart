@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../api/api_service.dart';
 import 'player_stats_section.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class PlayerDetailScreen extends StatefulWidget {
   final int playerId;
@@ -334,7 +335,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         children: [
           CircleAvatar(
             radius: 38,
-            backgroundImage: player['profile_image'] != null ? NetworkImage(player['profile_image']) : null,
+            backgroundImage: player['profile_image'] != null ? CachedNetworkImageProvider(player['profile_image']) : null,
             child: player['profile_image'] == null ? const Icon(Icons.person, size: 38, color: Colors.white) : null,
             backgroundColor: const Color(0xFF283593),
           ),

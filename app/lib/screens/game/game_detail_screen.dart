@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import 'pitch_location_chart.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class GameDetailScreen extends StatefulWidget {
   final int gameId;
@@ -1545,7 +1546,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   CircleAvatar(
                     radius: 18,
                     backgroundImage: starterPitcher['profile_image'] != null
-                        ? NetworkImage(starterPitcher['profile_image'])
+                        ? CachedNetworkImageProvider(starterPitcher['profile_image'])
                         : null,
                     child: starterPitcher['profile_image'] == null
                         ? const Icon(Icons.person, size: 18)
@@ -1668,7 +1669,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           CircleAvatar(
             radius: 18,
             backgroundImage: b['profile_image'] != null
-                ? NetworkImage(b['profile_image'])
+                ? CachedNetworkImageProvider(b['profile_image'])
                 : null,
             child: b['profile_image'] == null
                 ? const Icon(Icons.person, size: 18)
@@ -1705,7 +1706,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       leading: CircleAvatar(
         radius: 18,
-        backgroundImage: profileImage != null ? NetworkImage(profileImage) : null,
+        backgroundImage: profileImage != null ? CachedNetworkImageProvider(profileImage) : null,
         child: profileImage == null ? const Icon(Icons.person, size: 18) : null,
       ),
       title: Row(
@@ -1846,7 +1847,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         leading: CircleAvatar(
           radius: 20,
-          backgroundImage: profileImage != null ? NetworkImage(profileImage) : null,
+          backgroundImage: profileImage != null ? CachedNetworkImageProvider(profileImage) : null,
           child: profileImage == null ? const Icon(Icons.person, size: 20) : null,
         ),
         title: Row(
@@ -2072,7 +2073,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   CircleAvatar(
                     radius: 18,
                     backgroundImage:
-                        profileImage != null ? NetworkImage(profileImage) : null,
+                        profileImage != null ? CachedNetworkImageProvider(profileImage) : null,
                     child: profileImage == null
                         ? const Icon(Icons.person, size: 18)
                         : null,

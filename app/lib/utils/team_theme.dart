@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 const Map<String, String> kTeamLogoUrls = {
   'LG': 'https://sports-phinf.pstatic.net/team/kbo/default/LG.png?type=f92_88',
@@ -67,12 +68,13 @@ class TeamLogo extends StatelessWidget {
 
     if (resolvedUrl != null) {
       return ClipOval(
-        child: Image.network(
-          resolvedUrl,
+        child: CachedNetworkImage(
+          imageUrl: resolvedUrl,
           width: size,
           height: size,
           fit: BoxFit.cover,
-          errorBuilder: (ctx, err, trace) => _avatar(color, abbr),
+          errorWidget: (ctx, url, err) => _avatar(color, abbr),
+          placeholder: (ctx, url) => _avatar(color, abbr),
         ),
       );
     }

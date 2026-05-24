@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
 import 'player_detail_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class PlayerCompareScreen extends StatefulWidget {
   const PlayerCompareScreen({super.key});
@@ -148,7 +149,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
                   leading: CircleAvatar(
                     radius: 14,
                     backgroundImage: p['profile_image'] != null
-                        ? NetworkImage(p['profile_image'])
+                        ? CachedNetworkImageProvider(p['profile_image'])
                         : null,
                     child: p['profile_image'] == null
                         ? const Icon(Icons.person, size: 14)
@@ -245,7 +246,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
           CircleAvatar(
             radius: 30,
             backgroundImage: p['profile_image'] != null
-                ? NetworkImage(p['profile_image'])
+                ? CachedNetworkImageProvider(p['profile_image'])
                 : null,
             backgroundColor: Colors.white24,
             child: p['profile_image'] == null

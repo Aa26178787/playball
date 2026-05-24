@@ -698,6 +698,7 @@ def get_today_games():
 
 
 @router.get("/{game_id}")
+@cached(30)
 def get_game_detail(game_id: int):
     conn = get_connection()
     if not conn:

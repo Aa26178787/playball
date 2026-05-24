@@ -495,6 +495,7 @@ def get_matchup_stats(batter_id: int, pitcher_id: int):
 
 
 @router.get("/{player_id}")
+@cached(300)
 def get_player_detail(player_id: int):
     conn = get_connection()
     if not conn:

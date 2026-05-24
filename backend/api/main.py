@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from api.routers import games, players, teams, auth, user, stadiums, widget, community, calendar, phone, email_verify, password_reset, search, news
 from fastapi.staticfiles import StaticFiles
 
@@ -10,6 +11,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
