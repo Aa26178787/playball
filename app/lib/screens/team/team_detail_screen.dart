@@ -25,19 +25,21 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   List _news = [];
   List _communityPosts = [];
   List _monthlyStats = [];
+  List _h2hRecords = [];
   bool _playersLoading = true;
   bool _gamesLoading = false;
   bool _rosterLoading = false;
   bool _newsLoading = false;
   bool _communityLoading = false;
   bool _monthlyLoading = false;
+  bool _h2hLoading = false;
   bool _isFav = false;
   bool _favLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
     _tabController.addListener(() {
       if (_tabController.index == 1 && _games.isEmpty && !_gamesLoading) {
         _loadGames();
@@ -53,6 +55,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       }
       if (_tabController.index == 5 && _monthlyStats.isEmpty && !_monthlyLoading) {
         _loadMonthlyStats();
+      }
+      if (_tabController.index == 6 && _h2hRecords.isEmpty && !_h2hLoading) {
+        _loadH2H();
       }
     });
     _loadPlayers();
@@ -181,6 +186,21 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     }
   }
 
+  Future<void> _loadH2H() async {
+    setState(() => _h2hLoading = true);
+    try {
+      final data = await ApiService.getTeamHeadToHead(widget.team['id'] as int);
+      if (mounted) {
+        setState(() {
+          _h2hRecords = data['records'] ?? [];
+          _h2hLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _h2hLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final team = widget.team;
@@ -211,7 +231,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
           isScrollable: true,
-          tabs: const [Tab(text: '선수'), Tab(text: '최근경기'), Tab(text: '등록말소'), Tab(text: '뉴스'), Tab(text: '커뮤니티'), Tab(text: '월별성적')],
+          tabs: const [Tab(text: '선수'), Tab(text: '최근경기'), Tab(text: '등록말소'), Tab(text: '뉴스'), Tab(text: '커뮤니티'), Tab(text: '월별성적'), Tab(text: '상대전적')],
         ),
       ),
       body: Column(
@@ -220,7 +240,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [_buildPlayers(), _buildGames(), _buildRosterChanges(), _buildNews(), _buildCommunity(), _buildMonthlyStats()],
+              children: [_buildPlayers(), _buildGames(), _buildRosterChanges(), _buildNews(), _buildCommunity(), _buildMonthlyStats(), _buildHeadToHead()],
             ),
           ),
         ],
@@ -1029,5 +1049,152 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       final uri = Uri.parse(url);
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {}
+  }
+
+  Widget _buildHeadToHead() {
+    if (_h2hLoading) return const Center(child: CircularProgressIndicator());
+    if (_h2hRecords.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('상대 전적 데이터가 없습니다', style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: _loadH2H,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('다시 시도'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final code = widget.team['short_name'] as String? ?? '';
+    final color = teamColor(code);
+
+    // 전체 합산
+    final totalW = _h2hRecords.fold(0, (s, r) => s + (r['wins'] as int? ?? 0));
+    final totalL = _h2hRecords.fold(0, (s, r) => s + (r['losses'] as int? ?? 0));
+    final totalD = _h2hRecords.fold(0, (s, r) => s + (r['draws'] as int? ?? 0));
+    final totalG = totalW + totalL + totalD;
+    final totalPct = totalG > 0 ? (totalW / totalG * 100).toStringAsFixed(1) : '-';
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // 종합 요약 카드
+        Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          color: color.withOpacity(0.08),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _h2hStat('전체', '$totalG경기', Colors.black87),
+                _h2hStat('승', '$totalW', Colors.blue),
+                _h2hStat('패', '$totalL', Colors.red),
+                _h2hStat('무', '$totalD', Colors.grey),
+                _h2hStat('승률', totalPct == '-' ? '-' : '$totalPct%', color),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // 상대별 행
+        ...(_h2hRecords.map((r) => _buildH2HRow(r))),
+      ],
+    );
+  }
+
+  Widget _buildH2HRow(Map r) {
+    final wins    = r['wins']    as int? ?? 0;
+    final losses  = r['losses']  as int? ?? 0;
+    final draws   = r['draws']   as int? ?? 0;
+    final total   = r['total']   as int? ?? 0;
+    final rs      = r['runs_scored']  as int? ?? 0;
+    final ra      = r['runs_allowed'] as int? ?? 0;
+    final oppCode = r['opp_code'] as String? ?? '';
+    final oppName = r['opp_name'] as String? ?? '';
+    final pct     = total > 0 ? (wins / total * 100).toStringAsFixed(1) : '-';
+
+    final Color rowColor;
+    if (wins > losses) rowColor = Colors.blue;
+    else if (wins < losses) rowColor = Colors.red;
+    else rowColor = Colors.grey;
+
+    final winBar = total > 0 ? wins / total : 0.0;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                TeamLogo(teamCode: oppCode, size: 32),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(oppName,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                      Text('득점 $rs  실점 $ra',
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      children: [
+                        Text('$wins', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue.shade700)),
+                        Text(' 승  ', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                        Text('$losses', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red.shade700)),
+                        Text(' 패', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                        if (draws > 0) ...[
+                          Text('  $draws', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          Text(' 무', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                        ],
+                      ],
+                    ),
+                    Text(
+                      pct == '-' ? '-' : '승률 $pct%',
+                      style: TextStyle(fontSize: 12, color: rowColor, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            if (total > 0) ...[
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: winBar,
+                  backgroundColor: Colors.red.shade100,
+                  color: Colors.blue.shade400,
+                  minHeight: 6,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _h2hStat(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+      ],
+    );
   }
 }

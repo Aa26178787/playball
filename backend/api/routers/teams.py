@@ -402,6 +402,69 @@ def get_team_monthly_stats(team_id: int, season: int = 2026):
     }
 
 
+@router.get("/{team_id}/head-to-head")
+def get_head_to_head(team_id: int, season: int = 2026):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT
+            opp.id AS opp_id,
+            opp.name AS opp_name,
+            opp.short_name AS opp_code,
+            COUNT(*) AS total,
+            COUNT(*) FILTER (
+                WHERE (g.home_team_id = %s AND g.home_score > g.away_score)
+                   OR (g.away_team_id = %s AND g.away_score > g.home_score)
+            ) AS wins,
+            COUNT(*) FILTER (
+                WHERE (g.home_team_id = %s AND g.home_score < g.away_score)
+                   OR (g.away_team_id = %s AND g.away_score < g.home_score)
+            ) AS losses,
+            COUNT(*) FILTER (WHERE g.home_score = g.away_score) AS draws,
+            COALESCE(SUM(
+                CASE WHEN g.home_team_id = %s THEN g.home_score ELSE g.away_score END
+            ), 0) AS runs_scored,
+            COALESCE(SUM(
+                CASE WHEN g.home_team_id = %s THEN g.away_score ELSE g.home_score END
+            ), 0) AS runs_allowed
+        FROM games g
+        JOIN teams opp ON opp.id = CASE
+            WHEN g.home_team_id = %s THEN g.away_team_id
+            ELSE g.home_team_id
+        END
+        WHERE (g.home_team_id = %s OR g.away_team_id = %s)
+          AND g.status = '종료'
+          AND g.home_score IS NOT NULL
+          AND EXTRACT(YEAR FROM g.game_date) = %s
+        GROUP BY opp.id, opp.name, opp.short_name
+        ORDER BY wins DESC, losses ASC
+    """, (team_id, team_id, team_id, team_id, team_id, team_id, team_id, team_id, team_id, season))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {
+        "team_id": team_id,
+        "season": season,
+        "records": [
+            {
+                "opp_id":      r[0],
+                "opp_name":    r[1],
+                "opp_code":    r[2],
+                "total":       r[3],
+                "wins":        r[4],
+                "losses":      r[5],
+                "draws":       r[6],
+                "runs_scored": r[7],
+                "runs_allowed":r[8],
+                "win_rate":    round(r[4] / r[3], 3) if r[3] > 0 else 0.0,
+            }
+            for r in rows
+        ],
+    }
+
+
 @router.get("/roster-changes/today")
 def get_today_roster_changes():
     """오늘 전체 팀 등록말소"""
