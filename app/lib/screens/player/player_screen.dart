@@ -78,7 +78,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Future<void> _loadHitters() async {
     final reqId = ++_hitterReqId;
-    setState(() { _hitterLoading = true; _hitters = []; });
+    setState(() => _hitterLoading = true);
     try {
       final data = await ApiService.getHitters(sortBy: _hitterSort, limit: 200, teamId: _selectedTeamId);
       if (mounted && reqId == _hitterReqId) {
@@ -91,7 +91,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Future<void> _loadPitchers() async {
     final reqId = ++_pitcherReqId;
-    setState(() { _pitcherLoading = true; _pitchers = []; });
+    setState(() => _pitcherLoading = true);
     try {
       final data = await ApiService.getPitchers(sortBy: _pitcherSort, limit: 200, teamId: _selectedTeamId);
       if (mounted && reqId == _pitcherReqId) {
