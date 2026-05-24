@@ -284,8 +284,10 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Widget _buildHitterList() {
-    if (_hitterLoading) return const Center(child: CircularProgressIndicator());
-    if (_hitters.isEmpty) return const Center(child: Text('데이터가 없습니다'));
+    if (_hitters.isEmpty) {
+      if (_hitterLoading) return const Center(child: CircularProgressIndicator());
+      return const Center(child: Text('데이터가 없습니다'));
+    }
     final label = _hitterSorts.firstWhere((s) => s['value'] == _hitterSort)['label']!;
     return ListView.separated(
       padding: const EdgeInsets.only(bottom: 24),
@@ -296,8 +298,10 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Widget _buildPitcherList() {
-    if (_pitcherLoading) return const Center(child: CircularProgressIndicator());
-    if (_pitchers.isEmpty) return const Center(child: Text('데이터가 없습니다'));
+    if (_pitchers.isEmpty) {
+      if (_pitcherLoading) return const Center(child: CircularProgressIndicator());
+      return const Center(child: Text('데이터가 없습니다'));
+    }
     final label = _pitcherSorts.firstWhere((s) => s['value'] == _pitcherSort)['label']!;
     return ListView.separated(
       padding: const EdgeInsets.only(bottom: 24),
