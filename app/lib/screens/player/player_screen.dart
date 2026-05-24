@@ -24,6 +24,9 @@ class _PlayerScreenState extends State<PlayerScreen>
   int _hitterReqId = 0;
   int _pitcherReqId = 0;
 
+  bool _hitterEverLoaded = false;
+  bool _pitcherEverLoaded = false;
+
   Timer? _hitterDebounce;
   Timer? _pitcherDebounce;
 
@@ -89,7 +92,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       final data = await ApiService.getHitters(sortBy: _hitterSort, limit: 200, teamId: _selectedTeamId);
       if (mounted && reqId == _hitterReqId) {
         final fresh = data['hitters'] as List? ?? [];
-        setState(() { if (fresh.isNotEmpty) _hitters = fresh; _hitterLoading = false; });
+        setState(() { if (fresh.isNotEmpty) { _hitters = fresh; _hitterEverLoaded = true; } _hitterLoading = false; });
       }
     } catch (_) {
       if (mounted && reqId == _hitterReqId) setState(() => _hitterLoading = false);
@@ -103,7 +106,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       final data = await ApiService.getPitchers(sortBy: _pitcherSort, limit: 200, teamId: _selectedTeamId);
       if (mounted && reqId == _pitcherReqId) {
         final fresh = data['pitchers'] as List? ?? [];
-        setState(() { if (fresh.isNotEmpty) _pitchers = fresh; _pitcherLoading = false; });
+        setState(() { if (fresh.isNotEmpty) { _pitchers = fresh; _pitcherEverLoaded = true; } _pitcherLoading = false; });
       }
     } catch (_) {
       if (mounted && reqId == _pitcherReqId) setState(() => _pitcherLoading = false);
@@ -293,7 +296,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Widget _buildHitterList() {
     if (_hitters.isEmpty) {
-      if (_hitterLoading) return const Center(child: CircularProgressIndicator());
+      if (_hitterLoading || _hitterEverLoaded) return const Center(child: CircularProgressIndicator());
       return const Center(child: Text('데이터가 없습니다'));
     }
     final label = _hitterSorts.firstWhere((s) => s['value'] == _hitterSort)['label']!;
@@ -307,7 +310,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Widget _buildPitcherList() {
     if (_pitchers.isEmpty) {
-      if (_pitcherLoading) return const Center(child: CircularProgressIndicator());
+      if (_pitcherLoading || _pitcherEverLoaded) return const Center(child: CircularProgressIndicator());
       return const Center(child: Text('데이터가 없습니다'));
     }
     final label = _pitcherSorts.firstWhere((s) => s['value'] == _pitcherSort)['label']!;
