@@ -88,7 +88,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     try {
       final data = await ApiService.getHitters(sortBy: _hitterSort, limit: 200, teamId: _selectedTeamId);
       if (mounted && reqId == _hitterReqId) {
-        setState(() { _hitters = data['hitters'] ?? []; _hitterLoading = false; });
+        final fresh = data['hitters'] as List? ?? [];
+        setState(() { if (fresh.isNotEmpty) _hitters = fresh; _hitterLoading = false; });
       }
     } catch (_) {
       if (mounted && reqId == _hitterReqId) setState(() => _hitterLoading = false);
@@ -101,7 +102,8 @@ class _PlayerScreenState extends State<PlayerScreen>
     try {
       final data = await ApiService.getPitchers(sortBy: _pitcherSort, limit: 200, teamId: _selectedTeamId);
       if (mounted && reqId == _pitcherReqId) {
-        setState(() { _pitchers = data['pitchers'] ?? []; _pitcherLoading = false; });
+        final fresh = data['pitchers'] as List? ?? [];
+        setState(() { if (fresh.isNotEmpty) _pitchers = fresh; _pitcherLoading = false; });
       }
     } catch (_) {
       if (mounted && reqId == _pitcherReqId) setState(() => _pitcherLoading = false);
