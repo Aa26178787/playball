@@ -14,7 +14,7 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedMonth = DateTime.now();
   Map<String, List> _gamesByDate = {};
-  Map<String, List> _personalEventsByDate = {};
+  List<Map> _personalEvents = [];
   bool _isLoading = false;
   DateTime? _selectedDate;
 
@@ -49,13 +49,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Future<void> _loadPersonalEvents() async {
     try {
       final data = await ApiService.getCalendarEvents(_focusedMonth.year, _focusedMonth.month);
-      final events = data['events'] as List? ?? [];
-      final byDate = <String, List>{};
-      for (final e in events) {
-        final date = e['date'] as String? ?? '';
-        byDate.putIfAbsent(date, () => []).add(e);
-      }
-      if (mounted) setState(() => _personalEventsByDate = byDate);
+      final events = (data['events'] as List? ?? []).cast<Map>();
+      if (mounted) setState(() => _personalEvents = events);
     } catch (_) {}
   }
 
@@ -75,7 +70,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   List _gamesOn(DateTime d) => _gamesByDate[_dateKey(d)] ?? [];
-  List _eventsOn(DateTime d) => _personalEventsByDate[_dateKey(d)] ?? [];
+
+  List<Map> _eventsOn(DateTime d) => _personalEvents.where((e) {
+    try {
+      final s = DateTime.parse(e['start_date'] ?? e['date'] ?? '');
+      final en = DateTime.parse(e['end_date'] ?? e['start_date'] ?? e['date'] ?? '');
+      return !d.isBefore(s) && !d.isAfter(en);
+    } catch (_) { return false; }
+  }).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -180,85 +182,147 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _buildCalendarGrid() {
     final firstDay = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
     final lastDay = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0);
-    final startWeekday = firstDay.weekday % 7; // Sun=0
-    final totalCells = startWeekday + lastDay.day;
-    final rows = (totalCells / 7).ceil();
+    final startWeekday = firstDay.weekday % 7;
+    final rows = ((startWeekday + lastDay.day) / 7).ceil();
 
     return Column(
       children: List.generate(rows, (row) {
-        return Row(
-          children: List.generate(7, (col) {
-            final cellIdx = row * 7 + col;
-            final dayNum = cellIdx - startWeekday + 1;
-            if (dayNum < 1 || dayNum > lastDay.day) {
-              return const Expanded(child: SizedBox(height: 52));
-            }
-            final day = DateTime(_focusedMonth.year, _focusedMonth.month, dayNum);
-            final games = _gamesOn(day);
-            final personalEvents = _eventsOn(day);
-            final isSelected = _selectedDate != null &&
-                _selectedDate!.year == day.year &&
-                _selectedDate!.month == day.month &&
-                _selectedDate!.day == day.day;
-            final isToday = DateTime.now().year == day.year &&
-                DateTime.now().month == day.month &&
-                DateTime.now().day == day.day;
+        final weekDays = List.generate(7, (col) {
+          final dayNum = row * 7 + col - startWeekday + 1;
+          if (dayNum < 1 || dayNum > lastDay.day) return null;
+          return DateTime(_focusedMonth.year, _focusedMonth.month, dayNum);
+        });
 
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => setState(() => _selectedDate = day),
-                child: Container(
-                  height: 52,
-                  margin: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF1A237E)
-                        : isToday
-                            ? const Color(0xFFE8EAF6)
-                            : null,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 4),
-                      Text(
-                        '$dayNum',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: isSelected
-                              ? Colors.white
-                              : col == 0
-                                  ? Colors.red
-                                  : col == 6
-                                      ? Colors.blue
-                                      : null,
-                        ),
+        final validDays = weekDays.whereType<DateTime>().toList();
+        if (validDays.isEmpty) return const SizedBox();
+        final weekStart = validDays.first;
+        final weekEnd = validDays.last;
+
+        final weekEvents = _personalEvents.where((e) {
+          try {
+            final s = DateTime.parse(e['start_date'] ?? e['date'] ?? '');
+            final en = DateTime.parse(e['end_date'] ?? e['start_date'] ?? e['date'] ?? '');
+            return !s.isAfter(weekEnd) && !en.isBefore(weekStart);
+          } catch (_) { return false; }
+        }).toList();
+
+        return Column(
+          children: [
+            ...weekEvents.take(2).map((e) => _buildEventBarRow(e, weekDays)),
+            Row(
+              children: weekDays.asMap().entries.map((entry) {
+                final col = entry.key;
+                final day = entry.value;
+                if (day == null) return const Expanded(child: SizedBox(height: 46));
+                final games = _gamesOn(day);
+                final isSelected = _selectedDate?.year == day.year &&
+                    _selectedDate?.month == day.month &&
+                    _selectedDate?.day == day.day;
+                final isToday = DateTime.now().year == day.year &&
+                    DateTime.now().month == day.month &&
+                    DateTime.now().day == day.day;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _selectedDate = day),
+                    child: Container(
+                      height: 46,
+                      margin: const EdgeInsets.all(1),
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFF1A237E) : isToday ? const Color(0xFFE8EAF6) : null,
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      if (games.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        _buildGameDots(games, isSelected),
-                      ],
-                      if (personalEvents.isNotEmpty) ...[
-                        const SizedBox(height: 1),
-                        Container(
-                          width: 5,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isSelected ? Colors.white70 : Colors.amber[700],
-                          ),
-                        ),
-                      ],
-                    ],
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text('${day.day}', style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? Colors.white
+                                : col == 0 ? Colors.red
+                                : col == 6 ? Colors.blue
+                                : null,
+                          )),
+                          if (games.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            _buildGameDots(games, isSelected),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            );
-          }),
+                );
+              }).toList(),
+            ),
+          ],
         );
       }),
+    );
+  }
+
+  Widget _buildEventBarRow(Map event, List<DateTime?> weekDays) {
+    final startStr = event['start_date'] ?? event['date'] ?? '';
+    final endStr = event['end_date'] ?? startStr;
+    if (startStr.isEmpty) return const SizedBox(height: 18);
+    DateTime eventStart, eventEnd;
+    try {
+      eventStart = DateTime.parse(startStr);
+      eventEnd = DateTime.parse(endStr);
+    } catch (_) { return const SizedBox(height: 18); }
+
+    final color = _eventColor(event['color'] as String?);
+    final title = event['title'] as String? ?? '';
+
+    int firstIncludedCol = -1;
+    for (int i = 0; i < weekDays.length; i++) {
+      final d = weekDays[i];
+      if (d != null && !d.isBefore(eventStart) && !d.isAfter(eventEnd)) {
+        firstIncludedCol = i;
+        break;
+      }
+    }
+
+    return SizedBox(
+      height: 18,
+      child: Row(
+        children: weekDays.asMap().entries.map((entry) {
+          final col = entry.key;
+          final day = entry.value;
+          final included = day != null && !day.isBefore(eventStart) && !day.isAfter(eventEnd);
+          if (!included) return Expanded(child: Container(height: 14, margin: const EdgeInsets.symmetric(vertical: 2)));
+
+          final isFirst = col == firstIncludedCol;
+          final nextDay = col < 6 ? weekDays[col + 1] : null;
+          final isLast = nextDay == null || nextDay.isAfter(eventEnd);
+
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedDate = day),
+              child: Container(
+                height: 14,
+                margin: EdgeInsets.fromLTRB(isFirst ? 2 : 0, 2, isLast ? 2 : 0, 2),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.85),
+                  borderRadius: BorderRadius.only(
+                    topLeft: isFirst ? const Radius.circular(4) : Radius.zero,
+                    bottomLeft: isFirst ? const Radius.circular(4) : Radius.zero,
+                    topRight: isLast ? const Radius.circular(4) : Radius.zero,
+                    bottomRight: isLast ? const Radius.circular(4) : Radius.zero,
+                  ),
+                ),
+                child: isFirst ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(title,
+                    style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ) : null,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -391,11 +455,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
     if (result != null && mounted) {
       try {
+        final startDt = result['startDate'] as DateTime;
+        final endDt = result['endDate'] as DateTime;
         await ApiService.createCalendarEvent(
-          _dateKey(result['date'] as DateTime),
+          _dateKey(startDt),
           result['title'] as String,
           description: (result['desc'] as String).isEmpty ? null : result['desc'] as String,
           color: result['color'] as String,
+          endDate: endDt.isAtSameMomentAs(startDt) ? null : _dateKey(endDt),
         );
         await _loadPersonalEvents();
       } catch (_) {}
@@ -625,7 +692,8 @@ class _AddEventDialog extends StatefulWidget {
 class _AddEventDialogState extends State<_AddEventDialog> {
   late TextEditingController _titleCtrl;
   late TextEditingController _descCtrl;
-  late DateTime _dialogDate;
+  late DateTime _startDate;
+  late DateTime _endDate;
   String _selectedColor = 'blue';
 
   @override
@@ -633,7 +701,8 @@ class _AddEventDialogState extends State<_AddEventDialog> {
     super.initState();
     _titleCtrl = TextEditingController();
     _descCtrl = TextEditingController();
-    _dialogDate = widget.initialDate;
+    _startDate = widget.initialDate;
+    _endDate = widget.initialDate;
   }
 
   @override
@@ -644,78 +713,133 @@ class _AddEventDialogState extends State<_AddEventDialog> {
   }
 
   String _fmt(DateTime d) =>
-      '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
+      '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')} (${['월', '화', '수', '목', '금', '토', '일'][d.weekday - 1]})';
+
+  Future<void> _pickDate({required bool isStart}) async {
+    final initial = isStart ? _startDate : _endDate;
+    final firstDate = isStart ? DateTime(2020, 1, 1) : _startDate;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: firstDate,
+      lastDate: DateTime(2030, 12, 31),
+      locale: const Locale('ko', 'KR'),
+    );
+    if (picked == null) return;
+    setState(() {
+      if (isStart) {
+        _startDate = picked;
+        if (_endDate.isBefore(_startDate)) _endDate = _startDate;
+      } else {
+        _endDate = picked;
+      }
+    });
+  }
+
+  Widget _dateTile(String label, DateTime date, {required bool isStart}) {
+    return InkWell(
+      onTap: () => _pickDate(isStart: isStart),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(_fmt(date),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            ),
+            Icon(Icons.chevron_right, size: 18, color: Colors.grey.shade400),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bool multiDay = !_startDate.isAtSameMomentAs(_endDate);
     return AlertDialog(
       title: const Text('일정 추가'),
+      contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GestureDetector(
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _dialogDate,
-                  firstDate: DateTime(2026, 1, 1),
-                  lastDate: DateTime(2026, 12, 31),
-                  locale: const Locale('ko', 'KR'),
-                );
-                if (picked != null) setState(() => _dialogDate = picked);
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.calendar_today, size: 16, color: Color(0xFF1A237E)),
-                    const SizedBox(width: 8),
-                    Text(_fmt(_dialogDate),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                    const Spacer(),
-                    const Icon(Icons.arrow_drop_down, color: Colors.grey),
-                  ],
-                ),
+            // 날짜 범위 영역
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade200),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                children: [
+                  _dateTile('시작', _startDate, isStart: true),
+                  Divider(height: 1, color: Colors.grey.shade200),
+                  _dateTile('종료', _endDate, isStart: false),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
+            if (multiDay)
+              Padding(
+                padding: const EdgeInsets.only(top: 6, left: 4),
+                child: Text(
+                  '${_endDate.difference(_startDate).inDays + 1}일간',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                ),
+              ),
+            const SizedBox(height: 14),
             TextField(
               controller: _titleCtrl,
-              decoration: const InputDecoration(labelText: '제목 *', hintText: '일정 제목 입력'),
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: '제목 *',
+                hintText: '일정 제목 입력',
+                isDense: true,
+              ),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _descCtrl,
-              decoration: const InputDecoration(labelText: '메모 (선택)', hintText: '메모 입력'),
+              decoration: const InputDecoration(
+                labelText: '메모 (선택)',
+                hintText: '메모 입력',
+                isDense: true,
+              ),
               maxLines: 2,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             const Text('색상', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Wrap(
-              spacing: 8,
+              spacing: 10,
               children: widget.eventColors.entries.map((e) {
                 final isChosen = _selectedColor == e.key;
                 return GestureDetector(
                   onTap: () => setState(() => _selectedColor = e.key),
                   child: Container(
-                    width: 28, height: 28,
+                    width: 30, height: 30,
                     decoration: BoxDecoration(
                       color: e.value,
                       shape: BoxShape.circle,
                       border: isChosen ? Border.all(color: Colors.black54, width: 2.5) : null,
                     ),
-                    child: isChosen ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
+                    child: isChosen ? const Icon(Icons.check, color: Colors.white, size: 17) : null,
                   ),
                 );
               }).toList(),
             ),
+            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -729,7 +853,8 @@ class _AddEventDialogState extends State<_AddEventDialog> {
             final title = _titleCtrl.text.trim();
             if (title.isEmpty) return;
             Navigator.pop(context, {
-              'date': _dialogDate,
+              'startDate': _startDate,
+              'endDate': _endDate,
               'title': title,
               'desc': _descCtrl.text.trim(),
               'color': _selectedColor,
