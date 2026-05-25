@@ -30,6 +30,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Map<String, dynamic>? _previewData;
   Map<String, dynamic>? _recordDetailData;
   Map<String, dynamic>? _relayAllData;
+  bool _relayAllFailed = false;
   Map<String, dynamic>? _weatherData;
   Map<String, dynamic>? _pitchTypesData;
   List _highlights = [];
@@ -77,8 +78,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     _tabController.addListener(() {
       if (_tabController.index == 0 && _relayAllData == null) {
         ApiService.getGameRelayAll(widget.gameId)
-            .then((d) => setState(() => _relayAllData = d))
-            .catchError((_) {});
+            .then((d) { if (mounted) setState(() { _relayAllData = d; _relayAllFailed = false; }); })
+            .catchError((_) { if (mounted) setState(() => _relayAllFailed = true); });
       }
       if (_tabController.index == 6 && _highlights.isEmpty && !_highlightsLoading) {
         _loadHighlights();
@@ -159,11 +160,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ApiService.getGameRelayAll(widget.gameId)
             .then((d) {
               if (mounted) {
-                setState(() => _relayAllData = d);
+                setState(() { _relayAllData = d; _relayAllFailed = false; });
                 if (_tabController.index == 0) _scrollInningsToBottom();
               }
             })
-            .catchError((_) {}),
+            .catchError((_) { if (mounted) setState(() => _relayAllFailed = true); }),
         ApiService.getGameWeather(widget.gameId)
             .then((w) { if (mounted) setState(() => _weatherData = w); })
             .catchError((_) {}),
@@ -205,11 +206,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ApiService.getGameRelayAll(widget.gameId)
             .then((d) {
               if (mounted) {
-                setState(() => _relayAllData = d);
+                setState(() { _relayAllData = d; _relayAllFailed = false; });
                 if (_tabController.index == 0) _scrollInningsToBottom();
               }
             })
-            .catchError((_) {});
+            .catchError((_) { if (mounted) setState(() => _relayAllFailed = true); });
       } else {
         // 경기 종료 감지 시 타이머 취소 후 전체 데이터 새로고침
         _refreshTimer?.cancel();
@@ -884,7 +885,27 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             const SizedBox(height: 24),
           ],
 
-          if (_relayAllData == null)
+          if (_relayAllFailed)
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('중계 데이터를 불러오지 못했습니다', style: TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () {
+                      setState(() { _relayAllFailed = false; });
+                      ApiService.getGameRelayAll(widget.gameId)
+                          .then((d) { if (mounted) setState(() { _relayAllData = d; _relayAllFailed = false; }); })
+                          .catchError((_) { if (mounted) setState(() => _relayAllFailed = true); });
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('다시 시도'),
+                  ),
+                ],
+              ),
+            )
+          else if (_relayAllData == null)
             const Center(child: CircularProgressIndicator())
           else if (relays.isEmpty)
             const Center(child: Text('중계 데이터가 없습니다'))

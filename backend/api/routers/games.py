@@ -347,21 +347,6 @@ def get_game_relay_all(game_id: int):
             "homeTeamWinRate": float(wr[0]),
             "awayTeamWinRate": float(wr[1]),
         }
-    else:
-        # DB에 없으면 네이버 API에서 직접 가져오기
-        try:
-            last_inning = max((p[0] for p in pitches), default=1)
-            wr_url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/relay?inning={last_inning}"
-            wr_res = req.get(wr_url, headers=NAVER_HEADERS, timeout=5)
-            wr_data = wr_res.json().get('result', {}).get('textRelayData', {})
-            metric = wr_data.get('lastValidMetricOption')
-            if metric:
-                win_rate = {
-                    "homeTeamWinRate": metric.get('homeTeamWinRate'),
-                    "awayTeamWinRate": metric.get('awayTeamWinRate'),
-                }
-        except Exception:
-            pass
 
     return {
         "relays": relay_list,
