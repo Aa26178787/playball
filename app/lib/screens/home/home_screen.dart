@@ -93,44 +93,22 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   final ScrollController _dateScrollController = ScrollController();
   static final _seasonStart = DateTime(2026, 3, 1);
   static final _seasonEnd   = DateTime(2026, 10, 31);
-  static const _itemW       = 50.0;
-  static const _monthLabelW = 40.0;
-
-  List<Object> _stripItems   = [];
-  Map<String, double> _stripOffsets = {};
+  static const _itemW = 50.0;
 
   bool get _hasLiveGames => _games.any((g) => g['status'] == '진행');
 
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  void _initStrip() {
-    _stripItems   = [];
-    _stripOffsets = {};
-    double offset  = 0;
-    int? lastMonth;
-    DateTime cur = _seasonStart;
-    while (!cur.isAfter(_seasonEnd)) {
-      if (cur.month != lastMonth) {
-        _stripItems.add('${cur.month}월');
-        offset += _monthLabelW;
-        lastMonth = cur.month;
-      }
-      final key = '${cur.year}-${cur.month.toString().padLeft(2, '0')}-${cur.day.toString().padLeft(2, '0')}';
-      _stripOffsets[key] = offset;
-      _stripItems.add(cur);
-      offset += _itemW;
-      cur = cur.add(const Duration(days: 1));
-    }
-  }
+  int get _totalDays => _seasonEnd.difference(_seasonStart).inDays + 1;
+
+  int _dateIndex(DateTime d) => d.difference(_seasonStart).inDays.clamp(0, _totalDays - 1);
 
   void _scrollToSelected() {
     if (!_dateScrollController.hasClients) return;
-    final key =
-        '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
-    final itemOffset = _stripOffsets[key] ?? 0;
+    final idx = _dateIndex(_selectedDate);
     final screenW = MediaQuery.of(context).size.width;
-    final offset = itemOffset - (screenW / 2) + (_itemW / 2);
+    final offset = (idx * _itemW) - (screenW / 2) + (_itemW / 2);
     _dateScrollController.animateTo(
       offset.clamp(0.0, _dateScrollController.position.maxScrollExtent),
       duration: const Duration(milliseconds: 300),
@@ -138,10 +116,16 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     );
   }
 
+  void _scrollToMonthStart(int month) {
+    final target = DateTime(2026, month, 1);
+    setState(() => _selectedDate = target);
+    _loadGames();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+  }
+
   @override
   void initState() {
     super.initState();
-    _initStrip();
     _loadGames();
     _loadTodayRosterChanges();
     _loadFavoriteTeams();
@@ -241,40 +225,58 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     }
   }
 
+  Widget _buildMonthStrip() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SizedBox(
+      height: 28,
+      child: Row(
+        children: List.generate(8, (i) {
+          final month = i + 3;
+          final isActive = _selectedDate.month == month;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => _scrollToMonthStart(month),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isActive ? const Color(0xFF1A237E) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text(
+                    '$month월',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isActive
+                          ? Colors.white
+                          : (isDark ? Colors.grey[400]! : Colors.grey[500]!),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
   Widget _buildDateStrip() {
     final today = DateTime.now();
     const dayNames = ['월', '화', '수', '목', '금', '토', '일'];
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SizedBox(
-      height: 70,
+      height: 68,
       child: ListView.builder(
         controller: _dateScrollController,
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-        itemCount: _stripItems.length,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        itemCount: _totalDays,
         itemBuilder: (_, i) {
-          final item = _stripItems[i];
-
-          // Month label
-          if (item is String) {
-            return SizedBox(
-              width: _monthLabelW,
-              child: Center(
-                child: Text(
-                  item,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A237E),
-                  ),
-                ),
-              ),
-            );
-          }
-
-          // Day cell
-          final date = item as DateTime;
+          final date = _seasonStart.add(Duration(days: i));
           final isSelected = _isSameDay(date, _selectedDate);
           final isToday = _isSameDay(date, today);
           final dayName = dayNames[date.weekday - 1];
@@ -409,6 +411,8 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       ),
       body: Column(
         children: [
+          // 월 선택 스트립
+          _buildMonthStrip(),
           // 날짜 스크롤 스트립
           _buildDateStrip(),
 

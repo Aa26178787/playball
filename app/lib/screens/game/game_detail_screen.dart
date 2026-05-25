@@ -2294,23 +2294,95 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ),
       );
     }
-    return ListView.separated(
+    return ListView.builder(
       padding: const EdgeInsets.all(12),
       itemCount: _highlights.length,
-      separatorBuilder: (context2, idx) => const Divider(height: 1),
       itemBuilder: (context2, idx) {
         final h = _highlights[idx] as Map<String, dynamic>;
         final title = h['title'] as String? ?? '';
         final url = h['url'] as String? ?? '';
-        final source = h['source'] as String? ?? '';
-        return ListTile(
-          leading: const Icon(Icons.play_circle_outline, color: Color(0xFF003087), size: 32),
-          title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-          subtitle: source.isNotEmpty ? Text(source, style: const TextStyle(fontSize: 12, color: Colors.grey)) : null,
+        final thumbnail = h['thumbnail'] as String? ?? '';
+        final isShorts = url.contains('/shorts/');
+        final isDark = Theme.of(context2).brightness == Brightness.dark;
+
+        return GestureDetector(
           onTap: () async {
             final uri = Uri.tryParse(url);
             if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
           },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[850] : Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: const Offset(0, 2))],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (thumbnail.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CachedNetworkImage(
+                          imageUrl: thumbnail,
+                          width: double.infinity,
+                          height: isShorts ? 180 : 140,
+                          fit: isShorts ? BoxFit.contain : BoxFit.cover,
+                          placeholder: (_, __) => Container(
+                            height: isShorts ? 180 : 140,
+                            color: isDark ? Colors.grey[800] : Colors.grey[200],
+                          ),
+                          errorWidget: (_, __, ___) => Container(
+                            height: isShorts ? 180 : 140,
+                            color: isDark ? Colors.grey[800] : Colors.grey[200],
+                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                          ),
+                        ),
+                        Container(
+                          width: 48, height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.play_arrow, color: Colors.white, size: 30),
+                        ),
+                        if (isShorts)
+                          Positioned(
+                            top: 8, right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text('Shorts', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[800] : Colors.grey[100],
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                    ),
+                    child: const Center(child: Icon(Icons.play_circle_outline, color: Color(0xFF003087), size: 40)),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Text(title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );

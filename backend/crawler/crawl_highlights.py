@@ -4,7 +4,7 @@ import re
 import time
 import xml.etree.ElementTree as ET
 import urllib.parse as up
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
 
 CURRENT_YEAR = datetime.now().year
@@ -19,7 +19,7 @@ HEADERS = {
     'Referer': 'https://sports.naver.com/',
 }
 
-KBO_YT_CHANNEL_ID = 'UCCukBKvH5IN67IpsTB_IevQ'  # KBO 공식 (@kbo)
+KBO_YT_CHANNEL_ID = 'UCoVz66yWHzVsXAFG8WhJK9g'  # 크보모먼트 채널
 _YT_API_KEY = os.environ.get('YOUTUBE_API_KEY', '')
 
 # 팀명 → team_id 매핑 (DB 기준)
@@ -145,11 +145,12 @@ def save_highlights(articles: list[dict]) -> int:
         game_id = find_game_id(a['team_id1'], a['team_id2'], a['game_date'])
         try:
             cur.execute("""
-                INSERT INTO game_highlights (game_id, title, url, source, published_at)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO game_highlights (game_id, title, url, thumbnail, source, published_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 ON CONFLICT (url) DO UPDATE SET
-                    game_id = COALESCE(EXCLUDED.game_id, game_highlights.game_id)
-            """, (game_id, a['title'], a['url'], a.get('source') or None, a.get('published_at')))
+                    game_id   = COALESCE(EXCLUDED.game_id, game_highlights.game_id),
+                    thumbnail = COALESCE(EXCLUDED.thumbnail, game_highlights.thumbnail)
+            """, (game_id, a['title'], a['url'], a.get('thumbnail') or None, a.get('source') or None, a.get('published_at')))
             if cur.rowcount > 0:
                 saved += 1
         except Exception as e:
@@ -174,7 +175,8 @@ def fetch_youtube_highlights(today: str | None = None) -> list[dict]:
         print('[YouTube] API 키 없음, 스킵')
         return []
     articles = []
-    published_after = f'{today}T00:00:00Z'
+    since = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')
+    published_after = f'{since}T00:00:00Z'
     # 1) KBO 공식 채널 업로드
     # 2) 전체 KBO 하이라이트 키워드 검색
     queries = [
@@ -220,14 +222,17 @@ def fetch_youtube_highlights(today: str | None = None) -> list[dict]:
                 except Exception:
                     pub_dt = datetime.now()
                 t1, t2 = _parse_teams_from_title(title)
+                thumbs = snippet.get('thumbnails', {})
+                thumb  = (thumbs.get('maxres') or thumbs.get('high') or thumbs.get('medium') or {}).get('url') or ''
                 articles.append({
                     'title': title,
                     'url': video_url,
+                    'thumbnail': thumb,
                     'source': 'youtube',
                     'published_at': pub_dt,
                     'team_id1': t1,
                     'team_id2': t2,
-                    'game_date': today,
+                    'game_date': _parse_date_from_title(title, pub_dt.year) or today,
                 })
         except Exception as e:
             print(f'[YouTube API] 오류: {e}')
