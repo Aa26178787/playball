@@ -10,10 +10,8 @@ class ApiService {
   ));
   static bool _interceptorAdded = false;
 
-  // Android Keystore / iOS Keychain 기반 보안 스토리지
-  static const _secure = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  static const _secure = FlutterSecureStorage();
+  static String? _cachedToken;
 
   static void initInterceptor(Future<void> Function() onLogout) {
     if (_interceptorAdded) return;
@@ -55,12 +53,14 @@ class ApiService {
     }
   }
 
-  // ===== 토큰 관리 (Keystore/Keychain) =====
+  // ===== 토큰 관리 (Android Keystore / iOS Keychain + 메모리 캐시) =====
   static Future<String?> getToken() async {
-    return _secure.read(key: 'access_token');
+    _cachedToken ??= await _secure.read(key: 'access_token');
+    return _cachedToken;
   }
 
   static Future<void> saveToken(String token) async {
+    _cachedToken = token;
     await _secure.write(key: 'access_token', value: token);
   }
 
@@ -73,6 +73,7 @@ class ApiService {
   }
 
   static Future<void> deleteToken() async {
+    _cachedToken = null;
     await _secure.delete(key: 'access_token');
     await _secure.delete(key: 'refresh_token');
   }
