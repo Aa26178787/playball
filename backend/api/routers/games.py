@@ -1418,7 +1418,7 @@ def get_game_highlights(game_id: int):
 
     # DB에 저장된 하이라이트 조회
     cur.execute("""
-        SELECT title, url, source, published_at
+        SELECT title, url, thumbnail, source, published_at
         FROM game_highlights
         WHERE game_id = %s
         ORDER BY COALESCE(published_at, crawled_at) DESC
