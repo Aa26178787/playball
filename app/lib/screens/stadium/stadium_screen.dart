@@ -17,12 +17,12 @@ class _StadiumScreenState extends State<StadiumScreen> {
   int _selected = -1;
   bool _mapCreated = false;
   bool _mapTimeout = false;
+  int _retryKey = 0;
 
   @override
   void initState() {
     super.initState();
-    // 8초 내 onMapCreated 미호출 시 에러 표시
-    Future.delayed(const Duration(seconds: 8), () {
+    Future.delayed(const Duration(seconds: 30), () {
       if (mounted && !_mapCreated) setState(() => _mapTimeout = true);
     });
   }
@@ -137,44 +137,62 @@ class _StadiumScreenState extends State<StadiumScreen> {
         children: [
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.38,
-            child: _mapCreated
-                ? KakaoMap(
-                    onMapCreated: (controller) {
-                      _mapController = controller;
-                      debugPrint('[KakaoMap] onMapCreated 호출됨 ✓');
-                    },
-                    markers: _markers.toList(),
-                    center: _koreaCenter,
-                    currentLevel: 13,
-                  )
-                : Stack(children: [
-                    KakaoMap(
-                      onMapCreated: (controller) {
-                        debugPrint('[KakaoMap] onMapCreated 호출됨 ✓');
-                        _mapController = controller;
-                        if (mounted) setState(() => _mapCreated = true);
-                      },
-                      markers: _markers.toList(),
-                      center: _koreaCenter,
-                      currentLevel: 13,
+            child: Stack(children: [
+              KakaoMap(
+                key: ValueKey(_retryKey),
+                onMapCreated: (controller) {
+                  _mapController = controller;
+                  if (mounted) setState(() => _mapCreated = true);
+                },
+                markers: _markers.toList(),
+                center: _koreaCenter,
+                currentLevel: 13,
+              ),
+              if (!_mapCreated && !_mapTimeout)
+                Container(
+                  color: Colors.grey[50],
+                  child: const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(strokeWidth: 2),
+                        SizedBox(height: 12),
+                        Text('지도 불러오는 중...', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
                     ),
-                    if (_mapTimeout)
-                      Container(
-                        color: Colors.grey[100],
-                        child: const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.map_outlined, size: 40, color: Colors.grey),
-                              SizedBox(height: 8),
-                              Text('지도 로드 실패\n카카오 콘솔 Web 플랫폼\nhttp://localhost 등록 확인',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 12, color: Colors.grey)),
-                            ],
-                          ),
+                  ),
+                ),
+              if (_mapTimeout && !_mapCreated)
+                Container(
+                  color: Colors.grey[100],
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.map_outlined, size: 40, color: Colors.grey),
+                        const SizedBox(height: 8),
+                        const Text('지도 로드 실패',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 13, color: Colors.grey)),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _mapTimeout = false;
+                              _mapCreated = false;
+                              _retryKey++;
+                            });
+                            Future.delayed(const Duration(seconds: 30), () {
+                              if (mounted && !_mapCreated) setState(() => _mapTimeout = true);
+                            });
+                          },
+                          child: const Text('다시 시도'),
                         ),
-                      ),
-                  ]),
+                      ],
+                    ),
+                  ),
+                ),
+            ]),
           ),
           Expanded(
             child: ListView.builder(
