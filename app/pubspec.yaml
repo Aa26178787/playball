@@ -47,8 +47,9 @@ dependencies:
   # 보안 토큰 저장 (Android Keystore / iOS Keychain)
   flutter_secure_storage: ^9.2.2
   
-  # 카카오맵
-  kakao_map_plugin: ^0.3.3
+  # 카카오맵 (로컬 패치: release mode onMapCreated setTimeout)
+  kakao_map_plugin:
+    path: local_packages/kakao_map_plugin
   
   # FCM 푸시 알림
   firebase_core: ^2.27.0
