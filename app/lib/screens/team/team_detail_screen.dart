@@ -251,6 +251,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
           isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: const [Tab(text: '선수'), Tab(text: '최근경기'), Tab(text: '등록말소'), Tab(text: '뉴스'), Tab(text: '커뮤니티'), Tab(text: '월별성적'), Tab(text: '상대전적'), Tab(text: '타순별')],
         ),
       ),

@@ -512,6 +512,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: const [
             Tab(text: '이닝'),
             Tab(text: '프리뷰'),
