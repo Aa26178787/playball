@@ -75,14 +75,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 7, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       if (_tabController.index == 0 && _relayAllData == null) {
         ApiService.getGameRelayAll(widget.gameId)
             .then((d) { if (mounted) setState(() { _relayAllData = d; _relayAllFailed = false; }); })
             .catchError((_) { if (mounted) setState(() => _relayAllFailed = true); });
       }
-      if (_tabController.index == 6 && _highlights.isEmpty && !_highlightsLoading) {
+      if (_tabController.index == 3 && _highlights.isEmpty && !_highlightsLoading) {
         _loadHighlights();
       }
     });
@@ -511,14 +511,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
           tabs: const [
-            Tab(text: '이닝'),
-            Tab(text: '프리뷰'),
-            Tab(text: '로스터'),
-            Tab(text: '투수'),
-            Tab(text: '타자'),
+            Tab(text: '중계'),
+            Tab(text: '라인업'),
             Tab(text: '기록'),
             Tab(text: '하이라이트'),
           ],
@@ -532,13 +527,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           Expanded(
             child: TabBarView(
               controller: _tabController,
+              physics: const NeverScrollableScrollPhysics(),
               children: [
                 _buildInningsTab(innings),
-                _buildPreviewTab(),
-                _buildRosterTab(),
-                _buildPitchersTab(pitchers),
-                _buildBattersTab(batters),
-                _buildRecordDetailTab(),
+                _buildLineupTab(),
+                _buildStatsTab(pitchers, batters),
                 _buildHighlightsTab(),
               ],
             ),
@@ -1245,6 +1238,57 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             );
           }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLineupTab() {
+    final homeTeam = _gameData!['game']['home_team'] as String? ?? '홈';
+    final awayTeam = _gameData!['game']['away_team'] as String? ?? '원정';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          TabBar(
+            tabs: const [Tab(text: '선발'), Tab(text: '로스터')],
+            labelColor: isDark ? Colors.white : const Color(0xFF1A237E),
+            indicatorColor: const Color(0xFF1A237E),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildPreviewTab(),
+                _buildRosterTab(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsTab(List pitchers, List batters) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return DefaultTabController(
+      length: 3,
+      child: Column(
+        children: [
+          TabBar(
+            tabs: const [Tab(text: '투수'), Tab(text: '타자'), Tab(text: '상세')],
+            labelColor: isDark ? Colors.white : const Color(0xFF1A237E),
+            indicatorColor: const Color(0xFF1A237E),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildPitchersTab(pitchers),
+                _buildBattersTab(batters),
+                _buildRecordDetailTab(),
+              ],
+            ),
+          ),
         ],
       ),
     );

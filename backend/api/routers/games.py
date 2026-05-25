@@ -1437,7 +1437,7 @@ def get_game_highlights(game_id: int):
             save_highlights(articles)
             # filter relevant
             rows = [
-                (a['title'], a['url'], a.get('source', ''), a.get('published_at'))
+                (a['title'], a['url'], a.get('thumbnail') or None, a.get('source', ''), a.get('published_at'))
                 for a in articles
                 if any(kw in a['title'] for kw in [home_name[:2], away_name[:2]])
             ]
@@ -1452,8 +1452,9 @@ def get_game_highlights(game_id: int):
             {
                 "title": r[0],
                 "url": r[1],
-                "source": r[2],
-                "published_at": r[3].isoformat() if r[3] else None,
+                "thumbnail": r[2],
+                "source": r[3],
+                "published_at": r[4].isoformat() if r[4] else None,
             }
             for r in rows
         ]
