@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
+import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
 import 'player_detail_screen.dart';
 import 'player_compare_screen.dart';
@@ -78,11 +79,19 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Future<void> _loadHitters() async {
-    setState(() => _hitterLoading = true);
+    final cached = await LocalCache.get('hitters_list', maxAgeSeconds: 300) as List?;
+    if (cached != null && mounted) {
+      _allHitters = cached;
+      _applyHitterFilter();
+      setState(() => _hitterLoading = false);
+    } else {
+      if (mounted) setState(() => _hitterLoading = true);
+    }
     try {
       final data = await ApiService.getHitters(sortBy: 'avg', limit: 500, teamId: null);
       if (mounted) {
         final fresh = data['hitters'] as List? ?? [];
+        await LocalCache.set('hitters_list', fresh);
         _allHitters = fresh;
         _applyHitterFilter();
         setState(() => _hitterLoading = false);
@@ -93,11 +102,19 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Future<void> _loadPitchers() async {
-    setState(() => _pitcherLoading = true);
+    final cached = await LocalCache.get('pitchers_list', maxAgeSeconds: 300) as List?;
+    if (cached != null && mounted) {
+      _allPitchers = cached;
+      _applyPitcherFilter();
+      setState(() => _pitcherLoading = false);
+    } else {
+      if (mounted) setState(() => _pitcherLoading = true);
+    }
     try {
       final data = await ApiService.getPitchers(sortBy: 'era', limit: 500, teamId: null);
       if (mounted) {
         final fresh = data['pitchers'] as List? ?? [];
+        await LocalCache.set('pitchers_list', fresh);
         _allPitchers = fresh;
         _applyPitcherFilter();
         setState(() => _pitcherLoading = false);

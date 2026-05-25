@@ -133,7 +133,28 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     _loadUnreadCount();
     _loadTomorrowGames();
     _startAutoRefresh();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToSelected();
+      _backgroundPrefetch();
+    });
+  }
+
+  void _backgroundPrefetch() {
+    Future(() async {
+      // 선수 탭 데이터 미리 로드 (캐시 없을 때만)
+      if (await LocalCache.get('hitters_list', maxAgeSeconds: 300) == null) {
+        try {
+          final d = await ApiService.getHitters(sortBy: 'avg', limit: 500, teamId: null);
+          await LocalCache.set('hitters_list', d['hitters'] ?? []);
+        } catch (_) {}
+      }
+      if (await LocalCache.get('pitchers_list', maxAgeSeconds: 300) == null) {
+        try {
+          final d = await ApiService.getPitchers(sortBy: 'era', limit: 500, teamId: null);
+          await LocalCache.set('pitchers_list', d['pitchers'] ?? []);
+        } catch (_) {}
+      }
+    });
   }
 
   @override

@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../api/api_service.dart';
+import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
 import 'pitch_location_chart.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -89,10 +90,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Future<void> _loadHighlights() async {
-    setState(() => _highlightsLoading = true);
+    if (_highlights.isEmpty) setState(() => _highlightsLoading = true);
     try {
       final data = await ApiService.getGameHighlights(widget.gameId);
-      if (mounted) setState(() { _highlights = data['highlights'] ?? []; _highlightsLoading = false; });
+      if (mounted) {
+        setState(() { _highlights = data['highlights'] ?? []; _highlightsLoading = false; });
+        if (_isPastGame(_gameData)) await LocalCache.set(_ck('highlights'), data);
+      }
     } catch (_) {
       if (mounted) setState(() => _highlightsLoading = false);
     }
@@ -118,20 +122,52 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     });
   }
 
+  bool _isPastGame(Map<String, dynamic>? gameData) =>
+      gameData?['game']?['status'] == '종료' || gameData?['game']?['status'] == '취소';
+
+  String _ck(String suffix) => 'game_${widget.gameId}_$suffix';
+
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    // Phase 1: load from cache (past games only)
+    final cachedDetail = await LocalCache.get(_ck('detail'), maxAgeSeconds: 86400) as Map?;
+    if (cachedDetail != null && mounted) {
+      setState(() { _gameData = Map<String, dynamic>.from(cachedDetail); _isLoading = false; });
+    } else {
+      if (mounted) setState(() => _isLoading = true);
+    }
+
+    final cachedRoster = await LocalCache.get(_ck('roster'), maxAgeSeconds: 86400) as Map?;
+    if (cachedRoster != null && mounted) setState(() => _rosterData = Map<String, dynamic>.from(cachedRoster));
+
+    final cachedRelay = await LocalCache.get(_ck('relay'), maxAgeSeconds: 86400) as Map?;
+    if (cachedRelay != null && mounted) {
+      setState(() { _relayAllData = Map<String, dynamic>.from(cachedRelay); _relayAllFailed = false; });
+    }
+
+    final cachedPreview = await LocalCache.get(_ck('preview'), maxAgeSeconds: 86400) as Map?;
+    if (cachedPreview != null && mounted) setState(() => _previewData = Map<String, dynamic>.from(cachedPreview));
+
+    final cachedRecord = await LocalCache.get(_ck('record'), maxAgeSeconds: 86400) as Map?;
+    if (cachedRecord != null && mounted) setState(() => _recordDetailData = Map<String, dynamic>.from(cachedRecord));
+
+    final cachedHL = await LocalCache.get(_ck('highlights'), maxAgeSeconds: 3600) as Map?;
+    if (cachedHL != null && mounted) setState(() => _highlights = cachedHL['highlights'] as List? ?? []);
+
+    // Phase 2: fetch from API
     try {
       final gameData = await ApiService.getGameDetail(widget.gameId);
-      setState(() {
-        _gameData = gameData;
-        _isLoading = false;
-      });
+      if (!mounted) return;
+      setState(() { _gameData = gameData; _isLoading = false; });
+
+      final isPast = _isPastGame(gameData);
+      if (isPast) await LocalCache.set(_ck('detail'), gameData);
 
       Future.wait([
         ApiService.getGameRoster(widget.gameId)
             .then((d) async {
-              if (mounted) setState(() => _rosterData = d);
-              // 등록말소 현황 로드
+              if (!mounted) return;
+              setState(() => _rosterData = d);
+              if (isPast) await LocalCache.set(_ck('roster'), d);
               try {
                 final homeId = gameData['game']['home_team_id'] as int?;
                 final awayId = gameData['game']['away_team_id'] as int?;
@@ -142,9 +178,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   for (final c in (changes['changes'] as List? ?? [])) {
                     final name = c['player_name'] as String? ?? '';
                     final type = c['change_type'] as String? ?? '';
-                    if (name.isNotEmpty && !statusMap.containsKey(name)) {
-                      statusMap[name] = type;
-                    }
+                    if (name.isNotEmpty && !statusMap.containsKey(name)) statusMap[name] = type;
                   }
                 }
                 if (mounted) setState(() => _playerRosterStatus = statusMap);
@@ -152,17 +186,23 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             })
             .catchError((_) {}),
         ApiService.getGamePreview(widget.gameId)
-            .then((d) => setState(() => _previewData = d))
+            .then((d) async {
+              if (mounted) setState(() => _previewData = d);
+              if (isPast) await LocalCache.set(_ck('preview'), d);
+            })
             .catchError((_) {}),
         ApiService.getGameRecordDetail(widget.gameId)
-            .then((d) => setState(() => _recordDetailData = d))
+            .then((d) async {
+              if (mounted) setState(() => _recordDetailData = d);
+              if (isPast) await LocalCache.set(_ck('record'), d);
+            })
             .catchError((_) {}),
         ApiService.getGameRelayAll(widget.gameId)
-            .then((d) {
-              if (mounted) {
-                setState(() { _relayAllData = d; _relayAllFailed = false; });
-                if (_tabController.index == 0) _scrollInningsToBottom();
-              }
+            .then((d) async {
+              if (!mounted) return;
+              setState(() { _relayAllData = d; _relayAllFailed = false; });
+              if (_tabController.index == 0) _scrollInningsToBottom();
+              if (isPast) await LocalCache.set(_ck('relay'), d);
             })
             .catchError((_) { if (mounted) setState(() => _relayAllFailed = true); }),
         ApiService.getGameWeather(widget.gameId)
@@ -178,7 +218,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             .then((d) => setState(() => _relayData = d))
             .catchError((_) {});
 
-        // 30초마다 자동 새로고침
         _refreshTimer?.cancel();
         _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
           if (mounted && _gameData?['game']['status'] == '진행') {
