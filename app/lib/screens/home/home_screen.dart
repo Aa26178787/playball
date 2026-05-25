@@ -93,22 +93,44 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   final ScrollController _dateScrollController = ScrollController();
   static final _seasonStart = DateTime(2026, 3, 1);
   static final _seasonEnd   = DateTime(2026, 10, 31);
-  static const _itemW = 50.0;
+  static const _itemW       = 50.0;
+  static const _monthLabelW = 40.0;
+
+  List<Object> _stripItems   = [];
+  Map<String, double> _stripOffsets = {};
 
   bool get _hasLiveGames => _games.any((g) => g['status'] == '진행');
 
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  int get _totalDays => _seasonEnd.difference(_seasonStart).inDays + 1;
-
-  int _dateIndex(DateTime d) => d.difference(_seasonStart).inDays.clamp(0, _totalDays - 1);
+  void _initStrip() {
+    _stripItems   = [];
+    _stripOffsets = {};
+    double offset  = 0;
+    int? lastMonth;
+    DateTime cur = _seasonStart;
+    while (!cur.isAfter(_seasonEnd)) {
+      if (cur.month != lastMonth) {
+        _stripItems.add('${cur.month}월');
+        offset += _monthLabelW;
+        lastMonth = cur.month;
+      }
+      final key = '${cur.year}-${cur.month.toString().padLeft(2, '0')}-${cur.day.toString().padLeft(2, '0')}';
+      _stripOffsets[key] = offset;
+      _stripItems.add(cur);
+      offset += _itemW;
+      cur = cur.add(const Duration(days: 1));
+    }
+  }
 
   void _scrollToSelected() {
     if (!_dateScrollController.hasClients) return;
-    final idx = _dateIndex(_selectedDate);
+    final key =
+        '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
+    final itemOffset = _stripOffsets[key] ?? 0;
     final screenW = MediaQuery.of(context).size.width;
-    final offset = (idx * _itemW) - (screenW / 2) + (_itemW / 2);
+    final offset = itemOffset - (screenW / 2) + (_itemW / 2);
     _dateScrollController.animateTo(
       offset.clamp(0.0, _dateScrollController.position.maxScrollExtent),
       duration: const Duration(milliseconds: 300),
@@ -119,6 +141,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   @override
   void initState() {
     super.initState();
+    _initStrip();
     _loadGames();
     _loadTodayRosterChanges();
     _loadFavoriteTeams();
@@ -229,9 +252,29 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
         controller: _dateScrollController,
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-        itemCount: _totalDays,
+        itemCount: _stripItems.length,
         itemBuilder: (_, i) {
-          final date = _seasonStart.add(Duration(days: i));
+          final item = _stripItems[i];
+
+          // Month label
+          if (item is String) {
+            return SizedBox(
+              width: _monthLabelW,
+              child: Center(
+                child: Text(
+                  item,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A237E),
+                  ),
+                ),
+              ),
+            );
+          }
+
+          // Day cell
+          final date = item as DateTime;
           final isSelected = _isSameDay(date, _selectedDate);
           final isToday = _isSameDay(date, today);
           final dayName = dayNames[date.weekday - 1];
