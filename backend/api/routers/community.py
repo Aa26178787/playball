@@ -1,16 +1,19 @@
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 import os, uuid, shutil
 from datetime import datetime, timedelta
 from database.connection import get_connection
 from api.routers.auth import get_current_user
+from api.security_log import log_upload
 
 POST_IMG_DIR = '/home/ubuntu/playball/backend/static/posts'
-BASE_URL = 'http://168.107.61.147:8000'
+BASE_URL = 'https://playball.duckdns.org'
 os.makedirs(POST_IMG_DIR, exist_ok=True)
 
 router = APIRouter()
+
+_MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5MB
 
 # 조회수 throttle: (post_id, ip) → 마지막 조회 시각
 _view_cache: dict = {}
@@ -24,14 +27,55 @@ class PostCreate(BaseModel):
     team_id: Optional[int] = None
     image_url: Optional[str] = None
 
+    @field_validator('title')
+    @classmethod
+    def title_length(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('제목을 입력하세요')
+        if len(v) > 100:
+            raise ValueError('제목은 100자 이하여야 합니다')
+        return v
+
+    @field_validator('content')
+    @classmethod
+    def content_length(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('내용을 입력하세요')
+        if len(v) > 5000:
+            raise ValueError('내용은 5000자 이하여야 합니다')
+        return v
+
 
 class PostUpdate(BaseModel):
     title: str
     content: str
 
+    @field_validator('title')
+    @classmethod
+    def title_length(cls, v: str) -> str:
+        if len(v) > 100:
+            raise ValueError('제목은 100자 이하여야 합니다')
+        return v
+
+    @field_validator('content')
+    @classmethod
+    def content_length(cls, v: str) -> str:
+        if len(v) > 5000:
+            raise ValueError('내용은 5000자 이하여야 합니다')
+        return v
+
 
 class CommentCreate(BaseModel):
     content: str
+
+    @field_validator('content')
+    @classmethod
+    def content_length(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('댓글을 입력하세요')
+        if len(v) > 1000:
+            raise ValueError('댓글은 1000자 이하여야 합니다')
+        return v
 
 
 class ReportCreate(BaseModel):
@@ -537,14 +581,20 @@ def get_my_likes(page: int = 1, limit: int = 20, current_user: dict = Depends(ge
 @router.post('/posts/upload-image')
 async def upload_post_image(
     file: UploadFile = File(...),
+    request: Request = None,
     current_user: dict = Depends(get_current_user)
 ):
     ext = os.path.splitext(file.filename or 'img.jpg')[1].lower()
     if ext not in ('.jpg', '.jpeg', '.png', '.webp'):
         raise HTTPException(status_code=400, detail='jpg/png/webp만 허용됩니다')
+    data = await file.read(_MAX_UPLOAD_BYTES + 1)
+    if len(data) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail='파일 크기는 5MB를 초과할 수 없습니다')
     filename = f"post_{current_user['user_id']}_{uuid.uuid4().hex[:8]}{ext}"
     path = os.path.join(POST_IMG_DIR, filename)
     with open(path, 'wb') as f:
-        shutil.copyfileobj(file.file, f)
+        f.write(data)
+    ip = (request.headers.get("X-Real-IP") or request.client.host) if request else "unknown"
+    log_upload(ip, current_user['user_id'], filename, len(data))
     url = f"{BASE_URL}/static/posts/{filename}"
     return {'image_url': url}

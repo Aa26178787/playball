@@ -373,24 +373,51 @@ def register_push_token(body: PushToken, current_user: dict = Depends(get_curren
     conn.close()
     return {"message": "푸시 토큰 등록 완료"}
 
-from fastapi import UploadFile, File
+from fastapi import UploadFile, File, Request
 import os, uuid, shutil
+from api.security_log import log_upload
 
 PROFILE_DIR = '/home/ubuntu/playball/backend/static/profiles'
-BASE_URL = 'http://168.107.61.147:8000'
+BASE_URL = 'https://playball.duckdns.org'
+_MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5MB
+
+# 이미지 매직바이트 (JPEG, PNG, WebP)
+_IMG_MAGIC = {
+    b'\xff\xd8\xff': ('.jpg', '.jpeg'),
+    b'\x89PNG':       ('.png',),
+    b'RIFF':          ('.webp',),   # RIFF????WEBP 추가 검증
+}
+
+def _validate_image(data: bytes, ext: str) -> bool:
+    """매직바이트로 실제 이미지 포맷 검증"""
+    for magic, exts in _IMG_MAGIC.items():
+        if data[:len(magic)] == magic:
+            if magic == b'RIFF':
+                return data[8:12] == b'WEBP' and ext in exts
+            return ext in exts
+    return False
+
 
 @router.post('/profile-image')
 async def upload_profile_image(
     file: UploadFile = File(...),
+    request: Request = None,
     current_user: dict = Depends(get_current_user)
 ):
     ext = os.path.splitext(file.filename or 'img.jpg')[1].lower()
     if ext not in ('.jpg', '.jpeg', '.png', '.webp'):
         raise HTTPException(status_code=400, detail='jpg/png/webp만 허용됩니다')
+    data = await file.read(_MAX_UPLOAD_BYTES + 1)
+    if len(data) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail='파일 크기는 5MB를 초과할 수 없습니다')
+    if not _validate_image(data, ext):
+        raise HTTPException(status_code=400, detail='유효하지 않은 이미지 파일입니다')
     filename = f"{current_user['user_id']}_{uuid.uuid4().hex[:8]}{ext}"
     path = os.path.join(PROFILE_DIR, filename)
     with open(path, 'wb') as f:
-        shutil.copyfileobj(file.file, f)
+        f.write(data)
+    ip = (request.headers.get("X-Real-IP") or request.client.host) if request else "unknown"
+    log_upload(ip, current_user['user_id'], filename, len(data))
     url = f"{BASE_URL}/static/profiles/{filename}"
     conn = get_connection()
     if not conn:

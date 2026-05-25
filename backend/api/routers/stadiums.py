@@ -1,14 +1,27 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request, Header
 from database.connection import get_connection
 from api.routers.auth import get_current_user
+from api.security_log import log_admin_access
 from pydantic import BaseModel
 from typing import Optional
 import requests as _req
+import os
 from datetime import datetime, timedelta
 
 router = APIRouter()
 
 _VOTE_THRESHOLD = 5
+_ADMIN_KEY = os.environ.get("ADMIN_KEY", "")
+
+
+def _check_admin(x_admin_key: Optional[str], ip: str, endpoint: str):
+    """X-Admin-Key 헤더 검증 (URL pw 파라미터 대체)"""
+    if not _ADMIN_KEY:
+        log_admin_access(ip, endpoint, "check", "FAIL_NO_ENV")
+        raise HTTPException(status_code=503, detail="관리자 기능 비활성화")
+    if x_admin_key != _ADMIN_KEY:
+        log_admin_access(ip, endpoint, "check", "FAIL_WRONG_KEY")
+        raise HTTPException(status_code=403, detail="권한 없음")
 
 
 class FoodPlaceSubmit(BaseModel):
@@ -372,10 +385,13 @@ def vote_food_place(place_id: int, current_user: dict = Depends(get_current_user
 
 
 @router.put("/food-places/{place_id}/admin")
-def admin_update_food_place(place_id: int, action: str, pw: str):
-    """관리자 승인/거절 (?action=approve|reject&pw=playball1234)"""
-    if pw != "playball1234":
-        raise HTTPException(status_code=403, detail="권한 없음")
+def admin_update_food_place(
+    place_id: int, action: str, request: Request,
+    x_admin_key: Optional[str] = Header(None)
+):
+    """관리자 승인/거절 (X-Admin-Key 헤더 필수)"""
+    ip = request.headers.get("X-Real-IP") or request.client.host
+    _check_admin(x_admin_key, ip, f"PUT /food-places/{place_id}/admin")
     if action not in ("approve", "reject"):
         raise HTTPException(status_code=400, detail="action은 approve 또는 reject")
     conn = get_connection()
@@ -388,14 +404,18 @@ def admin_update_food_place(place_id: int, action: str, pw: str):
         cur.close(); conn.close()
         raise HTTPException(status_code=404, detail="장소 없음")
     conn.commit(); cur.close(); conn.close()
+    log_admin_access(ip, f"PUT /food-places/{place_id}/admin", action, "OK")
     return {"status": new_status}
 
 
 @router.get("/food-places/pending")
-def admin_pending_food(pw: str):
-    """관리자용 pending 목록"""
-    if pw != "playball1234":
-        raise HTTPException(status_code=403, detail="권한 없음")
+def admin_pending_food(
+    request: Request,
+    x_admin_key: Optional[str] = Header(None)
+):
+    """관리자용 pending 목록 (X-Admin-Key 헤더 필수)"""
+    ip = request.headers.get("X-Real-IP") or request.client.host
+    _check_admin(x_admin_key, ip, "GET /food-places/pending")
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")

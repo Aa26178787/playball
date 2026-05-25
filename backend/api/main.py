@@ -1,22 +1,42 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
 from api.routers import games, players, teams, auth, user, stadiums, widget, community, calendar, phone, email_verify, password_reset, search, news
 from fastapi.staticfiles import StaticFiles
 
+_ALLOWED_ORIGINS = [
+    "https://playball.duckdns.org",
+    "http://localhost",
+    "http://10.0.0.0/8",   # 로컬 개발 (ADB over WiFi)
+]
 
 app = FastAPI(
     title="PlayBall API",
     description="KBO 야구 정보 API",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url=None,   # 프로덕션 Swagger UI 비활성화
+    redoc_url=None,
 )
+
+_MAX_BODY = 10 * 1024 * 1024  # 10MB (파일업로드 고려)
+
+
+@app.middleware("http")
+async def limit_body_size(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > _MAX_BODY:
+        return JSONResponse(status_code=413, content={"detail": "요청 크기 초과"})
+    return await call_next(request)
+
 
 app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Admin-Key"],
+    allow_credentials=True,
 )
 
 # 라우터 등록

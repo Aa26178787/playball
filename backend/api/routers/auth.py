@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from database.connection import get_connection
+from api.security_log import log_login_fail, log_login_ok, log_auth_fail
 import bcrypt
 import hashlib
 import os
@@ -11,9 +12,12 @@ import secrets
 
 router = APIRouter()
 
-SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "playball_secret_key_2026_fallback")
+_raw_secret = os.environ.get("JWT_SECRET_KEY", "")
+if not _raw_secret:
+    raise RuntimeError("JWT_SECRET_KEY 환경변수가 설정되지 않았습니다")
+SECRET_KEY = _raw_secret
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60       # 1시간
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_DAYS = 30
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -173,8 +177,9 @@ def register(user: UserRegister):
 
 
 @router.post("/login")
-def login(user: UserLogin):
+def login(user: UserLogin, request: Request):
     """로그인"""
+    ip = request.headers.get("X-Real-IP") or request.client.host
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -189,13 +194,16 @@ def login(user: UserLogin):
     conn.close()
 
     if not row:
+        log_login_fail(ip, user.email)
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 틀렸습니다")
 
     user_id, email, password_hash, nickname = row
 
     if not verify_password(user.password, password_hash):
+        log_login_fail(ip, user.email)
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 틀렸습니다")
 
+    log_login_ok(ip, user_id, email)
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
     return {
