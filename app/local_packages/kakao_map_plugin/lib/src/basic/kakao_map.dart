@@ -300,7 +300,13 @@ class _KakaoMapState extends State<KakaoMap> {
 
         map.setCopyrightPosition(kakao.maps.CopyrightPosition.BOTTOMRIGHT, false)
 
-        setTimeout(function() { onMapCreated.postMessage({"test": 1}); }, 200);
+        (function tryNotify(n) {
+            try {
+                onMapCreated.postMessage(JSON.stringify({"test": 1}));
+            } catch(e) {
+                if (n > 0) setTimeout(function() { tryNotify(n - 1); }, 200);
+            }
+        })(15);
     }
 
 
