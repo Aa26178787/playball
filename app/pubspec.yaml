@@ -41,8 +41,11 @@ dependencies:
   # 상태관리
   provider: ^6.1.1
   
-  # 로컬 저장소 (토큰 저장)
+  # 로컬 저장소 (일반 캐시)
   shared_preferences: ^2.2.2
+
+  # 보안 토큰 저장 (Android Keystore / iOS Keychain)
+  flutter_secure_storage: ^9.2.2
   
   # 카카오맵
   kakao_map_plugin: ^0.3.3

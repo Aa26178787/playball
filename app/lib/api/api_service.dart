@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
   static const String baseUrl = 'https://playball.duckdns.org';
@@ -10,6 +10,11 @@ class ApiService {
   ));
   static bool _interceptorAdded = false;
 
+  // Android Keystore / iOS Keychain 기반 보안 스토리지
+  static const _secure = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+
   static void initInterceptor(Future<void> Function() onLogout) {
     if (_interceptorAdded) return;
     _interceptorAdded = true;
@@ -18,7 +23,6 @@ class ApiService {
         if (err.response?.statusCode == 401) {
           final refreshed = await _tryRefresh();
           if (refreshed) {
-            // 원래 요청 재시도
             final opts = err.requestOptions;
             final token = await getToken();
             opts.headers['Authorization'] = 'Bearer $token';
@@ -27,7 +31,6 @@ class ApiService {
               return handler.resolve(res);
             } catch (_) {}
           }
-          // refresh 실패 → 로그아웃
           await onLogout();
         }
         return handler.next(err);
@@ -36,8 +39,7 @@ class ApiService {
   }
 
   static Future<bool> _tryRefresh() async {
-    final prefs = await SharedPreferences.getInstance();
-    final refreshToken = prefs.getString('refresh_token');
+    final refreshToken = await _secure.read(key: 'refresh_token');
     if (refreshToken == null) return false;
     try {
       final res = await Dio(BaseOptions(baseUrl: baseUrl)).post(
@@ -45,39 +47,34 @@ class ApiService {
         data: {'refresh_token': refreshToken},
       );
       final data = res.data as Map<String, dynamic>;
-      await prefs.setString('access_token', data['access_token']);
-      await prefs.setString('refresh_token', data['refresh_token']);
+      await _secure.write(key: 'access_token', value: data['access_token'] as String);
+      await _secure.write(key: 'refresh_token', value: data['refresh_token'] as String);
       return true;
     } catch (_) {
       return false;
     }
   }
 
-  // ===== 토큰 관리 =====
+  // ===== 토큰 관리 (Keystore/Keychain) =====
   static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('access_token');
+    return _secure.read(key: 'access_token');
   }
 
   static Future<void> saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('access_token', token);
+    await _secure.write(key: 'access_token', value: token);
   }
 
   static Future<void> saveRefreshToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('refresh_token', token);
+    await _secure.write(key: 'refresh_token', value: token);
   }
 
   static Future<String?> getRefreshToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('refresh_token');
+    return _secure.read(key: 'refresh_token');
   }
 
   static Future<void> deleteToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('access_token');
-    await prefs.remove('refresh_token');
+    await _secure.delete(key: 'access_token');
+    await _secure.delete(key: 'refresh_token');
   }
 
   static Future<void> serverLogout(String refreshToken) async {
