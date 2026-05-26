@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -13,7 +12,6 @@ class ApiService {
 
   static const _secure = FlutterSecureStorage();
   static String? _cachedToken;
-  static Completer<bool>? _refreshCompleter;
 
   static void initInterceptor(Future<void> Function() onLogout) {
     if (_interceptorAdded) return;
@@ -39,17 +37,9 @@ class ApiService {
   }
 
   static Future<bool> _tryRefresh() async {
-    if (_refreshCompleter != null) {
-      return _refreshCompleter!.future;
-    }
-
-    _refreshCompleter = Completer<bool>();
+    final refreshToken = await _secure.read(key: 'refresh_token');
+    if (refreshToken == null) return false;
     try {
-      final refreshToken = await _secure.read(key: 'refresh_token');
-      if (refreshToken == null) {
-        _refreshCompleter!.complete(false);
-        return _refreshCompleter!.future;
-      }
       final res = await Dio(BaseOptions(baseUrl: baseUrl)).post(
         '/auth/refresh',
         data: {'refresh_token': refreshToken},
@@ -57,19 +47,10 @@ class ApiService {
       final data = res.data as Map<String, dynamic>;
       await _secure.write(key: 'access_token', value: data['access_token'] as String);
       await _secure.write(key: 'refresh_token', value: data['refresh_token'] as String);
-      _cachedToken = data['access_token'] as String;
-      _refreshCompleter!.complete(true);
-      return _refreshCompleter!.future;
+      return true;
     } catch (_) {
-      _refreshCompleter!.complete(false);
-      return _refreshCompleter!.future;
-    } finally {
-      _refreshCompleter = null;
+      return false;
     }
-  }
-
-  static Future<bool> refreshTokenIfPossible() async {
-    return await _tryRefresh();
   }
 
   // ===== 토큰 관리 (Android Keystore / iOS Keychain + 메모리 캐시) =====
