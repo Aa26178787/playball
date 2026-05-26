@@ -16,6 +16,18 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   String? _error;
+  bool _keepLoggedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      final auth = context.read<AuthProvider>();
+      setState(() {
+        _keepLoggedIn = auth.keepLoggedIn;
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -26,6 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     final auth = context.read<AuthProvider>();
+    await auth.setKeepLoggedIn(_keepLoggedIn);
     final success = await auth.login(
       _emailController.text.trim(),
       _passwordController.text.trim(),
@@ -94,6 +107,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 8),
+
+              CheckboxListTile(
+                value: _keepLoggedIn,
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _keepLoggedIn = value;
+                  });
+                },
+                title: const Text('자동 로그인 유지'),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
 
               // 오류 메시지
               if (_error != null)
