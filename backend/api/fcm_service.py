@@ -228,12 +228,22 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
                         home_score: int, away_score: int,
                         home_team_id: int, away_team_id: int,
                         is_comeback: bool = False,
-                        inning: int = 0, inning_half: str = ''):
+                        inning: int = 0, inning_half: str = '',
+                        scoring_team: str = '',
+                        batter: str = '', pitcher: str = '', play_text: str = ''):
     targets = _get_targets('notify_score_change', [home_team_id, away_team_id])
     half_str = '초' if inning_half == 'top' else '말' if inning_half == 'bottom' else ''
     inning_str = f" [{inning}{half_str}]" if inning > 0 else ""
-    title = f"⚡ 역전!{inning_str}" if is_comeback else f"⚾ 득점!{inning_str}"
-    body  = f"{home_team} {home_score} : {away_score} {away_team}"
+    team_prefix = f"{scoring_team} " if scoring_team else ""
+    title = f"⚡ {team_prefix}역전!{inning_str}" if is_comeback else f"⚾ {team_prefix}득점!{inning_str}"
+    score_line = f"{home_team} {home_score} : {away_score} {away_team}"
+    if batter and play_text:
+        play_line = f"{batter} {play_text}"
+        if pitcher:
+            play_line += f" (vs {pitcher})"
+        body = f"{play_line}\n{score_line}"
+    else:
+        body = score_line
     ntype = "comeback" if is_comeback else "score_change"
     _send(targets, title, body,
           {"game_id": str(game_id), "type": ntype}, ntype, game_id)
@@ -317,7 +327,51 @@ def notify_roster_change(player_id: int, player_name: str, change_type: str):
           {"player_id": str(player_id), "type": "roster_change"}, "roster_change", None)
 
 
+def notify_team_roster_change(team_id: int, player_id: int, player_name: str, change_type: str):
+    """마이팀 등록말소 - 해당 선수를 즐겨찾기하지 않은 팀 팬에게 (중복 방지)"""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT DISTINCT pt.user_id, pt.token
+            FROM push_tokens pt
+            JOIN user_favorite_teams uft ON uft.user_id = pt.user_id
+            LEFT JOIN user_settings us ON us.user_id = pt.user_id
+            WHERE uft.team_id = %s
+              AND COALESCE(us.notify_roster, TRUE) = TRUE
+              AND NOT EXISTS (
+                  SELECT 1 FROM user_favorite_players ufp
+                  WHERE ufp.user_id = pt.user_id AND ufp.player_id = %s
+              )
+        """, (team_id, player_id))
+        targets = cur.fetchall()
+        cur.close()
+    except Exception:
+        return
+    finally:
+        conn.close()
+    if not targets:
+        return
+    emoji = "✅" if "등록" in change_type else "❌"
+    _send(targets,
+          f"{emoji} {player_name} {change_type}",
+          f"마이팀 {player_name}이(가) {change_type} 되었습니다.",
+          {"type": "roster_change"}, "roster_change", None)
+
+
 # ── 페넌트레이스 알림 ─────────────────────────────────────────────────────────
+
+def notify_gb_zero(team_id: int, team_name: str, first_team_name: str):
+    """게임차 0 달성 - 동률 1위 팬에게"""
+    targets = _get_team_fan_targets(team_id, 'notify_rank_change')
+    opp = f" ({first_team_name}과 동률)" if first_team_name else ""
+    _send(targets,
+          f"🔥 {team_name} 게임차 0!",
+          f"{team_name}이(가) 1위와 게임차 0입니다{opp}!",
+          {"team_id": str(team_id), "type": "rank_change"}, "rank_change", None)
+
 
 def notify_pennant_race(team_id: int, team_name: str, curr_gap: float, prev_gap: float):
     """1위 마이팀 + 2위 게임차 좁혀질 때 — notify_pennant_race ON 팬에게"""

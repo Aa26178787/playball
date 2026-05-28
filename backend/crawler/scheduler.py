@@ -301,12 +301,26 @@ def smart_update():
                     ch, ca = curr['home_score'], curr['away_score']
                     # 역전: 득점 전 앞서던 팀이 뒤처짐
                     is_comeback = ((ph > pa and ch < ca) or (pa > ph and ca < ch))
+                    # 득점 팀 판별
+                    scoring_team = curr['home_team'] if ch > ph else curr['away_team'] if ca > pa else ''
+                    # 득점 상세 (타자/투수/타구)
+                    naver_gid = curr.get('naver_game_id', '')
+                    inning_now = curr.get('current_inning', 0)
+                    batter, pitcher, play_text = ('', '', '')
+                    if naver_gid and inning_now:
+                        try:
+                            batter, pitcher, play_text = _get_scoring_play_detail(
+                                naver_gid, inning_now, ch, ca)
+                        except Exception:
+                            pass
                     notify_score_change(gid, curr['home_team'], curr['away_team'],
                                         ch, ca,
                                         curr['home_team_id'], curr['away_team_id'],
                                         is_comeback=is_comeback,
-                                        inning=curr.get('current_inning', 0),
-                                        inning_half=curr.get('inning_half', ''))
+                                        inning=inning_now,
+                                        inning_half=curr.get('inning_half', ''),
+                                        scoring_team=scoring_team,
+                                        batter=batter, pitcher=pitcher, play_text=play_text)
                     _check_new_hrs(gid, curr['home_team_id'], curr['away_team_id'])
 
                 # 경기 종료
@@ -886,7 +900,7 @@ def _get_game_details():
         SELECT g.id, g.status, g.home_score, g.away_score,
                ht.name, at2.name, g.home_team_id, g.away_team_id,
                COALESCE(g.current_inning, 0), g.inning_half,
-               TO_CHAR(g.start_time, 'HH24:MI')
+               TO_CHAR(g.start_time, 'HH24:MI'), g.naver_game_id
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at2 ON g.away_team_id = at2.id
@@ -907,6 +921,7 @@ def _get_game_details():
             'current_inning': r[8] or 0,
             'inning_half':    r[9] or '',
             'start_time':     r[10] or '',
+            'naver_game_id':  r[11] or '',
         }
         for r in rows
     }
@@ -969,19 +984,75 @@ def _get_consecutive_record(team_id: int) -> int:
         conn.close()
 
 
+def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_score):
+    """Naver 중계 API에서 득점 타자/투수/타구 추출. 실패 시 ('','','') 반환"""
+    import requests, re as _re
+    HEADERS = {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://sports.naver.com/'}
+    try:
+        url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/relay?inning={inning}"
+        res = requests.get(url, headers=HEADERS, timeout=5)
+        relay = res.json().get('result', {}).get('textRelayData', {})
+        text_relays = relay.get('textRelays', [])
+
+        conn = get_connection()
+        cur = conn.cursor() if conn else None
+        pitcher_cache = {}
+
+        curr_batter = curr_pitcher = ''
+        result_batter = result_pitcher = result_text = ''
+
+        for item in text_relays:
+            for opt in item.get('textOptions', []):
+                state = opt.get('currentGameState', {}) or {}
+
+                pid = str(state.get('pitcher') or '')
+                if pid and cur:
+                    if pid not in pitcher_cache:
+                        cur.execute("SELECT name FROM players WHERE naver_player_id=%s LIMIT 1", (pid,))
+                        row = cur.fetchone()
+                        pitcher_cache[pid] = row[0] if row else ''
+                    curr_pitcher = pitcher_cache.get(pid, '')
+
+                br = opt.get('batterRecord') or {}
+                if br.get('name'):
+                    curr_batter = br['name']
+                elif opt.get('type') == 8:
+                    m = _re.match(r'^(?:\d+번타자|대타)\s+(\S+)', opt.get('text', ''))
+                    if m:
+                        curr_batter = m.group(1)
+
+                hs = state.get('homeScore')
+                aws = state.get('awayScore')
+                if hs is not None and aws is not None:
+                    if int(hs) >= new_home_score and int(aws) >= new_away_score:
+                        if opt.get('type') == 1:
+                            result_batter = curr_batter
+                            result_pitcher = curr_pitcher
+                            result_text = opt.get('text', '')
+
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+        return result_batter, result_pitcher, result_text
+    except Exception:
+        return '', '', ''
+
+
 def _notify_roster_for_fans():
-    """오늘 등록말소 중 즐겨찾기 선수 → 팬에게 알림"""
+    """오늘 등록말소: 즐겨찾기 선수 팬 + 마이팀 팬 모두에게 알림"""
     conn = get_connection()
     if not conn:
         return
     try:
         cur = conn.cursor()
         cur.execute("""
-            SELECT player_id, player_name, change_type
-            FROM player_roster_changes
-            WHERE change_date = CURRENT_DATE
-              AND player_id IS NOT NULL
-              AND change_type IN ('1군 등록', '1군 말소')
+            SELECT prc.player_id, prc.player_name, prc.change_type, p.team_id
+            FROM player_roster_changes prc
+            LEFT JOIN players p ON p.id = prc.player_id
+            WHERE prc.change_date = CURRENT_DATE
+              AND prc.player_id IS NOT NULL
+              AND prc.change_type IN ('1군 등록', '1군 말소')
         """)
         rows = cur.fetchall()
         cur.close()
@@ -992,9 +1063,11 @@ def _notify_roster_for_fans():
     if not rows:
         return
     try:
-        from api.fcm_service import notify_roster_change
-        for player_id, player_name, change_type in rows:
+        from api.fcm_service import notify_roster_change, notify_team_roster_change
+        for player_id, player_name, change_type, team_id in rows:
             notify_roster_change(player_id, player_name, change_type)
+            if team_id:
+                notify_team_roster_change(team_id, player_id, player_name, change_type)
     except Exception as e:
         print(f"[FCM] 로스터 알림 오류: {e}")
 
@@ -1110,7 +1183,6 @@ def update_team_rankings():
         first_prev = [(tid, d) for tid, d in prev_ranks.items() if d.get('rank') == 1]
         if first_curr and first_prev:
             first_tid, first_data = first_curr[0]
-            # 2위 games_behind 비교 (prev vs curr)
             sec_curr = [d for d in curr_ranks.values() if d.get('rank') == 2]
             sec_prev = [d for d in prev_ranks.values() if d.get('rank') == 2]
             if sec_curr and sec_prev:
@@ -1120,6 +1192,21 @@ def update_team_rankings():
                     notify_pennant_race(first_tid, first_data['name'], curr_gap, prev_gap)
     except Exception as e:
         print(f"[FCM] 페넌트레이스 알림 오류: {e}")
+
+    # 게임차 0 달성 알림 (새로 동률 1위가 된 팀)
+    try:
+        from api.fcm_service import notify_gb_zero
+        first_name = next((d['name'] for d in curr_ranks.values() if d.get('rank') == 1), '')
+        for team_id, curr in curr_ranks.items():
+            if curr.get('rank', 99) <= 1:
+                continue
+            prev = prev_ranks.get(team_id, {})
+            old_gb = prev.get('games_behind')
+            new_gb = curr.get('games_behind')
+            if old_gb and float(old_gb) > 0 and new_gb is not None and float(new_gb) == 0:
+                notify_gb_zero(team_id, curr['name'], first_name)
+    except Exception as e:
+        print(f"[FCM] 게임차0 알림 오류: {e}")
 
 
 def _update_roster_changes():
