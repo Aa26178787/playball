@@ -81,7 +81,7 @@ class TodayGamesTab extends StatefulWidget {
 class _TodayGamesTabState extends State<TodayGamesTab> {
   DateTime _selectedDate = DateTime.now();
   List _games = [];
-  List _tomorrowGames = [];
+  List _seriesGames = [];
   List _todayRosterChanges = [];
   List _rankings = [];
   bool _isLoading = true;
@@ -217,11 +217,24 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 
   Future<void> _loadTomorrowGames() async {
     try {
-      final tomorrow = DateTime.now().add(const Duration(days: 1));
-      final dateStr =
-          '${tomorrow.year}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}';
-      final data = await ApiService.getGamesByDate(dateStr);
-      if (mounted) setState(() => _tomorrowGames = data['games'] ?? []);
+      final now = DateTime.now();
+      String _ds(int offset) {
+        final d = now.add(Duration(days: offset));
+        return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      }
+
+      final results = await Future.wait([
+        ApiService.getGamesByDate(_ds(1)).catchError((_) => <String, dynamic>{}),
+        ApiService.getGamesByDate(_ds(2)).catchError((_) => <String, dynamic>{}),
+        ApiService.getGamesByDate(_ds(3)).catchError((_) => <String, dynamic>{}),
+      ]);
+
+      final combined = <dynamic>[];
+      for (final r in results) {
+        final games = (r as Map<String, dynamic>)['games'] as List? ?? [];
+        combined.addAll(games);
+      }
+      if (mounted) setState(() => _seriesGames = combined);
     } catch (_) {}
   }
 
@@ -740,7 +753,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
           _selectedDate.month == DateTime.now().month &&
           _selectedDate.day == DateTime.now().day;
       final isPast = _selectedDate.isBefore(DateTime.now().subtract(const Duration(days: 1)));
-      final showTomorrowEmpty = isToday && _tomorrowGames.isNotEmpty;
+      final showTomorrowEmpty = isToday && _seriesGames.isNotEmpty;
       return RefreshIndicator(
         onRefresh: _loadGames,
         child: ListView(
@@ -797,7 +810,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     final isToday = _selectedDate.year == DateTime.now().year &&
         _selectedDate.month == DateTime.now().month &&
         _selectedDate.day == DateTime.now().day;
-    final showTomorrow = isToday && _tomorrowGames.isNotEmpty;
+    final showTomorrow = isToday && _seriesGames.isNotEmpty;
 
     return RefreshIndicator(
       onRefresh: _loadGames,
@@ -816,8 +829,6 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   }
 
   Widget _buildTomorrowPreview() {
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
-    final label = '${tomorrow.month}/${tomorrow.day} 내일 경기 예고';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -827,18 +838,18 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
             children: [
               const Icon(Icons.upcoming_outlined, size: 15, color: Color(0xFF1A237E)),
               const SizedBox(width: 5),
-              Text(label,
-                  style: const TextStyle(
+              const Text('다음 시리즈 예고',
+                  style: TextStyle(
                       fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
             ],
           ),
         ),
         SizedBox(
-          height: 130,
+          height: 145,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: _tomorrowGames.length,
-            itemBuilder: (ctx, i) => _buildTomorrowCard(_tomorrowGames[i] as Map),
+            itemCount: _seriesGames.length,
+            itemBuilder: (ctx, i) => _buildTomorrowCard(_seriesGames[i] as Map),
           ),
         ),
         const SizedBox(height: 8),
@@ -858,6 +869,13 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     final awayStarter = g['away_starter'] as String?;
     final gameId = g['id'] as int;
     final isMy = _favoriteTeamIds.contains(homeId) || _favoriteTeamIds.contains(awayId);
+    final gameDateStr = g['game_date'] as String? ?? '';
+    String dateLabel = '';
+    if (gameDateStr.length >= 10) {
+      final m = int.tryParse(gameDateStr.substring(5, 7)) ?? 0;
+      final d = int.tryParse(gameDateStr.substring(8, 10)) ?? 0;
+      dateLabel = '$m/$d';
+    }
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -867,7 +885,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       child: Container(
         width: 160,
         margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
@@ -884,9 +902,25 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // 시간
-            Text(startTime,
-                style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500)),
+            // 날짜 + 시간
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (dateLabel.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A237E).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(dateLabel,
+                        style: const TextStyle(fontSize: 9, color: Color(0xFF1A237E), fontWeight: FontWeight.bold)),
+                  ),
+                if (dateLabel.isNotEmpty && startTime.isNotEmpty) const SizedBox(width: 4),
+                Text(startTime,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500)),
+              ],
+            ),
             // 팀 로고 + vs
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
