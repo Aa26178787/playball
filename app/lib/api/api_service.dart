@@ -16,6 +16,28 @@ class ApiService {
   static void initInterceptor(Future<void> Function() onLogout) {
     if (_interceptorAdded) return;
     _interceptorAdded = true;
+
+    // Retry interceptor: 타임아웃/연결 오류 시 1회 재시도
+    _dio.interceptors.add(InterceptorsWrapper(
+      onError: (err, handler) async {
+        final retryable = err.type == DioExceptionType.connectionTimeout ||
+            err.type == DioExceptionType.receiveTimeout ||
+            err.type == DioExceptionType.connectionError;
+        if (retryable && err.requestOptions.extra['_retried'] != true) {
+          err.requestOptions.extra['_retried'] = true;
+          await Future.delayed(const Duration(seconds: 2));
+          try {
+            final res = await _dio.fetch(err.requestOptions);
+            return handler.resolve(res);
+          } catch (e) {
+            return handler.next(e is DioException ? e : err);
+          }
+        }
+        return handler.next(err);
+      },
+    ));
+
+    // Auth interceptor: 401 시 refresh 후 재시도
     _dio.interceptors.add(InterceptorsWrapper(
       onError: (err, handler) async {
         if (err.response?.statusCode == 401) {
@@ -78,6 +100,24 @@ class ApiService {
     _cachedToken = null;
     await _secure.delete(key: 'access_token');
     await _secure.delete(key: 'refresh_token');
+  }
+
+  // ===== 자동 로그인 자격증명 =====
+  static Future<void> saveAutoLoginCredentials(String email, String password) async {
+    await _secure.write(key: 'auto_email', value: email);
+    await _secure.write(key: 'auto_password', value: password);
+  }
+
+  static Future<Map<String, String>?> getAutoLoginCredentials() async {
+    final email = await _secure.read(key: 'auto_email');
+    final password = await _secure.read(key: 'auto_password');
+    if (email != null && password != null) return {'email': email, 'password': password};
+    return null;
+  }
+
+  static Future<void> clearAutoLoginCredentials() async {
+    await _secure.delete(key: 'auto_email');
+    await _secure.delete(key: 'auto_password');
   }
 
   static Future<void> serverLogout(String refreshToken) async {

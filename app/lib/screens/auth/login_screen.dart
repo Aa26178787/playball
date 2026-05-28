@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../api/api_service.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -15,15 +16,41 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   String? _error;
+  bool _autoLogin = false;
+  bool _hasSavedCredentials = false;
+  bool _autoLoggingIn = false;
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      final auth = context.read<AuthProvider>();
+    _checkSavedCredentials();
+  }
+
+  Future<void> _checkSavedCredentials() async {
+    final creds = await ApiService.getAutoLoginCredentials();
+    if (!mounted) return;
+    if (creds != null) {
       setState(() {
+        _hasSavedCredentials = true;
+        _autoLogin = true;
+        _emailController.text = creds['email']!;
+        _passwordController.text = creds['password']!;
       });
-    });
+      _autoLoginNow(creds['email']!, creds['password']!);
+    }
+  }
+
+  Future<void> _autoLoginNow(String email, String password) async {
+    setState(() => _autoLoggingIn = true);
+    final auth = context.read<AuthProvider>();
+    final success = await auth.login(email, password);
+    if (!success && mounted) {
+      setState(() {
+        _autoLoggingIn = false;
+        _error = '자동 로그인 실패. 다시 입력해 주세요.';
+      });
+      await ApiService.clearAutoLoginCredentials();
+    }
   }
 
   @override
@@ -35,11 +62,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     final auth = context.read<AuthProvider>();
-    final success = await auth.login(
-      _emailController.text.trim(),
-      _passwordController.text.trim(),
-    );
-
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final success = await auth.login(email, password);
+    if (success && _autoLogin) {
+      await ApiService.saveAutoLoginCredentials(email, password);
+    }
     if (!success && mounted) {
       setState(() {
         _error = auth.errorMessage ?? '이메일 또는 비밀번호가 틀렸습니다';
@@ -50,6 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final isLoading = auth.isLoading || _autoLoggingIn;
 
     return Scaffold(
       body: SafeArea(
@@ -58,20 +87,11 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 로고
-              const Icon(
-                Icons.sports_baseball,
-                size: 80,
-                color: Color(0xFF1A237E),
-              ),
+              const Icon(Icons.sports_baseball, size: 80, color: Color(0xFF1A237E)),
               const SizedBox(height: 8),
               const Text(
                 'PlayBall',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A237E),
-                ),
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF1A237E)),
               ),
               const SizedBox(height: 48),
 
@@ -97,28 +117,48 @@ class _LoginScreenState extends State<LoginScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
 
+              // 자동 로그인 체크박스
+              Row(
+                children: [
+                  Checkbox(
+                    value: _autoLogin,
+                    onChanged: (v) => setState(() => _autoLogin = v ?? false),
+                    activeColor: const Color(0xFF1A237E),
+                  ),
+                  const Text('자동 로그인', style: TextStyle(fontSize: 14)),
+                  if (_hasSavedCredentials) ...[
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () async {
+                        await ApiService.clearAutoLoginCredentials();
+                        if (mounted) setState(() { _hasSavedCredentials = false; _autoLogin = false; });
+                      },
+                      child: const Text('저장 해제', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    ),
+                  ],
+                ],
+              ),
 
               // 오류 메시지
               if (_error != null)
-                Text(
-                  _error!,
-                  style: const TextStyle(color: Colors.red),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
                 ),
-              const SizedBox(height: 16),
 
               // 로그인 버튼
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: auth.isLoading ? null : _login,
+                  onPressed: isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1A237E),
                     foregroundColor: Colors.white,
                   ),
-                  child: auth.isLoading
+                  child: isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text('로그인', style: TextStyle(fontSize: 16)),
                 ),
@@ -129,18 +169,13 @@ class _LoginScreenState extends State<LoginScreen> {
               TextButton(
                 onPressed: () => Navigator.push(context,
                     MaterialPageRoute(builder: (_) => const ForgotPasswordScreen())),
-                child: const Text('비밀번호를 잊으셨나요?',
-                    style: TextStyle(color: Colors.grey)),
+                child: const Text('비밀번호를 잊으셨나요?', style: TextStyle(color: Colors.grey)),
               ),
 
-              // 회원가입 버튼
+              // 회원가입
               TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                  );
-                },
+                onPressed: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const RegisterScreen())),
                 child: const Text('계정이 없으신가요? 회원가입'),
               ),
             ],

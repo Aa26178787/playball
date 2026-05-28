@@ -117,6 +117,7 @@ class AuthProvider extends ChangeNotifier {
       try { await ApiService.serverLogout(prefs); } catch (_) {}
     }
     await ApiService.deleteToken();
+    await ApiService.clearAutoLoginCredentials();
     await LocalCache.clearUser();
     _user = null;
     _isLoggedIn = false;
