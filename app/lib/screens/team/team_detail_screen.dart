@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import '../../services/widget_service.dart';
@@ -732,6 +733,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
         final media = n['media'] as String? ?? '';
         final pub = n['published_at'] as String?;
         final url = n['url'] as String? ?? '';
+        final thumbnail = n['thumbnail'] as String? ?? '';
 
         String dateStr = '';
         if (pub != null) {
@@ -744,23 +746,47 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
         return InkWell(
           onTap: () => _openUrl(url),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, height: 1.4),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                Row(children: [
-                  if (media.isNotEmpty) ...[
-                    Text(media, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                    const SizedBox(width: 8),
-                  ],
-                  if (dateStr.isNotEmpty)
-                    Text(dateStr, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
-                ]),
+                if (thumbnail.isNotEmpty) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: CachedNetworkImage(
+                      imageUrl: thumbnail,
+                      width: 80,
+                      height: 60,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(width: 80, height: 60, color: Colors.grey[200]),
+                      errorWidget: (_, __, ___) => Container(
+                        width: 80, height: 60, color: Colors.grey[100],
+                        child: const Icon(Icons.article_outlined, color: Colors.grey, size: 24),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, height: 1.4),
+                          maxLines: thumbnail.isNotEmpty ? 3 : 2,
+                          overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      Row(children: [
+                        if (media.isNotEmpty) ...[
+                          Text(media, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                          const SizedBox(width: 8),
+                        ],
+                        if (dateStr.isNotEmpty)
+                          Text(dateStr, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                      ]),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
