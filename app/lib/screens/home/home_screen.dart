@@ -833,19 +833,10 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       if (homeId != teamId && awayId != teamId) continue;
       final oppId = homeId == teamId ? awayId : homeId;
       if (oppId == currentOpponentId) continue;
-      final isHome = homeId == teamId;
-      final oppName = isHome
+      final oppName = homeId == teamId
           ? gm['away_team'] as String? ?? ''
           : gm['home_team'] as String? ?? '';
-      final date = gm['game_date'] as String? ?? '';
-      String dateLabel = '';
-      if (date.length >= 10) {
-        final m = int.tryParse(date.substring(5, 7)) ?? 0;
-        final d = int.tryParse(date.substring(8, 10)) ?? 0;
-        dateLabel = '$m/$d';
-      }
-      final loc = isHome ? '홈' : '원정';
-      return 'vs $oppName ($dateLabel $loc)';
+      return 'vs $oppName';
     }
     return null;
   }
