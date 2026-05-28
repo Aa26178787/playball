@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../api/api_service.dart';
+import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
 import '../../services/widget_service.dart';
 import '../player/player_detail_screen.dart';
@@ -104,14 +105,17 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Future<void> _loadPlayers() async {
+    final teamId = widget.team['id'] as int;
+    final cacheKey = 'team_players_$teamId';
+    final cached = await LocalCache.get(cacheKey, maxAgeSeconds: 300) as List?;
+    if (cached != null && mounted) {
+      setState(() { _players = cached; _playersLoading = false; });
+    }
     try {
-      final data = await ApiService.getTeamPlayers(widget.team['id']);
-      if (mounted) {
-        setState(() {
-          _players = data['players'] ?? [];
-          _playersLoading = false;
-        });
-      }
+      final data = await ApiService.getTeamPlayers(teamId);
+      final players = data['players'] as List? ?? [];
+      await LocalCache.set(cacheKey, players);
+      if (mounted) setState(() { _players = players; _playersLoading = false; });
     } catch (_) {
       if (mounted) setState(() => _playersLoading = false);
     }
@@ -372,7 +376,19 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
 
   Widget _buildPlayers() {
     if (_playersLoading) return const Center(child: CircularProgressIndicator());
-    if (_players.isEmpty) return const Center(child: Text('선수 정보가 없습니다'));
+    if (_players.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _loadPlayers,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 180),
+            Center(child: Text('선수 정보가 없습니다\n아래로 당겨서 새로고침',
+                textAlign: TextAlign.center, style: TextStyle(color: Colors.grey))),
+          ],
+        ),
+      );
+    }
 
     final pitchers = _players.where((p) => p['player_type'] == '투수').toList();
     final batters = _players.where((p) => p['player_type'] == '타자').toList();

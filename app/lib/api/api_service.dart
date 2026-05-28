@@ -6,7 +6,7 @@ class ApiService {
   static final Dio _dio = Dio(BaseOptions(
     baseUrl: baseUrl,
     connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 20),
   ));
   static bool _interceptorAdded = false;
 
@@ -17,13 +17,14 @@ class ApiService {
     if (_interceptorAdded) return;
     _interceptorAdded = true;
 
-    // Retry interceptor: 타임아웃/연결 오류 시 1회 재시도
+    // Retry interceptor: 네트워크 오류 or 5xx 시 1회 재시도
     _dio.interceptors.add(InterceptorsWrapper(
       onError: (err, handler) async {
-        final retryable = err.type == DioExceptionType.connectionTimeout ||
+        final isNetworkError = err.type == DioExceptionType.connectionTimeout ||
             err.type == DioExceptionType.receiveTimeout ||
             err.type == DioExceptionType.connectionError;
-        if (retryable && err.requestOptions.extra['_retried'] != true) {
+        final is5xx = (err.response?.statusCode ?? 0) >= 500;
+        if ((isNetworkError || is5xx) && err.requestOptions.extra['_retried'] != true) {
           err.requestOptions.extra['_retried'] = true;
           await Future.delayed(const Duration(seconds: 2));
           try {

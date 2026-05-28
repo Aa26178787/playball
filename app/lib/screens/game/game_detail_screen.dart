@@ -939,23 +939,20 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           ],
 
           if (_relayAllFailed)
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('중계 데이터를 불러오지 못했습니다', style: TextStyle(color: Colors.grey)),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: () {
-                      setState(() { _relayAllFailed = false; });
-                      ApiService.getGameRelayAll(widget.gameId)
-                          .then((d) { if (mounted) setState(() { _relayAllData = d; _relayAllFailed = false; }); })
-                          .catchError((_) { if (mounted) setState(() => _relayAllFailed = true); });
-                    },
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('다시 시도'),
-                  ),
-                ],
+            GestureDetector(
+              onTap: () {
+                setState(() => _relayAllFailed = false);
+                ApiService.getGameRelayAll(widget.gameId)
+                    .then((d) { if (mounted) setState(() { _relayAllData = d; _relayAllFailed = false; }); })
+                    .catchError((_) { if (mounted) setState(() => _relayAllFailed = true); });
+              },
+              child: const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Text('중계 데이터 불러오기 실패\n탭하여 새로고침',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey, fontSize: 13)),
+                ),
               ),
             )
           else if (_relayAllData == null)

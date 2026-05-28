@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../api/api_service.dart';
+import '../../utils/local_cache.dart';
 import 'player_stats_section.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -49,20 +50,36 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     if (mounted) setState(() => _favLoading = false);
   }
 
+  String get _cacheKey => 'player_${widget.playerId}';
+  String get _dailyCacheKey => 'player_daily_${widget.playerId}';
+
   Future<void> _loadPlayer() async {
+    // 캐시 먼저 표시
+    final cached = await LocalCache.get(_cacheKey, maxAgeSeconds: 300) as Map?;
+    final cachedDaily = await LocalCache.get(_dailyCacheKey, maxAgeSeconds: 300) as Map?;
+    if (cached != null && mounted) {
+      setState(() {
+        _playerData = Map<String, dynamic>.from(cached);
+        if (cachedDaily != null) _dailyStats = cachedDaily['daily'] as List? ?? [];
+        _isLoading = false;
+      });
+    }
+
+    // 백그라운드 갱신
     try {
       final results = await Future.wait([
         ApiService.getPlayerDetail(widget.playerId),
         ApiService.getPlayerDaily(widget.playerId, season: 2026),
       ]);
       final playerData = results[0] as Map<String, dynamic>;
-      setState(() {
+      final dailyData = results[1] as Map<String, dynamic>;
+      await LocalCache.set(_cacheKey, playerData);
+      await LocalCache.set(_dailyCacheKey, dailyData);
+      if (mounted) setState(() {
         _playerData = playerData;
-        final dailyData = results[1] as Map<String, dynamic>;
         _dailyStats = dailyData['daily'] ?? [];
         _isLoading = false;
       });
-      // 투수면 구종 차트도 로드
       if (playerData['player_type'] == '투수') {
         try {
           final ps = await ApiService.getPlayerPitchStats(widget.playerId);
@@ -70,12 +87,15 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         } catch (_) {}
       }
     } catch (e) {
-      // daily 실패해도 기본 데이터라도 표시
-      try {
-        final data = await ApiService.getPlayerDetail(widget.playerId);
-        setState(() { _playerData = data; _isLoading = false; });
-      } catch (_) {
-        setState(() => _isLoading = false);
+      if (_playerData == null) {
+        // 캐시도 없고 API도 실패
+        try {
+          final data = await ApiService.getPlayerDetail(widget.playerId);
+          await LocalCache.set(_cacheKey, data);
+          if (mounted) setState(() { _playerData = data; _isLoading = false; });
+        } catch (_) {
+          if (mounted) setState(() => _isLoading = false);
+        }
       }
     }
   }
@@ -86,7 +106,23 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     if (_playerData == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('선수 상세')),
-        body: const Center(child: Text('선수 정보를 불러오지 못했습니다')),
+        body: RefreshIndicator(
+          onRefresh: () async {
+            setState(() => _isLoading = true);
+            await _loadPlayer();
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: const [
+              SizedBox(height: 180),
+              Center(
+                child: Text('데이터를 불러오는 중...\n아래로 당겨서 새로고침',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey)),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
