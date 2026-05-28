@@ -11,6 +11,7 @@ import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
 import 'pitch_location_chart.dart';
+import '../player/player_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class GameDetailScreen extends StatefulWidget {
