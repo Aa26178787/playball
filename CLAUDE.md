@@ -66,9 +66,15 @@ flutter build apk --debug   # 또는 --release
 - api/weather_service.py (OpenWeatherMap 5분 캐시)
 - api/email_service.py (Gmail SMTP, noreply.playball@gmail.com)
 - api/fcm_service.py (Firebase Admin SDK — 파이어베이스 키 등록 대기)
+  - notify_score_change: 팀명+득점 제목, 타자/타구/상대투수 본문
+  - notify_team_roster_change: 마이팀 등록말소 팀팬 알림 (선수팬 중복 방지)
+  - notify_gb_zero: 게임차 0 달성 시 알림
 - database/connection.py — ThreadedConnectionPool(minconn=5, maxconn=20) + _PooledConn 래퍼
 - crawler/naver_crawler.py (**절대 수정 금지**)
 - crawler/scheduler.py
+  - _get_scoring_play_detail: Naver 중계 API 실시간 득점 타자/투수/타구 파싱
+  - _recover_missed_daily_stats: 서버 재시작 시 누락 daily_stats 복구 (최근 2일)
+- crawler/kbo_daily_crawler.py — games=0 행 건너뜀(중복방지) + wins/losses GREATEST 보호
 - crawler/crawl_all_games.py, crawl_past_rosters.py, kbo_roster_crawler.py
 - crawler/crawl_highlights.py (Google News RSS)
 - static/profiles/, static/posts/
@@ -268,7 +274,9 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 - 당일 등록말소 배너 (접기/펼치기)
 - 마이팀 필터 토글 (즐겨찾기 팀 있을 때만)
 - AppBar 벨 아이콘: 읽지 않은 알림 수 빨간 뱃지 → NotificationsScreen
-- GameCard: 날씨 칩 + 팀별 최근5경기 W/L/D 뱃지
+- GameCard: 날씨 칩 + 팀별 최근5경기 W/L/D 뱃지 + 팀 순위 표시 + 다음 시리즈 상대팀
+  - 승리팀 로고 주변 후광 효과 (_winnerGlowLogo)
+  - 하단 "다음 vs 상대팀" 한 줄 표시 (날짜/홈원정 없음)
 - 로딩: Shimmer 게임카드 스켈레톤 4개
 - 캐시: games/favorite-teams/rankings — stale-while-revalidate (games TTL=5분)
 
@@ -316,6 +324,7 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 
 ### community_screen.dart
 - 무한스크롤, AutomaticKeepAliveClientMixin
+- stale-while-revalidate (캐시 TTL 300초, 카테고리=전체+검색 없을 때만)
 
 ### stadium_screen.dart
 - KakaoMap 9개 구장, 카드 탭 → 지도 포커스
@@ -357,6 +366,8 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 1시간마다: 하이라이트 크롤
 - **경기 종료 감지 시**: 해당 경기 출전 선수만 KBO 크롤 (game_pitchers + game_batters 조회)
 - **매주 월요일 KST 00:00** (UTC 15:00): DB 전체 선수 KBO 크롤
+- **시작 시**: _recover_missed_daily_stats (최근 2일 player_daily_stats 누락 복구)
+- **_save_player_daily_stats_today(target_date)**: target_date 파라미터로 과거 날짜 지정 가능
 
 ### crawl_all_games.py
 - 셀레니움 네이버 모바일 중계 역순파싱
@@ -424,24 +435,36 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [x] 경기 상세 7탭 (이닝/프리뷰/로스터/투수/타자/기록/하이라이트)
 - [x] 투구 위치 보기: 3단계 필터 + ABS존 + LIVE 배지
 - [x] 경기 상세 공유 버튼 (share_plus)
-- [x] 피타고리안 승률
+- [x] 피타고리안 승률 (팀 순위 탭 카드에 표시)
+- [x] 경기 상세 로스터 선수 클릭 → PlayerDetailScreen 이동
+- [x] 중계 탭 로딩 실패: shimmer + 4초 간격 자동 재시도 (최대 3회, 오류 UI 없음)
 
 ### 선수
 - [x] 선수 상세: 최근5경기 + 구종분포 바차트
 - [x] /players/{id}/pitch-stats
 - [x] 부문별 순위 단일 엔드포인트 (/players/rankings)
+- [x] KBO 시즌 크롤러 games=0 중복행 방지 + wins/losses GREATEST 보호
 
 ### 팀
 - [x] 팀 순위 시리즈 결과 배지
-- [x] 팀 상세 5탭
+- [x] 팀 상세 5탭 (선수명단/최근경기/등록말소/뉴스/커뮤니티)
+- [x] 팀 순위 탭 피타고리안 승률 표시
 
 ### 캘린더
 - [x] KBO경기 → 네이티브 캘린더 추가
 - [x] 개인 일정 CRUD (색상 6종)
+- [x] 직관 기록 + 직관 승률 표시
 
 ### 커뮤니티
 - [x] 이미지 첨부, 검색, 인기글, 팀 커뮤니티 탭
 - [x] 댓글 좋아요, 내가 좋아요한 글
+- [x] stale-while-revalidate 캐시
+
+### 알림
+- [x] 득점 알림: "팀명 득점!" 제목 + 타자/타구/상대투수 본문
+- [x] 마이팀 등록말소 알림 (팀 팬 전체 — 선수팬 중복 방지)
+- [x] 게임차 0 달성 알림 (동률 1위)
+- [x] FCM 알림 인프라 (게임시작/종료/역전/연장/취소/순위변동/연승연패/홈런)
 
 ### 인증/유저
 - [x] 비밀번호 찾기/재설정, 이메일 인증, 프로필 이미지
@@ -449,14 +472,27 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 ### UX/성능
 - [x] 다크모드, 마이팀 개인화 홈, 통합 검색
 - [x] Shimmer 스켈레톤 (home/player/team)
-- [x] cached_network_image 전체 적용
-- [x] LocalCache stale-while-revalidate (home/mypage/team)
+- [x] cached_network_image 전체 적용 (fadeIn 없음)
+- [x] LocalCache stale-while-revalidate (home/mypage/team/community)
 - [x] DB 커넥션 풀, TTL 캐시, GZip, ThreadPoolExecutor
-- [x] 카카오맵 구장 화면, FCM 알림 인프라
+- [x] 카카오맵 구장 화면
 - [x] 투구 위치 히트맵, 타자vs투수 상대전적
 - [x] 검색 최근 기록 (SharedPreferences, 최대 10개)
+- [x] GameCard 승리팀 후광 효과, 팀 순위 표시, 다음 시리즈 상대팀
+- [x] 서버 재시작 시 daily_stats 누락 자동 복구 (_recover_missed_daily_stats)
 
 ## 진행 예정 기능
+
+### 진행 중 (우선순위 순)
+- [ ] 이미지 공유 시 팀 로고 안뜨고 Navy Circle만 표시 (share_plus 버그)
+- [ ] 등록말소 배너: 자정 넘으면 자동 숨김 (당일만)
+- [ ] 팀 기록 추가 + 이닝별 중계 득점 섹션 (누가 어떻게 득점)
+- [ ] 팀 상세 뉴스 탭 썸네일
+- [ ] 선수/구단 하트 인기투표
+- [ ] 직관승률 랭킹 (최소 5회 기준)
+- [ ] 직관 기록 UI 개선 (사용자 비친화적)
+- [ ] 포스트시즌 진출 확률
+- [ ] 커뮤니티 UI 인스타그램 형태 개선 (이미지 먼저 → 글쓰기)
 
 ### 장기/보류
 - [ ] 홈화면 위젯 (Android AppWidget — native kotlin 필요)
