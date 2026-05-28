@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../api/api_service.dart';
-import '../home/home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -121,13 +120,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _pwCtrl.text,
       _nicknameCtrl.text.trim(),
     );
-    if (success && mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-        (route) => false,
-      );
-    } else {
+    if (!success && mounted) {
       setState(() => _error = auth.errorMessage ?? '회원가입에 실패했습니다');
     }
   }

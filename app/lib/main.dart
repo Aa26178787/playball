@@ -143,7 +143,7 @@ class _AppEntryPointState extends State<AppEntryPoint>
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
-        if (auth.isLoading) {
+        if (auth.isInitializing) {
           return const SplashScreen();
         }
         return FadeTransition(

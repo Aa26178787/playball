@@ -8,12 +8,14 @@ class AuthProvider extends ChangeNotifier {
   User? _user;
   bool _isLoggedIn = false;
   bool _isLoading = false;
+  bool _isInitializing = true;
   String? _errorMessage;
 
   User? get user => _user;
   int? get userId => _user?.id;
   bool get isLoggedIn => _isLoggedIn;
   bool get isLoading => _isLoading;
+  bool get isInitializing => _isInitializing;
   String? get errorMessage => _errorMessage;
 
   // 앱 시작 시 로그인 상태 확인
@@ -36,6 +38,7 @@ class AuthProvider extends ChangeNotifier {
         }
       }
     }
+    _isInitializing = false;
     notifyListeners();
   }
 
