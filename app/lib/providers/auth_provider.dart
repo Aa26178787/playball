@@ -27,7 +27,13 @@ class AuthProvider extends ChangeNotifier {
         _isLoggedIn = true;
       } catch (e) {
         _isLoggedIn = false;
-        await ApiService.deleteToken();
+        // 401/403만 토큰 삭제 — 네트워크 오류는 토큰 유지
+        if (e is DioException) {
+          final status = e.response?.statusCode;
+          if (status == 401 || status == 403) {
+            await ApiService.deleteToken();
+          }
+        }
       }
     }
     notifyListeners();

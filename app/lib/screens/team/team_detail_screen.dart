@@ -305,7 +305,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '승률 ${(team['win_rate'] as num?)?.toStringAsFixed(3) ?? '-'}  게차 $gbText',
+                      '승률 ${(team['win_rate'] as num?)?.toStringAsFixed(3) ?? '-'}  게임차 $gbText',
                       style: const TextStyle(fontSize: 12),
                     ),
                   ],

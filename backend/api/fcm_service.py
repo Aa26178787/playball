@@ -187,7 +187,7 @@ def _send(targets: list[tuple[int, str]], title: str, body: str,
           data: dict, ntype: str, game_id: int | None):
     if not targets:
         return
-    user_ids = [t[0] for t in targets]
+    user_ids = list(dict.fromkeys(t[0] for t in targets))
     tokens   = [t[1] for t in targets]
     _save_notifications(user_ids, title, body, ntype, game_id)
     if _get_app() is None:

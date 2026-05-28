@@ -437,8 +437,8 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
           // 날짜 스크롤 스트립
           _buildDateStrip(),
 
-          // 당일 등록말소 배너
-          if (_todayRosterChanges.isNotEmpty)
+          // 당일 등록말소 배너 (오늘 날짜일 때만)
+          if (_todayRosterChanges.isNotEmpty && _isSameDay(_selectedDate, DateTime.now()))
             _buildTodayRosterBanner(),
 
           // 마이팀 대시보드
@@ -740,11 +740,12 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
           _selectedDate.month == DateTime.now().month &&
           _selectedDate.day == DateTime.now().day;
       final isPast = _selectedDate.isBefore(DateTime.now().subtract(const Duration(days: 1)));
+      final showTomorrowEmpty = isToday && _tomorrowGames.isNotEmpty;
       return RefreshIndicator(
         onRefresh: _loadGames,
         child: ListView(
           children: [
-            SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+            SizedBox(height: MediaQuery.of(context).size.height * 0.15),
             Column(
               children: [
                 Icon(
@@ -782,6 +783,13 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
                 ],
               ],
             ),
+            if (showTomorrowEmpty) ...[
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildTomorrowPreview(),
+              ),
+            ],
           ],
         ),
       );
@@ -966,38 +974,47 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
               ]),
             ),
             if (_rosterBannerExpanded)
-              ...changes.map((c) {
-                final type = c['change_type'] as String? ?? '';
-                Color col = type == '1군등록' ? Colors.blue
-                    : type == '등록말소' ? Colors.orange
-                    : type == '부상자명단' ? Colors.red : Colors.grey;
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-                  child: Row(children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: col.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(type, style: TextStyle(fontSize: 10, color: col, fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(c['team_name'] ?? '', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                    const SizedBox(width: 4),
-                    Text(c['player_name'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                    if ((c['reason'] as String? ?? '').isNotEmpty) ...[
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text('(${c['reason']})',
-                            style: const TextStyle(fontSize: 11, color: Colors.grey),
-                            overflow: TextOverflow.ellipsis),
-                      ),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 200),
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      ...changes.map((c) {
+                        final type = c['change_type'] as String? ?? '';
+                        Color col = type == '1군등록' ? Colors.blue
+                            : type == '등록말소' ? Colors.orange
+                            : type == '부상자명단' ? Colors.red : Colors.grey;
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                          child: Row(children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: col.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(type, style: TextStyle(fontSize: 10, color: col, fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(c['team_name'] ?? '', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                            const SizedBox(width: 4),
+                            Text(c['player_name'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                            if ((c['reason'] as String? ?? '').isNotEmpty) ...[
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text('(${c['reason']})',
+                                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                    overflow: TextOverflow.ellipsis),
+                              ),
+                            ],
+                          ]),
+                        );
+                      }),
+                      const SizedBox(height: 4),
                     ],
-                  ]),
-                );
-              }),
-            if (_rosterBannerExpanded) const SizedBox(height: 4),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -1112,8 +1129,31 @@ class GameCard extends StatelessWidget {
     }
   }
 
+  Widget _winnerGlowLogo(String teamCode, bool isWinner) {
+    final logo = TeamLogo(teamCode: teamCode, size: 44);
+    if (!isWinner) return logo;
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: teamColor(teamCode).withOpacity(0.55),
+            blurRadius: 18,
+            spreadRadius: 5,
+          ),
+        ],
+      ),
+      child: logo,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isFinished = game.status == '종료';
+    final isDraw = game.isDraw ?? false;
+    final homeWon = isFinished && !isDraw && game.homeScore > game.awayScore;
+    final awayWon = isFinished && !isDraw && game.awayScore > game.homeScore;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
@@ -1201,7 +1241,7 @@ class GameCard extends StatelessWidget {
                   Expanded(
                     child: Column(
                       children: [
-                        TeamLogo(teamCode: game.homeTeamCode, size: 44),
+                        _winnerGlowLogo(game.homeTeamCode, homeWon),
                         const SizedBox(height: 4),
                         Text(
                           game.homeTeam,
@@ -1231,7 +1271,7 @@ class GameCard extends StatelessWidget {
                   Expanded(
                     child: Column(
                       children: [
-                        TeamLogo(teamCode: game.awayTeamCode, size: 44),
+                        _winnerGlowLogo(game.awayTeamCode, awayWon),
                         const SizedBox(height: 4),
                         Text(
                           game.awayTeam,

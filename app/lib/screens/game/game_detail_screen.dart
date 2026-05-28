@@ -1633,10 +1633,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _rosterSectionHeader('선발'),
+        _rosterSectionHeader('키플레이어'),
         const SizedBox(height: 8),
         if (starterPitcher.isNotEmpty)
-          Container(
+          InkWell(
+            onTap: starterPitcher['player_id'] != null ? () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: starterPitcher['player_id'] as int))) : null,
+            child: Container(
             margin: const EdgeInsets.only(bottom: 4),
             decoration: BoxDecoration(
               color: Colors.orange.withOpacity(0.05),
@@ -1683,6 +1686,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             ),
           ),
+          ),
         ...starterBatters.map((b) => _starterBatterTile(b)),
         const SizedBox(height: 16),
         if (backupBatters.isNotEmpty) ...[
@@ -1692,7 +1696,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 b['name'] ?? '',
                 b['position'] ?? '',
                 b['profile_image'],
-                b['number'])),
+                b['number'],
+                playerId: b['player_id'] as int?)),
           const SizedBox(height: 16),
         ],
         if (bullpen.isNotEmpty) ...[
@@ -1713,7 +1718,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           p['name'] ?? '',
                           '',
                           p['profile_image'],
-                          p['number'])),
+                          p['number'],
+                          playerId: p['player_id'] as int?)),
                   ]),
         ],
       ],
@@ -1765,7 +1771,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _starterBatterTile(Map<String, dynamic> b) {
     final name = b['name'] as String? ?? '';
-    return ListTile(
+    final playerId = b['player_id'] as int?;
+    return InkWell(
+      onTap: playerId != null ? () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId))) : null,
+      child: ListTile(
       dense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       leading: Row(
@@ -1801,12 +1811,16 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       ),
       subtitle: Text(b['position'] ?? '',
           style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+    ),
     );
   }
 
   Widget _backupPlayerTile(
-      String name, String subtitle, String? profileImage, dynamic number) {
-    return ListTile(
+      String name, String subtitle, String? profileImage, dynamic number, {int? playerId}) {
+    return InkWell(
+      onTap: playerId != null ? () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId))) : null,
+      child: ListTile(
       dense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       leading: CircleAvatar(
@@ -1824,6 +1838,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       subtitle: subtitle.isNotEmpty
           ? Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[500]))
           : null,
+    ),
     );
   }
 
@@ -2513,7 +2528,12 @@ class _GameShareSheetState extends State<_GameShareSheet> {
     if (_sharing) return;
     setState(() => _sharing = true);
     try {
-      await Future.delayed(const Duration(milliseconds: 50));
+      // Precache logos so they render in RepaintBoundary capture
+      final homeUrl = kTeamLogoUrls[g['home_team_code'] as String? ?? ''];
+      final awayUrl = kTeamLogoUrls[g['away_team_code'] as String? ?? ''];
+      if (homeUrl != null) await precacheImage(CachedNetworkImageProvider(homeUrl), context);
+      if (awayUrl != null) await precacheImage(CachedNetworkImageProvider(awayUrl), context);
+      await Future.delayed(const Duration(milliseconds: 150));
       final boundary =
           _cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 3.0);
@@ -2746,20 +2766,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
   }
 
   Widget _teamColorBlock(String code, double size) {
-    final color = teamColor(code);
-    return Container(
-      width: size, height: size,
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.25),
-        shape: BoxShape.circle,
-        border: Border.all(color: color.withOpacity(0.6), width: 2),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        code.length >= 2 ? code.substring(0, 2) : code,
-        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: size * 0.3),
-      ),
-    );
+    return TeamLogo(teamCode: code, size: size);
   }
 
   Widget _pitcherChip(String label, Color color) {

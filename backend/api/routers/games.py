@@ -556,7 +556,7 @@ def get_game_roster(game_id: int):
         SELECT p.name, p.number, p.profile_image,
                gr.team_side, gr.roster_type,
                gr.batting_order, gr.position, gr.pitching_style,
-               gr.is_starter
+               gr.is_starter, p.id
         FROM game_rosters gr
         JOIN players p ON gr.player_id = p.id
         WHERE gr.game_id = %s
@@ -583,6 +583,7 @@ def get_game_roster(game_id: int):
             "batting_order":  r[5] if r[5] and r[5] != 0 else None,
             "pitching_style": r[7],
             "is_starter":     r[8],
+            "player_id":      r[9],
         }
         if r[3] == 'home' and r[4] == 'batter':
             home_batters.append(player)

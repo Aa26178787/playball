@@ -73,6 +73,8 @@ class TeamLogo extends StatelessWidget {
           width: size,
           height: size,
           fit: BoxFit.cover,
+          fadeInDuration: Duration.zero,
+          fadeOutDuration: Duration.zero,
           errorWidget: (ctx, url, err) => _avatar(color, abbr),
           placeholder: (ctx, url) => _avatar(color, abbr),
         ),
