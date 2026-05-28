@@ -1976,12 +1976,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: pitchers.map((p) {
-        final playerId = (p as Map)['player_id'] as int?;
-        if (playerId == null) return _pitcherTile(p);
+        final pm = p as Map<String, dynamic>;
+        final playerId = pm['player_id'] as int?;
+        if (playerId == null) return _pitcherTile(pm);
         return InkWell(
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId))),
-          child: _pitcherTile(p),
+          child: _pitcherTile(pm),
         );
       }).toList(),
     );
