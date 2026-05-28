@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
+import '../../utils/local_cache.dart';
 import 'post_detail_screen.dart';
 import 'create_post_screen.dart';
 
@@ -116,7 +117,27 @@ class _PostListTabState extends State<_PostListTab>
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _page = 1; _hasMore = true; });
+    final cacheKey = 'community_posts_${widget.sort}_${widget.teamId ?? 'all'}';
+    final canCache = _category == '전체' && _searchQ.isEmpty;
+
+    setState(() { _page = 1; _hasMore = true; });
+
+    if (canCache) {
+      final cached = await LocalCache.get(cacheKey, 300);
+      if (cached != null && mounted) {
+        final cachedPosts = (cached['posts'] as List?) ?? [];
+        setState(() {
+          _posts = cachedPosts;
+          _hasMore = cachedPosts.length >= 20;
+          _loading = false;
+        });
+      } else if (mounted && _posts.isEmpty) {
+        setState(() => _loading = true);
+      }
+    } else if (_posts.isEmpty) {
+      setState(() => _loading = true);
+    }
+
     try {
       final data = await ApiService.getPosts(
         sort: widget.sort,
@@ -127,6 +148,7 @@ class _PostListTabState extends State<_PostListTab>
       );
       if (mounted) {
         final posts = data['posts'] as List? ?? [];
+        if (canCache) await LocalCache.set(cacheKey, {'posts': posts});
         setState(() {
           _posts = posts;
           _hasMore = posts.length >= 20;

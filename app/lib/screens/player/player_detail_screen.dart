@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import 'player_stats_section.dart';
@@ -48,6 +49,44 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       if (mounted) setState(() => _isFav = !_isFav);
     } catch (_) {}
     if (mounted) setState(() => _favLoading = false);
+  }
+
+  Widget _buildShimmer() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final base = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final hi = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+    box(double w, double h) => Container(
+          width: w, height: h,
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+        );
+    return Scaffold(
+      appBar: AppBar(),
+      body: Shimmer.fromColors(
+        baseColor: base, highlightColor: hi,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                CircleAvatar(radius: 36, backgroundColor: Colors.white),
+                const SizedBox(width: 16),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  box(120, 20), const SizedBox(height: 8), box(80, 14),
+                  const SizedBox(height: 6), box(100, 14),
+                ]),
+              ]),
+              const SizedBox(height: 24),
+              box(double.infinity, 100),
+              const SizedBox(height: 16),
+              box(double.infinity, 180),
+              const SizedBox(height: 16),
+              box(double.infinity, 120),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String get _cacheKey => 'player_${widget.playerId}';
@@ -102,7 +141,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_isLoading) return _buildShimmer();
     if (_playerData == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('선수 상세')),

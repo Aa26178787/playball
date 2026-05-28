@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
+import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
 import '../game/game_detail_screen.dart';
 
@@ -26,24 +28,44 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _loadPersonalEvents();
   }
 
+  String get _calendarCacheKey =>
+      'calendar_${_focusedMonth.year}_${_focusedMonth.month}';
+
   Future<void> _loadCalendar() async {
-    setState(() => _isLoading = true);
-    try {
-      final data = await ApiService.getCalendar(_focusedMonth.year, _focusedMonth.month);
-      final raw = data['games'] as Map<String, dynamic>? ?? {};
+    // 캐시 즉시 표시
+    final cached = await LocalCache.get(_calendarCacheKey, maxAgeSeconds: 300) as Map?;
+    if (cached != null && mounted) {
+      final raw = Map<String, dynamic>.from(cached);
       setState(() {
         _gamesByDate = raw.map((k, v) => MapEntry(k, v as List));
         _isLoading = false;
-        // auto-select today if in month
-        final today = DateTime.now();
-        if (today.year == _focusedMonth.year && today.month == _focusedMonth.month) {
-          _selectedDate = DateTime(today.year, today.month, today.day);
-        } else {
-          _selectedDate = null;
-        }
+        _autoSelectToday();
+      });
+    } else {
+      setState(() => _isLoading = true);
+    }
+
+    // 백그라운드 갱신
+    try {
+      final data = await ApiService.getCalendar(_focusedMonth.year, _focusedMonth.month);
+      final raw = data['games'] as Map<String, dynamic>? ?? {};
+      await LocalCache.set(_calendarCacheKey, raw);
+      if (mounted) setState(() {
+        _gamesByDate = raw.map((k, v) => MapEntry(k, v as List));
+        _isLoading = false;
+        _autoSelectToday();
       });
     } catch (_) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _autoSelectToday() {
+    final today = DateTime.now();
+    if (today.year == _focusedMonth.year && today.month == _focusedMonth.month) {
+      _selectedDate = DateTime(today.year, today.month, today.day);
+    } else {
+      _selectedDate ??= null;
     }
   }
 
@@ -157,6 +179,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  Widget _buildCalendarShimmer() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final highlightColor = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: Column(
+        children: List.generate(5, (_) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 4),
+          child: Row(
+            children: List.generate(7, (_) => Expanded(
+              child: Container(
+                height: 44,
+                margin: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            )),
+          ),
+        )),
+      ),
+    );
+  }
+
   List<Map> _eventsOn(DateTime d) => _personalEvents.where((e) {
     try {
       final s = DateTime.parse(e['start_date'] ?? e['date'] ?? '');
@@ -224,9 +273,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           if (!_isLoading) _buildVisitStatsBar(),
 
           // 달력 그리드
-          _isLoading
-              ? const Expanded(child: Center(child: CircularProgressIndicator()))
-              : _buildCalendarGrid(),
+          _isLoading ? _buildCalendarShimmer() : _buildCalendarGrid(),
 
           const Divider(height: 1),
 
