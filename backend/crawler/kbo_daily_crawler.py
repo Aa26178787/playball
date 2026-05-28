@@ -436,6 +436,10 @@ def crawl_kbo_hitter_season_stats(season=2026):
             def _col_float(i):
                 return _safe_float(cols[i]) if i is not None and i < len(cols) else None
 
+            g = _col_int(i_games)
+            if not g or g < 1:
+                continue
+
             cur.execute("""
                 INSERT INTO batter_stats (
                     player_id, season, games, pa, at_bats, runs, hits,
@@ -461,7 +465,7 @@ def crawl_kbo_hitter_season_stats(season=2026):
                     avg          = COALESCE(EXCLUDED.avg,          batter_stats.avg)
             """, (
                 player_id, season,
-                _col_int(i_games), _col_int(i_pa),  _col_int(i_ab),
+                g, _col_int(i_pa),  _col_int(i_ab),
                 _col_int(i_runs),  _col_int(i_hits), _col_int(i_2b),
                 _col_int(i_3b),    _col_int(i_hr),   _col_int(i_rbi),
                 _col_int(i_sb),    _col_int(i_cs),   _col_int(i_bb),
@@ -553,6 +557,10 @@ def crawl_kbo_pitcher_season_stats(season=2026):
             ip_str = cols[i_ip] if i_ip is not None and i_ip < len(cols) else '0'
             ip_val = _parse_season_ip(ip_str)
 
+            g = _ci(i_games)
+            if not g or g < 1:
+                continue
+
             w = _ci(i_wins)
             l = _ci(i_loss)
             wpct_val = round(w / (w + l), 3) if (w or 0) + (l or 0) > 0 else None
@@ -566,10 +574,10 @@ def crawl_kbo_pitcher_season_stats(season=2026):
                 ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT (player_id, season) DO UPDATE SET
                     games              = GREATEST(COALESCE(EXCLUDED.games, 0),              COALESCE(pitcher_stats.games, 0)),
-                    wins               = COALESCE(EXCLUDED.wins,    pitcher_stats.wins),
-                    losses             = COALESCE(EXCLUDED.losses,  pitcher_stats.losses),
-                    saves              = COALESCE(EXCLUDED.saves,   pitcher_stats.saves),
-                    holds              = COALESCE(EXCLUDED.holds,   pitcher_stats.holds),
+                    wins               = GREATEST(COALESCE(EXCLUDED.wins,  0),              COALESCE(pitcher_stats.wins,  0)),
+                    losses             = GREATEST(COALESCE(EXCLUDED.losses, 0),             COALESCE(pitcher_stats.losses, 0)),
+                    saves              = GREATEST(COALESCE(EXCLUDED.saves,   0),            COALESCE(pitcher_stats.saves,   0)),
+                    holds              = GREATEST(COALESCE(EXCLUDED.holds,   0),            COALESCE(pitcher_stats.holds,   0)),
                     innings_pitched    = GREATEST(COALESCE(EXCLUDED.innings_pitched, 0),    COALESCE(pitcher_stats.innings_pitched, 0)),
                     hits_allowed       = GREATEST(COALESCE(EXCLUDED.hits_allowed,      0), COALESCE(pitcher_stats.hits_allowed,      0)),
                     home_runs_allowed  = GREATEST(COALESCE(EXCLUDED.home_runs_allowed, 0), COALESCE(pitcher_stats.home_runs_allowed, 0)),
@@ -583,7 +591,7 @@ def crawl_kbo_pitcher_season_stats(season=2026):
                     wpct               = COALESCE(EXCLUDED.wpct,              pitcher_stats.wpct)
             """, (
                 player_id, season,
-                _ci(i_games), _ci(i_wins), _ci(i_loss),
+                g, w, l,
                 _ci(i_sv),    _ci(i_hold), ip_val,
                 _ci(i_ha),    _ci(i_hra),  _ci(i_bb),
                 _ci(i_hbp),   _ci(i_so),   _ci(i_r),
