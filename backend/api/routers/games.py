@@ -488,12 +488,12 @@ def get_game_record_detail(game_id: int):
         res = req.get(url, headers=NAVER_HEADERS, timeout=10)
         res.raise_for_status()
         data = res.json()
-        record = data["result"]["recordData"]
+        record = (data.get("result") or {}).get("recordData") or {}
 
-        team_pitching = record.get("teamPitchingBoxscore", {})
-        key_stats = record.get("todayKeyStats", {})
-        etc_records = record.get("etcRecords", [])
-        recent_vs = record.get("recentVsGames", [])
+        team_pitching = record.get("teamPitchingBoxscore") or {}
+        key_stats = record.get("todayKeyStats") or {}
+        etc_records = record.get("etcRecords") or []
+        recent_vs = record.get("recentVsGames") or []
 
         def parse_team_pitching(box):
             if not box:
@@ -515,18 +515,18 @@ def get_game_record_detail(game_id: int):
         return {
             "key_stats": {
                 "home": {
-                    "strikeouts":   key_stats.get("home", {}).get("kk"),
-                    "hits":         key_stats.get("home", {}).get("hit"),
-                    "errors":       key_stats.get("home", {}).get("err"),
-                    "home_runs":    key_stats.get("home", {}).get("hr"),
-                    "stolen_bases": key_stats.get("home", {}).get("sb"),
+                    "strikeouts":   (key_stats.get("home") or {}).get("kk"),
+                    "hits":         (key_stats.get("home") or {}).get("hit"),
+                    "errors":       (key_stats.get("home") or {}).get("err"),
+                    "home_runs":    (key_stats.get("home") or {}).get("hr"),
+                    "stolen_bases": (key_stats.get("home") or {}).get("sb"),
                 },
                 "away": {
-                    "strikeouts":   key_stats.get("away", {}).get("kk"),
-                    "hits":         key_stats.get("away", {}).get("hit"),
-                    "errors":       key_stats.get("away", {}).get("err"),
-                    "home_runs":    key_stats.get("away", {}).get("hr"),
-                    "stolen_bases": key_stats.get("away", {}).get("sb"),
+                    "strikeouts":   (key_stats.get("away") or {}).get("kk"),
+                    "hits":         (key_stats.get("away") or {}).get("hit"),
+                    "errors":       (key_stats.get("away") or {}).get("err"),
+                    "home_runs":    (key_stats.get("away") or {}).get("hr"),
+                    "stolen_bases": (key_stats.get("away") or {}).get("sb"),
                 },
             },
             "team_pitching": {

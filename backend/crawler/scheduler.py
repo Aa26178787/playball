@@ -648,17 +648,17 @@ def _save_player_daily_stats_today():
                     avg, pa, ab, runs, hits, home_runs, rbi, sb, walks, strikeouts
                 ) VALUES (%s, %s, %s, %s, 'hitter', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (player_id, game_date, opponent, stat_type) DO UPDATE SET
-                    result = EXCLUDED.result,
-                    avg = EXCLUDED.avg,
-                    pa = EXCLUDED.pa,
-                    ab = EXCLUDED.ab,
-                    runs = EXCLUDED.runs,
-                    hits = EXCLUDED.hits,
-                    home_runs = EXCLUDED.home_runs,
-                    rbi = EXCLUDED.rbi,
-                    sb = EXCLUDED.sb,
-                    walks = EXCLUDED.walks,
-                    strikeouts = EXCLUDED.strikeouts
+                    result = COALESCE(EXCLUDED.result, player_daily_stats.result),
+                    avg = COALESCE(EXCLUDED.avg, player_daily_stats.avg),
+                    pa = GREATEST(EXCLUDED.pa, player_daily_stats.pa),
+                    ab = GREATEST(EXCLUDED.ab, player_daily_stats.ab),
+                    runs = GREATEST(EXCLUDED.runs, player_daily_stats.runs),
+                    hits = GREATEST(EXCLUDED.hits, player_daily_stats.hits),
+                    home_runs = GREATEST(EXCLUDED.home_runs, player_daily_stats.home_runs),
+                    rbi = GREATEST(EXCLUDED.rbi, player_daily_stats.rbi),
+                    sb = GREATEST(EXCLUDED.sb, player_daily_stats.sb),
+                    walks = GREATEST(EXCLUDED.walks, player_daily_stats.walks),
+                    strikeouts = GREATEST(EXCLUDED.strikeouts, player_daily_stats.strikeouts)
             """, (pid, game_date, opponent, result, avg, pa, ab, runs, hits, hr, rbi, sb, bb, so))
             total += 1
 
