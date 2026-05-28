@@ -822,7 +822,13 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
           final g = filtered[index];
           final isMyTeam = _favoriteTeamIds.contains(g['home_team_id']) ||
               _favoriteTeamIds.contains(g['away_team_id']);
-          return GameCard(game: Game.fromJson(g), isMyTeam: isMyTeam && !_myTeamOnly);
+          final rankMap = {for (final r in _rankings) (r['id'] as int): r['rank'] as int?};
+          return GameCard(
+            game: Game.fromJson(g),
+            isMyTeam: isMyTeam && !_myTeamOnly,
+            homeRank: rankMap[g['home_team_id'] as int?],
+            awayRank: rankMap[g['away_team_id'] as int?],
+          );
         },
       ),
     );
@@ -1068,8 +1074,10 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 class GameCard extends StatelessWidget {
   final Game game;
   final bool isMyTeam;
+  final int? homeRank;
+  final int? awayRank;
 
-  const GameCard({super.key, required this.game, this.isMyTeam = false});
+  const GameCard({super.key, required this.game, this.isMyTeam = false, this.homeRank, this.awayRank});
 
   Widget _starterChip(String name, bool isHome) {
     return Container(
@@ -1282,7 +1290,10 @@ class GameCard extends StatelessWidget {
                           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
                         ),
-                        Text('홈', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                        Text(
+                          homeRank != null ? '${homeRank}위 · 홈' : '홈',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                        ),
                       ],
                     ),
                   ),
@@ -1312,7 +1323,10 @@ class GameCard extends StatelessWidget {
                           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
                         ),
-                        Text('원정', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                        Text(
+                          awayRank != null ? '원정 · ${awayRank}위' : '원정',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                        ),
                       ],
                     ),
                   ),

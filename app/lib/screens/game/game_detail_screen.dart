@@ -38,6 +38,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   List _highlights = [];
   bool _highlightsLoading = false;
   Map<String, String> _playerRosterStatus = {};
+  Map<int, int> _rankMap = {};
   bool _isLoading = true;
   bool _isRelayRefreshing = false;
   bool _rosterLoadFailed = false;
@@ -154,6 +155,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     final cachedHL = await LocalCache.get(_ck('highlights'), maxAgeSeconds: 3600) as Map?;
     if (cachedHL != null && mounted) setState(() => _highlights = cachedHL['highlights'] as List? ?? []);
+
+    // Rankings for rank display in header
+    final cachedRankings = await LocalCache.get('team_rankings') as List?;
+    if (cachedRankings != null && mounted) {
+      setState(() => _rankMap = {for (final r in cachedRankings) (r['id'] as int): (r['rank'] as int? ?? 0)});
+    }
+    ApiService.getTeamRankings().then((data) {
+      final list = data['rankings'] as List? ?? [];
+      if (mounted) setState(() => _rankMap = {for (final r in list) (r['id'] as int): (r['rank'] as int? ?? 0)});
+      LocalCache.set('team_rankings', list);
+    }).catchError((_) {});
 
     // Phase 2: fetch from API
     try {
@@ -546,6 +558,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildScoreHeader(Map<String, dynamic> game) {
     final homeRecent = List<String>.from(game['home_recent_5'] ?? []);
     final awayRecent = List<String>.from(game['away_recent_5'] ?? []);
+    final homeRank = _rankMap[game['home_team_id'] as int?];
+    final awayRank = _rankMap[game['away_team_id'] as int?];
     return Container(
       padding: const EdgeInsets.all(20),
       color: const Color(0xFF1A237E),
@@ -562,6 +576,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                             fontSize: 20,
                             fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center),
+                    if (homeRank != null && homeRank > 0)
+                      Text('${homeRank}위', style: const TextStyle(color: Colors.white54, fontSize: 12)),
                     if (homeRecent.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       _buildRecentBar(homeRecent, true),
@@ -587,6 +603,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                             fontSize: 20,
                             fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center),
+                    if (awayRank != null && awayRank > 0)
+                      Text('${awayRank}위', style: const TextStyle(color: Colors.white54, fontSize: 12)),
                     if (awayRecent.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       _buildRecentBar(awayRecent, false),
