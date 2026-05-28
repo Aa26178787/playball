@@ -447,8 +447,11 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 
 ### 팀
 - [x] 팀 순위 시리즈 결과 배지
-- [x] 팀 상세 5탭 (선수명단/최근경기/등록말소/뉴스/커뮤니티)
+- [x] 팀 상세 8탭 (선수명단/최근경기/등록말소/뉴스/커뮤니티/월별성적/상대전적/타순별)
 - [x] 팀 순위 탭 피타고리안 승률 표시
+- [x] 팀 시즌 기록 바 (팀타율/방어율/WHIP/득점/실점/홈런) — GET /teams/{id}/season-stats
+- [x] 이닝별 중계 득점 요약 섹션 (누가 어떻게 득점, 스코어보드 아래)
+- [x] 팀 상세 뉴스 썸네일 (Google News RSS media:content/thumbnail/img 파싱)
 
 ### 캘린더
 - [x] KBO경기 → 네이티브 캘린더 추가
@@ -480,14 +483,12 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [x] 검색 최근 기록 (SharedPreferences, 최대 10개)
 - [x] GameCard 승리팀 후광 효과, 팀 순위 표시, 다음 시리즈 상대팀
 - [x] 서버 재시작 시 daily_stats 누락 자동 복구 (_recover_missed_daily_stats)
+- [x] 이미지 공유 팀 로고 수정 (Image.memory 직접 로드로 RepaintBoundary 신뢰성)
+- [x] 등록말소 배너 자정 자동 숨김 (60초 타이머 setState)
 
 ## 진행 예정 기능
 
 ### 진행 중 (우선순위 순)
-- [ ] 이미지 공유 시 팀 로고 안뜨고 Navy Circle만 표시 (share_plus 버그)
-- [ ] 등록말소 배너: 자정 넘으면 자동 숨김 (당일만)
-- [ ] 팀 기록 추가 + 이닝별 중계 득점 섹션 (누가 어떻게 득점)
-- [ ] 팀 상세 뉴스 탭 썸네일
 - [ ] 선수/구단 하트 인기투표
 - [ ] 직관승률 랭킹 (최소 5회 기준)
 - [ ] 직관 기록 UI 개선 (사용자 비친화적)
