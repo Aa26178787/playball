@@ -639,16 +639,18 @@ def _save_player_daily_stats_today():
             FROM game_batters WHERE game_id = %s
         """, (game_id,))
         for (pid, side, ab, runs, hits, rbi, hr, bb, so, sb, avg) in cur.fetchall():
+            pa = (ab or 0) + (bb or 0)
             opponent = away_team if side == 'home' else home_team
             result = home_result if side == 'home' else away_result
             cur.execute("""
                 INSERT INTO player_daily_stats (
                     player_id, game_date, opponent, result, stat_type,
-                    avg, ab, runs, hits, home_runs, rbi, sb, walks, strikeouts
-                ) VALUES (%s, %s, %s, %s, 'hitter', %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    avg, pa, ab, runs, hits, home_runs, rbi, sb, walks, strikeouts
+                ) VALUES (%s, %s, %s, %s, 'hitter', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (player_id, game_date, opponent, stat_type) DO UPDATE SET
                     result = EXCLUDED.result,
                     avg = EXCLUDED.avg,
+                    pa = EXCLUDED.pa,
                     ab = EXCLUDED.ab,
                     runs = EXCLUDED.runs,
                     hits = EXCLUDED.hits,
@@ -657,7 +659,7 @@ def _save_player_daily_stats_today():
                     sb = EXCLUDED.sb,
                     walks = EXCLUDED.walks,
                     strikeouts = EXCLUDED.strikeouts
-            """, (pid, game_date, opponent, result, avg, ab, runs, hits, hr, rbi, sb, bb, so))
+            """, (pid, game_date, opponent, result, avg, pa, ab, runs, hits, hr, rbi, sb, bb, so))
             total += 1
 
         # 투수
