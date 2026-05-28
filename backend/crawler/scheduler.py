@@ -290,7 +290,8 @@ def smart_update():
                 # 경기 시작
                 if cs == '진행' and ps in ('예정', '라인업', ''):
                     notify_game_start(gid, curr['home_team'], curr['away_team'],
-                                      curr['home_team_id'], curr['away_team_id'])
+                                      curr['home_team_id'], curr['away_team_id'],
+                                      start_time=curr.get('start_time', ''))
 
                 # 득점 변화
                 elif (cs == '진행' and ps == '진행' and
@@ -303,7 +304,9 @@ def smart_update():
                     notify_score_change(gid, curr['home_team'], curr['away_team'],
                                         ch, ca,
                                         curr['home_team_id'], curr['away_team_id'],
-                                        is_comeback=is_comeback)
+                                        is_comeback=is_comeback,
+                                        inning=curr.get('current_inning', 0),
+                                        inning_half=curr.get('inning_half', ''))
                     _check_new_hrs(gid, curr['home_team_id'], curr['away_team_id'])
 
                 # 경기 종료
@@ -879,7 +882,8 @@ def _get_game_details():
     cur.execute("""
         SELECT g.id, g.status, g.home_score, g.away_score,
                ht.name, at2.name, g.home_team_id, g.away_team_id,
-               COALESCE(g.current_inning, 0)
+               COALESCE(g.current_inning, 0), g.inning_half,
+               TO_CHAR(g.start_time, 'HH24:MI')
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at2 ON g.away_team_id = at2.id
@@ -890,14 +894,16 @@ def _get_game_details():
     conn.close()
     return {
         r[0]: {
-            'status':       r[1],
-            'home_score':   r[2] or 0,
-            'away_score':   r[3] or 0,
-            'home_team':    r[4],
-            'away_team':    r[5],
-            'home_team_id': r[6],
-            'away_team_id': r[7],
+            'status':         r[1],
+            'home_score':     r[2] or 0,
+            'away_score':     r[3] or 0,
+            'home_team':      r[4],
+            'away_team':      r[5],
+            'home_team_id':   r[6],
+            'away_team_id':   r[7],
             'current_inning': r[8] or 0,
+            'inning_half':    r[9] or '',
+            'start_time':     r[10] or '',
         }
         for r in rows
     }

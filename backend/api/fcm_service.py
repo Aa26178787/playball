@@ -214,20 +214,25 @@ def _send(targets: list[tuple[int, str]], title: str, body: str,
 # ── 경기 알림 (user_settings 반영) ───────────────────────────────────────────
 
 def notify_game_start(game_id: int, home_team: str, away_team: str,
-                      home_team_id: int, away_team_id: int):
+                      home_team_id: int, away_team_id: int,
+                      start_time: str = ''):
     targets = _get_targets('notify_game_start', [home_team_id, away_team_id])
+    time_str = f" ({start_time})" if start_time else ""
     _send(targets,
-          f"⚾ {home_team} vs {away_team} 시작!",
-          "경기가 시작되었습니다.",
+          f"⚾ {home_team} vs {away_team} 시작!{time_str}",
+          f"{home_team}(홈) vs {away_team}(원정) 경기가 시작되었습니다.",
           {"game_id": str(game_id), "type": "game_start"}, "game_start", game_id)
 
 
 def notify_score_change(game_id: int, home_team: str, away_team: str,
                         home_score: int, away_score: int,
                         home_team_id: int, away_team_id: int,
-                        is_comeback: bool = False):
+                        is_comeback: bool = False,
+                        inning: int = 0, inning_half: str = ''):
     targets = _get_targets('notify_score_change', [home_team_id, away_team_id])
-    title = "⚡ 역전!" if is_comeback else "⚾ 득점!"
+    half_str = '초' if inning_half == 'top' else '말' if inning_half == 'bottom' else ''
+    inning_str = f" [{inning}{half_str}]" if inning > 0 else ""
+    title = f"⚡ 역전!{inning_str}" if is_comeback else f"⚾ 득점!{inning_str}"
     body  = f"{home_team} {home_score} : {away_score} {away_team}"
     ntype = "comeback" if is_comeback else "score_change"
     _send(targets, title, body,
@@ -308,7 +313,7 @@ def notify_roster_change(player_id: int, player_name: str, change_type: str):
     emoji = "✅" if "등록" in change_type else "❌"
     _send(targets,
           f"{emoji} {player_name} {change_type}",
-          f"즐겨찾기 선수 {player_name}의 로스터가 변경되었습니다.",
+          f"즐겨찾기 선수 {player_name}이(가) {change_type} 되었습니다.",
           {"player_id": str(player_id), "type": "roster_change"}, "roster_change", None)
 
 
@@ -328,9 +333,10 @@ def notify_pennant_race(team_id: int, team_name: str, curr_gap: float, prev_gap:
 def notify_new_comment(post_author_id: int, post_id: int,
                        post_title: str, commenter_nickname: str):
     targets = _get_user_targets(post_author_id)
+    title_short = post_title[:25] + ('…' if len(post_title) > 25 else '')
     _send(targets,
-          f"💬 새 댓글",
-          f"{commenter_nickname}님이 '{post_title[:20]}...' 에 댓글을 달았습니다",
+          f"💬 {commenter_nickname}님이 댓글을 달았습니다",
+          f"'{title_short}' — 댓글을 확인해보세요",
           {"post_id": str(post_id), "type": "new_comment"}, "new_comment", None)
 
 
