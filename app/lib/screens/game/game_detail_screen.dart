@@ -1694,7 +1694,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _rosterSectionHeader('키플레이어'),
+        _rosterSectionHeader('선발'),
         const SizedBox(height: 8),
         if (starterPitcher.isNotEmpty)
           InkWell(
