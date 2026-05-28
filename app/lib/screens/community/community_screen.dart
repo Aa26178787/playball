@@ -123,7 +123,7 @@ class _PostListTabState extends State<_PostListTab>
     setState(() { _page = 1; _hasMore = true; });
 
     if (canCache) {
-      final cached = await LocalCache.get(cacheKey, 300);
+      final cached = await LocalCache.get(cacheKey, maxAgeSeconds: 300);
       if (cached != null && mounted) {
         final cachedPosts = (cached['posts'] as List?) ?? [];
         setState(() {
