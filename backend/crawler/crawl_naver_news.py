@@ -60,6 +60,7 @@ def fetch_rss(query: str) -> list[dict]:
         channel = root.find('channel')
         if channel is None:
             return []
+        NS_MEDIA = 'http://search.yahoo.com/mrss/'
         for item in channel.findall('item')[:20]:
             title = item.findtext('title') or ''
             link = item.findtext('link') or ''
@@ -75,11 +76,23 @@ def fetch_rss(query: str) -> list[dict]:
             else:
                 clean_title = title.strip()
             pub = _parse_rfc2822(pub_raw)
+            # 썸네일 추출: media:content > media:thumbnail > description img
+            thumb = ''
+            mc = item.find(f'{{{NS_MEDIA}}}content')
+            mt = item.find(f'{{{NS_MEDIA}}}thumbnail')
+            if mc is not None and mc.get('url'):
+                thumb = mc.get('url', '')
+            elif mt is not None and mt.get('url'):
+                thumb = mt.get('url', '')
+            else:
+                img_m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', desc)
+                if img_m:
+                    thumb = img_m.group(1)
             if clean_title and link:
                 articles.append({
                     'title': clean_title,
                     'url': link,
-                    'thumbnail': '',
+                    'thumbnail': thumb,
                     'media': source,
                     'published_at': pub,
                     'description': re.sub(r'<[^>]+>', '', desc).strip(),
@@ -121,6 +134,7 @@ def save_news(articles: list[dict], forced_team_id: int | None = None) -> int:
                     VALUES (%s, %s, %s, %s, %s, %s)
                     ON CONFLICT (url) DO UPDATE SET
                         team_id = COALESCE(team_news.team_id, EXCLUDED.team_id),
+                        thumbnail = COALESCE(NULLIF(team_news.thumbnail, ''), EXCLUDED.thumbnail),
                         published_at = COALESCE(EXCLUDED.published_at, team_news.published_at)
                 """, (tid, a['title'], a['url'], a.get('thumbnail') or None,
                       a.get('media') or None, a.get('published_at')))
