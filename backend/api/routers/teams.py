@@ -547,6 +547,125 @@ def get_head_to_head(team_id: int, season: int = 2026):
     }
 
 
+@router.get("/{team_id}/season-stats")
+@cached(300)
+def get_team_season_stats(team_id: int, season: int = 2026):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+
+    # 팀 승패 + 득실점
+    cur.execute("""
+        SELECT
+            SUM(CASE WHEN (home_team_id=%s AND home_score>away_score)
+                       OR (away_team_id=%s AND away_score>home_score) THEN 1 ELSE 0 END) AS wins,
+            SUM(CASE WHEN (home_team_id=%s AND home_score<away_score)
+                       OR (away_team_id=%s AND away_score<home_score) THEN 1 ELSE 0 END) AS losses,
+            SUM(CASE WHEN home_score=away_score THEN 1 ELSE 0 END) AS draws,
+            SUM(CASE WHEN home_team_id=%s THEN home_score ELSE away_score END) AS runs_scored,
+            SUM(CASE WHEN home_team_id=%s THEN away_score ELSE home_score END) AS runs_allowed,
+            COUNT(*) AS total_games
+        FROM games
+        WHERE (home_team_id=%s OR away_team_id=%s)
+          AND status='종료'
+          AND EXTRACT(YEAR FROM game_date)=%s
+    """, (team_id,)*8 + (season,))
+    gr = cur.fetchone()
+    wins = int(gr[0] or 0)
+    losses = int(gr[1] or 0)
+    draws = int(gr[2] or 0)
+    runs_scored = int(gr[3] or 0)
+    runs_allowed = int(gr[4] or 0)
+    total_games = int(gr[5] or 0)
+
+    # 팀 타격 집계 (game_batters)
+    cur.execute("""
+        SELECT
+            SUM(gb.at_bats)    AS ab,
+            SUM(gb.hits)       AS h,
+            SUM(gb.doubles)    AS d2,
+            SUM(gb.triples)    AS d3,
+            SUM(gb.home_runs)  AS hr,
+            SUM(gb.rbis)       AS rbi,
+            SUM(gb.walks)      AS bb,
+            SUM(gb.strikeouts) AS so,
+            SUM(gb.runs)       AS runs,
+            SUM(gb.stolen_bases) AS sb
+        FROM game_batters gb
+        JOIN games g ON g.id = gb.game_id
+        WHERE ((g.home_team_id = %s AND gb.team_side = 'home')
+            OR (g.away_team_id = %s AND gb.team_side = 'away'))
+          AND g.status = '종료'
+          AND EXTRACT(YEAR FROM g.game_date) = %s
+    """, (team_id, team_id, season))
+    br = cur.fetchone()
+    ab = int(br[0] or 0); h = int(br[1] or 0); d2 = int(br[2] or 0)
+    d3 = int(br[3] or 0); hr = int(br[4] or 0); rbi = int(br[5] or 0)
+    bb = int(br[6] or 0); so = int(br[7] or 0)
+    b_runs = int(br[8] or 0); sb = int(br[9] or 0)
+    avg = round(h / ab, 3) if ab > 0 else 0.0
+    obp = round((h + bb) / (ab + bb), 3) if (ab + bb) > 0 else 0.0
+    tb = h + d2 + 2*d3 + 3*hr
+    slg = round(tb / ab, 3) if ab > 0 else 0.0
+    ops = round(obp + slg, 3)
+
+    # 팀 투구 집계 (game_pitchers)
+    cur.execute("""
+        SELECT
+            SUM(gp.innings_pitched) AS ip,
+            SUM(gp.earned_runs)     AS er,
+            SUM(gp.hits_allowed)    AS ha,
+            SUM(gp.walks)           AS bb,
+            SUM(gp.strikeouts)      AS so,
+            SUM(gp.home_runs_allowed) AS hra
+        FROM game_pitchers gp
+        JOIN games g ON g.id = gp.game_id
+        WHERE ((g.home_team_id = %s AND gp.team_side = 'home')
+            OR (g.away_team_id = %s AND gp.team_side = 'away'))
+          AND g.status = '종료'
+          AND EXTRACT(YEAR FROM g.game_date) = %s
+    """, (team_id, team_id, season))
+    pr = cur.fetchone()
+    ip = float(pr[0] or 0); er = int(pr[1] or 0)
+    ha = int(pr[2] or 0); p_bb = int(pr[3] or 0)
+    p_so = int(pr[4] or 0); hra = int(pr[5] or 0)
+    era = round(er / ip * 9, 2) if ip > 0 else 0.0
+    whip = round((ha + p_bb) / ip, 2) if ip > 0 else 0.0
+
+    cur.close()
+    conn.close()
+
+    run_diff = runs_scored - runs_allowed
+    rpg = round(runs_scored / total_games, 2) if total_games > 0 else 0.0
+    rapg = round(runs_allowed / total_games, 2) if total_games > 0 else 0.0
+    denom = runs_scored**2 + runs_allowed**2
+    pythag = round(runs_scored**2 / denom, 3) if denom > 0 else None
+
+    return {
+        "team_id": team_id,
+        "season": season,
+        "record": {
+            "wins": wins, "losses": losses, "draws": draws,
+            "total_games": total_games,
+            "runs_scored": runs_scored, "runs_allowed": runs_allowed,
+            "run_diff": run_diff, "rpg": rpg, "rapg": rapg,
+            "pythag_winpct": pythag,
+        },
+        "batting": {
+            "avg": avg, "obp": obp, "slg": slg, "ops": ops,
+            "hits": h, "home_runs": hr, "rbis": rbi,
+            "walks": bb, "strikeouts": so, "runs": b_runs, "stolen_bases": sb,
+        },
+        "pitching": {
+            "era": era, "whip": whip,
+            "innings_pitched": round(ip, 1),
+            "strikeouts": p_so, "walks": p_bb,
+            "hits_allowed": ha, "home_runs_allowed": hra,
+        },
+    }
+
+
 @router.get("/roster-changes/today")
 def get_today_roster_changes():
     """오늘 전체 팀 등록말소"""

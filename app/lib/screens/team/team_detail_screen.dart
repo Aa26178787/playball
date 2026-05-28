@@ -29,6 +29,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   List _monthlyStats = [];
   List _h2hRecords = [];
   List _battingOrderStats = [];
+  Map<String, dynamic>? _seasonStats;
   bool _playersLoading = true;
   bool _gamesLoading = false;
   bool _rosterLoading = false;
@@ -69,6 +70,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     });
     _loadPlayers();
     _loadFavStatus();
+    _loadSeasonStats();
   }
 
   Future<void> _loadFavStatus() async {
@@ -77,6 +79,13 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       final teams = data['teams'] as List? ?? [];
       final id = widget.team['id'] as int;
       if (mounted) setState(() => _isFav = teams.any((t) => t['id'] == id));
+    } catch (_) {}
+  }
+
+  Future<void> _loadSeasonStats() async {
+    try {
+      final data = await ApiService.getTeamSeasonStats(widget.team['id'] as int);
+      if (mounted) setState(() => _seasonStats = data);
     } catch (_) {}
   }
 
@@ -263,6 +272,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       body: Column(
         children: [
           _buildHeader(team, code, color, wins, losses, draws, hr, ar),
+          if (_seasonStats != null) _buildSeasonStatsBar(),
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -272,6 +282,48 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildSeasonStatsBar() {
+    final bat = (_seasonStats!['batting'] as Map?)?.cast<String, dynamic>() ?? {};
+    final pit = (_seasonStats!['pitching'] as Map?)?.cast<String, dynamic>() ?? {};
+    final rec = (_seasonStats!['record'] as Map?)?.cast<String, dynamic>() ?? {};
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      color: isDark ? Colors.grey[850] : Colors.grey[50],
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _statBlock('팀타율', (bat['avg'] as num?)?.toStringAsFixed(3) ?? '-'),
+          _divider(),
+          _statBlock('팀방어율', (pit['era'] as num?)?.toStringAsFixed(2) ?? '-'),
+          _divider(),
+          _statBlock('WHIP', (pit['whip'] as num?)?.toStringAsFixed(2) ?? '-'),
+          _divider(),
+          _statBlock('득점', '${rec['runs_scored'] ?? '-'}'),
+          _divider(),
+          _statBlock('실점', '${rec['runs_allowed'] ?? '-'}'),
+          _divider(),
+          _statBlock('팀홈런', '${bat['home_runs'] ?? '-'}'),
+        ],
+      ),
+    );
+  }
+
+  Widget _statBlock(String label, String value) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+      ],
+    );
+  }
+
+  Widget _divider() {
+    return Container(width: 1, height: 28, color: Colors.grey.withOpacity(0.25));
   }
 
   Widget _buildHeader(Map team, String code, Color color,

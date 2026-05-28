@@ -966,7 +966,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             }),
             // 승리확률 그래프
             _buildWinRateChart(homeTeam, awayTeam),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
+            // 득점 요약
+            if (_relayAllData != null) ...[
+              _buildScoringSection(innings, awayTeam, homeTeam),
+              const SizedBox(height: 8),
+            ],
+            const SizedBox(height: 4),
           ],
 
           if (_relayAllData == null)
@@ -1210,6 +1216,125 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           const SizedBox(height: 4),
         ],
       ),
+    );
+  }
+
+  Widget _buildScoringSection(List innings, String awayTeam, String homeTeam) {
+    final relays = _relayAllData?['relays'] as List? ?? [];
+    if (relays.isEmpty) return const SizedBox.shrink();
+
+    // Group relay events by inning + half
+    final Map<String, List> byHalf = {};
+    for (final r in relays) {
+      final ing = r['inning'] as int? ?? 0;
+      final half = r['inning_half']?.toString() ?? '0';
+      byHalf.putIfAbsent('$ing:$half', () => []).add(r);
+    }
+
+    // Collect scoring half-innings
+    final items = <Map<String, dynamic>>[];
+    for (final inn in innings) {
+      final num = inn['inning'] as int? ?? 0;
+      final awayR = inn['away_runs'] as int? ?? 0;
+      final homeR = inn['home_runs'] as int? ?? 0;
+      if (awayR > 0) {
+        items.add({'inning': num, 'half': 'top', 'runs': awayR, 'team': awayTeam,
+          'relays': byHalf['$num:0'] ?? []});
+      }
+      if (homeR > 0) {
+        items.add({'inning': num, 'half': 'bottom', 'runs': homeR, 'team': homeTeam,
+          'relays': byHalf['$num:1'] ?? []});
+      }
+    }
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('득점 요약', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 6),
+        ...items.map((item) {
+          final ing = item['inning'] as int;
+          final half = item['half'] as String;
+          final runs = item['runs'] as int;
+          final team = item['team'] as String;
+          final halfRelays = item['relays'] as List;
+          final halfLabel = half == 'top' ? '초' : '말';
+
+          // Extract key plays: type==13/23 with 타점/홈런/희비/볼넷+만루
+          final plays = <String>[];
+          for (final r in halfRelays) {
+            final rtype = r['type'] as int?;
+            if (rtype == 13 || rtype == 23) {
+              final title = r['title'] as String? ?? '';
+              if (title.contains('타점') || title.contains('홈런') ||
+                  title.contains('희비') || (title.contains('볼넷') && title.contains('만루'))) {
+                // title format: "batter : result" or just "result"
+                if (title.contains(' : ')) {
+                  final parts = title.split(' : ');
+                  plays.add('${parts[0].trim()} → ${parts.sublist(1).join(' : ').trim()}');
+                } else {
+                  plays.add(title);
+                }
+              }
+            }
+          }
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: half == 'top'
+                  ? Colors.blue.withOpacity(0.06)
+                  : Colors.red.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: half == 'top'
+                    ? Colors.blue.withOpacity(0.2)
+                    : Colors.red.withOpacity(0.2),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: half == 'top' ? Colors.blue : Colors.red,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '$ing회$halfLabel',
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(team, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    child: Text('+$runs점',
+                        style: const TextStyle(
+                            color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ]),
+                if (plays.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  ...plays.map((p) => Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(p, style: const TextStyle(fontSize: 12)),
+                  )),
+                ],
+              ],
+            ),
+          );
+        }).toList(),
+      ],
     );
   }
 
