@@ -144,7 +144,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     final cachedRelay = await LocalCache.get(_ck('relay'), maxAgeSeconds: 86400) as Map?;
     if (cachedRelay != null && mounted) {
-      setState(() { _relayAllData = Map<String, dynamic>.from(cachedRelay); _relayAllFailed = false; });
+      setState(() { _relayAllData = Map<String, dynamic>.from(cachedRelay); });
     }
 
     final cachedPreview = await LocalCache.get(_ck('preview'), maxAgeSeconds: 86400) as Map?;
@@ -180,7 +180,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ApiService.getGameRoster(widget.gameId)
             .then((d) async {
               if (!mounted) return;
-              setState(() { _rosterData = d; _rosterLoadFailed = false; });
+              setState(() { _rosterData = d; });
               if (isPast) await LocalCache.set(_ck('roster'), d);
               try {
                 final homeId = gameData['game']['home_team_id'] as int?;
