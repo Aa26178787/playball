@@ -167,7 +167,13 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   void _startAutoRefresh() {
     _autoRefreshTimer?.cancel();
     _autoRefreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
-      if (mounted && _hasLiveGames) _loadGames();
+      if (!mounted) return;
+      if (_hasLiveGames) {
+        _loadGames();
+      } else {
+        // 라이브 경기 없어도 빌드 트리거: 자정 지나면 배너 조건 재평가
+        setState(() {});
+      }
     });
   }
 

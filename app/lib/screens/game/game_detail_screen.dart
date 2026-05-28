@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -2605,19 +2606,45 @@ class _GameShareSheet extends StatefulWidget {
 class _GameShareSheetState extends State<_GameShareSheet> {
   final _cardKey = GlobalKey();
   bool _sharing = false;
+  Uint8List? _homeLogoBytes;
+  Uint8List? _awayLogoBytes;
 
   Map<String, dynamic> get g => widget.game;
+
+  Future<Uint8List?> _fetchLogoBytes(String? url) async {
+    if (url == null) return null;
+    try {
+      final provider = CachedNetworkImageProvider(url);
+      final completer = Completer<Uint8List?>();
+      final stream = provider.resolve(const ImageConfiguration());
+      late ImageStreamListener listener;
+      listener = ImageStreamListener(
+        (info, _) async {
+          final bd = await info.image.toByteData(format: ui.ImageByteFormat.png);
+          if (!completer.isCompleted) completer.complete(bd?.buffer.asUint8List());
+          stream.removeListener(listener);
+        },
+        onError: (_, __) {
+          if (!completer.isCompleted) completer.complete(null);
+          stream.removeListener(listener);
+        },
+      );
+      stream.addListener(listener);
+      return await completer.future.timeout(const Duration(seconds: 5), onTimeout: () => null);
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<void> _captureAndShare() async {
     if (_sharing) return;
     setState(() => _sharing = true);
     try {
-      // Precache logos so they render in RepaintBoundary capture
       final homeUrl = kTeamLogoUrls[g['home_team_code'] as String? ?? ''];
       final awayUrl = kTeamLogoUrls[g['away_team_code'] as String? ?? ''];
-      if (homeUrl != null) await precacheImage(CachedNetworkImageProvider(homeUrl), context);
-      if (awayUrl != null) await precacheImage(CachedNetworkImageProvider(awayUrl), context);
-      await Future.delayed(const Duration(milliseconds: 150));
+      final results = await Future.wait([_fetchLogoBytes(homeUrl), _fetchLogoBytes(awayUrl)]);
+      if (mounted) setState(() { _homeLogoBytes = results[0]; _awayLogoBytes = results[1]; });
+      await Future.delayed(const Duration(milliseconds: 80));
       final boundary =
           _cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 3.0);
@@ -2777,7 +2804,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
               Expanded(
                 child: Column(
                   children: [
-                    _teamColorBlock(homeCode, 48),
+                    _buildLogoWidget(homeCode, 48, _homeLogoBytes),
                     const SizedBox(height: 6),
                     Text(homeTeam,
                         style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
@@ -2801,7 +2828,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
               Expanded(
                 child: Column(
                   children: [
-                    _teamColorBlock(awayCode, 48),
+                    _buildLogoWidget(awayCode, 48, _awayLogoBytes),
                     const SizedBox(height: 6),
                     Text(awayTeam,
                         style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
@@ -2849,8 +2876,21 @@ class _GameShareSheetState extends State<_GameShareSheet> {
     );
   }
 
-  Widget _teamColorBlock(String code, double size) {
-    return TeamLogo(teamCode: code, size: size);
+  Widget _buildLogoWidget(String code, double size, Uint8List? bytes) {
+    if (bytes != null) {
+      return ClipOval(
+        child: Image.memory(bytes, width: size, height: size, fit: BoxFit.cover),
+      );
+    }
+    final color = teamColor(code);
+    final abbr = teamDisplayName(code);
+    return Container(
+      width: size, height: size,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      alignment: Alignment.center,
+      child: Text(abbr,
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: size * 0.28)),
+    );
   }
 
   Widget _pitcherChip(String label, Color color) {
