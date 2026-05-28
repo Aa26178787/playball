@@ -87,6 +87,76 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   List _gamesOn(DateTime d) => _gamesByDate[_dateKey(d)] ?? [];
 
+  // dateKey → visit result for days with a visited game (current month data)
+  Map<String, String> get _dayVisitResult {
+    final map = <String, String>{};
+    for (final entry in _gamesByDate.entries) {
+      for (final game in entry.value) {
+        final id = game['id'] as int?;
+        if (id != null && _visitedGames.containsKey(id)) {
+          final r = _visitedGames[id]!['result'] as String? ?? 'draw';
+          map[entry.key] = r;
+          break;
+        }
+      }
+    }
+    return map;
+  }
+
+  Widget _buildVisitStatsBar() {
+    final dayVisits = _dayVisitResult;
+    if (dayVisits.isEmpty) return const SizedBox.shrink();
+    int wins = 0, losses = 0, draws = 0;
+    for (final r in dayVisits.values) {
+      if (r == 'win') wins++;
+      else if (r == 'loss') losses++;
+      else draws++;
+    }
+    final total = wins + losses + draws;
+    final pct = total > 0 ? (wins / total * 100).toStringAsFixed(0) : '0';
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A237E).withOpacity(0.06),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.stadium, size: 15, color: Color(0xFF1A237E)),
+          const SizedBox(width: 6),
+          Text('직관 승률',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+          const SizedBox(width: 10),
+          _visitStatChip('${wins}승', Colors.blue),
+          const SizedBox(width: 4),
+          _visitStatChip('${losses}패', Colors.red),
+          if (draws > 0) ...[
+            const SizedBox(width: 4),
+            _visitStatChip('${draws}무', Colors.grey),
+          ],
+          const Spacer(),
+          Text('$pct%',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: wins > losses ? Colors.blue : wins < losses ? Colors.red : Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  Widget _visitStatChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
+    );
+  }
+
   List<Map> _eventsOn(DateTime d) => _personalEvents.where((e) {
     try {
       final s = DateTime.parse(e['start_date'] ?? e['date'] ?? '');
@@ -149,6 +219,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
           const SizedBox(height: 4),
+
+          // 직관 승률 배너
+          if (!_isLoading) _buildVisitStatsBar(),
 
           // 달력 그리드
           _isLoading
@@ -237,6 +310,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 final isToday = DateTime.now().year == day.year &&
                     DateTime.now().month == day.month &&
                     DateTime.now().day == day.day;
+                final visitResult = _dayVisitResult[_dateKey(day)];
+                final visitColor = visitResult == 'win' ? Colors.blue
+                    : visitResult == 'loss' ? Colors.red
+                    : visitResult == 'draw' ? Colors.grey
+                    : null;
                 return Expanded(
                   child: GestureDetector(
                     onTap: () => setState(() => _selectedDate = day),
@@ -246,6 +324,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       decoration: BoxDecoration(
                         color: isSelected ? const Color(0xFF1A237E) : isToday ? const Color(0xFFE8EAF6) : null,
                         borderRadius: BorderRadius.circular(8),
+                        border: visitColor != null && !isSelected
+                            ? Border.all(color: visitColor.withOpacity(0.6), width: 1.5)
+                            : null,
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.start,
