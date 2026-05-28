@@ -306,10 +306,11 @@ def smart_update():
                     # 득점 상세 (타자/투수/타구)
                     naver_gid = curr.get('naver_game_id', '')
                     inning_now = curr.get('current_inning', 0)
-                    batter, pitcher, play_text = ('', '', '')
+                    batter = pitcher = play_text = stuff = ''
+                    speed = 0
                     if naver_gid and inning_now:
                         try:
-                            batter, pitcher, play_text = _get_scoring_play_detail(
+                            batter, pitcher, play_text, stuff, speed = _get_scoring_play_detail(
                                 naver_gid, inning_now, ch, ca)
                         except Exception:
                             pass
@@ -320,7 +321,8 @@ def smart_update():
                                         inning=inning_now,
                                         inning_half=curr.get('inning_half', ''),
                                         scoring_team=scoring_team,
-                                        batter=batter, pitcher=pitcher, play_text=play_text)
+                                        batter=batter, pitcher=pitcher, play_text=play_text,
+                                        stuff=stuff, speed=speed)
                     _check_new_hrs(gid, curr['home_team_id'], curr['away_team_id'])
 
                 # 경기 종료
@@ -985,7 +987,7 @@ def _get_consecutive_record(team_id: int) -> int:
 
 
 def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_score):
-    """Naver 중계 API에서 득점 타자/투수/타구 추출. 실패 시 ('','','') 반환"""
+    """Naver 중계 API에서 득점 타자/투수/타구/투구내용 추출. 실패 시 ('','','','',0) 반환"""
     import requests, re as _re
     HEADERS = {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://sports.naver.com/'}
     try:
@@ -999,7 +1001,10 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
         pitcher_cache = {}
 
         curr_batter = curr_pitcher = ''
-        result_batter = result_pitcher = result_text = ''
+        curr_stuff = ''
+        curr_speed = 0
+        result_batter = result_pitcher = result_text = result_stuff = ''
+        result_speed = 0
 
         for item in text_relays:
             for opt in item.get('textOptions', []):
@@ -1021,6 +1026,11 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
                     if m:
                         curr_batter = m.group(1)
 
+                # 투구 구종/구속 추적 (scoring pitch에 그대로 붙어 있음)
+                if opt.get('stuff'):
+                    curr_stuff = opt.get('stuff', '')
+                    curr_speed = int(opt.get('speed', 0) or 0)
+
                 hs = state.get('homeScore')
                 aws = state.get('awayScore')
                 if hs is not None and aws is not None:
@@ -1029,14 +1039,16 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
                             result_batter = curr_batter
                             result_pitcher = curr_pitcher
                             result_text = opt.get('text', '')
+                            result_stuff = curr_stuff
+                            result_speed = curr_speed
 
         if cur:
             cur.close()
         if conn:
             conn.close()
-        return result_batter, result_pitcher, result_text
+        return result_batter, result_pitcher, result_text, result_stuff, result_speed
     except Exception:
-        return '', '', ''
+        return '', '', '', '', 0
 
 
 def _notify_roster_for_fans():

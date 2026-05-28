@@ -230,7 +230,8 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
                         is_comeback: bool = False,
                         inning: int = 0, inning_half: str = '',
                         scoring_team: str = '',
-                        batter: str = '', pitcher: str = '', play_text: str = ''):
+                        batter: str = '', pitcher: str = '', play_text: str = '',
+                        stuff: str = '', speed: int = 0):
     targets = _get_targets('notify_score_change', [home_team_id, away_team_id])
     half_str = '초' if inning_half == 'top' else '말' if inning_half == 'bottom' else ''
     inning_str = f" [{inning}{half_str}]" if inning > 0 else ""
@@ -238,9 +239,13 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
     title = f"⚡ {team_prefix}역전!{inning_str}" if is_comeback else f"⚾ {team_prefix}득점!{inning_str}"
     score_line = f"{home_team} {home_score} : {away_score} {away_team}"
     if batter and play_text:
-        play_line = f"{batter} {play_text}"
-        if pitcher:
-            play_line += f" (vs {pitcher})"
+        pitch_info = ""
+        if stuff:
+            pitch_info = f" {stuff}"
+            if speed > 0:
+                pitch_info += f" {speed}km"
+        vs_pitcher = f" vs {pitcher}" if pitcher else ""
+        play_line = f"{batter} {play_text}{pitch_info}{vs_pitcher}"
         body = f"{play_line}\n{score_line}"
     else:
         body = score_line
