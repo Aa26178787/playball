@@ -13,6 +13,7 @@ import '../../utils/team_theme.dart';
 import 'pitch_location_chart.dart';
 import '../player/player_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 
 class GameDetailScreen extends StatefulWidget {
   final int gameId;
@@ -32,7 +33,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Map<String, dynamic>? _previewData;
   Map<String, dynamic>? _recordDetailData;
   Map<String, dynamic>? _relayAllData;
-  bool _relayAllFailed = false;
+  int _relayRetryCount = 0;
   Map<String, dynamic>? _weatherData;
   Map<String, dynamic>? _pitchTypesData;
   List _highlights = [];
@@ -41,7 +42,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Map<int, int> _rankMap = {};
   bool _isLoading = true;
   bool _isRelayRefreshing = false;
-  bool _rosterLoadFailed = false;
   Timer? _refreshTimer;
   final ScrollController _inningScrollController = ScrollController();
 
@@ -82,8 +82,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     _tabController.addListener(() {
       if (_tabController.index == 0 && _relayAllData == null) {
         ApiService.getGameRelayAll(widget.gameId)
-            .then((d) { if (mounted) setState(() { _relayAllData = d; _relayAllFailed = false; }); })
-            .catchError((_) { if (mounted) setState(() => _relayAllFailed = true); });
+            .then((d) { if (mounted) setState(() => _relayAllData = d); })
+            .catchError((_) { if (mounted && _relayAllData == null) _scheduleRelayRetry(); });
       }
       if (_tabController.index == 3 && _highlights.isEmpty && !_highlightsLoading) {
         _loadHighlights();
@@ -198,7 +198,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 if (mounted) setState(() => _playerRosterStatus = statusMap);
               } catch (_) {}
             })
-            .catchError((_) { if (mounted) setState(() => _rosterLoadFailed = true); }),
+            .catchError((_) {}),
         ApiService.getGamePreview(widget.gameId)
             .then((d) async {
               if (mounted) setState(() => _previewData = d);
@@ -214,11 +214,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ApiService.getGameRelayAll(widget.gameId)
             .then((d) async {
               if (!mounted) return;
-              setState(() { _relayAllData = d; _relayAllFailed = false; });
+              setState(() { _relayAllData = d; _relayRetryCount = 0; });
               if (_tabController.index == 0) _scrollInningsToBottom();
               if (isPast) await LocalCache.set(_ck('relay'), d);
             })
-            .catchError((_) { if (mounted) setState(() => _relayAllFailed = true); }),
+            .catchError((_) { if (mounted && _relayAllData == null) _scheduleRelayRetry(); }),
         ApiService.getGameWeather(widget.gameId)
             .then((w) { if (mounted) setState(() => _weatherData = w); })
             .catchError((_) {}),
@@ -259,11 +259,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ApiService.getGameRelayAll(widget.gameId)
             .then((d) {
               if (mounted) {
-                setState(() { _relayAllData = d; _relayAllFailed = false; });
+                setState(() { _relayAllData = d; _relayRetryCount = 0; });
                 if (_tabController.index == 0) _scrollInningsToBottom();
               }
             })
-            .catchError((_) { if (mounted) setState(() => _relayAllFailed = true); });
+            .catchError((_) { if (mounted && _relayAllData == null) _scheduleRelayRetry(); });
       } else {
         // 경기 종료 감지 시 타이머 취소 후 전체 데이터 새로고침
         _refreshTimer?.cancel();
@@ -295,6 +295,36 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     } finally {
       if (mounted) setState(() => _isRelayRefreshing = false);
     }
+  }
+
+  void _scheduleRelayRetry() {
+    if (_relayRetryCount >= 3) return;
+    _relayRetryCount++;
+    Future.delayed(const Duration(seconds: 4), () {
+      if (!mounted || _relayAllData != null) return;
+      ApiService.getGameRelayAll(widget.gameId)
+          .then((d) {
+            if (mounted) setState(() { _relayAllData = d; _relayRetryCount = 0; });
+          })
+          .catchError((_) { if (mounted && _relayAllData == null) _scheduleRelayRetry(); });
+    });
+  }
+
+  Widget _buildRelayShimmer() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Column(
+        children: List.generate(5, (i) => Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          height: 52,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+          ),
+        )),
+      ),
+    );
   }
 
   // 승리확률 그래프
@@ -938,25 +968,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             const SizedBox(height: 24),
           ],
 
-          if (_relayAllFailed)
-            GestureDetector(
-              onTap: () {
-                setState(() => _relayAllFailed = false);
-                ApiService.getGameRelayAll(widget.gameId)
-                    .then((d) { if (mounted) setState(() { _relayAllData = d; _relayAllFailed = false; }); })
-                    .catchError((_) { if (mounted) setState(() => _relayAllFailed = true); });
-              },
-              child: const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32),
-                  child: Text('중계 데이터 불러오기 실패\n탭하여 새로고침',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey, fontSize: 13)),
-                ),
-              ),
+          if (_relayAllData == null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              child: _buildRelayShimmer(),
             )
-          else if (_relayAllData == null)
-            const Center(child: CircularProgressIndicator())
           else if (relays.isEmpty)
             const Center(child: Text('중계 데이터가 없습니다'))
           else ...[
@@ -1607,28 +1623,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildRosterTab() {
     if (_rosterData == null) {
-      if (_rosterLoadFailed) {
-        return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.grey),
-              const SizedBox(height: 12),
-              const Text('로스터를 불러오지 못했습니다', style: TextStyle(color: Colors.grey)),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () {
-                  setState(() => _rosterLoadFailed = false);
-                  ApiService.getGameRoster(widget.gameId)
-                      .then((d) { if (mounted) setState(() { _rosterData = d; _rosterLoadFailed = false; }); })
-                      .catchError((_) { if (mounted) setState(() => _rosterLoadFailed = true); });
-                },
-                child: const Text('다시 시도'),
-              ),
-            ],
-          ),
-        );
-      }
       return const Center(child: CircularProgressIndicator());
     }
 

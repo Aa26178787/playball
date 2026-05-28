@@ -607,8 +607,11 @@ def _sync_batter_stats_from_daily():
     print(f"[{datetime.now()}] batter_stats daily 동기화 완료 ({updated}명)")
 
 
-def _save_player_daily_stats_today():
-    """오늘 종료 경기의 player_daily_stats 업데이트 (game_batters/game_pitchers 기반)"""
+def _save_player_daily_stats_today(target_date=None):
+    """종료 경기의 player_daily_stats 업데이트 (game_batters/game_pitchers 기반)"""
+    from datetime import date as _date_cls
+    if target_date is None:
+        target_date = _date_cls.today()
     conn = get_connection()
     if not conn:
         return
@@ -620,10 +623,10 @@ def _save_player_daily_stats_today():
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at2 ON g.away_team_id = at2.id
-        WHERE g.game_date = CURRENT_DATE
+        WHERE g.game_date = %s
         AND g.status = '종료'
         AND g.game_date >= '2026-03-28'
-    """)
+    """, (target_date,))
     games = cur.fetchall()
 
     total = 0
@@ -1403,8 +1406,40 @@ def _send_pregame_notifications():
         conn.close()
 
 
+
+def _recover_missed_daily_stats():
+    """서버 재시작 후 최근 2일 내 누락된 daily stats 복구"""
+    from datetime import date as _date_cls, timedelta
+    today = _date_cls.today()
+    for days_back in range(0, 2):
+        check_date = today - timedelta(days=days_back)
+        conn = get_connection()
+        if not conn:
+            continue
+        cur = conn.cursor()
+        cur.execute('SELECT COUNT(*) FROM games WHERE game_date = %s AND status = %s', (check_date, '종료'))
+        game_count = cur.fetchone()[0]
+        if not game_count:
+            cur.close()
+            conn.close()
+            continue
+        cur.execute('SELECT COUNT(*) FROM player_daily_stats WHERE game_date = %s', (check_date,))
+        daily_count = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        if daily_count == 0:
+            print(f'[recovery] {check_date} daily_stats 누락 → 복구 실행')
+            _save_player_daily_stats_today(target_date=check_date)
+        else:
+            print(f'[recovery] {check_date} daily_stats OK ({daily_count}건)')
+
+
 def run_scheduler():
     print("PlayBall 스케줄러 시작!")
+    try:
+        _recover_missed_daily_stats()
+    except Exception as e:
+        print(f'[recovery] 오류: {e}')
 
     # 30초마다 (UTC 01:00~15:00에만 동작)
     schedule.every(30).seconds.do(smart_update)
