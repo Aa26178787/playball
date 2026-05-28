@@ -737,7 +737,7 @@ def get_game_detail(game_id: int):
                 gp.earned_runs, gp.team_side,
                 gp.walks, gp.hits_allowed,
                 gp.runs_allowed, gp.home_runs_allowed,
-                gp.pitch_count, p.profile_image
+                gp.pitch_count, p.profile_image, p.id
             FROM game_pitchers gp
             JOIN players p ON gp.player_id = p.id
             WHERE gp.game_id = %s
@@ -757,7 +757,7 @@ def get_game_detail(game_id: int):
                 gp.earned_runs, gp.team_side,
                 gp.walks, gp.hits_allowed,
                 gp.runs_allowed, gp.home_runs_allowed,
-                gp.pitch_count, p.profile_image
+                gp.pitch_count, p.profile_image, p.id
             FROM game_pitchers gp
             JOIN players p ON gp.player_id = p.id
             WHERE gp.game_id = %s
@@ -779,7 +779,7 @@ def get_game_detail(game_id: int):
     cur.execute("""
         SELECT p.name, gb.batting_order, gb.position,
             gb.at_bats, gb.hits, gb.rbis,
-            gb.home_runs, gb.avg, gb.team_side
+            gb.home_runs, gb.avg, gb.team_side, p.id
         FROM game_batters gb
         JOIN players p ON gb.player_id = p.id
         WHERE gb.game_id = %s
@@ -866,6 +866,7 @@ def get_game_detail(game_id: int):
                 "home_runs_allowed": r[10] or 0,
                 "pitch_count":       r[11] or 0,
                 "profile_image":     r[12],
+                "player_id":         r[13],
                 "strikes":           sb_map.get(r[0], {}).get('strikes', 0),
                 "balls":             sb_map.get(r[0], {}).get('balls', 0),
             }
@@ -882,6 +883,7 @@ def get_game_detail(game_id: int):
                 "home_runs":     r[6],
                 "avg":           float(r[7]) if r[7] else 0,
                 "team_side":     r[8],
+                "player_id":     r[9],
             }
             for r in batters
         ],
@@ -934,18 +936,32 @@ def get_games_by_date(date_str: str):
             WHERE gp.result = '패'
         ) lp ON lp.game_id = g.id
         LEFT JOIN LATERAL (
-            SELECT p.name FROM game_rosters gr
-            JOIN players p ON gr.player_id = p.id
-            WHERE gr.game_id = g.id AND gr.roster_type = 'pitcher'
-            AND gr.is_starter = TRUE AND gr.team_side = 'home'
-            LIMIT 1
+            SELECT COALESCE(
+                (SELECT p2.name FROM game_rosters gr2
+                 JOIN players p2 ON gr2.player_id = p2.id
+                 WHERE gr2.game_id = g.id AND gr2.roster_type = 'pitcher'
+                 AND gr2.is_starter = TRUE AND gr2.team_side = 'home'
+                 LIMIT 1),
+                (SELECT p2.name FROM game_pitchers gp2
+                 JOIN players p2 ON gp2.player_id = p2.id
+                 WHERE gp2.game_id = g.id AND gp2.team_side = 'home'
+                 AND gp2.pitching_order = 1
+                 LIMIT 1)
+            ) AS name
         ) home_sp ON TRUE
         LEFT JOIN LATERAL (
-            SELECT p.name FROM game_rosters gr
-            JOIN players p ON gr.player_id = p.id
-            WHERE gr.game_id = g.id AND gr.roster_type = 'pitcher'
-            AND gr.is_starter = TRUE AND gr.team_side = 'away'
-            LIMIT 1
+            SELECT COALESCE(
+                (SELECT p2.name FROM game_rosters gr2
+                 JOIN players p2 ON gr2.player_id = p2.id
+                 WHERE gr2.game_id = g.id AND gr2.roster_type = 'pitcher'
+                 AND gr2.is_starter = TRUE AND gr2.team_side = 'away'
+                 LIMIT 1),
+                (SELECT p2.name FROM game_pitchers gp2
+                 JOIN players p2 ON gp2.player_id = p2.id
+                 WHERE gp2.game_id = g.id AND gp2.team_side = 'away'
+                 AND gp2.pitching_order = 1
+                 LIMIT 1)
+            ) AS name
         ) away_sp ON TRUE
         WHERE g.game_date = %s
         ORDER BY g.start_time, g.id

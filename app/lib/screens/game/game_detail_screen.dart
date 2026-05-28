@@ -40,6 +40,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Map<String, String> _playerRosterStatus = {};
   bool _isLoading = true;
   bool _isRelayRefreshing = false;
+  bool _rosterLoadFailed = false;
   Timer? _refreshTimer;
   final ScrollController _inningScrollController = ScrollController();
 
@@ -167,7 +168,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ApiService.getGameRoster(widget.gameId)
             .then((d) async {
               if (!mounted) return;
-              setState(() => _rosterData = d);
+              setState(() { _rosterData = d; _rosterLoadFailed = false; });
               if (isPast) await LocalCache.set(_ck('roster'), d);
               try {
                 final homeId = gameData['game']['home_team_id'] as int?;
@@ -185,7 +186,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 if (mounted) setState(() => _playerRosterStatus = statusMap);
               } catch (_) {}
             })
-            .catchError((_) {}),
+            .catchError((_) { if (mounted) setState(() => _rosterLoadFailed = true); }),
         ApiService.getGamePreview(widget.gameId)
             .then((d) async {
               if (mounted) setState(() => _previewData = d);
@@ -1253,7 +1254,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         children: [
           TabBar(
-            tabs: const [Tab(text: '선발'), Tab(text: '로스터')],
+            tabs: const [Tab(text: '키플레이어'), Tab(text: '로스터')],
             labelColor: isDark ? Colors.white : const Color(0xFF1A237E),
             indicatorColor: const Color(0xFF1A237E),
           ),
@@ -1401,83 +1402,88 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final season = starter['season_stats'] as Map<String, dynamic>? ?? {};
     final vs = starter['vs_stats'] as Map<String, dynamic>? ?? {};
     final pitchKinds = starter['pitch_kinds'] as List? ?? [];
+    final playerId = _getPlayerIdByName(starter['name'] as String?);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(teamName, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-            const SizedBox(height: 4),
-            Text(starter['name'] ?? '',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text(starter['hit_type'] ?? '',
-                style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-            const Divider(height: 16),
-            Text('시즌 성적',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey[600])),
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 12,
-              children: [
-                _statChip('평자', '${season['era'] ?? '-'}'),
-                _statChip('${season['wins'] ?? 0}승 ${season['losses'] ?? 0}패', ''),
-                _statChip('이닝', season['innings'] ?? '-'),
-                _statChip('삼진', '${season['kk'] ?? 0}'),
-                _statChip('볼넷', '${season['bb'] ?? 0}'),
-              ],
-            ),
-            if (vs['games'] != null && vs['games'] != '0') ...[
-              const SizedBox(height: 8),
-              Text('상대 성적',
+    return GestureDetector(
+      onTap: playerId != null ? () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId))) : null,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(teamName, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+              const SizedBox(height: 4),
+              Text(starter['name'] ?? '',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(starter['hit_type'] ?? '',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+              const Divider(height: 16),
+              Text('시즌 성적',
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey[600])),
               const SizedBox(height: 4),
               Wrap(
                 spacing: 12,
                 children: [
-                  _statChip('평자', '${vs['era'] ?? '-'}'),
-                  _statChip('이닝', vs['innings'] ?? '-'),
-                  _statChip('삼진', '${vs['kk'] ?? 0}'),
+                  _statChip('평자', '${season['era'] ?? '-'}'),
+                  _statChip('${season['wins'] ?? 0}승 ${season['losses'] ?? 0}패', ''),
+                  _statChip('이닝', season['innings'] ?? '-'),
+                  _statChip('삼진', '${season['kk'] ?? 0}'),
+                  _statChip('볼넷', '${season['bb'] ?? 0}'),
                 ],
               ),
-            ],
-            if (pitchKinds.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text('구종 비율',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey[600])),
-              const SizedBox(height: 4),
-              ...pitchKinds.map((pk) {
-                final typeName = _pitchTypeMap[pk['type']] ?? pk['type'] ?? '';
-                final ratio = (pk['ratio'] as num?)?.toStringAsFixed(1) ?? '-';
-                final speed = pk['speed'] ?? 0;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                          width: 60,
-                          child: Text(typeName, style: const TextStyle(fontSize: 11))),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(3),
-                          child: LinearProgressIndicator(
-                            value: (pk['ratio'] as num? ?? 0) / 100,
-                            backgroundColor: Colors.grey[200],
-                            valueColor: const AlwaysStoppedAnimation(Color(0xFF1A237E)),
-                            minHeight: 8,
+              if (vs['games'] != null && vs['games'] != '0') ...[
+                const SizedBox(height: 8),
+                Text('상대 성적',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 12,
+                  children: [
+                    _statChip('평자', '${vs['era'] ?? '-'}'),
+                    _statChip('이닝', vs['innings'] ?? '-'),
+                    _statChip('삼진', '${vs['kk'] ?? 0}'),
+                  ],
+                ),
+              ],
+              if (pitchKinds.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('구종 비율',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey[600])),
+                const SizedBox(height: 4),
+                ...pitchKinds.map((pk) {
+                  final typeName = _pitchTypeMap[pk['type']] ?? pk['type'] ?? '';
+                  final ratio = (pk['ratio'] as num?)?.toStringAsFixed(1) ?? '-';
+                  final speed = pk['speed'] ?? 0;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                            width: 60,
+                            child: Text(typeName, style: const TextStyle(fontSize: 11))),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: (pk['ratio'] as num? ?? 0) / 100,
+                              backgroundColor: Colors.grey[200],
+                              valueColor: const AlwaysStoppedAnimation(Color(0xFF1A237E)),
+                              minHeight: 8,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text('$ratio% ${speed}km',
-                          style: TextStyle(fontSize: 10, color: Colors.grey[500])),
-                    ],
-                  ),
-                );
-              }),
+                        const SizedBox(width: 6),
+                        Text('$ratio% ${speed}km',
+                            style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                      ],
+                    ),
+                  );
+                }),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -1492,8 +1498,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         .split('|')
         .where((s) => s.isNotEmpty)
         .toList();
+    final playerId = _getPlayerIdByName(top['name'] as String?);
 
-    return Card(
+    return GestureDetector(
+      onTap: playerId != null ? () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId))) : null,
+      child: Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -1554,7 +1564,21 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           ],
         ),
       ),
+    ),
     );
+  }
+
+  int? _getPlayerIdByName(String? name) {
+    if (name == null || _rosterData == null) return null;
+    for (final side in ['home', 'away']) {
+      for (final type in ['batters', 'pitchers']) {
+        final list = (_rosterData![side][type] as List?) ?? [];
+        for (final p in list) {
+          if ((p as Map)['name'] == name) return p['player_id'] as int?;
+        }
+      }
+    }
+    return null;
   }
 
   Widget _statChip(String label, String value) {
@@ -1568,6 +1592,28 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildRosterTab() {
     if (_rosterData == null) {
+      if (_rosterLoadFailed) {
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.grey),
+              const SizedBox(height: 12),
+              const Text('로스터를 불러오지 못했습니다', style: TextStyle(color: Colors.grey)),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: () {
+                  setState(() => _rosterLoadFailed = false);
+                  ApiService.getGameRoster(widget.gameId)
+                      .then((d) { if (mounted) setState(() { _rosterData = d; _rosterLoadFailed = false; }); })
+                      .catchError((_) { if (mounted) setState(() => _rosterLoadFailed = true); });
+                },
+                child: const Text('다시 시도'),
+              ),
+            ],
+          ),
+        );
+      }
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -1582,8 +1628,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           Expanded(
             child: TabBarView(
               children: [
-                _buildTeamRoster(_rosterData!['home']),
-                _buildTeamRoster(_rosterData!['away']),
+                _buildTeamRoster(
+                  _rosterData!['home'],
+                  fallbackStarterName: _previewData?['home_starter']?['name'] as String?,
+                ),
+                _buildTeamRoster(
+                  _rosterData!['away'],
+                  fallbackStarterName: _previewData?['away_starter']?['name'] as String?,
+                ),
               ],
             ),
           ),
@@ -1592,7 +1644,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     );
   }
 
-  Widget _buildTeamRoster(Map<String, dynamic> teamData) {
+  Widget _buildTeamRoster(Map<String, dynamic> teamData, {String? fallbackStarterName}) {
     final batters = teamData['batters'] as List;
     final pitchers = teamData['pitchers'] as List;
 
@@ -1612,13 +1664,21 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             b['is_starter'] != true)
         .toList();
 
-    final starterPitcher = pitchers.cast<Map<String, dynamic>>().firstWhere(
+    Map<String, dynamic> starterPitcher = pitchers.cast<Map<String, dynamic>>().firstWhere(
           (p) => p['is_starter'] == true,
           orElse: () => <String, dynamic>{},
         );
 
-    final bullpen =
-        pitchers.where((p) => p['is_starter'] != true && p['is_starter'] != null).toList();
+    // is_starter가 null로 클리어된 경우 preview 데이터의 선발투수명으로 fallback
+    if (starterPitcher.isEmpty && fallbackStarterName != null) {
+      starterPitcher = pitchers.cast<Map<String, dynamic>>().firstWhere(
+            (p) => p['name'] == fallbackStarterName,
+            orElse: () => <String, dynamic>{},
+          );
+    }
+
+    // is_starter=null 투수도 불펜에 표시 (라인업 공개 시 null 처리 대응)
+    final bullpen = pitchers.where((p) => p['is_starter'] != true).toList();
     final Map<String, List> bullpenGroups = {
       '좌완투수': [], '우완투수': [], '우완사이드': [], '우완언더': [], '기타': [],
     };
@@ -1915,7 +1975,15 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildPitcherList(List pitchers) {
     return ListView(
       padding: const EdgeInsets.all(16),
-      children: pitchers.map((p) => _pitcherTile(p)).toList(),
+      children: pitchers.map((p) {
+        final playerId = (p as Map)['player_id'] as int?;
+        if (playerId == null) return _pitcherTile(p);
+        return InkWell(
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId))),
+          child: _pitcherTile(p),
+        );
+      }).toList(),
     );
   }
 
@@ -2174,8 +2242,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           final isLast = i == players.length - 1;
           final pos = _convertPosition(b['position']);
           final profileImage = profileImages[b['name']];
+          final batterId = b['player_id'] as int?;
 
-          return Container(
+          return InkWell(
+            onTap: batterId != null ? () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: batterId))) : null,
+            child: Container(
             margin: const EdgeInsets.only(bottom: 2),
             decoration: BoxDecoration(
               border: Border(
@@ -2261,6 +2333,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     color: isFirst ? null : Colors.grey[500]),
               ),
             ),
+          ),
           );
         }).toList();
       }).toList(),
