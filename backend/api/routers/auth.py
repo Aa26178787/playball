@@ -17,8 +17,8 @@ if not _raw_secret:
     raise RuntimeError("JWT_SECRET_KEY 환경변수가 설정되지 않았습니다")
 SECRET_KEY = _raw_secret
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
-REFRESH_TOKEN_EXPIRE_DAYS = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 1440
+REFRESH_TOKEN_EXPIRE_DAYS = 365
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 

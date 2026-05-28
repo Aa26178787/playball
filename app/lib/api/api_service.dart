@@ -36,6 +36,8 @@ class ApiService {
     ));
   }
 
+  static Future<bool> tryRefreshToken() => _tryRefresh();
+
   static Future<bool> _tryRefresh() async {
     final refreshToken = await _secure.read(key: 'refresh_token');
     if (refreshToken == null) return false;

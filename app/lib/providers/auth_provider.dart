@@ -21,7 +21,14 @@ class AuthProvider extends ChangeNotifier {
   // 앱 시작 시 로그인 상태 확인
   Future<void> checkLoginStatus() async {
     ApiService.initInterceptor(() async => logout());
-    final token = await ApiService.getToken();
+
+    // access token 없으면 refresh로 먼저 시도
+    var token = await ApiService.getToken();
+    if (token == null) {
+      final refreshed = await ApiService.tryRefreshToken();
+      if (refreshed) token = await ApiService.getToken();
+    }
+
     if (token != null) {
       try {
         final data = await ApiService.getMe();
@@ -29,7 +36,6 @@ class AuthProvider extends ChangeNotifier {
         _isLoggedIn = true;
       } catch (e) {
         _isLoggedIn = false;
-        // 401/403만 토큰 삭제 — 네트워크 오류는 토큰 유지
         if (e is DioException) {
           final status = e.response?.statusCode;
           if (status == 401 || status == 403) {
