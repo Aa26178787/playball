@@ -828,42 +828,26 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
             Column(
               children: [
                 Icon(
-                  _loadError ? Icons.wifi_off : (_myTeamOnly ? Icons.star_border : Icons.sports_baseball),
+                  _myTeamOnly ? Icons.star_border : Icons.sports_baseball,
                   size: 64, color: Colors.grey[300],
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _loadError
-                      ? '경기 정보를 불러오지 못했습니다'
-                      : (_myTeamOnly ? '마이팀 경기가 없습니다' : '경기가 없는 날입니다'),
+                  _myTeamOnly ? '마이팀 경기가 없습니다' : '경기가 없는 날입니다',
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black54),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _loadError
-                      ? '네트워크 연결을 확인하고 아래로 당겨 새로고침하세요'
-                      : (_myTeamOnly
-                          ? '마이팀 필터를 해제하면 전체 경기를 볼 수 있습니다'
-                          : isToday
-                              ? 'KBO 휴식일입니다'
-                              : isPast
-                                  ? '이 날은 경기가 없었습니다'
-                                  : '이 날은 경기가 예정되어 있지 않습니다'),
+                  _myTeamOnly
+                      ? '마이팀 필터를 해제하면 전체 경기를 볼 수 있습니다'
+                      : isToday
+                          ? 'KBO 휴식일입니다'
+                          : isPast
+                              ? '이 날은 경기가 없었습니다'
+                              : '이 날은 경기가 예정되어 있지 않습니다',
                   style: TextStyle(fontSize: 13, color: Colors.grey[500]),
                 ),
-                if (_loadError) ...[
-                  const SizedBox(height: 16),
-                  OutlinedButton.icon(
-                    onPressed: () { setState(() { _loadError = false; _isLoading = true; }); _loadGames(); },
-                    icon: const Icon(Icons.refresh, size: 16),
-                    label: const Text('다시 시도'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF1A237E),
-                      side: const BorderSide(color: Color(0xFF1A237E)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    ),
-                  ),
-                ] else if (_myTeamOnly) ...[
+                if (_myTeamOnly) ...[
                   const SizedBox(height: 20),
                   OutlinedButton.icon(
                     onPressed: () => setState(() => _myTeamOnly = false),

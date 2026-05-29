@@ -915,21 +915,31 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       }
     }
 
-    return Container(
-      color: isDark ? Colors.green.withOpacity(0.06) : Colors.green.withOpacity(0.04),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: 210,
-            child: _FullFieldView(
-              base1: false, base2: false, base3: false,
-              fieldView: {'defense': defense, 'batter': null, 'pitcher': null, 'runners': null},
-              isDark: isDark,
-            ),
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [const Color(0xFF0D2818), const Color(0xFF1B3A22)]
+                : [const Color(0xFF1B4332), const Color(0xFF2D6A4F)],
           ),
-          const SizedBox(height: 4),
-        ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 220,
+              child: _FullFieldView(
+                base1: false, base2: false, base3: false,
+                fieldView: {'defense': defense, 'batter': null, 'pitcher': null, 'runners': null},
+                isDark: isDark,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -948,54 +958,63 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final base3   = state['base3'] == true;
 
     Widget bsoDot(bool on, Color c) => Container(
-      width: 10, height: 10,
-      margin: const EdgeInsets.symmetric(horizontal: 2),
+      width: 11, height: 11,
+      margin: const EdgeInsets.symmetric(horizontal: 2.5),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: on ? c : (isDark ? Colors.grey[700] : Colors.grey[400]),
-        boxShadow: on ? [BoxShadow(color: c.withOpacity(0.5), blurRadius: 4)] : null,
+        color: on ? c : Colors.white.withOpacity(0.18),
+        boxShadow: on ? [BoxShadow(color: c.withOpacity(0.65), blurRadius: 5, spreadRadius: 1)] : null,
       ),
     );
     Widget bsoGroup(String lbl, int count, int max, Color c) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(lbl, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white70 : Colors.black54)),
-        const SizedBox(width: 3),
+        Text(lbl, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70)),
+        const SizedBox(width: 4),
         ...List.generate(max, (i) => bsoDot(i < count, c)),
       ],
     );
 
-    return Container(
-      color: isDark ? Colors.green.withOpacity(0.06) : Colors.green.withOpacity(0.04),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // BSO row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                bsoGroup('B', balls, 3, Colors.green[400]!),
-                const SizedBox(width: 18),
-                bsoGroup('S', strikes, 2, Colors.red[400]!),
-                const SizedBox(width: 18),
-                bsoGroup('O', outs, 2, Colors.orange[400]!),
-              ],
-            ),
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDark
+                ? [const Color(0xFF0D2818), const Color(0xFF1B3A22)]
+                : [const Color(0xFF1B4332), const Color(0xFF2D6A4F)],
           ),
-          // Full field view
-          SizedBox(
-            height: 230,
-            child: _FullFieldView(
-              base1: base1, base2: base2, base3: base3,
-              fieldView: fieldView,
-              isDark: isDark,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // BSO row
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  bsoGroup('B', balls, 3, Colors.green[300]!),
+                  const SizedBox(width: 20),
+                  bsoGroup('S', strikes, 2, Colors.red[300]!),
+                  const SizedBox(width: 20),
+                  bsoGroup('O', outs, 2, Colors.orange[300]!),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-        ],
+            // Full field view
+            SizedBox(
+              height: 230,
+              child: _FullFieldView(
+                base1: base1, base2: base2, base3: base3,
+                fieldView: fieldView,
+                isDark: isDark,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1562,10 +1581,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         bool showAtBat = false;
         String batter = '';
         String result = '';
+        String pitcher = '';
         Color playColor = Colors.orange;
         IconData playIcon = Icons.people_alt_outlined;
 
         if (atbat != null) {
+          pitcher = (atbat['pitcher_name'] as String? ?? '').trim();
           final txt = _atBatText(atbat);
           if (txt.isNotEmpty) {
             final parsed = _parsePlay(txt);
@@ -1574,19 +1595,18 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 ? parsed.batter
                 : (atbat['batter_name'] as String? ?? '');
             final isHR = result.contains('홈런');
-            final isRBI = result.contains('타점') || result.contains('적시타') ||
-                result.contains('희생플라이') || result.contains('희생비') ||
-                result.contains('밀어내기') ||
-                (result.contains('볼넷') && result.contains('만루')) ||
-                (result.contains('몸에 맞는') && result.contains('만루'));
-            showAtBat = isHR || isRBI;
+            showAtBat = isHR || scorers.isNotEmpty;
             playColor = isHR ? Colors.deepOrange : Colors.orange;
             playIcon = isHR ? Icons.sports_baseball : Icons.people_alt_outlined;
+          } else if (scorers.isNotEmpty) {
+            batter = (atbat['batter_name'] as String? ?? '').trim();
+            showAtBat = batter.isNotEmpty;
           }
         }
 
         if (!showAtBat && scorers.isEmpty) continue;
 
+        final onSurface = Theme.of(context).colorScheme.onSurface;
         playWidgets.add(Padding(
           padding: const EdgeInsets.only(top: 5),
           child: Column(
@@ -1595,20 +1615,34 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               if (showAtBat) Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(playIcon, size: 14, color: playColor),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 1),
+                    child: Icon(playIcon, size: 14, color: playColor),
+                  ),
                   const SizedBox(width: 5),
                   Expanded(
-                    child: RichText(
-                      text: TextSpan(
-                        style: const TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
-                        children: [
-                          if (batter.isNotEmpty) ...[
-                            TextSpan(text: batter, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            const TextSpan(text: '  '),
-                          ],
-                          TextSpan(text: result, style: TextStyle(color: playColor, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        RichText(
+                          text: TextSpan(
+                            style: TextStyle(fontSize: 12, color: onSurface, height: 1.4),
+                            children: [
+                              if (batter.isNotEmpty) ...[
+                                TextSpan(text: batter, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                const TextSpan(text: '  '),
+                              ],
+                              if (result.isNotEmpty)
+                                TextSpan(text: result, style: TextStyle(color: playColor, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                        if (pitcher.isNotEmpty)
+                          Text(
+                            '투수: $pitcher',
+                            style: TextStyle(fontSize: 10, color: onSurface.withOpacity(0.48)),
+                          ),
+                      ],
                     ),
                   ),
                 ],
@@ -1618,12 +1652,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   padding: EdgeInsets.only(left: showAtBat ? 19.0 : 0.0, top: 2),
                   child: Row(
                     children: [
-                      Icon(Icons.directions_run, size: 12, color: Colors.teal[600]),
+                      const Icon(Icons.directions_run, size: 12, color: Colors.teal),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           (s['title'] as String? ?? s['text'] as String? ?? '').trim(),
-                          style: TextStyle(fontSize: 11, color: Colors.teal[700]),
+                          style: const TextStyle(fontSize: 11, color: Colors.teal),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -3568,10 +3602,10 @@ class _PlayerDot extends StatelessWidget {
   Widget build(BuildContext context) {
     final borderColor = isBatter ? Colors.white :
                         isOffense ? Colors.orange[400]! :
-                        Colors.white38;
+                        Colors.white60;
     final bgColor = isOffense
         ? (isDark ? Colors.red[900]! : Colors.red[800]!).withOpacity(0.85)
-        : Colors.black54;
+        : const Color(0xFF1A237E).withOpacity(0.88);
 
     final displayName = name.length > 3 ? name.substring(0, 3) : name;
     final displayLabel = label;
@@ -3646,9 +3680,9 @@ class _FieldBgPainter extends CustomPainter {
     final pHome = Offset(w * 0.50, h * 0.82);
     final pMound= Offset(w * 0.50, h * 0.62);
 
-    // Outfield grass (green arc)
+    // Outfield grass (green arc — lighter zone over dark background)
     final ofPaint = Paint()
-      ..color = (isDark ? Colors.green[800]! : Colors.green[400]!).withOpacity(0.45)
+      ..color = Colors.green[500]!.withOpacity(0.38)
       ..style = PaintingStyle.fill;
     final arcCenter = Offset(w * 0.50, h * 0.95);
     final arcR = w * 0.78;
@@ -3662,7 +3696,7 @@ class _FieldBgPainter extends CustomPainter {
 
     // Infield dirt (diamond)
     final dirtPaint = Paint()
-      ..color = (isDark ? const Color(0xFF8B6914) : const Color(0xFFD4A96A)).withOpacity(0.55)
+      ..color = const Color(0xFFC8923A).withOpacity(0.78)
       ..style = PaintingStyle.fill;
     final diamondPath = Path()
       ..moveTo(pHome.dx, pHome.dy)
@@ -3674,14 +3708,14 @@ class _FieldBgPainter extends CustomPainter {
 
     // Mound circle
     final moundPaint = Paint()
-      ..color = (isDark ? const Color(0xFF8B6914) : const Color(0xFFD4A96A)).withOpacity(0.7)
+      ..color = const Color(0xFFC8923A).withOpacity(0.92)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(pMound, w * 0.035, moundPaint);
 
     // Baselines
     final linePaint = Paint()
-      ..color = (isDark ? Colors.white : Colors.white).withOpacity(0.35)
-      ..strokeWidth = 1.2
+      ..color = Colors.white.withOpacity(0.55)
+      ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
     canvas.drawLine(pHome, p1B, linePaint);
     canvas.drawLine(pHome, p3B, linePaint);
@@ -3690,7 +3724,7 @@ class _FieldBgPainter extends CustomPainter {
 
     // Foul lines extended
     final foulPaint = Paint()
-      ..color = Colors.white.withOpacity(0.2)
+      ..color = Colors.white.withOpacity(0.32)
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
     canvas.drawLine(pHome, Offset(w * 0.0, h * 0.08), foulPaint);
@@ -3710,7 +3744,7 @@ class _FieldBgPainter extends CustomPainter {
       final bp = Paint()
         ..color = occupied ? Colors.yellow[500]! : (isDark ? Colors.grey[500]! : Colors.grey[300]!)
         ..style = PaintingStyle.fill;
-      final bs = 5.0;
+      final bs = 7.0;
       final path = Path()
         ..moveTo(pos.dx,      pos.dy - bs)
         ..lineTo(pos.dx + bs, pos.dy)
