@@ -264,7 +264,10 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     final gen = ++_loadGen;
     final dateStr = _selectedDateStr;
 
-    final cached = await LocalCache.get('games_$dateStr', maxAgeSeconds: 300) as List?;
+    final today = DateTime.now();
+    final isPast = _selectedDate.isBefore(DateTime(today.year, today.month, today.day));
+    final cacheSeconds = isPast ? 86400 : 300;
+    final cached = await LocalCache.get('games_$dateStr', maxAgeSeconds: cacheSeconds) as List?;
     if (!mounted || _loadGen != gen) return;
     if (cached != null) {
       setState(() { _games = cached; _isLoading = false; });

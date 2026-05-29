@@ -580,8 +580,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         children: [
           _buildScoreHeader(game),
           if (_sameDayGames.isNotEmpty) _buildSameDayStrip(),
-          if (game['status'] == '진행' && _relayData != null)
-            _buildLiveStatus(),
+          if (_relayData != null || _rosterData != null)
+            _buildFieldSection(game),
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -875,6 +875,60 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return Text(
       parts.join('  '),
       style: const TextStyle(color: Colors.white60, fontSize: 12),
+    );
+  }
+
+  Widget _buildFieldSection(Map game) {
+    final isLive = game['status'] == '진행';
+    if (isLive && _relayData != null) return _buildLiveStatus();
+    if (_rosterData == null) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final homeBatters = (_rosterData!['home']['batters'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+    final homePitchers = (_rosterData!['home']['pitchers'] as List? ?? [])
+        .cast<Map<String, dynamic>>();
+
+    final defense = homeBatters
+        .where((b) => b['is_starter'] == true &&
+            b['batting_order'] != null && b['batting_order'] != 0)
+        .map<Map<String, dynamic>>((b) => {
+          'name': b['name'] as String? ?? '',
+          'image': b['profile_image'],
+          'position': b['position'] as String? ?? '',
+          'pos_code': '',
+        })
+        .toList();
+
+    final hasPitcher = defense.any((d) => (d['position'] as String?) == '투수');
+    if (!hasPitcher) {
+      final spList = homePitchers.where((p) => p['is_starter'] == true).toList();
+      if (spList.isNotEmpty) {
+        defense.add({
+          'name': spList.first['name'] as String? ?? '',
+          'image': spList.first['profile_image'],
+          'position': '투수',
+          'pos_code': 'P',
+        });
+      }
+    }
+
+    return Container(
+      color: isDark ? Colors.green.withOpacity(0.06) : Colors.green.withOpacity(0.04),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 210,
+            child: _FullFieldView(
+              base1: false, base2: false, base3: false,
+              fieldView: {'defense': defense, 'batter': null, 'pitcher': null, 'runners': null},
+              isDark: isDark,
+            ),
+          ),
+          const SizedBox(height: 4),
+        ],
+      ),
     );
   }
 
@@ -1452,11 +1506,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       return (r['text'] as String? ?? '').trim();
     }
 
-    String _runnerText(Map r) {
-      final optText = (r['title'] as String? ?? '').trim();
-      if (optText.isNotEmpty) return optText;
-      return (r['text'] as String? ?? '').trim();
-    }
+
 
     ({String batter, String result}) _parsePlay(String raw) {
       if (raw.contains(' : ')) {
@@ -1475,83 +1525,112 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       final halfLabel = half == 'top' ? '초' : '말';
       final halfColor = half == 'top' ? Colors.blue : Colors.red;
 
-      // Build play rows
-      final playWidgets = <Widget>[];
+      // Group events: each at-bat + its subsequent홈인 runners
+      final plays = <({Map? atbat, List<Map> scorers})>[];
+      Map? curAtBat;
+      var curScorers = <Map>[];
+
+      void flushPlay() {
+        if (curAtBat != null || curScorers.isNotEmpty) {
+          plays.add((atbat: curAtBat, scorers: List.from(curScorers)));
+        }
+        curAtBat = null;
+        curScorers = [];
+      }
+
       for (final r in halfRelays) {
         final rtype = r['type'] as int?;
-
         if (rtype == 13 || rtype == 23) {
-          // At-bat result: item title has full "batter : result" text
-          final txt = _atBatText(r as Map);
-          if (txt.isEmpty) continue;
+          if (curAtBat != null) flushPlay();
+          curAtBat = r as Map;
+        } else if (rtype == 14 || rtype == 24 || rtype == 31) {
+          final txt = (r['title'] as String? ?? r['text'] as String? ?? '').trim();
+          if (!txt.contains('홈인') && !txt.contains('득점')) continue;
+          curScorers.add(r as Map);
+        }
+      }
+      flushPlay();
 
-          final parsed = _parsePlay(txt);
-          final result = parsed.result;
-          final batter = parsed.batter.isNotEmpty
-              ? parsed.batter
-              : (r['batter_name'] as String? ?? '');
+      // Build play rows
+      final playWidgets = <Widget>[];
+      for (final play in plays) {
+        final atbat = play.atbat;
+        final scorers = play.scorers;
 
-          final isHR = result.contains('홈런');
-          final isRBI = result.contains('타점') || result.contains('적시타') ||
-              result.contains('희생플라이') || result.contains('희생비') ||
-              result.contains('밀어내기') ||
-              (result.contains('볼넷') && result.contains('만루')) ||
-              (result.contains('몸에 맞는') && result.contains('만루'));
-          if (!isHR && !isRBI) continue;
+        bool showAtBat = false;
+        String batter = '';
+        String result = '';
+        Color playColor = Colors.orange;
+        IconData playIcon = Icons.people_alt_outlined;
 
-          final playColor = isHR ? Colors.deepOrange : Colors.orange;
-          final icon = isHR ? Icons.sports_baseball : Icons.people_alt_outlined;
+        if (atbat != null) {
+          final txt = _atBatText(atbat);
+          if (txt.isNotEmpty) {
+            final parsed = _parsePlay(txt);
+            result = parsed.result;
+            batter = parsed.batter.isNotEmpty
+                ? parsed.batter
+                : (atbat['batter_name'] as String? ?? '');
+            final isHR = result.contains('홈런');
+            final isRBI = result.contains('타점') || result.contains('적시타') ||
+                result.contains('희생플라이') || result.contains('희생비') ||
+                result.contains('밀어내기') ||
+                (result.contains('볼넷') && result.contains('만루')) ||
+                (result.contains('몸에 맞는') && result.contains('만루'));
+            showAtBat = isHR || isRBI;
+            playColor = isHR ? Colors.deepOrange : Colors.orange;
+            playIcon = isHR ? Icons.sports_baseball : Icons.people_alt_outlined;
+          }
+        }
 
-          playWidgets.add(Padding(
-            padding: const EdgeInsets.only(top: 5),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(icon, size: 14, color: playColor),
-                const SizedBox(width: 5),
-                Expanded(
-                  child: RichText(
-                    text: TextSpan(
-                      style: const TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
-                      children: [
-                        if (batter.isNotEmpty) ...[
-                          TextSpan(
-                            text: batter,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const TextSpan(text: '  '),
+        if (!showAtBat && scorers.isEmpty) continue;
+
+        playWidgets.add(Padding(
+          padding: const EdgeInsets.only(top: 5),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (showAtBat) Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(playIcon, size: 14, color: playColor),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: RichText(
+                      text: TextSpan(
+                        style: const TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
+                        children: [
+                          if (batter.isNotEmpty) ...[
+                            TextSpan(text: batter, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            const TextSpan(text: '  '),
+                          ],
+                          TextSpan(text: result, style: TextStyle(color: playColor, fontWeight: FontWeight.w600)),
                         ],
-                        TextSpan(
-                          text: result,
-                          style: TextStyle(color: playColor, fontWeight: FontWeight.w600),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
+                ],
+              ),
+              for (final s in scorers)
+                Padding(
+                  padding: EdgeInsets.only(left: showAtBat ? 19.0 : 0.0, top: 2),
+                  child: Row(
+                    children: [
+                      Icon(Icons.directions_run, size: 12, color: Colors.teal[600]),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          (s['title'] as String? ?? s['text'] as String? ?? '').trim(),
+                          style: TextStyle(fontSize: 11, color: Colors.teal[700]),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-          ));
-        } else if (rtype == 14 || rtype == 24 || rtype == 31) {
-          // Runner movement / 홈인 (type 24 = score change event)
-          final txt = _runnerText(r as Map);
-          if (txt.isEmpty) continue;
-          if (!txt.contains('홈인') && !txt.contains('득점')) continue;
-          playWidgets.add(Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Row(
-              children: [
-                Icon(Icons.directions_run, size: 13, color: Colors.teal[600]),
-                const SizedBox(width: 5),
-                Expanded(
-                  child: Text(txt,
-                      style: TextStyle(fontSize: 11.5, color: Colors.teal[700]),
-                      overflow: TextOverflow.ellipsis),
-                ),
-              ],
-            ),
-          ));
-        }
+            ],
+          ),
+        ));
       }
 
       return Container(

@@ -906,7 +906,7 @@ def get_game_detail(game_id: int):
 
 
 @router.get("/date/{date_str}")
-@cached(30)
+@cached(300)
 def get_games_by_date(date_str: str):
     conn = get_connection()
     if not conn:
