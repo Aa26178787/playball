@@ -1436,15 +1436,15 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
     if (items.isEmpty) return const SizedBox.shrink();
 
-    // item title ("batter : result") lives in r['text']; opt text lives in r['title']
+    // r['title'] = opt.text = "타자 : 결과" (at-bat description)
+    // r['text']  = item.title = category label ("홈런"/"안타" etc.)
     String _atBatText(Map r) {
-      final itemTitle = (r['text'] as String? ?? '').trim();
-      if (itemTitle.isNotEmpty) return itemTitle;
-      return (r['title'] as String? ?? '').trim();
+      final optText = (r['title'] as String? ?? '').trim();
+      if (optText.isNotEmpty) return optText;
+      return (r['text'] as String? ?? '').trim();
     }
 
     String _runnerText(Map r) {
-      // runner events: opt text in r['title'] usually has the movement description
       final optText = (r['title'] as String? ?? '').trim();
       if (optText.isNotEmpty) return optText;
       return (r['text'] as String? ?? '').trim();
@@ -1484,9 +1484,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               : (r['batter_name'] as String? ?? '');
 
           final isHR = result.contains('홈런');
-          final isRBI = result.contains('타점') || result.contains('희비') ||
+          final isRBI = result.contains('타점') || result.contains('적시타') ||
+              result.contains('희생플라이') || result.contains('희생비') ||
+              result.contains('밀어내기') ||
               (result.contains('볼넷') && result.contains('만루')) ||
-              result.contains('희생플라이');
+              (result.contains('몸에 맞는') && result.contains('만루'));
           if (!isHR && !isRBI) continue;
 
           final playColor = isHR ? Colors.deepOrange : Colors.orange;
