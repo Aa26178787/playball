@@ -1658,4 +1658,3 @@ def predict_game(game_id: int, body: PredictionBody,
         "home_votes": counts.get(home_id, 0),
         "away_votes": counts.get(away_id, 0),
     }
-    }
