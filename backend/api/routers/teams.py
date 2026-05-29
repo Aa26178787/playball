@@ -592,26 +592,24 @@ def get_team_season_stats(team_id: int, season: int = 2026):
     runs_allowed = int(gr[4] or 0)
     total_games = int(gr[5] or 0)
 
-    # 팀 타격 집계 (game_batters)
+    # 팀 타격 집계 (batter_stats — doubles/triples 있음)
     cur.execute("""
         SELECT
-            SUM(gb.at_bats)    AS ab,
-            SUM(gb.hits)       AS h,
-            SUM(gb.doubles)    AS d2,
-            SUM(gb.triples)    AS d3,
-            SUM(gb.home_runs)  AS hr,
-            SUM(gb.rbis)       AS rbi,
-            SUM(gb.walks)      AS bb,
-            SUM(gb.strikeouts) AS so,
-            SUM(gb.runs)       AS runs,
-            SUM(gb.stolen_bases) AS sb
-        FROM game_batters gb
-        JOIN games g ON g.id = gb.game_id
-        WHERE ((g.home_team_id = %s AND gb.team_side = 'home')
-            OR (g.away_team_id = %s AND gb.team_side = 'away'))
-          AND g.status = '종료'
-          AND EXTRACT(YEAR FROM g.game_date) = %s
-    """, (team_id, team_id, season))
+            SUM(bs.at_bats)      AS ab,
+            SUM(bs.hits)         AS h,
+            SUM(bs.doubles)      AS d2,
+            SUM(bs.triples)      AS d3,
+            SUM(bs.home_runs)    AS hr,
+            SUM(bs.rbis)         AS rbi,
+            SUM(bs.walks)        AS bb,
+            SUM(bs.strikeouts)   AS so,
+            SUM(bs.runs)         AS runs,
+            SUM(bs.stolen_bases) AS sb
+        FROM batter_stats bs
+        JOIN players p ON p.id = bs.player_id
+        WHERE p.team_id = %s
+          AND bs.season = %s
+    """, (team_id, season))
     br = cur.fetchone()
     ab = int(br[0] or 0); h = int(br[1] or 0); d2 = int(br[2] or 0)
     d3 = int(br[3] or 0); hr = int(br[4] or 0); rbi = int(br[5] or 0)

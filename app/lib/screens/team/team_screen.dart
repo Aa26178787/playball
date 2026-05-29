@@ -342,9 +342,7 @@ class PlayerRankingsTab extends StatefulWidget {
 }
 
 class _PlayerRankingsTabState extends State<PlayerRankingsTab>
-    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   static const List<Map<String, String>> _hitterCategories = [
@@ -474,7 +472,6 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     return Column(
       children: [
         TabBar(

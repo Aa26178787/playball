@@ -163,7 +163,103 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: wins > losses ? Colors.blue : wins < losses ? Colors.red : Colors.grey)),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: _showStadiumRanking,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A237E).withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('랭킹', style: TextStyle(fontSize: 11, color: Color(0xFF1A237E), fontWeight: FontWeight.bold)),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showStadiumRanking() async {
+    final data = await ApiService.getStadiumRanking(limit: 50);
+    final ranking = data['ranking'] as List? ?? [];
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        minChildSize: 0.3,
+        builder: (_, sc) => Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 4),
+              width: 36, height: 4,
+              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.emoji_events, color: Color(0xFF1A237E), size: 18),
+                  SizedBox(width: 6),
+                  Text('직관승률 랭킹', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  SizedBox(width: 6),
+                  Text('(최소 5회)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            ranking.isEmpty
+                ? const Expanded(child: Center(child: Text('아직 랭킹 데이터가 없습니다', style: TextStyle(color: Colors.grey))))
+                : Expanded(
+                    child: ListView.builder(
+                      controller: sc,
+                      itemCount: ranking.length,
+                      itemBuilder: (_, i) {
+                        final r = ranking[i] as Map;
+                        final rank = r['rank'] as int;
+                        final winRate = ((r['win_rate'] as num) * 100).toStringAsFixed(1);
+                        final medalColor = rank == 1
+                            ? const Color(0xFFFFD700)
+                            : rank == 2
+                                ? const Color(0xFFC0C0C0)
+                                : rank == 3
+                                    ? const Color(0xFFCD7F32)
+                                    : Colors.grey[600]!;
+                        return ListTile(
+                          dense: true,
+                          leading: Container(
+                            width: 32, height: 32,
+                            decoration: BoxDecoration(
+                              color: rank <= 3 ? medalColor.withOpacity(0.15) : Colors.grey.withOpacity(0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: Text('$rank',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: rank <= 3 ? medalColor : Colors.grey[600])),
+                          ),
+                          title: Text(r['nickname'] ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                          subtitle: Text(
+                              '${r['wins']}승 ${r['losses']}패${(r['draws'] as int) > 0 ? ' ${r['draws']}무' : ''} · 총 ${r['total']}회',
+                              style: const TextStyle(fontSize: 11)),
+                          trailing: Text('$winRate%',
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: rank <= 3 ? medalColor : const Color(0xFF1A237E))),
+                        );
+                      },
+                    ),
+                  ),
+          ],
+        ),
       ),
     );
   }
