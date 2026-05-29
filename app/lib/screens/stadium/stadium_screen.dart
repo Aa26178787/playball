@@ -107,6 +107,7 @@ class _StadiumScreenState extends State<StadiumScreen> {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body, #map { width: 100%; height: 100%; }
@@ -114,42 +115,42 @@ html, body, #map { width: 100%; height: 100%; }
 </head>
 <body>
 <div id="map"></div>
-<script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=28893522eb71ed933caf1bb2e080bbf6"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-var map;
+var map = L.map('map', {zoomControl: false}).setView([36.5, 127.7], 7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors',
+  maxZoom: 19
+}).addTo(map);
+
 var stadiums = [
-  {lat:37.5121, lng:127.0719},
-  {lat:37.4982, lng:126.8672},
-  {lat:37.2997, lng:127.0095},
-  {lat:37.4370, lng:126.6934},
-  {lat:36.3169, lng:127.4289},
-  {lat:35.1685, lng:126.8890},
-  {lat:35.8411, lng:128.6813},
-  {lat:35.2225, lng:128.5816},
-  {lat:35.1940, lng:129.0613}
+  {lat:37.5121, lng:127.0719, name:'잠실야구장'},
+  {lat:37.4982, lng:126.8672, name:'고척스카이돔'},
+  {lat:37.2997, lng:127.0095, name:'KT위즈파크'},
+  {lat:37.4370, lng:126.6934, name:'SSG랜더스필드'},
+  {lat:36.3169, lng:127.4289, name:'한화생명이글스파크'},
+  {lat:35.1685, lng:126.8890, name:'광주기아챔피언스필드'},
+  {lat:35.8411, lng:128.6813, name:'삼성라이온즈파크'},
+  {lat:35.2225, lng:128.5816, name:'창원NC파크'},
+  {lat:35.1940, lng:129.0613, name:'사직야구장'}
 ];
-kakao.maps.load(function() {
-  var container = document.getElementById('map');
-  map = new kakao.maps.Map(container, {
-    center: new kakao.maps.LatLng(36.5, 127.7),
-    level: 13
-  });
-  stadiums.forEach(function(s) {
-    new kakao.maps.Marker({
-      position: new kakao.maps.LatLng(s.lat, s.lng),
-      map: map
-    });
-  });
+
+var icon = L.divIcon({
+  html: '<div style="width:12px;height:12px;background:#1A237E;border:2px solid white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>',
+  className: '',
+  iconSize: [12, 12],
+  iconAnchor: [6, 6]
 });
+
+stadiums.forEach(function(s) {
+  L.marker([s.lat, s.lng], {icon: icon}).bindTooltip(s.name, {permanent: false, direction: 'top'}).addTo(map);
+});
+
 function moveTo(lat, lng) {
-  if (!map) return;
-  map.setCenter(new kakao.maps.LatLng(lat, lng));
-  map.setLevel(4);
+  map.setView([lat, lng], 14);
 }
 function resetView() {
-  if (!map) return;
-  map.setCenter(new kakao.maps.LatLng(36.5, 127.7));
-  map.setLevel(13);
+  map.setView([36.5, 127.7], 7);
 }
 </script>
 </body>
@@ -180,7 +181,6 @@ function resetView() {
                   data: _mapHtml,
                   mimeType: 'text/html',
                   encoding: 'utf-8',
-                  baseUrl: WebUri('https://playball.duckdns.org'),
                 ),
                 initialSettings: InAppWebViewSettings(
                   javaScriptEnabled: true,
