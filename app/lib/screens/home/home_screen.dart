@@ -119,7 +119,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 
   void _scrollToMonthStart(int month) {
     final target = DateTime(2026, month, 1);
-    setState(() { _selectedDate = target; _games = []; _isLoading = true; });
+    setState(() { _selectedDate = target; _isLoading = true; });
     _loadGames();
     _loadTomorrowGames();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
@@ -270,7 +270,8 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       if (!mounted || !_isSameDay(_selectedDate, requestDate)) return;
       final games = data['games'] as List? ?? [];
       await LocalCache.set('games_$dateStr', games);
-      if (mounted) setState(() { _games = games; _isLoading = false; });
+      if (!mounted || !_isSameDay(_selectedDate, requestDate)) return;
+      setState(() { _games = games; _isLoading = false; });
     } catch (e) {
       if (!mounted || !_isSameDay(_selectedDate, requestDate)) return;
       if (mounted) setState(() => _isLoading = false);
@@ -353,7 +354,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
           return GestureDetector(
             onTap: () {
               if (!isSelected) {
-                setState(() { _selectedDate = date; _games = []; _isLoading = true; });
+                setState(() { _selectedDate = date; _isLoading = true; });
                 _loadGames();
                 _loadTomorrowGames();
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
@@ -403,7 +404,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
             right: 6,
             child: GestureDetector(
               onTap: () {
-                setState(() { _selectedDate = today; _games = []; _isLoading = true; });
+                setState(() { _selectedDate = today; _isLoading = true; });
                 _loadGames();
                 _loadTomorrowGames();
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
