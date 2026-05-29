@@ -878,72 +878,67 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     );
   }
 
-  // 승리확률 제거 - 스코어보드 아래로 이동
   Widget _buildLiveStatus() {
     final state = _relayData!['current_state'];
     if (state == null) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? Colors.green.withOpacity(0.08) : Colors.green.withOpacity(0.06);
+
+    final balls   = (state['ball']   as int? ?? 0).clamp(0, 3);
+    final strikes = (state['strike'] as int? ?? 0).clamp(0, 2);
+    final outs    = (state['out']    as int? ?? 0).clamp(0, 2);
+    final base1   = state['base1'] == true;
+    final base2   = state['base2'] == true;
+    final base3   = state['base3'] == true;
+
+    Widget bsoLight(bool on, Color c) => Container(
+      width: 11, height: 11,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: on ? c : Colors.grey[700],
+        boxShadow: on ? [BoxShadow(color: c.withOpacity(0.5), blurRadius: 4)] : null,
+      ),
+    );
+
+    Widget bsoCol(String lbl, int count, int max, Color c) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(lbl, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white70 : Colors.black54)),
+        const SizedBox(height: 5),
+        Row(mainAxisSize: MainAxisSize.min,
+            children: List.generate(max, (i) => bsoLight(i < count, c))),
+      ],
+    );
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: Colors.green.withOpacity(0.1),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: bgColor,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildCountWidget('S', state['strike'] ?? 0, 2, Colors.red),
-          _buildCountWidget('B', state['ball'] ?? 0, 3, Colors.green),
-          _buildCountWidget('O', state['out'] ?? 0, 2, Colors.orange),
-          const SizedBox(width: 16),
-          _buildBaseWidget(state),
+          // BSO
+          Row(
+            children: [
+              bsoCol('B', balls, 3, Colors.green),
+              const SizedBox(width: 14),
+              bsoCol('S', strikes, 2, Colors.red),
+              const SizedBox(width: 14),
+              bsoCol('O', outs, 2, Colors.orange),
+            ],
+          ),
+          // 필드뷰
+          SizedBox(
+            width: 80, height: 80,
+            child: CustomPaint(
+              painter: _FieldViewPainter(
+                base1: base1, base2: base2, base3: base3,
+                isDark: isDark,
+              ),
+            ),
+          ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCountWidget(String label, int count, int max, Color color) {
-    return Column(
-      children: [
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
-        const SizedBox(height: 4),
-        Row(
-          children: List.generate(
-              max,
-              (i) => Container(
-                    width: 10,
-                    height: 10,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: i < count ? color : Colors.grey[700],
-                    ),
-                  )),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBaseWidget(Map<String, dynamic> state) {
-    return SizedBox(
-      width: 50,
-      height: 50,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(top: 0, left: 17, child: _baseBox(state['base2'] == true)),
-          Positioned(right: 0, top: 17, child: _baseBox(state['base1'] == true)),
-          Positioned(left: 0, top: 17, child: _baseBox(state['base3'] == true)),
-        ],
-      ),
-    );
-  }
-
-  Widget _baseBox(bool occupied) {
-    return Container(
-      width: 14,
-      height: 14,
-      decoration: BoxDecoration(
-        color: occupied ? Colors.yellow : Colors.grey[700],
-        border: Border.all(color: Colors.grey),
-        borderRadius: BorderRadius.circular(2),
       ),
     );
   }
@@ -1228,16 +1223,29 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(batterName,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                if (pitcherName != null) ...[
-                  Text(' vs ',
-                      style: TextStyle(fontSize: 11, color: Colors.grey[400])),
-                  Text(pitcherName,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                ],
-                const Spacer(),
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(batterName,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            overflow: TextOverflow.ellipsis, maxLines: 1),
+                      ),
+                      if (pitcherName != null) ...[
+                        Text(' vs ', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                        Flexible(
+                          child: Text(pitcherName,
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              overflow: TextOverflow.ellipsis, maxLines: 1),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
                 if (result.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -1248,9 +1256,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     ),
                     child: Text(result,
                         style: TextStyle(
-                            fontSize: 11,
-                            color: resultColor,
-                            fontWeight: FontWeight.bold)),
+                            fontSize: 11, color: resultColor, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis, maxLines: 1),
                   ),
                 if (pitches.isNotEmpty) ...[
                   const SizedBox(width: 6),
@@ -3320,4 +3327,96 @@ class _GameShareSheetState extends State<_GameShareSheet> {
       ),
     );
   }
+}
+
+class _FieldViewPainter extends CustomPainter {
+  final bool base1, base2, base3, isDark;
+  const _FieldViewPainter({required this.base1, required this.base2, required this.base3, required this.isDark});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    // Diamond: center slightly above bottom
+    // home=bottom, 1st=right, 2nd=top, 3rd=left
+    final cx = w * 0.5;
+    final cy = h * 0.55;
+    final r  = w * 0.36; // radius of diamond
+
+    final home  = Offset(cx,         cy + r);
+    final first = Offset(cx + r,     cy);
+    final second= Offset(cx,         cy - r);
+    final third = Offset(cx - r,     cy);
+
+    // Outfield arc
+    final outerR = r * 1.9;
+    final arcPaint = Paint()
+      ..color = (isDark ? Colors.green[800]! : Colors.green[200]!).withOpacity(0.5)
+      ..style = PaintingStyle.fill;
+    final arcPath = Path()
+      ..moveTo(home.dx, home.dy)
+      ..arcTo(Rect.fromCircle(center: Offset(cx, cy), radius: outerR),
+              3.14 * 0.25, -3.14 * 1.5, false)
+      ..close();
+    canvas.drawPath(arcPath, arcPaint);
+
+    // Infield dirt arc
+    final inRPaint = Paint()
+      ..color = (isDark ? const Color(0xFF8B6914) : const Color(0xFFD2A679)).withOpacity(0.6)
+      ..style = PaintingStyle.fill;
+    final inPath = Path()
+      ..moveTo(home.dx, home.dy)
+      ..lineTo(first.dx, first.dy)
+      ..lineTo(second.dx, second.dy)
+      ..lineTo(third.dx, third.dy)
+      ..close();
+    canvas.drawPath(inPath, inRPaint);
+
+    // Baselines
+    final linePaint = Paint()
+      ..color = isDark ? Colors.white30 : Colors.black26
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawPath(inPath, linePaint);
+
+    // Bases
+    void drawBase(Offset pos, bool occupied) {
+      final bp = Paint()
+        ..color = occupied ? Colors.yellow[600]! : (isDark ? Colors.grey[600]! : Colors.grey[400]!)
+        ..style = PaintingStyle.fill;
+      final bs = 5.5;
+      final path = Path()
+        ..moveTo(pos.dx,      pos.dy - bs)
+        ..lineTo(pos.dx + bs, pos.dy)
+        ..lineTo(pos.dx,      pos.dy + bs)
+        ..lineTo(pos.dx - bs, pos.dy)
+        ..close();
+      canvas.drawPath(path, bp);
+      if (occupied) {
+        final glow = Paint()
+          ..color = Colors.yellow.withOpacity(0.35)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+        canvas.drawCircle(pos, 8, glow);
+      }
+    }
+
+    drawBase(first,  base1);
+    drawBase(second, base2);
+    drawBase(third,  base3);
+
+    // Home plate (pentagon)
+    final hp = Paint()..color = Colors.white60..style = PaintingStyle.fill;
+    final homePath = Path()
+      ..moveTo(home.dx,      home.dy - 4.5)
+      ..lineTo(home.dx + 4,  home.dy - 1)
+      ..lineTo(home.dx + 3,  home.dy + 3.5)
+      ..lineTo(home.dx - 3,  home.dy + 3.5)
+      ..lineTo(home.dx - 4,  home.dy - 1)
+      ..close();
+    canvas.drawPath(homePath, hp);
+  }
+
+  @override
+  bool shouldRepaint(_FieldViewPainter old) =>
+      old.base1 != base1 || old.base2 != base2 || old.base3 != base3 || old.isDark != isDark;
 }
