@@ -3045,26 +3045,8 @@ class _GameShareSheet extends StatefulWidget {
 class _GameShareSheetState extends State<_GameShareSheet> {
   final _cardKey = GlobalKey();
   bool _sharing = false;
-  Uint8List? _winPitcherBytes;
-  Uint8List? _losePitcherBytes;
 
   Map<String, dynamic> get g => widget.game;
-
-  Future<Uint8List?> _fetchLogoBytes(String? url) async {
-    if (url == null) return null;
-    try {
-      final dio = Dio();
-      final resp = await dio.get<List<int>>(
-        url,
-        options: Options(responseType: ResponseType.bytes),
-      ).timeout(const Duration(seconds: 5));
-      final bytes = resp.data;
-      if (bytes == null) return null;
-      return Uint8List.fromList(bytes);
-    } catch (_) {
-      return null;
-    }
-  }
 
   Future<void> _captureAndShare() async {
     if (_sharing) return;
@@ -3076,19 +3058,12 @@ class _GameShareSheetState extends State<_GameShareSheet> {
       final awayUrl = kTeamLogoUrls[awayCode];
       final winImgUrl = g['win_pitcher_image'] as String?;
       final loseImgUrl = g['lose_pitcher_image'] as String?;
-      // precache team logos via CachedNetworkImage so TeamLogo renders in RepaintBoundary
+      // precache all images via CachedNetworkImage so they render in RepaintBoundary
       if (homeUrl != null && mounted) await precacheImage(CachedNetworkImageProvider(homeUrl), context);
       if (awayUrl != null && mounted) await precacheImage(CachedNetworkImageProvider(awayUrl), context);
-      // pitcher images via bytes (not in CachedNetworkImage cache path)
-      final results = await Future.wait([
-        _fetchLogoBytes(winImgUrl),
-        _fetchLogoBytes(loseImgUrl),
-      ]);
-      if (mounted) setState(() {
-        _winPitcherBytes = results[0];
-        _losePitcherBytes = results[1];
-      });
-      // wait 2 frames so Image.memory finishes decoding + layout
+      if (winImgUrl != null && mounted) await precacheImage(CachedNetworkImageProvider(winImgUrl), context);
+      if (loseImgUrl != null && mounted) await precacheImage(CachedNetworkImageProvider(loseImgUrl), context);
+      // wait 2 frames so CachedNetworkImage finishes decoding + layout
       await WidgetsBinding.instance.endOfFrame;
       await WidgetsBinding.instance.endOfFrame;
       final boundary =
@@ -3309,11 +3284,11 @@ class _GameShareSheetState extends State<_GameShareSheet> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (winPitcher != null)
-                    _pitcherChip('승 $winPitcher', Colors.blue.shade300, imageBytes: _winPitcherBytes),
+                    _pitcherChip('승 $winPitcher', Colors.blue.shade300, imageUrl: g['win_pitcher_image'] as String?),
                   if (winPitcher != null && losePitcher != null)
                     const SizedBox(width: 8),
                   if (losePitcher != null)
-                    _pitcherChip('패 $losePitcher', Colors.red.shade300, imageBytes: _losePitcherBytes),
+                    _pitcherChip('패 $losePitcher', Colors.red.shade300, imageUrl: g['lose_pitcher_image'] as String?),
                 ],
               ),
           ],
@@ -3322,7 +3297,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
     );
   }
 
-  Widget _pitcherChip(String label, Color color, {Uint8List? imageBytes}) {
+  Widget _pitcherChip(String label, Color color, {String? imageUrl}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -3336,8 +3311,8 @@ class _GameShareSheetState extends State<_GameShareSheet> {
           CircleAvatar(
             radius: 10,
             backgroundColor: color.withOpacity(0.2),
-            backgroundImage: imageBytes != null ? MemoryImage(imageBytes) : null,
-            child: imageBytes == null ? Icon(Icons.person, size: 11, color: color) : null,
+            backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl) : null,
+            child: imageUrl == null ? Icon(Icons.person, size: 11, color: color) : null,
           ),
           const SizedBox(width: 5),
           Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),

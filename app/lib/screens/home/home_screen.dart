@@ -253,22 +253,26 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   }
 
   Future<void> _loadGames() async {
+    final requestDate = _selectedDate;
     final dateStr =
-        "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+        "${requestDate.year}-${requestDate.month.toString().padLeft(2, '0')}-${requestDate.day.toString().padLeft(2, '0')}";
 
     final cached = await LocalCache.get('games_$dateStr', maxAgeSeconds: 300) as List?;
-    if (cached != null && mounted) {
+    if (!mounted || !_isSameDay(_selectedDate, requestDate)) return;
+    if (cached != null) {
       setState(() { _games = cached; _isLoading = false; });
     } else {
-      if (mounted) setState(() => _isLoading = true);
+      setState(() => _isLoading = true);
     }
 
     try {
       final data = await ApiService.getGamesByDate(dateStr);
+      if (!mounted || !_isSameDay(_selectedDate, requestDate)) return;
       final games = data['games'] as List? ?? [];
       await LocalCache.set('games_$dateStr', games);
       if (mounted) setState(() { _games = games; _isLoading = false; });
     } catch (e) {
+      if (!mounted || !_isSameDay(_selectedDate, requestDate)) return;
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -1265,15 +1269,13 @@ class GameCard extends StatelessWidget {
 
               // 두 팀 정보 + 가운데 스코어/시간
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(child: teamCol(
                     game.homeTeamCode, game.homeTeam, homeRank, true, homeWon,
                     game.homeStarter, game.homeRecent5, nextHomeSeries,
                   )),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: SizedBox(
+                  SizedBox(
                       width: 76,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -1324,7 +1326,6 @@ class GameCard extends StatelessWidget {
                           ],
                         ],
                       ),
-                    ),
                   ),
                   Expanded(child: teamCol(
                     game.awayTeamCode, game.awayTeam, awayRank, false, awayWon,

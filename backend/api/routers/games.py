@@ -1280,9 +1280,11 @@ def get_pitch_locations(game_id: int):
         db_rows = cur.fetchall()
         if db_rows:
             cur.close(); conn.close()
+            import re as _re
+            def _strip_order(name): return _re.sub(r'^\d+번타자 ', '', name or '')
             all_pitches = [
                 {
-                    "inning": r[0], "inning_half": r[1], "batter": r[2],
+                    "inning": r[0], "inning_half": r[1], "batter": _strip_order(r[2]),
                     "pitcher": r[3], "x": r[4], "z": r[5],
                     "top_sz": r[6], "bot_sz": r[7], "stuff": r[8],
                     "result": r[9], "stance": r[10],
@@ -1335,7 +1337,9 @@ def get_pitch_locations(game_id: int):
         for item in reversed(text_relays):
             pts_opts = item.get("ptsOptions", [])
             txt_opts = item.get("textOptions", [])
-            batter = item.get("title", "")
+            batter_raw = item.get("title", "")
+            import re as _re2
+            batter = _re2.sub(r'^\d+번타자 ', '', batter_raw)
             inning_half = str(item.get("homeOrAway", ""))
             if not pts_opts: continue
 
