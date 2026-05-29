@@ -503,9 +503,15 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [x] 검색 최근 기록 (SharedPreferences, 최대 10개)
 - [x] GameCard 승리팀 후광 효과, 팀 순위 표시, 다음 시리즈 상대팀
 - [x] 서버 재시작 시 daily_stats 누락 자동 복구 (_recover_missed_daily_stats)
-- [x] 이미지 공유 팀 로고 수정 (Image.memory 직접 로드로 RepaintBoundary 신뢰성)
+- [x] 이미지 공유 팀 로고 + 승투/패투 얼굴 수정 (precacheImage + CachedNetworkImageProvider, Naver CDN 403 우회)
 - [x] 등록말소 배너 자정 자동 숨김 (60초 타이머 setState)
 - [x] 직관승률 랭킹 API — GET /user/stadium-ranking (5회 이상 기준)
+- [x] 홈화면 게임카드 날짜 race condition 수정 (_loadGames requestDate 체크, 이전 응답 무시)
+- [x] 게임카드 스코어 정중앙 배치 (CrossAxisAlignment.center)
+- [x] 실시간 필드뷰 (야구장 다이아몬드 CustomPainter + BSO 카운트, _buildLiveStatus 교체)
+- [x] 중계 타자별 헤더 Flexible 적용 (이름 overflow 방지)
+- [x] pitch-locations batter 타순 접두사 제거 ("N번타자 이름" → "이름", DB+실시간 양쪽)
+- [x] FCM 서비스 계정 키 복원 (서버에서 사라진 firebase-service-account.json 재업로드)
 
 ## 진행 예정 기능
 
@@ -539,8 +545,15 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 ### 장기 (설계/리소스/난이도 높음)
 - [ ] 게임카드 배경: 당일 경기 구장 사진 삽입
 - [ ] 게임카드 glow → neon sign 형태로 변경
-- [ ] 실시간 중계 필드뷰 표시 (네이버처럼, 경기 종료 후에도 유지)
+- [x] 실시간 중계 필드뷰 표시 (BSO + 야구장 다이아몬드 CustomPainter, 진행중 경기)
 - [ ] 포스트시즌 진출 확률 (매직넘버/수학적 탈락 계산)
 - [ ] 홈화면 위젯 (Android AppWidget — native kotlin 필요)
+- [ ] 카카오맵 구장 화면 재작성 (kakao_map_plugin 불안정 → WebView + 카카오 JS SDK, flutter_inappwebview)
 - [ ] 친구 신청/수락 — friend_requests 테이블, FCM 알림, 마이페이지 친구목록
 - [ ] 1:1 채팅 — WebSocket + chat_rooms/chat_messages, 친구 관계 전제
+
+## 알려진 버그 / 성능 이슈
+
+- relay_all 서버사이드 캐시 없음 — 라이브 경기 30초 새로고침마다 Naver API 전체 이닝 재조회 (병렬이지만 느림)
+- pitch_locations DB 데이터에 타순 접두사 잔존 ("N번타자 이름") — API 응답에서 매번 정규식 처리 중 (DB 마이그레이션으로 근본 해결 가능)
+- 재계약 안 한 외인 선수 팀 명단에 여전히 표시
