@@ -662,6 +662,60 @@ def delete_stadium_visit(visit_id: int, current_user: dict = Depends(get_current
     return {"ok": True}
 
 
+# ===== 직관 통계 =====
+
+@router.get('/stadium-stats')
+def get_stadium_stats(current_user: dict = Depends(get_current_user)):
+    """구장별/월별 직관 통계"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    uid = current_user['user_id']
+
+    cur.execute("""
+        SELECT s.id, s.name,
+               COUNT(*) AS total,
+               COUNT(*) FILTER (WHERE v.result='win') AS wins,
+               COUNT(*) FILTER (WHERE v.result='loss') AS losses,
+               COUNT(*) FILTER (WHERE v.result='draw') AS draws
+        FROM user_stadium_visits v
+        JOIN games g ON g.id = v.game_id
+        JOIN stadiums s ON s.id = g.stadium_id
+        WHERE v.user_id = %s
+        GROUP BY s.id, s.name
+        ORDER BY total DESC
+    """, (uid,))
+    by_stadium = [
+        {"stadium_id": r[0], "name": r[1],
+         "total": r[2], "wins": r[3], "losses": r[4], "draws": r[5],
+         "win_rate": round(r[3]/r[2], 3) if r[2] > 0 else 0.0}
+        for r in cur.fetchall()
+    ]
+
+    cur.execute("""
+        SELECT EXTRACT(YEAR FROM g.game_date)::int AS yr,
+               EXTRACT(MONTH FROM g.game_date)::int AS mo,
+               COUNT(*) AS total,
+               COUNT(*) FILTER (WHERE v.result='win') AS wins,
+               COUNT(*) FILTER (WHERE v.result='loss') AS losses,
+               COUNT(*) FILTER (WHERE v.result='draw') AS draws
+        FROM user_stadium_visits v
+        JOIN games g ON g.id = v.game_id
+        WHERE v.user_id = %s
+        GROUP BY yr, mo
+        ORDER BY yr DESC, mo DESC
+    """, (uid,))
+    by_month = [
+        {"year": r[0], "month": r[1],
+         "total": r[2], "wins": r[3], "losses": r[4], "draws": r[5]}
+        for r in cur.fetchall()
+    ]
+
+    cur.close(); conn.close()
+    return {"by_stadium": by_stadium, "by_month": by_month}
+
+
 # ===== 직관승률 랭킹 (공개) =====
 
 @router.get('/stadium-ranking')

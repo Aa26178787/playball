@@ -134,6 +134,16 @@ class ApiService {
     };
   }
 
+  static Future<Map<String, String>> optionalAuthHeaders() async {
+    try {
+      final token = await _secure.read(key: 'access_token');
+      if (token != null && token.isNotEmpty) {
+        return {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'};
+      }
+    } catch (_) {}
+    return {'Content-Type': 'application/json'};
+  }
+
   // ===== 회원 API =====
   static Future<Map<String, dynamic>> register(
       String email, String password, String nickname) async {
@@ -686,6 +696,26 @@ class ApiService {
   static Future<void> deleteStadiumVisit(int visitId) async {
     final headers = await authHeaders();
     await _dio.delete('/user/stadium-visits/$visitId', options: Options(headers: headers));
+  }
+
+  static Future<Map<String, dynamic>> getStadiumStats() async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/user/stadium-stats', options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<Map<String, dynamic>> getGamePredictions(int gameId) async {
+    final headers = await optionalAuthHeaders();
+    final res = await _dio.get('/games/$gameId/predictions', options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<Map<String, dynamic>> predictGame(int gameId, int teamId) async {
+    final headers = await authHeaders();
+    final res = await _dio.post('/games/$gameId/predict',
+        data: {'predicted_team_id': teamId},
+        options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
   }
 
   static Future<void> toggleCommentLike(int commentId) async {

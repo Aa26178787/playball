@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 from database.connection import get_connection
 from api.weather_service import get_weather, get_forecast_at
 from api.cache import cached
+from api.routers.auth import get_current_user, get_optional_user
 
 router = APIRouter()
 
@@ -1570,4 +1572,89 @@ def get_game_highlights(game_id: int):
             }
             for r in rows
         ]
+
+
+# ===== 팬 승리 예측 =====
+
+class PredictionBody(BaseModel):
+    predicted_team_id: int
+
+
+@router.get('/{game_id}/predictions')
+def get_predictions(game_id: int, current_user: dict = Depends(get_optional_user)):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT predicted_team_id, COUNT(*) FROM game_predictions
+        WHERE game_id = %s GROUP BY predicted_team_id
+    """, (game_id,))
+    counts = {r[0]: r[1] for r in cur.fetchall()}
+
+    user_vote = None
+    if current_user:
+        cur.execute(
+            "SELECT predicted_team_id FROM game_predictions WHERE game_id=%s AND user_id=%s",
+            (game_id, current_user['user_id'])
+        )
+        row = cur.fetchone()
+        if row:
+            user_vote = row[0]
+
+    cur.execute("SELECT home_team_id, away_team_id FROM games WHERE id=%s", (game_id,))
+    g = cur.fetchone()
+    cur.close(); conn.close()
+    if not g:
+        raise HTTPException(status_code=404, detail='경기 없음')
+
+    home_id, away_id = g
+    return {
+        "home_votes": counts.get(home_id, 0),
+        "away_votes": counts.get(away_id, 0),
+        "user_vote": user_vote,
+    }
+
+
+@router.post('/{game_id}/predict')
+def predict_game(game_id: int, body: PredictionBody,
+                 current_user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    # 예정/진행중만 허용
+    cur.execute("SELECT status, home_team_id, away_team_id FROM games WHERE id=%s", (game_id,))
+    g = cur.fetchone()
+    if not g:
+        cur.close(); conn.close()
+        raise HTTPException(status_code=404, detail='경기 없음')
+    status, home_id, away_id = g
+    if status == '종료':
+        cur.close(); conn.close()
+        raise HTTPException(status_code=400, detail='종료된 경기는 예측 불가')
+    if body.predicted_team_id not in (home_id, away_id):
+        cur.close(); conn.close()
+        raise HTTPException(status_code=400, detail='해당 경기 팀 아님')
+
+    cur.execute("""
+        INSERT INTO game_predictions (user_id, game_id, predicted_team_id)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (user_id, game_id) DO UPDATE SET predicted_team_id = EXCLUDED.predicted_team_id
+        RETURNING predicted_team_id
+    """, (current_user['user_id'], game_id, body.predicted_team_id))
+    voted = cur.fetchone()[0]
+    conn.commit()
+
+    cur.execute("""
+        SELECT predicted_team_id, COUNT(*) FROM game_predictions
+        WHERE game_id = %s GROUP BY predicted_team_id
+    """, (game_id,))
+    counts = {r[0]: r[1] for r in cur.fetchall()}
+    cur.close(); conn.close()
+    return {
+        "user_vote": voted,
+        "home_votes": counts.get(home_id, 0),
+        "away_votes": counts.get(away_id, 0),
+    }
     }

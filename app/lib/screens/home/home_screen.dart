@@ -1350,10 +1350,175 @@ class GameCard extends StatelessWidget {
                   )),
                 ],
               ),
+              if ((game.status == '예정' || game.status == '라인업') &&
+                  game.homeTeamId != null && game.awayTeamId != null) ...[
+                const SizedBox(height: 8),
+                _PredictionBar(
+                  gameId: game.id,
+                  homeTeamId: game.homeTeamId!,
+                  awayTeamId: game.awayTeamId!,
+                  homeCode: game.homeTeamCode,
+                  awayCode: game.awayTeamCode,
+                ),
+              ],
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+
+class _PredictionBar extends StatefulWidget {
+  final int gameId;
+  final int homeTeamId;
+  final int awayTeamId;
+  final String homeCode;
+  final String awayCode;
+
+  const _PredictionBar({
+    required this.gameId,
+    required this.homeTeamId,
+    required this.awayTeamId,
+    required this.homeCode,
+    required this.awayCode,
+  });
+
+  @override
+  State<_PredictionBar> createState() => _PredictionBarState();
+}
+
+class _PredictionBarState extends State<_PredictionBar> {
+  int _homeVotes = 0;
+  int _awayVotes = 0;
+  int? _userVote;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await ApiService.getGamePredictions(widget.gameId);
+      if (mounted) setState(() {
+        _homeVotes = data['home_votes'] as int? ?? 0;
+        _awayVotes = data['away_votes'] as int? ?? 0;
+        _userVote = data['user_vote'] as int?;
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _vote(int teamId) async {
+    try {
+      final data = await ApiService.predictGame(widget.gameId, teamId);
+      if (mounted) setState(() {
+        _homeVotes = data['home_votes'] as int? ?? 0;
+        _awayVotes = data['away_votes'] as int? ?? 0;
+        _userVote = data['user_vote'] as int?;
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그인 후 예측 가능합니다'), duration: Duration(seconds: 2)),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const SizedBox(height: 28);
+    final total = _homeVotes + _awayVotes;
+    final homePct = total > 0 ? _homeVotes / total : 0.5;
+    final awayPct = total > 0 ? _awayVotes / total : 0.5;
+    final homeColor = teamColor(widget.homeCode);
+    final awayColor = teamColor(widget.awayCode);
+
+    return Column(
+      children: [
+        const Divider(height: 1, thickness: 0.5),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            const Text('승리예측', style: TextStyle(fontSize: 10, color: Colors.grey)),
+            const Spacer(),
+            if (total > 0)
+              Text('$total명 참여', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+          ],
+        ),
+        const SizedBox(height: 5),
+        Row(
+          children: [
+            GestureDetector(
+              onTap: () => _vote(widget.homeTeamId),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _userVote == widget.homeTeamId
+                      ? homeColor.withOpacity(0.2)
+                      : Colors.grey.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(6),
+                  border: _userVote == widget.homeTeamId
+                      ? Border.all(color: homeColor, width: 1.5)
+                      : null,
+                ),
+                child: Text(
+                  '${(homePct * 100).toStringAsFixed(0)}%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _userVote == widget.homeTeamId ? homeColor : Colors.grey[600],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: SizedBox(
+                  height: 6,
+                  child: Row(children: [
+                    Expanded(flex: (homePct * 100).round().clamp(1, 99), child: Container(color: homeColor.withOpacity(0.7))),
+                    Expanded(flex: (awayPct * 100).round().clamp(1, 99), child: Container(color: awayColor.withOpacity(0.7))),
+                  ]),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: () => _vote(widget.awayTeamId),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _userVote == widget.awayTeamId
+                      ? awayColor.withOpacity(0.2)
+                      : Colors.grey.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(6),
+                  border: _userVote == widget.awayTeamId
+                      ? Border.all(color: awayColor, width: 1.5)
+                      : null,
+                ),
+                child: Text(
+                  '${(awayPct * 100).toStringAsFixed(0)}%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _userVote == widget.awayTeamId ? awayColor : Colors.grey[600],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

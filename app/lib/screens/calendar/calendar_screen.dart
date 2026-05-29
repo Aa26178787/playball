@@ -190,6 +190,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   color: wins > losses ? Colors.blue : wins < losses ? Colors.red : Colors.grey)),
           const SizedBox(width: 8),
           GestureDetector(
+            onTap: _showStadiumStats,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.teal.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('통계', style: TextStyle(fontSize: 11, color: Colors.teal, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
             onTap: _showStadiumRanking,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -201,6 +213,108 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showStadiumStats() async {
+    Map<String, dynamic>? data;
+    try {
+      data = await ApiService.getStadiumStats();
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
+    final byStadium = (data['by_stadium'] as List? ?? []).cast<Map>();
+    final byMonth = (data['by_month'] as List? ?? []).cast<Map>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.65,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        builder: (_, sc) => ListView(
+          controller: sc,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          children: [
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 12),
+                width: 36, height: 4,
+                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const Text('직관 통계', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            if (byStadium.isNotEmpty) ...[
+              const Text('구장별', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.teal)),
+              const SizedBox(height: 8),
+              ...byStadium.map((s) {
+                final total = s['total'] as int;
+                final wins = s['wins'] as int;
+                final losses = s['losses'] as int;
+                final pct = total > 0 ? (wins / total * 100).toStringAsFixed(0) : '0';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(s['name'] as String, style: const TextStyle(fontSize: 13))),
+                      Text('$wins승 $losses패', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 44,
+                        alignment: Alignment.centerRight,
+                        child: Text('$pct%',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: wins > losses ? Colors.blue : wins < losses ? Colors.red : Colors.grey,
+                            )),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              const Divider(height: 24),
+            ],
+            if (byMonth.isNotEmpty) ...[
+              const Text('월별', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.teal)),
+              const SizedBox(height: 8),
+              ...byMonth.map((m) {
+                final wins = m['wins'] as int;
+                final losses = m['losses'] as int;
+                final total = m['total'] as int;
+                final pct = total > 0 ? (wins / total * 100).toStringAsFixed(0) : '0';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Text('${m['year']}년 ${m['month']}월', style: const TextStyle(fontSize: 13)),
+                      const Spacer(),
+                      Text('$total회 ($wins승 $losses패)', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      const SizedBox(width: 8),
+                      Text('$pct%',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: wins > losses ? Colors.blue : wins < losses ? Colors.red : Colors.grey,
+                          )),
+                    ],
+                  ),
+                );
+              }),
+            ],
+            if (byStadium.isEmpty && byMonth.isEmpty)
+              const Center(child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Text('직관 기록이 없습니다', style: TextStyle(color: Colors.grey)),
+              )),
+          ],
+        ),
       ),
     );
   }
