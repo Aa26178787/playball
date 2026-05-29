@@ -1082,14 +1082,20 @@ class GameCard extends StatelessWidget {
   }
 
   Widget _buildNextSeriesWidget(Map<String, String> series) {
-    return Row(
+    return Column(
       mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.arrow_right, size: 13, color: Colors.grey),
-        TeamLogo(teamCode: series['code'] ?? '', size: 18),
-        const SizedBox(width: 2),
-        Flexible(child: Text(series['name'] ?? '', style: const TextStyle(fontSize: 10, color: Colors.blueGrey), overflow: TextOverflow.ellipsis)),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TeamLogo(teamCode: series['code'] ?? '', size: 20),
+            const SizedBox(width: 3),
+            Flexible(child: Text(series['name'] ?? '', style: const TextStyle(fontSize: 10, color: Colors.blueGrey, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+          ],
+        ),
+        const SizedBox(height: 1),
+        Text('다음 시리즈', style: TextStyle(fontSize: 9, color: Colors.grey[500])),
       ],
     );
   }
@@ -1185,7 +1191,10 @@ class GameCard extends StatelessWidget {
     final awayWon = isFinished && !isDraw && game.awayScore > game.homeScore;
     final showStarters = game.status == '예정' || game.status == '라인업' || game.status == '진행';
 
-    Widget teamCol(String code, String name, int? rank, bool isHome, bool isWinner, String? starter, List<String> recent, Map<String, String>? nextSeries) {
+    Widget teamCol(String code, String name, int? rank, bool isHome, bool isWinner,
+        String? starter, List<String> recent, Map<String, String>? nextSeries,
+        String? pitcherName, String? pitcherRole) {
+      final pitcherColor = pitcherRole == '승투' ? Colors.blue : Colors.red;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -1199,6 +1208,30 @@ class GameCard extends StatelessWidget {
           if (showStarters && starter != null) ...[
             const SizedBox(height: 5),
             _starterChip(starter),
+          ],
+          if (pitcherName != null && pitcherRole != null) ...[
+            const SizedBox(height: 5),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 10,
+                  backgroundColor: pitcherColor.withValues(alpha: 0.12),
+                  child: Icon(Icons.person, size: 12, color: pitcherColor),
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(pitcherName, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis, maxLines: 1),
+                      Text(pitcherRole, style: TextStyle(fontSize: 9, color: pitcherColor, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ],
           if (recent.isNotEmpty) ...[
             const SizedBox(height: 5),
@@ -1261,7 +1294,12 @@ class GameCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: teamCol(game.homeTeamCode, game.homeTeam, homeRank, true, homeWon, game.homeStarter, game.homeRecent5, nextHomeSeries)),
+                  Expanded(child: teamCol(
+                    game.homeTeamCode, game.homeTeam, homeRank, true, homeWon,
+                    game.homeStarter, game.homeRecent5, nextHomeSeries,
+                    homeWon ? game.winPitcher : (awayWon ? game.losePitcher : null),
+                    homeWon ? '승투' : (awayWon ? '패투' : null),
+                  )),
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: SizedBox(
@@ -1287,18 +1325,16 @@ class GameCard extends StatelessWidget {
                             const SizedBox(height: 3),
                             Text('무승부', style: TextStyle(fontSize: 10, color: Colors.grey[600]), textAlign: TextAlign.center),
                           ],
-                          if (isFinished && !isDraw && (game.winPitcher != null || game.losePitcher != null)) ...[
-                            const SizedBox(height: 3),
-                            if (game.winPitcher != null)
-                              Text('승 ${game.winPitcher}', style: const TextStyle(fontSize: 10, color: Colors.blue), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            if (game.losePitcher != null)
-                              Text('패 ${game.losePitcher}', style: const TextStyle(fontSize: 10, color: Colors.red), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-                          ],
                         ],
                       ),
                     ),
                   ),
-                  Expanded(child: teamCol(game.awayTeamCode, game.awayTeam, awayRank, false, awayWon, game.awayStarter, game.awayRecent5, nextAwaySeries)),
+                  Expanded(child: teamCol(
+                    game.awayTeamCode, game.awayTeam, awayRank, false, awayWon,
+                    game.awayStarter, game.awayRecent5, nextAwaySeries,
+                    awayWon ? game.winPitcher : (homeWon ? game.losePitcher : null),
+                    awayWon ? '승투' : (homeWon ? '패투' : null),
+                  )),
                 ],
               ),
             ],
