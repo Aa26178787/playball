@@ -766,12 +766,49 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 : game['status'],
             style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
+          // 승투/패투 (종료 시)
+          if (game['status'] == '종료' && (game['win_pitcher'] != null || game['lose_pitcher'] != null)) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (game['win_pitcher'] != null) ...[
+                  _pitcherBadge(game['win_pitcher'] as String, game['win_pitcher_image'] as String?, Colors.lightBlueAccent, '승'),
+                  if (game['lose_pitcher'] != null) const SizedBox(width: 16),
+                ],
+                if (game['lose_pitcher'] != null)
+                  _pitcherBadge(game['lose_pitcher'] as String, game['lose_pitcher_image'] as String?, Colors.redAccent, '패'),
+              ],
+            ),
+          ],
           if (_weatherData != null) ...[
             const SizedBox(height: 6),
             _buildWeatherRow(_weatherData!),
           ],
         ],
       ),
+    );
+  }
+
+  Widget _pitcherBadge(String name, String? imageUrl, Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircleAvatar(
+          radius: 14,
+          backgroundColor: color.withValues(alpha: 0.25),
+          backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl) : null,
+          child: imageUrl == null ? Icon(Icons.person, size: 14, color: color) : null,
+        ),
+        const SizedBox(width: 5),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold)),
+            Text(name, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ],
     );
   }
 
@@ -2326,11 +2363,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   if (winPitcher.isNotEmpty)
-                    _resultSummary('승', winPitcher['name'], Colors.blue),
+                    _resultSummary('승', winPitcher['name'], Colors.blue, imageUrl: winPitcher['profile_image'] as String?),
                   if (losePitcher.isNotEmpty)
-                    _resultSummary('패', losePitcher['name'], Colors.red),
+                    _resultSummary('패', losePitcher['name'], Colors.red, imageUrl: losePitcher['profile_image'] as String?),
                   if (savePitcher.isNotEmpty)
-                    _resultSummary('세이브', savePitcher['name'], Colors.green),
+                    _resultSummary('세이브', savePitcher['name'], Colors.green, imageUrl: savePitcher['profile_image'] as String?),
                 ],
               ),
             ),
@@ -2381,20 +2418,28 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     );
   }
 
-  Widget _resultSummary(String label, String name, Color color) {
+  Widget _resultSummary(String label, String name, Color color, {String? imageUrl}) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
             color: color.withOpacity(0.2),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(label,
-              style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+        ),
+        const SizedBox(height: 6),
+        CircleAvatar(
+          radius: 22,
+          backgroundColor: color.withValues(alpha: 0.1),
+          backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl) : null,
+          child: imageUrl == null ? Icon(Icons.person, size: 22, color: color) : null,
         ),
         const SizedBox(height: 4),
-        Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
       ],
     );
   }
@@ -2991,6 +3036,8 @@ class _GameShareSheetState extends State<_GameShareSheet> {
   bool _sharing = false;
   Uint8List? _homeLogoBytes;
   Uint8List? _awayLogoBytes;
+  Uint8List? _winPitcherBytes;
+  Uint8List? _losePitcherBytes;
 
   Map<String, dynamic> get g => widget.game;
 
@@ -3016,8 +3063,20 @@ class _GameShareSheetState extends State<_GameShareSheet> {
     try {
       final homeUrl = kTeamLogoUrls[g['home_team_code'] as String? ?? ''];
       final awayUrl = kTeamLogoUrls[g['away_team_code'] as String? ?? ''];
-      final results = await Future.wait([_fetchLogoBytes(homeUrl), _fetchLogoBytes(awayUrl)]);
-      if (mounted) setState(() { _homeLogoBytes = results[0]; _awayLogoBytes = results[1]; });
+      final winImgUrl = g['win_pitcher_image'] as String?;
+      final loseImgUrl = g['lose_pitcher_image'] as String?;
+      final results = await Future.wait([
+        _fetchLogoBytes(homeUrl),
+        _fetchLogoBytes(awayUrl),
+        _fetchLogoBytes(winImgUrl),
+        _fetchLogoBytes(loseImgUrl),
+      ]);
+      if (mounted) setState(() {
+        _homeLogoBytes = results[0];
+        _awayLogoBytes = results[1];
+        _winPitcherBytes = results[2];
+        _losePitcherBytes = results[3];
+      });
       // wait 2 frames so Image.memory finishes decoding + layout
       await WidgetsBinding.instance.endOfFrame;
       await WidgetsBinding.instance.endOfFrame;
@@ -3239,11 +3298,11 @@ class _GameShareSheetState extends State<_GameShareSheet> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (winPitcher != null)
-                    _pitcherChip('승 $winPitcher', Colors.blue.shade300),
+                    _pitcherChip('승 $winPitcher', Colors.blue.shade300, imageBytes: _winPitcherBytes),
                   if (winPitcher != null && losePitcher != null)
                     const SizedBox(width: 8),
                   if (losePitcher != null)
-                    _pitcherChip('패 $losePitcher', Colors.red.shade300),
+                    _pitcherChip('패 $losePitcher', Colors.red.shade300, imageBytes: _losePitcherBytes),
                 ],
               ),
           ],
@@ -3269,15 +3328,27 @@ class _GameShareSheetState extends State<_GameShareSheet> {
     );
   }
 
-  Widget _pitcherChip(String label, Color color) {
+  Widget _pitcherChip(String label, Color color, {Uint8List? imageBytes}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: color.withOpacity(0.4)),
       ),
-      child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 10,
+            backgroundColor: color.withOpacity(0.2),
+            backgroundImage: imageBytes != null ? MemoryImage(imageBytes) : null,
+            child: imageBytes == null ? Icon(Icons.person, size: 11, color: color) : null,
+          ),
+          const SizedBox(width: 5),
+          Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }

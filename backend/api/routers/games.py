@@ -826,26 +826,37 @@ def get_game_detail(game_id: int):
         except Exception:
             pass
 
+    pitcher_list_preview = [
+        {"name": r[0], "result": r[2], "profile_image": r[12]}
+        for r in pitchers
+    ]
+    win_p = next((p for p in pitcher_list_preview if p["result"] == "승"), None)
+    lose_p = next((p for p in pitcher_list_preview if p["result"] == "패"), None)
+
     return {
         "game": {
-            "id":             game[0],
-            "game_date":      str(game[1]),
-            "status":         game[2],
-            "home_score":     game[3],
-            "away_score":     game[4],
-            "current_inning": game[5],
-            "inning_half":    game[6],
-            "home_hits":      home_hits_calc,
-            "away_hits":      away_hits_calc,
-            "home_walks":     home_walks_calc,
-            "away_walks":     away_walks_calc,
-            "home_errors":    home_errors,
-            "away_errors":    away_errors,
-            "home_team":      game[11],
-            "away_team":      game[12],
-            "stadium":        game[13],
-            "home_recent_5":  home_recent_5,
-            "away_recent_5":  away_recent_5,
+            "id":                 game[0],
+            "game_date":          str(game[1]),
+            "status":             game[2],
+            "home_score":         game[3],
+            "away_score":         game[4],
+            "current_inning":     game[5],
+            "inning_half":        game[6],
+            "home_hits":          home_hits_calc,
+            "away_hits":          away_hits_calc,
+            "home_walks":         home_walks_calc,
+            "away_walks":         away_walks_calc,
+            "home_errors":        home_errors,
+            "away_errors":        away_errors,
+            "home_team":          game[11],
+            "away_team":          game[12],
+            "stadium":            game[13],
+            "home_recent_5":      home_recent_5,
+            "away_recent_5":      away_recent_5,
+            "win_pitcher":        win_p["name"] if win_p else None,
+            "lose_pitcher":       lose_p["name"] if lose_p else None,
+            "win_pitcher_image":  win_p["profile_image"] if win_p else None,
+            "lose_pitcher_image": lose_p["profile_image"] if lose_p else None,
         },
         "innings": [
             {"inning": r[0], "home_runs": r[1], "away_runs": r[2]}
@@ -918,19 +929,21 @@ def get_games_by_date(date_str: str):
                 AND gr.roster_type = 'batter'
             ) AS has_lineup,
             home_sp.name AS home_starter,
-            away_sp.name AS away_starter
+            away_sp.name AS away_starter,
+            wp.profile_image AS win_pitcher_image,
+            lp.profile_image AS lose_pitcher_image
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
         LEFT JOIN stadiums s ON g.stadium_id = s.id
         LEFT JOIN (
-            SELECT gp.game_id, p.name
+            SELECT gp.game_id, p.name, p.profile_image
             FROM game_pitchers gp
             JOIN players p ON gp.player_id = p.id
             WHERE gp.result = '승'
         ) wp ON wp.game_id = g.id
         LEFT JOIN (
-            SELECT gp.game_id, p.name
+            SELECT gp.game_id, p.name, p.profile_image
             FROM game_pitchers gp
             JOIN players p ON gp.player_id = p.id
             WHERE gp.result = '패'
@@ -966,6 +979,7 @@ def get_games_by_date(date_str: str):
         WHERE g.game_date = %s
         ORDER BY g.start_time, g.id
     """, (date_str,))
+
 
     rows = cur.fetchall()
 
@@ -1033,29 +1047,31 @@ def get_games_by_date(date_str: str):
             weather = weather_cache.get(stadium_map.get(r[0]))
 
         games.append({
-            "id":             r[0],
-            "game_date":      str(r[1]),
-            "status":         status,
-            "home_score":     r[3],
-            "away_score":     r[4],
-            "current_inning": r[5],
-            "inning_half":    r[6],
-            "start_time":     str(r[7])[:5] if r[7] else None,
-            "home_team":      r[8],
-            "home_team_code": r[9],
-            "away_team":      r[10],
-            "away_team_code": r[11],
-            "stadium":        r[12],
-            "win_pitcher":    win_pitcher,
-            "lose_pitcher":   lose_pitcher,
-            "is_draw":        r[2] == '종료' and r[3] == r[4],
-            "home_starter":   r[16],
-            "away_starter":   r[17],
-            "weather":        weather,
-            "home_team_id":   home_team_id_map.get(r[0]),
-            "away_team_id":   away_team_id_map.get(r[0]),
-            "home_recent_5":  recent5_map_date.get(home_team_id_map.get(r[0]), []),
-            "away_recent_5":  recent5_map_date.get(away_team_id_map.get(r[0]), []),
+            "id":                  r[0],
+            "game_date":           str(r[1]),
+            "status":              status,
+            "home_score":          r[3],
+            "away_score":          r[4],
+            "current_inning":      r[5],
+            "inning_half":         r[6],
+            "start_time":          str(r[7])[:5] if r[7] else None,
+            "home_team":           r[8],
+            "home_team_code":      r[9],
+            "away_team":           r[10],
+            "away_team_code":      r[11],
+            "stadium":             r[12],
+            "win_pitcher":         win_pitcher,
+            "lose_pitcher":        lose_pitcher,
+            "win_pitcher_image":   r[18],
+            "lose_pitcher_image":  r[19],
+            "is_draw":             r[2] == '종료' and r[3] == r[4],
+            "home_starter":        r[16],
+            "away_starter":        r[17],
+            "weather":             weather,
+            "home_team_id":        home_team_id_map.get(r[0]),
+            "away_team_id":        away_team_id_map.get(r[0]),
+            "home_recent_5":       recent5_map_date.get(home_team_id_map.get(r[0]), []),
+            "away_recent_5":       recent5_map_date.get(away_team_id_map.get(r[0]), []),
         })
 
     return {"games": games, "count": len(games)}

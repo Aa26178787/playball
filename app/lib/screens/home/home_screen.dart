@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shimmer/shimmer.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../models/game.dart';
 import '../../utils/local_cache.dart';
@@ -982,7 +983,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   );
 }
 
-// ===== Neon Glow Logo =====
+// ===== Neon Sign Logo =====
 
 class _NeonGlowLogo extends StatefulWidget {
   final String teamCode;
@@ -1002,11 +1003,18 @@ class _NeonGlowLogoState extends State<_NeonGlowLogo> with SingleTickerProviderS
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))
-      ..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    // Neon sign pattern: slow breathing + two quick flickers per cycle
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2800))
+      ..repeat();
+    _anim = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.82, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 28),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.22).chain(CurveTween(curve: Curves.easeIn)), weight: 4),
+      TweenSequenceItem(tween: Tween(begin: 0.22, end: 1.0).chain(CurveTween(curve: Curves.easeOut)), weight: 5),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.45).chain(CurveTween(curve: Curves.easeIn)), weight: 3),
+      TweenSequenceItem(tween: Tween(begin: 0.45, end: 1.0).chain(CurveTween(curve: Curves.easeOut)), weight: 4),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.82).chain(CurveTween(curve: Curves.easeOut)), weight: 28),
+      TweenSequenceItem(tween: Tween(begin: 0.82, end: 0.82), weight: 28),
+    ]).animate(_ctrl);
   }
 
   @override
@@ -1018,37 +1026,44 @@ class _NeonGlowLogoState extends State<_NeonGlowLogo> with SingleTickerProviderS
   @override
   Widget build(BuildContext context) {
     final c = widget.color;
+    // Derive a more saturated / brightened version of the team color for neon effect
+    final hsl = HSLColor.fromColor(c);
+    final neonColor = hsl.withSaturation((hsl.saturation * 1.25).clamp(0.0, 1.0))
+        .withLightness((hsl.lightness * 1.15).clamp(0.0, 0.72))
+        .toColor();
+
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, child) {
-        final intensity = _anim.value;
+        final v = _anim.value;
         return Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
+            // Neon sign: tight bright tube + wide colored aura + faint outer haze
             boxShadow: [
-              // inner bright core
+              // white-hot tube core (very tight)
               BoxShadow(
-                color: c.withValues(alpha: 0.9 * intensity),
-                blurRadius: 6,
-                spreadRadius: 1,
-              ),
-              // mid glow
-              BoxShadow(
-                color: c.withValues(alpha: 0.55 * intensity),
-                blurRadius: 14,
-                spreadRadius: 4,
-              ),
-              // outer diffuse
-              BoxShadow(
-                color: c.withValues(alpha: 0.25 * intensity),
-                blurRadius: 28,
-                spreadRadius: 8,
-              ),
-              // white hot center
-              BoxShadow(
-                color: Colors.white.withValues(alpha: 0.35 * intensity),
-                blurRadius: 4,
+                color: Colors.white.withValues(alpha: 0.55 * v),
+                blurRadius: 3,
                 spreadRadius: 0,
+              ),
+              // bright neon ring
+              BoxShadow(
+                color: neonColor.withValues(alpha: 0.95 * v),
+                blurRadius: 7,
+                spreadRadius: 2,
+              ),
+              // mid colored aura
+              BoxShadow(
+                color: neonColor.withValues(alpha: 0.60 * v),
+                blurRadius: 16,
+                spreadRadius: 5,
+              ),
+              // wide outer atmospheric haze
+              BoxShadow(
+                color: neonColor.withValues(alpha: 0.28 * v),
+                blurRadius: 32,
+                spreadRadius: 10,
               ),
             ],
           ),
@@ -1192,9 +1207,7 @@ class GameCard extends StatelessWidget {
     final showStarters = game.status == '예정' || game.status == '라인업' || game.status == '진행';
 
     Widget teamCol(String code, String name, int? rank, bool isHome, bool isWinner,
-        String? starter, List<String> recent, Map<String, String>? nextSeries,
-        String? pitcherName, String? pitcherRole) {
-      final pitcherColor = pitcherRole == '승투' ? Colors.blue : Colors.red;
+        String? starter, List<String> recent, Map<String, String>? nextSeries) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -1209,30 +1222,6 @@ class GameCard extends StatelessWidget {
             const SizedBox(height: 5),
             _starterChip(starter),
           ],
-          if (pitcherName != null && pitcherRole != null) ...[
-            const SizedBox(height: 5),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircleAvatar(
-                  radius: 10,
-                  backgroundColor: pitcherColor.withValues(alpha: 0.12),
-                  child: Icon(Icons.person, size: 12, color: pitcherColor),
-                ),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(pitcherName, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis, maxLines: 1),
-                      Text(pitcherRole, style: TextStyle(fontSize: 9, color: pitcherColor, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
           if (recent.isNotEmpty) ...[
             const SizedBox(height: 5),
             _buildRecentBar(recent, isHome),
@@ -1241,6 +1230,31 @@ class GameCard extends StatelessWidget {
             const SizedBox(height: 5),
             _buildNextSeriesWidget(nextSeries),
           ],
+        ],
+      );
+    }
+
+    Widget _pitcherRow(String? name, String? imageUrl, String label, Color color) {
+      if (name == null) return const SizedBox.shrink();
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 11,
+            backgroundColor: color.withValues(alpha: 0.12),
+            backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl) : null,
+            child: imageUrl == null ? Icon(Icons.person, size: 13, color: color) : null,
+          ),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis, maxLines: 1),
+                Text(label, style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
         ],
       );
     }
@@ -1297,8 +1311,6 @@ class GameCard extends StatelessWidget {
                   Expanded(child: teamCol(
                     game.homeTeamCode, game.homeTeam, homeRank, true, homeWon,
                     game.homeStarter, game.homeRecent5, nextHomeSeries,
-                    homeWon ? game.winPitcher : (awayWon ? game.losePitcher : null),
-                    homeWon ? '승투' : (awayWon ? '패투' : null),
                   )),
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
@@ -1325,6 +1337,13 @@ class GameCard extends StatelessWidget {
                             const SizedBox(height: 3),
                             Text('무승부', style: TextStyle(fontSize: 10, color: Colors.grey[600]), textAlign: TextAlign.center),
                           ],
+                          // 승투/패투 — 스코어 아래
+                          if (isFinished && !isDraw) ...[
+                            const SizedBox(height: 6),
+                            _pitcherRow(game.winPitcher, game.winPitcherImage, '승투', Colors.blue),
+                            if (game.losePitcher != null) const SizedBox(height: 4),
+                            _pitcherRow(game.losePitcher, game.losePitcherImage, '패투', Colors.red),
+                          ],
                         ],
                       ),
                     ),
@@ -1332,8 +1351,6 @@ class GameCard extends StatelessWidget {
                   Expanded(child: teamCol(
                     game.awayTeamCode, game.awayTeam, awayRank, false, awayWon,
                     game.awayStarter, game.awayRecent5, nextAwaySeries,
-                    awayWon ? game.winPitcher : (homeWon ? game.losePitcher : null),
-                    awayWon ? '승투' : (homeWon ? '패투' : null),
                   )),
                 ],
               ),

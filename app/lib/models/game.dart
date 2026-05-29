@@ -14,6 +14,8 @@ class Game {
   final String? startTime;
   final String? winPitcher;
   final String? losePitcher;
+  final String? winPitcherImage;
+  final String? losePitcherImage;
   final bool? isDraw;
   final String? homeStarter;
   final String? awayStarter;
@@ -39,6 +41,8 @@ class Game {
     this.startTime,
     this.winPitcher,
     this.losePitcher,
+    this.winPitcherImage,
+    this.losePitcherImage,
     this.isDraw,
     this.homeStarter,
     this.awayStarter,
@@ -64,9 +68,11 @@ class Game {
       awayTeamCode:  json['away_team_code'] ?? '',
       stadium:       json['stadium'],
       startTime:     json['start_time'],
-      winPitcher:    json['win_pitcher'],
-      losePitcher:   json['lose_pitcher'],
-      isDraw:        json['is_draw'] == true,
+      winPitcher:       json['win_pitcher'],
+      losePitcher:      json['lose_pitcher'],
+      winPitcherImage:  json['win_pitcher_image'],
+      losePitcherImage: json['lose_pitcher_image'],
+      isDraw:           json['is_draw'] == true,
       homeStarter:   json['home_starter'],
       awayStarter:   json['away_starter'],
       weather:       json['weather'] != null
