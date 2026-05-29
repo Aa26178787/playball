@@ -552,6 +552,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     return Scaffold(
       appBar: AppBar(
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         title: Text('${game['home_team']} vs ${game['away_team']}'),
         actions: [
           IconButton(

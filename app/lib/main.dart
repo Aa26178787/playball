@@ -85,6 +85,10 @@ class PlayBallApp extends StatelessWidget {
             ),
             useMaterial3: true,
             fontFamily: 'Pretendard',
+            appBarTheme: const AppBarTheme(
+              surfaceTintColor: Colors.transparent,
+              scrolledUnderElevation: 0,
+            ),
           ),
           darkTheme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
@@ -93,6 +97,10 @@ class PlayBallApp extends StatelessWidget {
             ),
             useMaterial3: true,
             fontFamily: 'Pretendard',
+            appBarTheme: const AppBarTheme(
+              surfaceTintColor: Colors.transparent,
+              scrolledUnderElevation: 0,
+            ),
           ),
           home: const AppEntryPoint(),
         ),

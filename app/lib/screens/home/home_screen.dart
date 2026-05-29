@@ -86,6 +86,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   List _todayRosterChanges = [];
   List _rankings = [];
   bool _isLoading = true;
+  bool _loadError = false;
   Set<int> _favoriteTeamIds = {};
   bool _myTeamOnly = false;
   Timer? _autoRefreshTimer;
@@ -281,7 +282,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       final games = data['games'] as List? ?? [];
       await LocalCache.set('games_$dateStr', games);
       if (!mounted || _loadGen != gen) return;
-      setState(() { _games = games; _isLoading = false; });
+      setState(() { _games = games; _isLoading = false; _loadError = false; });
     } catch (e) {
       if (!mounted || _loadGen != gen) return;
       if (!isRetry) {
@@ -290,7 +291,8 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
         await _loadGames(isRetry: true);
         return;
       }
-      setState(() { _isLoading = false; _games = []; });
+      // API 실패: 캐시 데이터 유지, 에러 플래그만 설정
+      setState(() { _isLoading = false; _loadError = true; });
     }
   }
 
@@ -826,26 +828,42 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
             Column(
               children: [
                 Icon(
-                  _myTeamOnly ? Icons.star_border : Icons.sports_baseball,
+                  _loadError ? Icons.wifi_off : (_myTeamOnly ? Icons.star_border : Icons.sports_baseball),
                   size: 64, color: Colors.grey[300],
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _myTeamOnly ? '마이팀 경기가 없습니다' : '경기가 없는 날입니다',
+                  _loadError
+                      ? '경기 정보를 불러오지 못했습니다'
+                      : (_myTeamOnly ? '마이팀 경기가 없습니다' : '경기가 없는 날입니다'),
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black54),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _myTeamOnly
-                      ? '마이팀 필터를 해제하면 전체 경기를 볼 수 있습니다'
-                      : isToday
-                          ? 'KBO 휴식일입니다'
-                          : isPast
-                              ? '이 날은 경기가 없었습니다'
-                              : '이 날은 경기가 예정되어 있지 않습니다',
+                  _loadError
+                      ? '네트워크 연결을 확인하고 아래로 당겨 새로고침하세요'
+                      : (_myTeamOnly
+                          ? '마이팀 필터를 해제하면 전체 경기를 볼 수 있습니다'
+                          : isToday
+                              ? 'KBO 휴식일입니다'
+                              : isPast
+                                  ? '이 날은 경기가 없었습니다'
+                                  : '이 날은 경기가 예정되어 있지 않습니다'),
                   style: TextStyle(fontSize: 13, color: Colors.grey[500]),
                 ),
-                if (_myTeamOnly) ...[
+                if (_loadError) ...[
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: () { setState(() { _loadError = false; _isLoading = true; }); _loadGames(); },
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('다시 시도'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF1A237E),
+                      side: const BorderSide(color: Color(0xFF1A237E)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                  ),
+                ] else if (_myTeamOnly) ...[
                   const SizedBox(height: 20),
                   OutlinedButton.icon(
                     onPressed: () => setState(() => _myTeamOnly = false),
@@ -1434,7 +1452,7 @@ class _PredictionBarState extends State<_PredictionBar> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const SizedBox(height: 28);
+    if (_loading) return const SizedBox(height: 20);
     final total = _homeVotes + _awayVotes;
     final homePct = total > 0 ? _homeVotes / total : 0.5;
     final awayPct = total > 0 ? _awayVotes / total : 0.5;
@@ -1442,80 +1460,50 @@ class _PredictionBarState extends State<_PredictionBar> {
     final awayColor = teamColor(widget.awayCode);
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const Divider(height: 1, thickness: 0.5),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            const Text('승리예측', style: TextStyle(fontSize: 10, color: Colors.grey)),
-            const Spacer(),
-            if (total > 0)
-              Text('$total명 참여', style: const TextStyle(fontSize: 10, color: Colors.grey)),
-          ],
-        ),
-        const SizedBox(height: 5),
+        const Divider(height: 8, thickness: 0.5),
         Row(
           children: [
             GestureDetector(
               onTap: () => _vote(widget.homeTeamId),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _userVote == widget.homeTeamId
-                      ? homeColor.withOpacity(0.2)
-                      : Colors.grey.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(6),
-                  border: _userVote == widget.homeTeamId
-                      ? Border.all(color: homeColor, width: 1.5)
-                      : null,
-                ),
-                child: Text(
-                  '${(homePct * 100).toStringAsFixed(0)}%',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: _userVote == widget.homeTeamId ? homeColor : Colors.grey[600],
-                  ),
+              child: Text(
+                '${(homePct * 100).round()}%',
+                style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.bold,
+                  color: _userVote == widget.homeTeamId ? homeColor : Colors.grey[500],
                 ),
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 5),
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(3),
                 child: SizedBox(
-                  height: 6,
+                  height: 5,
                   child: Row(children: [
-                    Expanded(flex: (homePct * 100).round().clamp(1, 99), child: Container(color: homeColor.withOpacity(0.7))),
-                    Expanded(flex: (awayPct * 100).round().clamp(1, 99), child: Container(color: awayColor.withOpacity(0.7))),
+                    Expanded(flex: (homePct * 100).round().clamp(1, 99), child: GestureDetector(onTap: () => _vote(widget.homeTeamId), child: Container(color: homeColor.withOpacity(_userVote == widget.homeTeamId ? 0.75 : 0.35)))),
+                    Expanded(flex: (awayPct * 100).round().clamp(1, 99), child: GestureDetector(onTap: () => _vote(widget.awayTeamId), child: Container(color: awayColor.withOpacity(_userVote == widget.awayTeamId ? 0.75 : 0.35)))),
                   ]),
                 ),
               ),
             ),
             const SizedBox(width: 6),
+            const SizedBox(width: 5),
             GestureDetector(
               onTap: () => _vote(widget.awayTeamId),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _userVote == widget.awayTeamId
-                      ? awayColor.withOpacity(0.2)
-                      : Colors.grey.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(6),
-                  border: _userVote == widget.awayTeamId
-                      ? Border.all(color: awayColor, width: 1.5)
-                      : null,
-                ),
-                child: Text(
-                  '${(awayPct * 100).toStringAsFixed(0)}%',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: _userVote == widget.awayTeamId ? awayColor : Colors.grey[600],
-                  ),
+              child: Text(
+                '${(awayPct * 100).round()}%',
+                style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.bold,
+                  color: _userVote == widget.awayTeamId ? awayColor : Colors.grey[500],
                 ),
               ),
             ),
+            if (total > 0) ...[
+              const SizedBox(width: 4),
+              Text('($total명)', style: TextStyle(fontSize: 9, color: Colors.grey[400])),
+            ],
           ],
         ),
       ],
