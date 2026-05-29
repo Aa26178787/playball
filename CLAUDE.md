@@ -459,12 +459,13 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - naver_crawler.py **절대 수정 금지**
 - firebase-service-account.json 서버 전용 (git push 금지)
 
-## FCM 활성화 방법 (인프라 완료 — 수동 작업 필요)
-1. Firebase 콘솔 → Android 앱 등록 (com.playball.app)
-2. `google-services.json` → `app/android/app/google-services.json`
-3. 서비스 계정 키 → 서버 `firebase-service-account.json` (이미 업로드됨)
-4. `flutterfire configure` → `firebase_options.dart` 생성
-5. Claude에게 "FCM 활성화 마무리해줘" 요청
+## FCM (활성화 완료)
+- google-services.json: app/android/app/google-services.json ✅
+- firebase_options.dart: app/lib/firebase_options.dart ✅
+- firebase-service-account.json: 서버 ~/playball/backend/ ✅ (git push 금지)
+- firebase-admin==7.4.0: 서버 pip 설치 + requirements.txt ✅
+- push_tokens / user_settings notify 컬럼: DB ✅
+- _get_app() 초기화: FCM OK: True 확인 ✅
 
 ## 구현 완료
 
@@ -535,6 +536,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [x] 중계 타자별 헤더 Flexible 적용 (이름 overflow 방지)
 - [x] pitch-locations batter 타순 접두사 제거 ("N번타자 이름" → "이름", DB+실시간 양쪽)
 - [x] FCM 서비스 계정 키 복원 (서버에서 사라진 firebase-service-account.json 재업로드)
+- [x] FCM 완전 활성화 (firebase-admin 7.4.0, push_tokens DB, _get_app() OK 확인)
 
 ## 진행 예정 기능
 
@@ -551,13 +553,13 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 ### 중기 (기능 설계 필요 / 2~3 세션)
 - [x] 게임카드 다음 시리즈: 상대팀 팀 로고 표시 + 예정 경기에도 다음 시리즈 추가
 - [x] 게임카드 정렬: 팀로고 기준 일직선 (팀로고-등수/홈어웨이-선발투수-최근5경기-다음시리즈)
-- [ ] 홈스크린/캘린더 스크롤 시 AppBar 색 변화 방지 (PLAYBALL + 아이콘 영역)
+- [x] 홈스크린/캘린더 스크롤 시 AppBar 색 변화 방지 (surfaceTintColor: transparent)
 - [x] 경기 상세 헤더: 팀명 위에 팀로고 배치
 - [x] 경기 상세 득점 요약 접기/펼치기
 - [x] 경기 상세에서 미니 게임카드로 다른 경기 상세 바로 이동 (상단 가로 스크롤 스트립)
 - [x] 투구위치 보기를 이닝별 중계 각 타자마다도 볼 수 있게 추가
 - [x] 선수탭 3열 카드 형태 (얼굴+등번호+이름 증명사진 스타일)
-- [ ] 재계약 안 한 외인 선수 팀 명단에서 삭제 (과거 경기 기록 유지)
+- [x] 재계약 안 한 외인 선수 팀 명단에서 삭제 — team_id=NULL (쿠싱/아데를린/양가온솔/베니지아노/오러클린/로젠버그)
 - [x] 캘린더 탭 마이팀 일정만 표시 (별 아이콘 토글)
 - [x] 직관 기록 UI 개선: FAB → "일정 추가" / "직관 기록" 분리
 - [x] 순위 스크린 팀 기록 탭 추가 (타격/투수 카테고리별 팀 랭킹)
@@ -566,14 +568,11 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [x] 커뮤니티 UI 인스타그램 형태 개선 (이미지 있는 글은 이미지 먼저 표시)
 
 ### 장기 (설계/리소스/난이도 높음)
-- [ ] 게임카드 배경: 당일 경기 구장 사진 삽입
-- [ ] 게임카드 glow → neon sign 형태로 변경
+- [ ] 게임카드 배경: 경기 구장별 사진 삽입
 - [x] 실시간 중계 필드뷰 표시 (BSO + 야구장 다이아몬드 CustomPainter, 진행중 경기)
 - [ ] 포스트시즌 진출 확률 (매직넘버/수학적 탈락 계산)
 - [ ] 홈화면 위젯 (Android AppWidget — native kotlin 필요)
 - [ ] 카카오맵 구장 화면 재작성 (kakao_map_plugin 불안정 → WebView + 카카오 JS SDK, flutter_inappwebview)
-- [ ] 친구 신청/수락 — friend_requests 테이블, FCM 알림, 마이페이지 친구목록
-- [ ] 1:1 채팅 — WebSocket + chat_rooms/chat_messages, 친구 관계 전제
 
 ## 알려진 버그 / 성능 이슈
 
