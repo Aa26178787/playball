@@ -137,7 +137,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Future<void> _loadData() async {
     // Phase 1: load from cache (past games only)
     final cachedDetail = await LocalCache.get(_ck('detail'), maxAgeSeconds: 86400) as Map?;
-    if (cachedDetail != null && mounted) {
+    if (cachedDetail != null && cachedDetail['game']?['home_team_code'] != null && mounted) {
       setState(() { _gameData = Map<String, dynamic>.from(cachedDetail); _isLoading = false; });
     } else {
       if (mounted) setState(() => _isLoading = true);
@@ -3043,8 +3043,6 @@ class _GameShareSheet extends StatefulWidget {
 class _GameShareSheetState extends State<_GameShareSheet> {
   final _cardKey = GlobalKey();
   bool _sharing = false;
-  Uint8List? _homeLogoBytes;
-  Uint8List? _awayLogoBytes;
   Uint8List? _winPitcherBytes;
   Uint8List? _losePitcherBytes;
 
@@ -3070,21 +3068,23 @@ class _GameShareSheetState extends State<_GameShareSheet> {
     if (_sharing) return;
     setState(() => _sharing = true);
     try {
-      final homeUrl = kTeamLogoUrls[g['home_team_code'] as String? ?? ''];
-      final awayUrl = kTeamLogoUrls[g['away_team_code'] as String? ?? ''];
+      final homeCode = g['home_team_code'] as String? ?? '';
+      final awayCode = g['away_team_code'] as String? ?? '';
+      final homeUrl = kTeamLogoUrls[homeCode];
+      final awayUrl = kTeamLogoUrls[awayCode];
       final winImgUrl = g['win_pitcher_image'] as String?;
       final loseImgUrl = g['lose_pitcher_image'] as String?;
+      // precache team logos via CachedNetworkImage so TeamLogo renders in RepaintBoundary
+      if (homeUrl != null && mounted) await precacheImage(CachedNetworkImageProvider(homeUrl), context);
+      if (awayUrl != null && mounted) await precacheImage(CachedNetworkImageProvider(awayUrl), context);
+      // pitcher images via bytes (not in CachedNetworkImage cache path)
       final results = await Future.wait([
-        _fetchLogoBytes(homeUrl),
-        _fetchLogoBytes(awayUrl),
         _fetchLogoBytes(winImgUrl),
         _fetchLogoBytes(loseImgUrl),
       ]);
       if (mounted) setState(() {
-        _homeLogoBytes = results[0];
-        _awayLogoBytes = results[1];
-        _winPitcherBytes = results[2];
-        _losePitcherBytes = results[3];
+        _winPitcherBytes = results[0];
+        _losePitcherBytes = results[1];
       });
       // wait 2 frames so Image.memory finishes decoding + layout
       await WidgetsBinding.instance.endOfFrame;
@@ -3248,7 +3248,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
               Expanded(
                 child: Column(
                   children: [
-                    _buildLogoWidget(homeCode, 48, _homeLogoBytes),
+                    TeamLogo(teamCode: homeCode, size: 48),
                     const SizedBox(height: 6),
                     Text(homeTeam,
                         style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
@@ -3272,7 +3272,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
               Expanded(
                 child: Column(
                   children: [
-                    _buildLogoWidget(awayCode, 48, _awayLogoBytes),
+                    TeamLogo(teamCode: awayCode, size: 48),
                     const SizedBox(height: 6),
                     Text(awayTeam,
                         style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
@@ -3317,23 +3317,6 @@ class _GameShareSheetState extends State<_GameShareSheet> {
           ],
         ],
       ),
-    );
-  }
-
-  Widget _buildLogoWidget(String code, double size, Uint8List? bytes) {
-    if (bytes != null) {
-      return ClipOval(
-        child: Image.memory(bytes, width: size, height: size, fit: BoxFit.cover),
-      );
-    }
-    final color = teamColor(code);
-    final abbr = teamDisplayName(code);
-    return Container(
-      width: size, height: size,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-      alignment: Alignment.center,
-      child: Text(abbr,
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: size * 0.28)),
     );
   }
 

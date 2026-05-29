@@ -983,9 +983,9 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   );
 }
 
-// ===== Neon Sign Logo (정적 stroke + glow) =====
+// ===== Winner Glow Logo =====
 
-class _NeonGlowLogo extends StatelessWidget {
+class _NeonGlowLogo extends StatefulWidget {
   final String teamCode;
   final Color color;
   final double size;
@@ -993,47 +993,50 @@ class _NeonGlowLogo extends StatelessWidget {
   const _NeonGlowLogo({required this.teamCode, required this.color, required this.size, required this.logo});
 
   @override
-  Widget build(BuildContext context) {
-    final hsl = HSLColor.fromColor(color);
-    // 채도 높이고 밝기 조금 올린 neon 색상
-    final neonColor = hsl
-        .withSaturation((hsl.saturation * 1.3).clamp(0.0, 1.0))
-        .withLightness((hsl.lightness * 1.1).clamp(0.0, 0.75))
-        .toColor();
+  State<_NeonGlowLogo> createState() => _NeonGlowLogoState();
+}
 
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        // stroke 효과: 팀 컬러 border + layered glow
-        border: Border.all(color: neonColor.withValues(alpha: 0.9), width: 2.2),
-        boxShadow: [
-          // 내부 white-hot 반짝임
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.45),
-            blurRadius: 3,
-            spreadRadius: 0,
+class _NeonGlowLogoState extends State<_NeonGlowLogo> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))
+      ..repeat(reverse: true);
+    _anim = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.color;
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, child) {
+        final v = _anim.value;
+        return Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(color: c.withValues(alpha: 0.9 * v), blurRadius: 6, spreadRadius: 1),
+              BoxShadow(color: c.withValues(alpha: 0.55 * v), blurRadius: 14, spreadRadius: 4),
+              BoxShadow(color: c.withValues(alpha: 0.25 * v), blurRadius: 28, spreadRadius: 8),
+              BoxShadow(color: Colors.white.withValues(alpha: 0.35 * v), blurRadius: 4, spreadRadius: 0),
+            ],
           ),
-          // 팀 색 tight glow (네온 튜브)
-          BoxShadow(
-            color: neonColor.withValues(alpha: 0.85),
-            blurRadius: 8,
-            spreadRadius: 2,
-          ),
-          // 중간 aura
-          BoxShadow(
-            color: neonColor.withValues(alpha: 0.45),
-            blurRadius: 18,
-            spreadRadius: 6,
-          ),
-          // 넓은 대기 haze
-          BoxShadow(
-            color: neonColor.withValues(alpha: 0.20),
-            blurRadius: 32,
-            spreadRadius: 10,
-          ),
-        ],
-      ),
-      child: logo,
+          child: child,
+        );
+      },
+      child: widget.logo,
     );
   }
 }
@@ -1197,27 +1200,20 @@ class GameCard extends StatelessWidget {
       );
     }
 
-    Widget _pitcherRow(String? name, String? imageUrl, String label, Color color) {
+    Widget _pitcherWidget(String? name, String? imageUrl, String label, Color color) {
       if (name == null) return const SizedBox.shrink();
-      return Row(
+      return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           CircleAvatar(
-            radius: 11,
+            radius: 16,
             backgroundColor: color.withValues(alpha: 0.12),
             backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl) : null,
-            child: imageUrl == null ? Icon(Icons.person, size: 13, color: color) : null,
+            child: imageUrl == null ? Icon(Icons.person, size: 16, color: color) : null,
           ),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis, maxLines: 1),
-                Text(label, style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
+          const SizedBox(height: 3),
+          Text(name, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis, maxLines: 1),
+          Text(label, style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.bold)),
         ],
       );
     }
@@ -1307,21 +1303,22 @@ class GameCard extends StatelessWidget {
                             const SizedBox(height: 6),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Flexible(child: _pitcherRow(
+                                _pitcherWidget(
                                   homeWon ? game.winPitcher : game.losePitcher,
                                   homeWon ? game.winPitcherImage : game.losePitcherImage,
                                   homeWon ? '승투' : '패투',
                                   homeWon ? Colors.blue : Colors.red,
-                                )),
+                                ),
                                 if (game.winPitcher != null && game.losePitcher != null)
-                                  const SizedBox(width: 6),
-                                Flexible(child: _pitcherRow(
+                                  const SizedBox(width: 10),
+                                _pitcherWidget(
                                   awayWon ? game.winPitcher : game.losePitcher,
                                   awayWon ? game.winPitcherImage : game.losePitcherImage,
                                   awayWon ? '승투' : '패투',
                                   awayWon ? Colors.blue : Colors.red,
-                                )),
+                                ),
                               ],
                             ),
                           ],
