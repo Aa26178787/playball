@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
@@ -35,6 +36,13 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
 
+  // 인기투표
+  List _popularPlayers = [];
+  List _popularTeams = [];
+  bool _popularLoading = false;
+  bool _popularShowTeam = false;
+  bool _isLoggedIn = false;
+
   static const List<Map<String, String>> _hitterSorts = [
     {'value': 'avg',          'label': '타율'},
     {'value': 'home_runs',    'label': '홈런'},
@@ -58,10 +66,16 @@ class _PlayerScreenState extends State<PlayerScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.index == 2 && _popularPlayers.isEmpty && !_popularLoading) {
+        _loadPopularity();
+      }
+    });
     _loadTeams();
     _loadHitters();
     _loadPitchers();
+    _checkLogin();
   }
 
   @override
@@ -69,6 +83,84 @@ class _PlayerScreenState extends State<PlayerScreen>
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) setState(() => _isLoggedIn = prefs.getString('access_token') != null);
+  }
+
+  Future<void> _loadPopularity() async {
+    if (mounted) setState(() => _popularLoading = true);
+    try {
+      final r1 = await ApiService.getPlayerPopularity(limit: 30);
+      final r2 = await ApiService.getTeamPopularity();
+      if (mounted) setState(() {
+        _popularPlayers = r1['players'] ?? [];
+        _popularTeams = r2['teams'] ?? [];
+        _popularLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _popularLoading = false);
+    }
+  }
+
+  Future<void> _votePlayer(int playerId) async {
+    if (!_isLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그인 후 투표할 수 있습니다')));
+      return;
+    }
+    try {
+      final res = await ApiService.votePlayer(playerId);
+      final voted = res['voted'] as bool? ?? false;
+      final count = res['vote_count'] as int? ?? 0;
+      if (mounted) setState(() {
+        final idx = _popularPlayers.indexWhere((p) => (p as Map)['id'] == playerId);
+        if (idx >= 0) {
+          final updated = Map<String, dynamic>.from(_popularPlayers[idx] as Map);
+          updated['voted'] = voted;
+          updated['vote_count'] = count;
+          _popularPlayers[idx] = updated;
+          _popularPlayers.sort((a, b) =>
+              ((b as Map)['vote_count'] as int? ?? 0)
+                  .compareTo((a as Map)['vote_count'] as int? ?? 0));
+        } else if (voted) {
+          _loadPopularity();
+        }
+      });
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('투표 중 오류가 발생했습니다')));
+    }
+  }
+
+  Future<void> _voteTeam(int teamId) async {
+    if (!_isLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그인 후 투표할 수 있습니다')));
+      return;
+    }
+    try {
+      final res = await ApiService.voteTeam(teamId);
+      final voted = res['voted'] as bool? ?? false;
+      final count = res['vote_count'] as int? ?? 0;
+      if (mounted) setState(() {
+        final idx = _popularTeams.indexWhere((t) => (t as Map)['id'] == teamId);
+        if (idx >= 0) {
+          final updated = Map<String, dynamic>.from(_popularTeams[idx] as Map);
+          updated['voted'] = voted;
+          updated['vote_count'] = count;
+          _popularTeams[idx] = updated;
+          _popularTeams.sort((a, b) =>
+              ((b as Map)['vote_count'] as int? ?? 0)
+                  .compareTo((a as Map)['vote_count'] as int? ?? 0));
+        }
+      });
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('투표 중 오류가 발생했습니다')));
+    }
   }
 
   Future<void> _loadTeams() async {
@@ -459,6 +551,211 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
+  Widget _buildPopularityTab() {
+    if (_popularLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final items = _popularShowTeam ? _popularTeams : _popularPlayers;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _popularShowTeam = false),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: !_popularShowTeam ? const Color(0xFF1A237E) : Colors.grey.withValues(alpha: 0.12),
+                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(10)),
+                    ),
+                    child: Text('선수',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: !_popularShowTeam ? Colors.white : Colors.grey[600])),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _popularShowTeam = true),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _popularShowTeam ? const Color(0xFF1A237E) : Colors.grey.withValues(alpha: 0.12),
+                      borderRadius: const BorderRadius.horizontal(right: Radius.circular(10)),
+                    ),
+                    child: Text('구단',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: _popularShowTeam ? Colors.white : Colors.grey[600])),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (!_isLoggedIn)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, size: 13, color: Colors.grey[500]),
+                const SizedBox(width: 4),
+                Text('로그인하면 하트를 눌러 투표할 수 있어요',
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+              ],
+            ),
+          ),
+        if (items.isEmpty && !_popularLoading)
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.favorite_border, size: 48, color: Colors.grey[300]),
+                const SizedBox(height: 12),
+                Text('아직 투표 기록이 없어요\n첫 번째로 투표해보세요!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey[500])),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: _loadPopularity,
+                  child: const Text('새로고침'),
+                ),
+              ],
+            ),
+          )
+        else
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadPopularity,
+              child: ListView.separated(
+                padding: const EdgeInsets.only(bottom: 24),
+                itemCount: items.length,
+                separatorBuilder: (_, __) =>
+                    Divider(height: 1, indent: 64, endIndent: 16, color: Colors.grey.withValues(alpha: 0.15)),
+                itemBuilder: (_, i) {
+                  final item = items[i] as Map;
+                  final voted = item['voted'] as bool? ?? false;
+                  final count = item['vote_count'] as int? ?? 0;
+                  if (_popularShowTeam) {
+                    final code = item['short_name'] as String? ?? '';
+                    final logoUrl = item['logo_url'] as String?;
+                    return ListTile(
+                      leading: SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: teamColor(code).withValues(alpha: 0.1),
+                              child: TeamLogo(teamCode: code, size: 32, logoUrl: logoUrl),
+                            ),
+                            if (i < 3)
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: i == 0 ? const Color(0xFFFFD700) : i == 1 ? const Color(0xFFC0C0C0) : const Color(0xFFCD7F32),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(child: Text('${i + 1}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white))),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      title: Text(item['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      trailing: GestureDetector(
+                        onTap: () => _voteTeam(item['id'] as int),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              voted ? Icons.favorite : Icons.favorite_border,
+                              color: voted ? Colors.red : (isDark ? Colors.grey[400] : Colors.grey[500]),
+                              size: 22,
+                            ),
+                            Text('$count',
+                                style: TextStyle(fontSize: 11, color: Colors.grey[600],
+                                    fontWeight: voted ? FontWeight.bold : FontWeight.normal)),
+                          ],
+                        ),
+                      ),
+                    );
+                  } else {
+                    final code = item['team_code'] as String? ?? '';
+                    final img = item['profile_image'] as String?;
+                    return ListTile(
+                      leading: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundColor: teamColor(code).withValues(alpha: 0.15),
+                            backgroundImage: (img != null && img.isNotEmpty)
+                                ? CachedNetworkImageProvider(img)
+                                : null,
+                            child: (img == null || img.isEmpty)
+                                ? Text(teamDisplayName(code).characters.take(2).string,
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: teamColor(code)))
+                                : null,
+                          ),
+                          if (i < 3)
+                            Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: i == 0 ? const Color(0xFFFFD700) : i == 1 ? const Color(0xFFC0C0C0) : const Color(0xFFCD7F32),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(child: Text('${i + 1}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white))),
+                            ),
+                        ],
+                      ),
+                      title: Text(item['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('${item['team_name'] ?? ''}  ${item['position'] ?? ''}',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                      trailing: GestureDetector(
+                        onTap: () => _votePlayer(item['id'] as int),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              voted ? Icons.favorite : Icons.favorite_border,
+                              color: voted ? Colors.red : (isDark ? Colors.grey[400] : Colors.grey[500]),
+                              size: 22,
+                            ),
+                            Text('$count',
+                                style: TextStyle(fontSize: 11, color: Colors.grey[600],
+                                    fontWeight: voted ? FontWeight.bold : FontWeight.normal)),
+                          ],
+                        ),
+                      ),
+                      onTap: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: item['id'] as int))),
+                    );
+                  }
+                },
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -476,7 +773,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             ? null
             : TabBar(
                 controller: _tabController,
-                tabs: const [Tab(text: '타자'), Tab(text: '투수')],
+                tabs: const [Tab(text: '타자'), Tab(text: '투수'), Tab(text: '인기투표')],
               ),
       ),
       body: Column(
@@ -546,6 +843,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                       Expanded(child: _buildPitcherList()),
                     ],
                   ),
+                  _buildPopularityTab(),
                 ],
               ),
             ),

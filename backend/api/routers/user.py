@@ -660,3 +660,47 @@ def delete_stadium_visit(visit_id: int, current_user: dict = Depends(get_current
     if not deleted:
         raise HTTPException(status_code=404, detail="기록 없음")
     return {"ok": True}
+
+
+# ===== 직관승률 랭킹 (공개) =====
+
+@router.get('/stadium-ranking')
+def get_stadium_ranking(limit: int = 30):
+    """직관 5회 이상 유저 승률 랭킹 (공개)"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT u.nickname,
+               COUNT(*) AS total,
+               COUNT(*) FILTER (WHERE v.result='win') AS wins,
+               COUNT(*) FILTER (WHERE v.result='loss') AS losses,
+               COUNT(*) FILTER (WHERE v.result='draw') AS draws
+        FROM user_stadium_visits v
+        JOIN users u ON u.id = v.user_id
+        GROUP BY u.id, u.nickname
+        HAVING COUNT(*) >= 5
+        ORDER BY
+            (COUNT(*) FILTER (WHERE v.result='win'))::float /
+            NULLIF(COUNT(*) FILTER (WHERE v.result IN ('win','loss')), 0) DESC NULLS LAST,
+            COUNT(*) DESC
+        LIMIT %s
+    """, (limit,))
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+    result = []
+    for i, r in enumerate(rows):
+        total = r[1]; wins = r[2]; losses = r[3]; draws = r[4]
+        denom = wins + losses
+        win_rate = round(wins / denom, 3) if denom > 0 else 0.0
+        result.append({
+            "rank": i + 1,
+            "nickname": r[0],
+            "total": total,
+            "wins": wins,
+            "losses": losses,
+            "draws": draws,
+            "win_rate": win_rate,
+        })
+    return {"ranking": result}

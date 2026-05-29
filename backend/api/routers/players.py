@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from database.connection import get_connection
 from typing import Optional
 from api.cache import cached
+from api.routers.auth import get_current_user
 
 router = APIRouter()
 
@@ -449,6 +450,45 @@ def get_player_pitch_stats(player_id: int, season: int = 2026):
     }
 
 
+# ===== 인기투표 =====
+
+@router.get("/popularity")
+def get_player_popularity(limit: int = 20, current_user: dict | None = Depends(get_current_user)):
+    """선수 인기투표 랭킹"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    uid = current_user['user_id'] if current_user else None
+    cur.execute("""
+        SELECT p.id, p.name, p.player_type, p.position, p.profile_image,
+               t.name AS team_name, t.short_name AS team_code,
+               COUNT(v.id) AS vote_count,
+               %s IS NOT NULL AND EXISTS(
+                   SELECT 1 FROM player_popularity_votes
+                   WHERE user_id=%s AND player_id=p.id
+               ) AS voted
+        FROM players p
+        JOIN teams t ON t.id = p.team_id
+        LEFT JOIN player_popularity_votes v ON v.player_id = p.id
+        WHERE p.is_active = TRUE
+        GROUP BY p.id, t.name, t.short_name
+        HAVING COUNT(v.id) > 0
+        ORDER BY vote_count DESC, p.name
+        LIMIT %s
+    """, (uid, uid, limit))
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+    return {
+        "players": [
+            {"id": r[0], "name": r[1], "player_type": r[2], "position": r[3],
+             "profile_image": r[4], "team_name": r[5], "team_code": r[6],
+             "vote_count": r[7], "voted": r[8]}
+            for r in rows
+        ]
+    }
+
+
 @router.get("/matchup")
 def get_matchup_stats(batter_id: int, pitcher_id: int):
     """타자 vs 투수 상대전적 (반대팀으로 같은 경기 출전 시 타자 성적 합산)"""
@@ -630,3 +670,26 @@ def get_player_detail(player_id: int):
     cur.close()
     conn.close()
     return result
+
+
+@router.post("/{player_id}/vote")
+def vote_player(player_id: int, current_user: dict = Depends(get_current_user)):
+    """선수 인기투표 토글 (하트)"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    uid = current_user['user_id']
+    cur.execute("SELECT id FROM player_popularity_votes WHERE user_id=%s AND player_id=%s", (uid, player_id))
+    existing = cur.fetchone()
+    if existing:
+        cur.execute("DELETE FROM player_popularity_votes WHERE user_id=%s AND player_id=%s", (uid, player_id))
+        voted = False
+    else:
+        cur.execute("INSERT INTO player_popularity_votes (user_id, player_id) VALUES (%s, %s)", (uid, player_id))
+        voted = True
+    conn.commit()
+    cur.execute("SELECT COUNT(*) FROM player_popularity_votes WHERE player_id=%s", (player_id,))
+    count = cur.fetchone()[0]
+    cur.close(); conn.close()
+    return {"voted": voted, "vote_count": count}

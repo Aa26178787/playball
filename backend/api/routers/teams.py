@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from database.connection import get_connection
+from api.routers.auth import get_current_user
 from api.cache import cached
 
 router = APIRouter()
@@ -703,3 +704,59 @@ def get_today_roster_changes():
             for r in rows
         ]
     }
+
+
+# ===== 팀 인기투표 =====
+
+@router.get("/popularity")
+def get_team_popularity(current_user: dict | None = Depends(get_current_user)):
+    """팀 인기투표 랭킹"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    uid = current_user['user_id'] if current_user else None
+    cur.execute("""
+        SELECT t.id, t.name, t.short_name, t.logo_url,
+               COUNT(v.id) AS vote_count,
+               %s IS NOT NULL AND EXISTS(
+                   SELECT 1 FROM team_popularity_votes
+                   WHERE user_id=%s AND team_id=t.id
+               ) AS voted
+        FROM teams t
+        LEFT JOIN team_popularity_votes v ON v.team_id = t.id
+        GROUP BY t.id
+        ORDER BY vote_count DESC, t.name
+    """, (uid, uid))
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+    return {
+        "teams": [
+            {"id": r[0], "name": r[1], "short_name": r[2], "logo_url": r[3],
+             "vote_count": r[4], "voted": r[5]}
+            for r in rows
+        ]
+    }
+
+
+@router.post("/{team_id}/vote")
+def vote_team(team_id: int, current_user: dict = Depends(get_current_user)):
+    """팀 인기투표 토글 (하트)"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    uid = current_user['user_id']
+    cur.execute("SELECT id FROM team_popularity_votes WHERE user_id=%s AND team_id=%s", (uid, team_id))
+    existing = cur.fetchone()
+    if existing:
+        cur.execute("DELETE FROM team_popularity_votes WHERE user_id=%s AND team_id=%s", (uid, team_id))
+        voted = False
+    else:
+        cur.execute("INSERT INTO team_popularity_votes (user_id, team_id) VALUES (%s, %s)", (uid, team_id))
+        voted = True
+    conn.commit()
+    cur.execute("SELECT COUNT(*) FROM team_popularity_votes WHERE team_id=%s", (team_id,))
+    count = cur.fetchone()[0]
+    cur.close(); conn.close()
+    return {"voted": voted, "vote_count": count}

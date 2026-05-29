@@ -717,6 +717,41 @@ class ApiService {
     return Map<String, dynamic>.from(res.data);
   }
 
+  // ===== 인기투표 =====
+  static Future<Map<String, dynamic>> getPlayerPopularity({int limit = 20}) async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/players/popularity',
+        queryParameters: {'limit': limit},
+        options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<Map<String, dynamic>> votePlayer(int playerId) async {
+    final headers = await authHeaders();
+    final res = await _dio.post('/players/$playerId/vote',
+        options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<Map<String, dynamic>> getTeamPopularity() async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/teams/popularity',
+        options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<Map<String, dynamic>> voteTeam(int teamId) async {
+    final headers = await authHeaders();
+    final res = await _dio.post('/teams/$teamId/vote',
+        options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<Map<String, dynamic>> getStadiumRanking({int limit = 30}) async {
+    final res = await _dio.get('/user/stadium-ranking', queryParameters: {'limit': limit});
+    return Map<String, dynamic>.from(res.data);
+  }
+
   static Future<String> uploadProfileImage(String filePath) async {
     final headers = await authHeaders();
     final formData = FormData.fromMap({
