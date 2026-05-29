@@ -22,7 +22,8 @@ class ApiService {
       onError: (err, handler) async {
         final isNetworkError = err.type == DioExceptionType.connectionTimeout ||
             err.type == DioExceptionType.receiveTimeout ||
-            err.type == DioExceptionType.connectionError;
+            err.type == DioExceptionType.connectionError ||
+            err.type == DioExceptionType.unknown;
         final is5xx = (err.response?.statusCode ?? 0) >= 500;
         if ((isNetworkError || is5xx) && err.requestOptions.extra['_retried'] != true) {
           err.requestOptions.extra['_retried'] = true;

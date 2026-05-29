@@ -260,7 +260,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     } catch (_) {}
   }
 
-  Future<void> _loadGames() async {
+  Future<void> _loadGames({bool _isRetry = false}) async {
     final gen = ++_loadGen;
     final dateStr = _selectedDateStr;
 
@@ -281,6 +281,12 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       setState(() { _games = games; _isLoading = false; });
     } catch (e) {
       if (!mounted || _loadGen != gen) return;
+      if (!_isRetry) {
+        await Future.delayed(const Duration(seconds: 2));
+        if (!mounted || _loadGen != gen) return;
+        await _loadGames(_isRetry: true);
+        return;
+      }
       setState(() { _isLoading = false; _games = []; });
     }
   }
