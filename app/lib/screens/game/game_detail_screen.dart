@@ -1436,15 +1436,20 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
     if (items.isEmpty) return const SizedBox.shrink();
 
-    // Helper: best description text from relay entry
-    String _relayText(Map r) {
-      final t = (r['title'] as String? ?? '').trim();
-      final x = (r['text'] as String? ?? '').trim();
-      if (t.isNotEmpty) return t;
-      return x;
+    // item title ("batter : result") lives in r['text']; opt text lives in r['title']
+    String _atBatText(Map r) {
+      final itemTitle = (r['text'] as String? ?? '').trim();
+      if (itemTitle.isNotEmpty) return itemTitle;
+      return (r['title'] as String? ?? '').trim();
     }
 
-    // Parse "배터 : 결과" or just return as-is
+    String _runnerText(Map r) {
+      // runner events: opt text in r['title'] usually has the movement description
+      final optText = (r['title'] as String? ?? '').trim();
+      if (optText.isNotEmpty) return optText;
+      return (r['text'] as String? ?? '').trim();
+    }
+
     ({String batter, String result}) _parsePlay(String raw) {
       if (raw.contains(' : ')) {
         final idx = raw.indexOf(' : ');
@@ -1466,11 +1471,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       final playWidgets = <Widget>[];
       for (final r in halfRelays) {
         final rtype = r['type'] as int?;
-        final txt = _relayText(r as Map);
-        if (txt.isEmpty) continue;
 
         if (rtype == 13 || rtype == 23) {
-          // At-bat result
+          // At-bat result: item title has full "batter : result" text
+          final txt = _atBatText(r as Map);
+          if (txt.isEmpty) continue;
+
           final parsed = _parsePlay(txt);
           final result = parsed.result;
           final batter = parsed.batter.isNotEmpty
@@ -1479,7 +1485,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
           final isHR = result.contains('홈런');
           final isRBI = result.contains('타점') || result.contains('희비') ||
-              (result.contains('볼넷') && result.contains('만루'));
+              (result.contains('볼넷') && result.contains('만루')) ||
+              result.contains('희생플라이');
           if (!isHR && !isRBI) continue;
 
           final playColor = isHR ? Colors.deepOrange : Colors.orange;
@@ -1517,6 +1524,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           ));
         } else if (rtype == 14 || rtype == 31) {
           // Runner movement / 홈인
+          final txt = _runnerText(r as Map);
+          if (txt.isEmpty) continue;
           if (!txt.contains('홈인') && !txt.contains('득점') && !txt.contains('홈')) continue;
           playWidgets.add(Padding(
             padding: const EdgeInsets.only(top: 4),

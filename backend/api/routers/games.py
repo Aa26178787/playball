@@ -704,7 +704,9 @@ def get_game_detail(game_id: int):
             s.name AS stadium,
             g.naver_game_id,
             g.home_team_id,
-            g.away_team_id
+            g.away_team_id,
+            ht.short_name AS home_team_code,
+            at.short_name AS away_team_code
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
@@ -851,6 +853,8 @@ def get_game_detail(game_id: int):
             "home_team":          game[11],
             "away_team":          game[12],
             "stadium":            game[13],
+            "home_team_code":     game[17],
+            "away_team_code":     game[18],
             "home_recent_5":      home_recent_5,
             "away_recent_5":      away_recent_5,
             "win_pitcher":        win_p["name"] if win_p else None,

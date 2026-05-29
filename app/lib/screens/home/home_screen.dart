@@ -983,9 +983,9 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   );
 }
 
-// ===== Neon Sign Logo =====
+// ===== Neon Sign Logo (정적 stroke + glow) =====
 
-class _NeonGlowLogo extends StatefulWidget {
+class _NeonGlowLogo extends StatelessWidget {
   final String teamCode;
   final Color color;
   final double size;
@@ -993,84 +993,47 @@ class _NeonGlowLogo extends StatefulWidget {
   const _NeonGlowLogo({required this.teamCode, required this.color, required this.size, required this.logo});
 
   @override
-  State<_NeonGlowLogo> createState() => _NeonGlowLogoState();
-}
-
-class _NeonGlowLogoState extends State<_NeonGlowLogo> with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    // Neon sign pattern: slow breathing + two quick flickers per cycle
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2800))
-      ..repeat();
-    _anim = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.82, end: 1.0).chain(CurveTween(curve: Curves.easeIn)), weight: 28),
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.22).chain(CurveTween(curve: Curves.easeIn)), weight: 4),
-      TweenSequenceItem(tween: Tween(begin: 0.22, end: 1.0).chain(CurveTween(curve: Curves.easeOut)), weight: 5),
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.45).chain(CurveTween(curve: Curves.easeIn)), weight: 3),
-      TweenSequenceItem(tween: Tween(begin: 0.45, end: 1.0).chain(CurveTween(curve: Curves.easeOut)), weight: 4),
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.82).chain(CurveTween(curve: Curves.easeOut)), weight: 28),
-      TweenSequenceItem(tween: Tween(begin: 0.82, end: 0.82), weight: 28),
-    ]).animate(_ctrl);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final c = widget.color;
-    // Derive a more saturated / brightened version of the team color for neon effect
-    final hsl = HSLColor.fromColor(c);
-    final neonColor = hsl.withSaturation((hsl.saturation * 1.25).clamp(0.0, 1.0))
-        .withLightness((hsl.lightness * 1.15).clamp(0.0, 0.72))
+    final hsl = HSLColor.fromColor(color);
+    // 채도 높이고 밝기 조금 올린 neon 색상
+    final neonColor = hsl
+        .withSaturation((hsl.saturation * 1.3).clamp(0.0, 1.0))
+        .withLightness((hsl.lightness * 1.1).clamp(0.0, 0.75))
         .toColor();
 
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, child) {
-        final v = _anim.value;
-        return Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            // Neon sign: tight bright tube + wide colored aura + faint outer haze
-            boxShadow: [
-              // white-hot tube core (very tight)
-              BoxShadow(
-                color: Colors.white.withValues(alpha: 0.55 * v),
-                blurRadius: 3,
-                spreadRadius: 0,
-              ),
-              // bright neon ring
-              BoxShadow(
-                color: neonColor.withValues(alpha: 0.95 * v),
-                blurRadius: 7,
-                spreadRadius: 2,
-              ),
-              // mid colored aura
-              BoxShadow(
-                color: neonColor.withValues(alpha: 0.60 * v),
-                blurRadius: 16,
-                spreadRadius: 5,
-              ),
-              // wide outer atmospheric haze
-              BoxShadow(
-                color: neonColor.withValues(alpha: 0.28 * v),
-                blurRadius: 32,
-                spreadRadius: 10,
-              ),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        // stroke 효과: 팀 컬러 border + layered glow
+        border: Border.all(color: neonColor.withValues(alpha: 0.9), width: 2.2),
+        boxShadow: [
+          // 내부 white-hot 반짝임
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.45),
+            blurRadius: 3,
+            spreadRadius: 0,
           ),
-          child: child,
-        );
-      },
-      child: widget.logo,
+          // 팀 색 tight glow (네온 튜브)
+          BoxShadow(
+            color: neonColor.withValues(alpha: 0.85),
+            blurRadius: 8,
+            spreadRadius: 2,
+          ),
+          // 중간 aura
+          BoxShadow(
+            color: neonColor.withValues(alpha: 0.45),
+            blurRadius: 18,
+            spreadRadius: 6,
+          ),
+          // 넓은 대기 haze
+          BoxShadow(
+            color: neonColor.withValues(alpha: 0.20),
+            blurRadius: 32,
+            spreadRadius: 10,
+          ),
+        ],
+      ),
+      child: logo,
     );
   }
 }
@@ -1337,12 +1300,30 @@ class GameCard extends StatelessWidget {
                             const SizedBox(height: 3),
                             Text('무승부', style: TextStyle(fontSize: 10, color: Colors.grey[600]), textAlign: TextAlign.center),
                           ],
-                          // 승투/패투 — 스코어 아래
-                          if (isFinished && !isDraw) ...[
+                          // 승투/패투 — 스코어 아래 수평 배열
+                          // 홈승: 승투(홈팀)=왼쪽, 패투=오른쪽
+                          // 원정승: 패투(홈팀)=왼쪽, 승투=오른쪽
+                          if (isFinished && !isDraw && (game.winPitcher != null || game.losePitcher != null)) ...[
                             const SizedBox(height: 6),
-                            _pitcherRow(game.winPitcher, game.winPitcherImage, '승투', Colors.blue),
-                            if (game.losePitcher != null) const SizedBox(height: 4),
-                            _pitcherRow(game.losePitcher, game.losePitcherImage, '패투', Colors.red),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Flexible(child: _pitcherRow(
+                                  homeWon ? game.winPitcher : game.losePitcher,
+                                  homeWon ? game.winPitcherImage : game.losePitcherImage,
+                                  homeWon ? '승투' : '패투',
+                                  homeWon ? Colors.blue : Colors.red,
+                                )),
+                                if (game.winPitcher != null && game.losePitcher != null)
+                                  const SizedBox(width: 6),
+                                Flexible(child: _pitcherRow(
+                                  awayWon ? game.winPitcher : game.losePitcher,
+                                  awayWon ? game.winPitcherImage : game.losePitcherImage,
+                                  awayWon ? '승투' : '패투',
+                                  awayWon ? Colors.blue : Colors.red,
+                                )),
+                              ],
+                            ),
                           ],
                         ],
                       ),
