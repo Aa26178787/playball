@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from database.connection import get_connection
 from typing import Optional
 from api.cache import cached
-from api.routers.auth import get_current_user
+from api.routers.auth import get_current_user, get_optional_user
 
 router = APIRouter()
 
@@ -453,7 +453,7 @@ def get_player_pitch_stats(player_id: int, season: int = 2026):
 # ===== 인기투표 =====
 
 @router.get("/popularity")
-def get_player_popularity(limit: int = 20, current_user: dict | None = Depends(get_current_user)):
+def get_player_popularity(limit: int = 20, current_user: dict | None = Depends(get_optional_user)):
     """선수 인기투표 랭킹"""
     conn = get_connection()
     if not conn:

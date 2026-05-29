@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from database.connection import get_connection
-from api.routers.auth import get_current_user
+from api.routers.auth import get_current_user, get_optional_user
 from api.cache import cached
 
 router = APIRouter()
@@ -709,7 +709,7 @@ def get_today_roster_changes():
 # ===== 팀 인기투표 =====
 
 @router.get("/popularity")
-def get_team_popularity(current_user: dict | None = Depends(get_current_user)):
+def get_team_popularity(current_user: dict | None = Depends(get_optional_user)):
     """팀 인기투표 랭킹"""
     conn = get_connection()
     if not conn:

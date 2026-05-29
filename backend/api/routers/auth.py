@@ -97,6 +97,22 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="토큰이 유효하지 않습니다")
 
 
+_optional_oauth2 = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
+
+def get_optional_user(token: str | None = Depends(_optional_oauth2)) -> dict | None:
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload.get("sub"))
+        email = payload.get("email")
+        if not user_id:
+            return None
+        return {"user_id": user_id, "email": email}
+    except Exception:
+        return None
+
+
 @router.get("/check-email")
 def check_email(email: str):
     """이메일 중복확인"""
