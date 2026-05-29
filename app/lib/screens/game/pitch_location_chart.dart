@@ -5,11 +5,17 @@ import '../../api/api_service.dart';
 class PitchLocationSheet extends StatefulWidget {
   final int gameId;
   final String gameStatus;
+  final String? initialPitcher;
+  final String? initialBatter;
+  final int? initialInning;
 
   const PitchLocationSheet({
     super.key,
     required this.gameId,
     this.gameStatus = '종료',
+    this.initialPitcher,
+    this.initialBatter,
+    this.initialInning,
   });
 
   @override
@@ -55,6 +61,9 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialPitcher != null) _selectedPitcher = widget.initialPitcher;
+    if (widget.initialBatter != null) _selectedBatter = widget.initialBatter;
+    if (widget.initialInning != null) _selectedInning = widget.initialInning;
     _load();
     if (widget.gameStatus == '진행') {
       _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) => _load(silent: true));

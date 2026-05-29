@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import '../mypage/my_page_screen.dart';
@@ -373,76 +374,120 @@ class _PostCard extends StatelessWidget {
   final VoidCallback onRefresh;
   const _PostCard({required this.post, required this.onRefresh});
 
+  Widget _tagChip(String text, {Color? color}) {
+    return Container(
+      margin: const EdgeInsets.only(right: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: (color ?? Colors.grey).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(text,
+          style: TextStyle(fontSize: 10, color: color ?? Colors.grey[600], fontWeight: FontWeight.w600)),
+    );
+  }
+
+  Widget _engagementBar() {
+    return Row(
+      children: [
+        Text(post['author'] ?? '',
+            style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        const Spacer(),
+        const Icon(Icons.favorite_border, size: 13, color: Colors.grey),
+        const SizedBox(width: 2),
+        Text('${post['likes'] ?? 0}',
+            style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        const SizedBox(width: 8),
+        const Icon(Icons.chat_bubble_outline, size: 13, color: Colors.grey),
+        const SizedBox(width: 2),
+        Text('${post['comment_count'] ?? 0}',
+            style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        const SizedBox(width: 8),
+        const Icon(Icons.remove_red_eye_outlined, size: 13, color: Colors.grey),
+        const SizedBox(width: 2),
+        Text('${post['views'] ?? 0}',
+            style: const TextStyle(fontSize: 11, color: Colors.grey)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final imageUrl = post['image_url'] as String?;
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
         onTap: () async {
           await Navigator.push(context,
               MaterialPageRoute(builder: (_) => PostDetailScreen(postId: post['id'])));
           onRefresh();
         },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: hasImage
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (post['team_name'] != null)
-                    Container(
-                      margin: const EdgeInsets.only(right: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1A237E).withAlpha(20),
-                        borderRadius: BorderRadius.circular(4),
+                  // 이미지 먼저
+                  AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => Container(
+                        color: Colors.grey[100],
+                        child: const Icon(Icons.broken_image, color: Colors.grey),
                       ),
-                      child: Text(post['team_name'],
-                          style: const TextStyle(fontSize: 10, color: Color(0xFF1A237E))),
                     ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(4),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          if (post['team_name'] != null)
+                            _tagChip(post['team_name'], color: const Color(0xFF1A237E)),
+                          _tagChip(post['category'] ?? ''),
+                        ]),
+                        const SizedBox(height: 6),
+                        Text(post['title'] ?? '',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            maxLines: 2, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 8),
+                        _engagementBar(),
+                      ],
                     ),
-                    child: Text(post['category'] ?? '',
-                        style: const TextStyle(fontSize: 10, color: Colors.grey)),
                   ),
                 ],
+              )
+            : Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      if (post['team_name'] != null)
+                        _tagChip(post['team_name'], color: const Color(0xFF1A237E)),
+                      _tagChip(post['category'] ?? ''),
+                    ]),
+                    const SizedBox(height: 6),
+                    Text(post['title'] ?? '',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                    if (post['content'] != null && (post['content'] as String).isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(post['content'] ?? '',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          maxLines: 2, overflow: TextOverflow.ellipsis),
+                    ],
+                    const SizedBox(height: 8),
+                    _engagementBar(),
+                  ],
+                ),
               ),
-              const SizedBox(height: 6),
-              Text(post['title'] ?? '',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  maxLines: 2, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Text(post['author'] ?? '',
-                      style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  const Spacer(),
-                  const Icon(Icons.favorite_border, size: 13, color: Colors.grey),
-                  const SizedBox(width: 2),
-                  Text('${post['likes'] ?? 0}',
-                      style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.chat_bubble_outline, size: 13, color: Colors.grey),
-                  const SizedBox(width: 2),
-                  Text('${post['comment_count'] ?? 0}',
-                      style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.remove_red_eye_outlined, size: 13, color: Colors.grey),
-                  const SizedBox(width: 2),
-                  Text('${post['views'] ?? 0}',
-                      style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                ],
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

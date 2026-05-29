@@ -25,7 +25,7 @@ class _TeamScreenState extends State<TeamScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadTeams();
     _loadFavoriteTeams();
   }
@@ -83,6 +83,7 @@ class _TeamScreenState extends State<TeamScreen>
           tabs: const [
             Tab(text: '팀 순위'),
             Tab(text: '부문별 순위'),
+            Tab(text: '팀 기록'),
           ],
         ),
       ),
@@ -91,6 +92,7 @@ class _TeamScreenState extends State<TeamScreen>
         children: [
           _buildTeamRankings(),
           const PlayerRankingsTab(),
+          const TeamStatsTab(),
         ],
       ),
     );
@@ -342,6 +344,312 @@ class _TeamScreenState extends State<TeamScreen>
   }
 }
 
+
+// ===== 팀 기록 탭 =====
+
+class TeamStatsTab extends StatefulWidget {
+  const TeamStatsTab({super.key});
+
+  @override
+  State<TeamStatsTab> createState() => _TeamStatsTabState();
+}
+
+class _TeamStatsTabState extends State<TeamStatsTab>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  List<Map<String, dynamic>> _teams = [];
+  bool _loading = true;
+
+  static const _battingCategories = [
+    {'value': 'avg',           'label': '타율',    'isLow': false},
+    {'value': 'home_runs',     'label': '홈런',    'isLow': false},
+    {'value': 'rbis',          'label': '타점',    'isLow': false},
+    {'value': 'hits',          'label': '안타',    'isLow': false},
+    {'value': 'runs',          'label': '득점',    'isLow': false},
+    {'value': 'stolen_bases',  'label': '도루',    'isLow': false},
+    {'value': 'ops',           'label': 'OPS',     'isLow': false},
+    {'value': 'strikeouts',    'label': '삼진',    'isLow': true},
+    {'value': 'walks',         'label': '볼넷',    'isLow': false},
+  ];
+
+  static const _pitchingCategories = [
+    {'value': 'era',            'label': '방어율',   'isLow': true},
+    {'value': 'whip',           'label': 'WHIP',    'isLow': true},
+    {'value': 'strikeouts',     'label': '탈삼진',  'isLow': false},
+    {'value': 'wins',           'label': '승리',    'isLow': false},
+    {'value': 'saves',          'label': '세이브',  'isLow': false},
+    {'value': 'holds',          'label': '홀드',    'isLow': false},
+    {'value': 'innings_pitched','label': '이닝',    'isLow': false},
+    {'value': 'losses',         'label': '패배',    'isLow': true},
+  ];
+
+  String _battingSort = 'avg';
+  String _pitchingSort = 'era';
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final data = await ApiService.getTeamAllStats();
+      if (!mounted) return;
+      setState(() {
+        _teams = List<Map<String, dynamic>>.from(data['teams'] ?? []);
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _fmtBatting(Map batting, String sort) {
+    final v = batting[sort];
+    if (v == null) return '-';
+    if (sort == 'avg' || sort == 'ops') return (v as num).toStringAsFixed(3);
+    return '$v';
+  }
+
+  String _fmtPitching(Map pitching, String sort) {
+    final v = pitching[sort];
+    if (v == null) return '-';
+    if (sort == 'era' || sort == 'whip') return (v as num).toStringAsFixed(2);
+    if (sort == 'innings_pitched') return (v as num).toStringAsFixed(1);
+    return '$v';
+  }
+
+  List<Map<String, dynamic>> _sortedTeams(String field, bool isBatting, bool isLow) {
+    final sorted = List<Map<String, dynamic>>.from(_teams);
+    sorted.sort((a, b) {
+      final av = ((isBatting ? a['batting'] : a['pitching']) ?? {})[field] ?? 0;
+      final bv = ((isBatting ? b['batting'] : b['pitching']) ?? {})[field] ?? 0;
+      final cmp = (av as num).compareTo(bv as num);
+      return isLow ? cmp : -cmp;
+    });
+    return sorted;
+  }
+
+  Widget _buildCategoryChips(List<Map<String, dynamic>> cats, String selected, Function(String) onSelect) {
+    return SizedBox(
+      height: 40,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+        itemCount: cats.length,
+        itemBuilder: (_, i) {
+          final cat = cats[i];
+          final sel = selected == cat['value'];
+          return GestureDetector(
+            onTap: () => onSelect(cat['value'] as String),
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: sel ? const Color(0xFF1A237E) : Colors.grey.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                cat['label'] as String,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: sel ? Colors.white : null,
+                  fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTeamStatList(List<Map<String, dynamic>> cats, String selected, bool isBatting) {
+    final catMap = cats.firstWhere((c) => c['value'] == selected);
+    final isLow = catMap['isLow'] as bool;
+    final label = catMap['label'] as String;
+    final sorted = _sortedTeams(selected, isBatting, isLow);
+    final best = sorted.first;
+    final bestVal = ((isBatting ? best['batting'] : best['pitching']) ?? {})[selected];
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+      itemCount: sorted.length,
+      itemBuilder: (_, i) {
+        final t = sorted[i];
+        final stats = (isBatting ? t['batting'] : t['pitching']) as Map? ?? {};
+        final rawVal = stats[selected];
+        final displayVal = isBatting
+            ? _fmtBatting(stats, selected)
+            : _fmtPitching(stats, selected);
+        final isBest = i == 0;
+        final code = t['short_name'] as String? ?? '';
+        final color = teamColor(code);
+
+        // 바 너비 비율
+        double barFraction = 0;
+        if (rawVal != null && bestVal != null && (bestVal as num) != 0) {
+          final ratio = (rawVal as num) / bestVal;
+          barFraction = isLow ? (bestVal / (rawVal as num)) : ratio.toDouble();
+          barFraction = barFraction.clamp(0.05, 1.0);
+        }
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isBest
+                ? const Color(0xFF1A237E).withOpacity(0.06)
+                : Colors.grey.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(10),
+            border: isBest
+                ? Border.all(color: const Color(0xFF1A237E).withOpacity(0.2))
+                : null,
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 24,
+                child: Text(
+                  '${i + 1}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: isBest ? const Color(0xFF1A237E) : Colors.grey[600],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              TeamLogo(teamCode: code, size: 30, logoUrl: t['logo_url']),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      t['name'] as String? ?? '',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: isBest ? const Color(0xFF1A237E) : null,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    LayoutBuilder(builder: (_, box) {
+                      return Stack(
+                        children: [
+                          Container(
+                            height: 5,
+                            width: box.maxWidth,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          Container(
+                            height: 5,
+                            width: box.maxWidth * barFraction,
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    displayVal,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: isBest ? const Color(0xFF1A237E) : null,
+                    ),
+                  ),
+                  Text(label, style: TextStyle(fontSize: 9, color: Colors.grey[500])),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return Column(
+      children: [
+        TabBar(
+          controller: _tabController,
+          labelColor: const Color(0xFF1A237E),
+          indicatorColor: const Color(0xFF1A237E),
+          tabs: const [Tab(text: '타격'), Tab(text: '투수')],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              Column(children: [
+                _buildCategoryChips(
+                  List<Map<String, dynamic>>.from(_battingCategories),
+                  _battingSort,
+                  (v) => setState(() => _battingSort = v),
+                ),
+                const SizedBox(height: 4),
+                Expanded(child: RefreshIndicator(
+                  onRefresh: _load,
+                  child: _buildTeamStatList(
+                    List<Map<String, dynamic>>.from(_battingCategories),
+                    _battingSort,
+                    true,
+                  ),
+                )),
+              ]),
+              Column(children: [
+                _buildCategoryChips(
+                  List<Map<String, dynamic>>.from(_pitchingCategories),
+                  _pitchingSort,
+                  (v) => setState(() => _pitchingSort = v),
+                ),
+                const SizedBox(height: 4),
+                Expanded(child: RefreshIndicator(
+                  onRefresh: _load,
+                  child: _buildTeamStatList(
+                    List<Map<String, dynamic>>.from(_pitchingCategories),
+                    _pitchingSort,
+                    false,
+                  ),
+                )),
+              ]),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ===== 부문별 선수 순위 탭 =====
 
 class PlayerRankingsTab extends StatefulWidget {
   const PlayerRankingsTab({super.key});

@@ -22,6 +22,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   bool _useEng = false;
   bool _isFav = false;
   bool _favLoading = false;
+  String _hitterTrendStat = 'avg';
+  String _pitcherTrendStat = 'era';
 
   @override
   void initState() {
@@ -456,11 +458,30 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     );
   }
 
-  /// 시즌 트렌드 그래프 카드 (타자: 누적 타율, 투수: ERA)
+  static const _hitterTrendOptions = [
+    {'value': 'avg',        'label': '타율',   'decimals': 3},
+    {'value': 'hits',       'label': '안타',   'decimals': 0},
+    {'value': 'home_runs',  'label': '홈런',   'decimals': 0},
+    {'value': 'rbi',        'label': '타점',   'decimals': 0},
+    {'value': 'walks',      'label': '볼넷',   'decimals': 0},
+  ];
+  static const _pitcherTrendOptions = [
+    {'value': 'era',  'label': 'ERA',    'decimals': 2},
+    {'value': 'ip',   'label': '이닝',   'decimals': 1},
+    {'value': 'so',   'label': '탈삼진', 'decimals': 0},
+    {'value': 'bb',   'label': '볼넷',   'decimals': 0},
+    {'value': 'er',   'label': '자책',   'decimals': 0},
+  ];
+
+  /// 시즌 트렌드 그래프 카드 (스탯 선택 가능)
   Widget _buildTrendCard(Map<String, dynamic> player) {
     final isHitter = player['player_type'] == '타자';
+    final trendStat = isHitter ? _hitterTrendStat : _pitcherTrendStat;
+    final options = isHitter ? _hitterTrendOptions : _pitcherTrendOptions;
+    final optionMap = options.firstWhere((o) => o['value'] == trendStat, orElse: () => options.first);
+    final statLabel = optionMap['label'] as String;
+    final decimals = optionMap['decimals'] as int;
 
-    // 최근 20게임만 사용, stat_type으로 필터
     final filtered = _dailyStats
         .where((d) {
           if (isHitter) {
@@ -474,48 +495,46 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         })
         .toList();
 
-    final recent = filtered.length > 20
-        ? filtered.sublist(filtered.length - 20)
-        : filtered;
-
+    final recent = filtered.length > 20 ? filtered.sublist(filtered.length - 20) : filtered;
     if (recent.isEmpty) return const SizedBox.shrink();
 
-    // 데이터 포인트 생성
-    final spots = <FlSpot>[];
-    final labels = <String>[];
-    for (int i = 0; i < recent.length; i++) {
-      final d = recent[i];
-      double? val;
-      if (isHitter) {
-        val = (d['avg'] as num?)?.toDouble();
-      } else {
+    double? _getValue(Map d) {
+      if (trendStat == 'avg') return (d['avg'] as num?)?.toDouble();
+      if (trendStat == 'era') {
         final ip = (d['ip'] as num?)?.toDouble() ?? 0;
         final er = (d['er'] as num?)?.toDouble() ?? 0;
         final realIp = _ipToDecimal(ip);
-        val = realIp > 0 ? er * 9 / realIp : null;
+        return realIp > 0 ? er * 9 / realIp : null;
       }
-      if (val != null) {
-        spots.add(FlSpot(i.toDouble(), val));
-        final dateStr = d['game_date'] as String? ?? '';
-        if (dateStr.length >= 10) {
-          labels.add('${dateStr.substring(5, 7)}/${dateStr.substring(8, 10)}');
-        } else {
-          labels.add('');
-        }
-      }
+      if (trendStat == 'ip') return (d['ip'] as num?)?.toDouble();
+      return (d[trendStat] as num?)?.toDouble();
     }
 
+    final spots = <FlSpot>[];
+    final labels = <String>[];
+    for (int i = 0; i < recent.length; i++) {
+      final val = _getValue(recent[i] as Map);
+      if (val != null) {
+        spots.add(FlSpot(i.toDouble(), val));
+        final dateStr = (recent[i] as Map)['game_date'] as String? ?? '';
+        labels.add(dateStr.length >= 10 ? '${dateStr.substring(5, 7)}/${dateStr.substring(8, 10)}' : '');
+      }
+    }
     if (spots.isEmpty) return const SizedBox.shrink();
 
     final values = spots.map((s) => s.y).toList();
     final minVal = values.reduce((a, b) => a < b ? a : b);
     final maxVal = values.reduce((a, b) => a > b ? a : b);
-    final padding = isHitter ? 0.05 : 1.0;
+    final isLowStat = trendStat == 'era';
+    final padding = decimals == 3 ? 0.05 : (decimals == 2 ? 0.5 : 1.0);
     final yMin = (minVal - padding).clamp(0.0, double.infinity);
-    final yMax = isHitter ? (maxVal + padding).clamp(0.0, 1.0) : maxVal + padding;
+    final yMax = decimals == 3
+        ? (maxVal + padding).clamp(0.0, 1.0)
+        : maxVal + padding;
 
-    final chartColor = isHitter ? const Color(0xFF1A237E) : const Color(0xFFB71C1C);
-    final chartLabel = isHitter ? '타율 (AVG)' : 'ERA';
+    final chartColor = isLowStat
+        ? const Color(0xFFB71C1C)
+        : isHitter ? const Color(0xFF1A237E) : const Color(0xFF1565C0);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
@@ -525,16 +544,46 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  _sectionLabel('시즌 트렌드'),
-                  const Spacer(),
-                  Text(chartLabel, style: TextStyle(fontSize: 11, color: chartColor, fontWeight: FontWeight.w600)),
-                ],
-              ),
-              const SizedBox(height: 12),
+              _sectionLabel('시즌 트렌드'),
+              const SizedBox(height: 8),
+              // 스탯 선택 칩
               SizedBox(
-                height: 160,
+                height: 32,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: options.map((opt) {
+                    final sel = trendStat == opt['value'];
+                    return GestureDetector(
+                      onTap: () => setState(() {
+                        if (isHitter) {
+                          _hitterTrendStat = opt['value'] as String;
+                        } else {
+                          _pitcherTrendStat = opt['value'] as String;
+                        }
+                      }),
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: sel ? chartColor : Colors.grey.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          opt['label'] as String,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: sel ? Colors.white : null,
+                            fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 150,
                 child: LineChart(
                   LineChartData(
                     minY: yMin,
@@ -543,15 +592,15 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       show: true,
                       drawVerticalLine: false,
                       getDrawingHorizontalLine: (value) => FlLine(
-                        color: Colors.grey.withOpacity(0.2),
+                        color: Colors.grey.withValues(alpha: 0.2),
                         strokeWidth: 1,
                       ),
                     ),
                     borderData: FlBorderData(
                       show: true,
                       border: Border(
-                        bottom: BorderSide(color: Colors.grey.withOpacity(0.4), width: 1),
-                        left: BorderSide(color: Colors.grey.withOpacity(0.4), width: 1),
+                        bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.4), width: 1),
+                        left: BorderSide(color: Colors.grey.withValues(alpha: 0.4), width: 1),
                       ),
                     ),
                     titlesData: FlTitlesData(
@@ -560,11 +609,13 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       leftTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
-                          reservedSize: 38,
-                          getTitlesWidget: (value, meta) {
-                            final text = isHitter
+                          reservedSize: 36,
+                          getTitlesWidget: (value, _) {
+                            final text = decimals == 3
                                 ? value.toStringAsFixed(3)
-                                : value.toStringAsFixed(2);
+                                : decimals == 2
+                                    ? value.toStringAsFixed(2)
+                                    : value.toInt().toString();
                             return Text(text, style: TextStyle(fontSize: 9, color: Colors.grey[600]));
                           },
                         ),
@@ -574,15 +625,12 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                           showTitles: true,
                           reservedSize: 22,
                           interval: recent.length <= 5 ? 1 : (recent.length / 4).ceilToDouble(),
-                          getTitlesWidget: (value, meta) {
+                          getTitlesWidget: (value, _) {
                             final idx = value.toInt();
                             if (idx < 0 || idx >= labels.length) return const SizedBox.shrink();
                             return Padding(
                               padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                labels[idx],
-                                style: TextStyle(fontSize: 9, color: Colors.grey[600]),
-                              ),
+                              child: Text(labels[idx], style: TextStyle(fontSize: 9, color: Colors.grey[600])),
                             );
                           },
                         ),
@@ -608,7 +656,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                         ),
                         belowBarData: BarAreaData(
                           show: true,
-                          color: chartColor.withOpacity(0.08),
+                          color: chartColor.withValues(alpha: 0.08),
                         ),
                       ),
                     ],
@@ -619,12 +667,14 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                         getTooltipItems: (touchedSpots) {
                           return touchedSpots.map((spot) {
                             final idx = spot.x.toInt();
-                            final label = idx < labels.length ? labels[idx] : '';
-                            final valText = isHitter
+                            final lbl = idx < labels.length ? labels[idx] : '';
+                            final valText = decimals == 3
                                 ? spot.y.toStringAsFixed(3)
-                                : spot.y.toStringAsFixed(2);
+                                : decimals == 2
+                                    ? spot.y.toStringAsFixed(2)
+                                    : spot.y.toInt().toString();
                             return LineTooltipItem(
-                              '$label\n$valText',
+                              '$lbl  $statLabel $valText',
                               const TextStyle(color: Colors.white, fontSize: 11),
                             );
                           }).toList();

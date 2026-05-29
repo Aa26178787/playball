@@ -321,6 +321,11 @@ class ApiService {
     return res.data;
   }
 
+  static Future<Map<String, dynamic>> getTeamAllStats({int season = 2026}) async {
+    final res = await _dio.get('/teams/all-stats', queryParameters: {'season': season});
+    return res.data;
+  }
+
   static Future<Map<String, dynamic>> getTeamPlayers(int teamId) async {
     final res = await _dio.get('/teams/$teamId/players');
     return res.data;
