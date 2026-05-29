@@ -445,6 +445,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: const Text(
           'PlayBall',
           style: TextStyle(

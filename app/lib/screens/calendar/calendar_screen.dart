@@ -345,6 +345,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: const Text('캘린더', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
         actions: [
           if (_favoriteTeamIds.isNotEmpty)
