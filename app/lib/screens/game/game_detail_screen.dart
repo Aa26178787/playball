@@ -1524,11 +1524,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ],
             ),
           ));
-        } else if (rtype == 14 || rtype == 31) {
-          // Runner movement / 홈인
+        } else if (rtype == 14 || rtype == 24 || rtype == 31) {
+          // Runner movement / 홈인 (type 24 = score change event)
           final txt = _runnerText(r as Map);
           if (txt.isEmpty) continue;
-          if (!txt.contains('홈인') && !txt.contains('득점') && !txt.contains('홈')) continue;
+          if (!txt.contains('홈인') && !txt.contains('득점')) continue;
           playWidgets.add(Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Row(
