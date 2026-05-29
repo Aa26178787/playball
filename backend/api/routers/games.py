@@ -1572,6 +1572,7 @@ def get_game_highlights(game_id: int):
             }
             for r in rows
         ]
+    }
 
 
 # ===== 팬 승리 예측 =====
