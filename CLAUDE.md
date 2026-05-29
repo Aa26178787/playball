@@ -63,6 +63,7 @@ flutter build apk --debug   # 또는 --release
 - api/main.py — GZipMiddleware(500) + CORSMiddleware
 - api/cache.py — TTL 인메모리 캐시 (`@cached(seconds)` 데코레이터, threading.Lock)
 - api/routers/{games,players,teams,auth,user,stadiums,widget,community,calendar,phone,email_verify,search,news}.py
+  - auth.py: `get_current_user` (필수), `get_optional_user` (선택, 비로그인 시 None 반환)
 - api/weather_service.py (OpenWeatherMap 5분 캐시)
 - api/email_service.py (Gmail SMTP, noreply.playball@gmail.com)
 - api/fcm_service.py (Firebase Admin SDK — 파이어베이스 키 등록 대기)
@@ -144,6 +145,9 @@ GET /players/rankings?season=  @cached(300)
 GET /players/{id}            (프로필 + 시즌별 성적 + roster_status) @cached(300)
 GET /players/{id}/daily?season=
 GET /players/{id}/pitch-stats?season=  → {total, pitch_types:[{type,count,pct}]}
+GET /players/popularity?limit=  → {players:[{id,name,player_type,position,profile_image,team_name,team_code,vote_count,voted}]}
+  ※ HAVING vote_count > 0, voted=false(비로그인)
+POST /players/{id}/vote      [Bearer] → {voted, vote_count} (토글)
 ```
 
 ### 팀
@@ -155,6 +159,9 @@ GET /teams/{id}/players
 GET /teams/{id}/games
 GET /teams/{id}/roster-changes?days=30
 GET /teams/roster-changes/today
+GET /teams/{id}/season-stats?season=  → {record,batting,pitching} @cached(300)
+GET /teams/popularity  → {teams:[{id,name,short_name,logo_url,vote_count,voted}]}
+POST /teams/{id}/vote  [Bearer] → {voted, vote_count} (토글)
 ```
 
 ### 유저 [Bearer]
@@ -175,6 +182,8 @@ DELETE     /user/calendar-events/{event_id}
 GET        /user/notifications?limit=50         → {notifications:[...], unread_count}
 POST       /user/notifications/read-all
 PATCH      /user/notifications/{id}/read
+GET        /user/stadium-ranking?limit=30       → {ranking:[{rank,nickname,total,wins,losses,draws,win_rate}]}
+  ※ 5회 이상 직관 기록 있는 유저만 (HAVING COUNT(*) >= 5), 비로그인 가능
 ```
 
 ### 커뮤니티
@@ -263,6 +272,11 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 ### player_daily_stats / player_roster_changes
 (기존 스키마 유지)
 
+### player_popularity_votes / team_popularity_votes
+- player_popularity_votes: `id, user_id, player_id, created_at` UNIQUE(user_id, player_id)
+- team_popularity_votes: `id, user_id, team_id, created_at` UNIQUE(user_id, team_id)
+  ※ GRANT 필수: `GRANT ALL ON player_popularity_votes, team_popularity_votes TO playball_user;`
+
 ## Flutter 앱 구조
 
 ### 탭 구성
@@ -294,7 +308,11 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 - 진행중 30초 자동새로고침 + LIVE 배지
 
 ### player_screen.dart
-- 타자/투수 탭, 팀 필터, 정렬 칩
+- 타자/투수/인기투표 탭 (TabController length=3), 팀 필터, 정렬 칩
+- 인기투표 탭: 선수/구단 토글, 하트 버튼(토글 투표), 1~3위 금/은/동 메달 배지
+  - 선수: 득표 있는 선수만 표시 (HAVING > 0), 처음엔 빈 상태
+  - 구단: 전체 10팀 항상 표시 (득표 0도 포함)
+  - 비로그인: 하트 터치 시 "로그인 후 투표" 스낵바
 - 로딩: Shimmer 선수행 스켈레톤 12개
 
 ### player_detail_screen.dart
@@ -444,6 +462,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [x] /players/{id}/pitch-stats
 - [x] 부문별 순위 단일 엔드포인트 (/players/rankings)
 - [x] KBO 시즌 크롤러 games=0 중복행 방지 + wins/losses GREATEST 보호
+- [x] 선수/구단 인기투표 (하트) — player_screen 인기투표 탭 (선수/구단 토글, 금/은/동 메달)
 
 ### 팀
 - [x] 팀 순위 시리즈 결과 배지
@@ -485,12 +504,12 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [x] 서버 재시작 시 daily_stats 누락 자동 복구 (_recover_missed_daily_stats)
 - [x] 이미지 공유 팀 로고 수정 (Image.memory 직접 로드로 RepaintBoundary 신뢰성)
 - [x] 등록말소 배너 자정 자동 숨김 (60초 타이머 setState)
+- [x] 직관승률 랭킹 API — GET /user/stadium-ranking (5회 이상 기준)
 
 ## 진행 예정 기능
 
 ### 진행 중 (우선순위 순)
-- [ ] 선수/구단 하트 인기투표
-- [ ] 직관승률 랭킹 (최소 5회 기준)
+- [ ] 직관승률 랭킹 Flutter UI (API 완료 — /user/stadium-ranking, calendar_screen 또는 mypage에 화면 추가)
 - [ ] 직관 기록 UI 개선 (사용자 비친화적)
 - [ ] 포스트시즌 진출 확률
 - [ ] 커뮤니티 UI 인스타그램 형태 개선 (이미지 먼저 → 글쓰기)
