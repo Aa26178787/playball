@@ -881,8 +881,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildLiveStatus() {
     final state = _relayData!['current_state'];
     if (state == null) return const SizedBox.shrink();
+    final fieldView = _relayData!['field_view'] as Map<String, dynamic>?;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? Colors.green.withOpacity(0.08) : Colors.green.withOpacity(0.06);
 
     final balls   = (state['ball']   as int? ?? 0).clamp(0, 3);
     final strikes = (state['strike'] as int? ?? 0).clamp(0, 2);
@@ -891,53 +891,54 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final base2   = state['base2'] == true;
     final base3   = state['base3'] == true;
 
-    Widget bsoLight(bool on, Color c) => Container(
-      width: 11, height: 11,
+    Widget bsoDot(bool on, Color c) => Container(
+      width: 10, height: 10,
       margin: const EdgeInsets.symmetric(horizontal: 2),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: on ? c : Colors.grey[700],
+        color: on ? c : (isDark ? Colors.grey[700] : Colors.grey[400]),
         boxShadow: on ? [BoxShadow(color: c.withOpacity(0.5), blurRadius: 4)] : null,
       ),
     );
-
-    Widget bsoCol(String lbl, int count, int max, Color c) => Column(
+    Widget bsoGroup(String lbl, int count, int max, Color c) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(lbl, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold,
+        Text(lbl, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold,
             color: isDark ? Colors.white70 : Colors.black54)),
-        const SizedBox(height: 5),
-        Row(mainAxisSize: MainAxisSize.min,
-            children: List.generate(max, (i) => bsoLight(i < count, c))),
+        const SizedBox(width: 3),
+        ...List.generate(max, (i) => bsoDot(i < count, c)),
       ],
     );
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: bgColor,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      color: isDark ? Colors.green.withOpacity(0.06) : Colors.green.withOpacity(0.04),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // BSO
-          Row(
-            children: [
-              bsoCol('B', balls, 3, Colors.green),
-              const SizedBox(width: 14),
-              bsoCol('S', strikes, 2, Colors.red),
-              const SizedBox(width: 14),
-              bsoCol('O', outs, 2, Colors.orange),
-            ],
-          ),
-          // 필드뷰
-          SizedBox(
-            width: 80, height: 80,
-            child: CustomPaint(
-              painter: _FieldViewPainter(
-                base1: base1, base2: base2, base3: base3,
-                isDark: isDark,
-              ),
+          // BSO row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                bsoGroup('B', balls, 3, Colors.green[400]!),
+                const SizedBox(width: 18),
+                bsoGroup('S', strikes, 2, Colors.red[400]!),
+                const SizedBox(width: 18),
+                bsoGroup('O', outs, 2, Colors.orange[400]!),
+              ],
             ),
           ),
+          // Full field view
+          SizedBox(
+            height: 230,
+            child: _FullFieldView(
+              base1: base1, base2: base2, base3: base3,
+              fieldView: fieldView,
+              isDark: isDark,
+            ),
+          ),
+          const SizedBox(height: 4),
         ],
       ),
     );
@@ -3329,62 +3330,306 @@ class _GameShareSheetState extends State<_GameShareSheet> {
   }
 }
 
-class _FieldViewPainter extends CustomPainter {
+// ─── Full field view widget ───────────────────────────────────────────────────
+
+class _FullFieldView extends StatelessWidget {
   final bool base1, base2, base3, isDark;
-  const _FieldViewPainter({required this.base1, required this.base2, required this.base3, required this.isDark});
+  final Map<String, dynamic>? fieldView;
+
+  const _FullFieldView({
+    required this.base1, required this.base2, required this.base3,
+    required this.isDark, this.fieldView,
+  });
+
+  // Normalized (x,y) coordinates on the field widget (0=left/top, 1=right/bottom)
+  static const Map<String, Offset> _posCoords = {
+    'CF': Offset(0.50, 0.09),
+    'LF': Offset(0.17, 0.22),
+    'RF': Offset(0.83, 0.22),
+    'SS': Offset(0.36, 0.45),
+    '2B': Offset(0.64, 0.45),
+    '3B': Offset(0.21, 0.60),
+    '1B': Offset(0.79, 0.60),
+    'P':  Offset(0.50, 0.60),
+    'C':  Offset(0.50, 0.85),
+    'DH': Offset(0.05, 0.92),
+  };
+  static const Map<String, Offset> _baseCoords = {
+    'base1': Offset(0.79, 0.62),
+    'base2': Offset(0.50, 0.42),
+    'base3': Offset(0.21, 0.62),
+    'batter': Offset(0.50, 0.85),
+  };
+  static const Map<String, String> _posLabel = {
+    'P': '투수', 'C': '포수', '1B': '1루', '2B': '2루',
+    'SS': '유격', '3B': '3루', 'LF': '좌익', 'CF': '중견', 'RF': '우익', 'DH': 'DH',
+  };
+  static const Map<String, String> _korToCode = {
+    '투수': 'P', '포수': 'C', '1루수': '1B', '2루수': '2B',
+    '유격수': 'SS', '3루수': '3B', '좌익수': 'LF', '중견수': 'CF',
+    '우익수': 'RF', '지명타자': 'DH',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final defense = (fieldView?['defense'] as List?)
+        ?.whereType<Map<String, dynamic>>().toList() ?? [];
+    final batter  = fieldView?['batter']  as Map<String, dynamic>?;
+    final pitcher = fieldView?['pitcher'] as Map<String, dynamic>?;
+    final runners = fieldView?['runners'] as Map<String, dynamic>?;
+    final runner1 = runners?['base1'] as Map<String, dynamic>?;
+    final runner2 = runners?['base2'] as Map<String, dynamic>?;
+    final runner3 = runners?['base3'] as Map<String, dynamic>?;
+
+    // Add pitcher to defense if not already included
+    final hasPitcher = defense.any((p) => (p['pos_code'] as String?) == 'P' ||
+        (p['position'] as String?) == '투수');
+    final defenseWithPitcher = [...defense];
+    if (!hasPitcher && pitcher != null) {
+      defenseWithPitcher.add({...pitcher, 'pos_code': 'P', 'position': '투수'});
+    }
+
+    return LayoutBuilder(builder: (ctx, constraints) {
+      final w = constraints.maxWidth;
+      final h = constraints.maxHeight;
+
+      Widget placed(Offset norm, Widget child, double chipW, double chipH) {
+        return Positioned(
+          left: (w * norm.dx - chipW / 2).clamp(0, w - chipW),
+          top:  (h * norm.dy - chipH / 2).clamp(0, h - chipH),
+          child: child,
+        );
+      }
+
+      final defenseWidgets = <Widget>[];
+      for (final p in defenseWithPitcher) {
+        final posCode = _korToCode[p['position'] as String? ?? '']
+            ?? (p['pos_code'] as String? ?? '');
+        final coord = _posCoords[posCode] ?? _posCoords['C']!;
+        final label = _posLabel[posCode] ?? posCode;
+        defenseWidgets.add(placed(
+          coord,
+          _PlayerDot(
+            name: p['name'] as String? ?? '',
+            imageUrl: p['image'] as String?,
+            label: label,
+            isOffense: false,
+            isDark: isDark,
+            size: 22,
+          ),
+          22, 36,
+        ));
+      }
+
+      Widget? runnerWidget(Map<String, dynamic>? p, String baseKey) {
+        if (p == null) return null;
+        final coord = _baseCoords[baseKey]!;
+        return placed(coord,
+          _PlayerDot(
+            name: p['name'] as String? ?? '',
+            imageUrl: p['image'] as String?,
+            label: '',
+            isOffense: true,
+            isDark: isDark,
+            size: 26,
+          ),
+          26, 40,
+        );
+      }
+
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _FieldBgPainter(
+                base1: base1, base2: base2, base3: base3, isDark: isDark,
+              ),
+            ),
+          ),
+          ...defenseWidgets,
+          if (runnerWidget(runner1, 'base1') != null) runnerWidget(runner1, 'base1')!,
+          if (runnerWidget(runner2, 'base2') != null) runnerWidget(runner2, 'base2')!,
+          if (runnerWidget(runner3, 'base3') != null) runnerWidget(runner3, 'base3')!,
+          if (batter != null)
+            placed(
+              _baseCoords['batter']!,
+              _PlayerDot(
+                name: batter['name'] as String? ?? '',
+                imageUrl: batter['image'] as String?,
+                label: '타자',
+                isOffense: true,
+                isDark: isDark,
+                size: 26,
+                isBatter: true,
+              ),
+              26, 40,
+            ),
+        ],
+      );
+    });
+  }
+}
+
+class _PlayerDot extends StatelessWidget {
+  final String name, label;
+  final String? imageUrl;
+  final bool isOffense, isDark, isBatter;
+  final double size;
+
+  const _PlayerDot({
+    required this.name, required this.label, this.imageUrl,
+    required this.isOffense, required this.isDark,
+    required this.size, this.isBatter = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = isBatter ? Colors.white :
+                        isOffense ? Colors.orange[400]! :
+                        Colors.white38;
+    final bgColor = isOffense
+        ? (isDark ? Colors.red[900]! : Colors.red[800]!).withOpacity(0.85)
+        : Colors.black54;
+
+    final displayName = name.length > 3 ? name.substring(0, 3) : name;
+    final displayLabel = label;
+
+    return SizedBox(
+      width: size + 4,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: size, height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: bgColor,
+              border: Border.all(color: borderColor, width: isOffense ? 1.8 : 1.0),
+              boxShadow: isOffense
+                  ? [BoxShadow(color: Colors.orange.withOpacity(0.45), blurRadius: 5, spreadRadius: 0.5)]
+                  : null,
+            ),
+            child: ClipOval(
+              child: imageUrl != null && imageUrl!.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: imageUrl!,
+                      fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => Icon(Icons.person, size: size * 0.55, color: Colors.white70),
+                      placeholder: (_, __) => Container(color: Colors.black26),
+                    )
+                  : Icon(Icons.person, size: size * 0.55, color: Colors.white70),
+            ),
+          ),
+          if (isOffense && displayName.isNotEmpty) ...[
+            const SizedBox(height: 1),
+            Text(
+              displayName,
+              style: TextStyle(
+                fontSize: 7.5, color: Colors.orange[200],
+                fontWeight: FontWeight.bold,
+                shadows: const [Shadow(offset: Offset(0, 1), blurRadius: 2, color: Colors.black)],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ] else if (!isOffense && displayLabel.isNotEmpty) ...[
+            const SizedBox(height: 1),
+            Text(
+              displayLabel,
+              style: const TextStyle(
+                fontSize: 7, color: Colors.white70,
+                shadows: [Shadow(offset: Offset(0, 1), blurRadius: 2, color: Colors.black)],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FieldBgPainter extends CustomPainter {
+  final bool base1, base2, base3, isDark;
+  const _FieldBgPainter({required this.base1, required this.base2, required this.base3, required this.isDark});
 
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    // Diamond: center slightly above bottom
-    // home=bottom, 1st=right, 2nd=top, 3rd=left
-    final cx = w * 0.5;
-    final cy = h * 0.55;
-    final r  = w * 0.36; // radius of diamond
 
-    final home  = Offset(cx,         cy + r);
-    final first = Offset(cx + r,     cy);
-    final second= Offset(cx,         cy - r);
-    final third = Offset(cx - r,     cy);
+    // Base positions (matches _FullFieldView._baseCoords)
+    final p2B   = Offset(w * 0.50, h * 0.42);
+    final p3B   = Offset(w * 0.21, h * 0.62);
+    final p1B   = Offset(w * 0.79, h * 0.62);
+    final pHome = Offset(w * 0.50, h * 0.82);
+    final pMound= Offset(w * 0.50, h * 0.62);
 
-    // Outfield arc
-    final outerR = r * 1.9;
-    final arcPaint = Paint()
-      ..color = (isDark ? Colors.green[800]! : Colors.green[200]!).withOpacity(0.5)
+    // Outfield grass (green arc)
+    final ofPaint = Paint()
+      ..color = (isDark ? Colors.green[800]! : Colors.green[400]!).withOpacity(0.45)
       ..style = PaintingStyle.fill;
-    final arcPath = Path()
-      ..moveTo(home.dx, home.dy)
-      ..arcTo(Rect.fromCircle(center: Offset(cx, cy), radius: outerR),
-              3.14 * 0.25, -3.14 * 1.5, false)
+    final arcCenter = Offset(w * 0.50, h * 0.95);
+    final arcR = w * 0.78;
+    final ofPath = Path()
+      ..addArc(Rect.fromCircle(center: arcCenter, radius: arcR),
+               -3.14 * 0.88, -3.14 * 1.24)
+      ..lineTo(w * 0.15, h * 0.05)
+      ..lineTo(w * 0.85, h * 0.05)
       ..close();
-    canvas.drawPath(arcPath, arcPaint);
+    canvas.drawPath(ofPath, ofPaint);
 
-    // Infield dirt arc
-    final inRPaint = Paint()
-      ..color = (isDark ? const Color(0xFF8B6914) : const Color(0xFFD2A679)).withOpacity(0.6)
+    // Infield dirt (diamond)
+    final dirtPaint = Paint()
+      ..color = (isDark ? const Color(0xFF8B6914) : const Color(0xFFD4A96A)).withOpacity(0.55)
       ..style = PaintingStyle.fill;
-    final inPath = Path()
-      ..moveTo(home.dx, home.dy)
-      ..lineTo(first.dx, first.dy)
-      ..lineTo(second.dx, second.dy)
-      ..lineTo(third.dx, third.dy)
+    final diamondPath = Path()
+      ..moveTo(pHome.dx, pHome.dy)
+      ..lineTo(p1B.dx,   p1B.dy)
+      ..lineTo(p2B.dx,   p2B.dy)
+      ..lineTo(p3B.dx,   p3B.dy)
       ..close();
-    canvas.drawPath(inPath, inRPaint);
+    canvas.drawPath(diamondPath, dirtPaint);
+
+    // Mound circle
+    final moundPaint = Paint()
+      ..color = (isDark ? const Color(0xFF8B6914) : const Color(0xFFD4A96A)).withOpacity(0.7)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(pMound, w * 0.035, moundPaint);
 
     // Baselines
     final linePaint = Paint()
-      ..color = isDark ? Colors.white30 : Colors.black26
+      ..color = (isDark ? Colors.white : Colors.white).withOpacity(0.35)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(pHome, p1B, linePaint);
+    canvas.drawLine(pHome, p3B, linePaint);
+    canvas.drawLine(p1B,   p2B, linePaint);
+    canvas.drawLine(p3B,   p2B, linePaint);
+
+    // Foul lines extended
+    final foulPaint = Paint()
+      ..color = Colors.white.withOpacity(0.2)
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
-    canvas.drawPath(inPath, linePaint);
+    canvas.drawLine(pHome, Offset(w * 0.0, h * 0.08), foulPaint);
+    canvas.drawLine(pHome, Offset(w * 1.0, h * 0.08), foulPaint);
 
     // Bases
     void drawBase(Offset pos, bool occupied) {
+      if (occupied) {
+        final glow = Paint()
+          ..color = Colors.yellow.withOpacity(0.4)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
+        canvas.drawRect(
+          Rect.fromCenter(center: pos, width: 12, height: 12),
+          glow,
+        );
+      }
       final bp = Paint()
-        ..color = occupied ? Colors.yellow[600]! : (isDark ? Colors.grey[600]! : Colors.grey[400]!)
+        ..color = occupied ? Colors.yellow[500]! : (isDark ? Colors.grey[500]! : Colors.grey[300]!)
         ..style = PaintingStyle.fill;
-      final bs = 5.5;
+      final bs = 5.0;
       final path = Path()
         ..moveTo(pos.dx,      pos.dy - bs)
         ..lineTo(pos.dx + bs, pos.dy)
@@ -3392,31 +3637,25 @@ class _FieldViewPainter extends CustomPainter {
         ..lineTo(pos.dx - bs, pos.dy)
         ..close();
       canvas.drawPath(path, bp);
-      if (occupied) {
-        final glow = Paint()
-          ..color = Colors.yellow.withOpacity(0.35)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-        canvas.drawCircle(pos, 8, glow);
-      }
     }
 
-    drawBase(first,  base1);
-    drawBase(second, base2);
-    drawBase(third,  base3);
+    drawBase(p1B,   base1);
+    drawBase(p2B,   base2);
+    drawBase(p3B,   base3);
 
-    // Home plate (pentagon)
-    final hp = Paint()..color = Colors.white60..style = PaintingStyle.fill;
+    // Home plate (white pentagon)
+    final hp = Paint()..color = Colors.white.withOpacity(0.8)..style = PaintingStyle.fill;
     final homePath = Path()
-      ..moveTo(home.dx,      home.dy - 4.5)
-      ..lineTo(home.dx + 4,  home.dy - 1)
-      ..lineTo(home.dx + 3,  home.dy + 3.5)
-      ..lineTo(home.dx - 3,  home.dy + 3.5)
-      ..lineTo(home.dx - 4,  home.dy - 1)
+      ..moveTo(pHome.dx,      pHome.dy - 5)
+      ..lineTo(pHome.dx + 4.5, pHome.dy - 1.5)
+      ..lineTo(pHome.dx + 3.5, pHome.dy + 4)
+      ..lineTo(pHome.dx - 3.5, pHome.dy + 4)
+      ..lineTo(pHome.dx - 4.5, pHome.dy - 1.5)
       ..close();
     canvas.drawPath(homePath, hp);
   }
 
   @override
-  bool shouldRepaint(_FieldViewPainter old) =>
+  bool shouldRepaint(_FieldBgPainter old) =>
       old.base1 != base1 || old.base2 != base2 || old.base3 != base3 || old.isDark != isDark;
 }

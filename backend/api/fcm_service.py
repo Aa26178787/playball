@@ -240,7 +240,10 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
                         batter: str = '', pitcher: str = '', play_text: str = '',
                         stuff: str = '', speed: int = 0, homein: list = None):
     targets = _get_targets('notify_score_change', [home_team_id, away_team_id])
-    half_str = '초' if inning_half == 'top' else '말' if inning_half == 'bottom' else ''
+    half_str = (inning_half if inning_half in ('초', '말')
+                else '초' if inning_half == 'top'
+                else '말' if inning_half == 'bottom'
+                else '')
     inning_str = f" [{inning}{half_str}]" if inning > 0 else ""
     team_prefix = f"{scoring_team} " if scoring_team else ""
 

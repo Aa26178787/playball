@@ -1089,7 +1089,7 @@ def get_game_relay(game_id: int):
 
     cur = conn.cursor()
     cur.execute("""
-        SELECT naver_game_id, status, current_inning
+        SELECT naver_game_id, status, current_inning, home_team_id, away_team_id
         FROM games WHERE id = %s
     """, (game_id,))
     game = cur.fetchone()
@@ -1099,12 +1099,18 @@ def get_game_relay(game_id: int):
     if not game:
         raise HTTPException(status_code=404, detail="경기를 찾을 수 없습니다")
 
-    naver_game_id, status, current_inning = game
+    naver_game_id, status, current_inning, home_team_id, away_team_id = game
 
     if status != '진행':
         raise HTTPException(status_code=400, detail="진행 중인 경기가 아닙니다")
 
     inning = current_inning or 1
+
+    _POS_CODE = {
+        '투수': 'P', '포수': 'C', '1루수': '1B', '2루수': '2B',
+        '유격수': 'SS', '3루수': '3B', '좌익수': 'LF', '중견수': 'CF',
+        '우익수': 'RF', '지명타자': 'DH',
+    }
 
     try:
         url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/relay?inning={inning}"
@@ -1116,12 +1122,76 @@ def get_game_relay(game_id: int):
             raise HTTPException(status_code=500, detail="네이버 API 응답 실패")
 
         relay = data["result"]["textRelayData"]
-        game_state = relay.get("currentGameState", {})
+        game_state = relay.get("currentGameState", {}) or {}
+
+        # ── field_view: 타자/주자/수비9명 ──────────────────────────────────
+        home_or_away = relay.get("homeOrAway", "0")
+        # "0" = away batting (초), "1" = home batting (말)
+        batting_side   = 'away' if home_or_away == '0' else 'home'
+        fielding_side  = 'home' if batting_side == 'away' else 'away'
+
+        field_view = None
+        try:
+            fconn = get_connection()
+            if fconn:
+                fcur = fconn.cursor()
+
+                # 1) naver_player_id → player info (타자 + 주자 3명 + 투수)
+                nids = [str(game_state.get(k, '')) for k in ('batter', 'pitcher', 'base1', 'base2', 'base3')]
+                nids = [n for n in nids if n and n != '0']
+                player_by_nid = {}
+                if nids:
+                    fcur.execute("""
+                        SELECT naver_player_id, id, name, profile_image, number
+                        FROM players WHERE naver_player_id = ANY(%s)
+                    """, (nids,))
+                    for r in fcur.fetchall():
+                        player_by_nid[str(r[0])] = {"player_id": r[1], "name": r[2], "image": r[3], "jersey": r[4]}
+
+                def _pinfo(key):
+                    nid = str(game_state.get(key, ''))
+                    if not nid or nid == '0': return None
+                    return player_by_nid.get(nid)
+
+                # 2) 수비 9명 (fielding_side)
+                fcur.execute("""
+                    SELECT p.id, p.name, p.profile_image, p.number, gb.position
+                    FROM game_batters gb
+                    JOIN players p ON p.id = gb.player_id
+                    WHERE gb.game_id = %s AND gb.team_side = %s AND gb.batting_order > 0
+                      AND gb.position IS NOT NULL AND gb.position != ''
+                    ORDER BY gb.batting_order
+                """, (game_id, fielding_side))
+                defense = [
+                    {
+                        "player_id": r[0], "name": r[1], "image": r[2],
+                        "jersey": r[3], "position": r[4],
+                        "pos_code": _POS_CODE.get(r[4], r[4][:2] if r[4] else '?'),
+                    }
+                    for r in fcur.fetchall()
+                ]
+
+                fcur.close()
+                fconn.close()
+
+                field_view = {
+                    "batting_side": batting_side,
+                    "batter":  _pinfo('batter'),
+                    "pitcher": _pinfo('pitcher'),
+                    "runners": {
+                        "base1": _pinfo('base1'),
+                        "base2": _pinfo('base2'),
+                        "base3": _pinfo('base3'),
+                    },
+                    "defense": defense,
+                }
+        except Exception:
+            field_view = None
 
         return {
             "game_id":      game_id,
             "inning":       relay.get("inn"),
-            "home_or_away": relay.get("homeOrAway"),
+            "home_or_away": home_or_away,
             "current_state": {
                 "strike":     int(game_state.get("strike", 0)),
                 "ball":       int(game_state.get("ball", 0)),
@@ -1136,6 +1206,7 @@ def get_game_relay(game_id: int):
                 "home_error": game_state.get("homeError"),
                 "away_error": game_state.get("awayError"),
             },
+            "field_view": field_view,
             "pitcher_vs_batter": relay.get("pitcherVsBatterCareerStats"),
             "home_entry": {
                 "batters":  relay.get("homeEntry", {}).get("batter", []),
