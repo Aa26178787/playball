@@ -331,14 +331,23 @@ def get_roster_changes(team_id: int, days: int = 30):
         raise HTTPException(status_code=500, detail="DB 연결 실패")
     cur = conn.cursor()
     cur.execute("""
-        SELECT rc.id, rc.player_name, rc.player_id, rc.change_type,
-               rc.reason, rc.change_date,
+        WITH deduped AS (
+            SELECT rc.id, rc.player_name, rc.player_id, rc.change_type,
+                   rc.reason, rc.change_date,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY rc.player_name, rc.change_type
+                       ORDER BY rc.change_date DESC, rc.id DESC
+                   ) AS rn
+            FROM player_roster_changes rc
+            WHERE rc.team_id = %s
+              AND rc.change_date >= CURRENT_DATE - %s
+        )
+        SELECT d.id, d.player_name, d.player_id, d.change_type, d.reason, d.change_date,
                p.position, p.player_type, p.profile_image
-        FROM player_roster_changes rc
-        LEFT JOIN players p ON p.id = rc.player_id
-        WHERE rc.team_id = %s
-          AND rc.change_date >= CURRENT_DATE - %s
-        ORDER BY rc.change_date DESC, rc.id DESC
+        FROM deduped d
+        LEFT JOIN players p ON p.id = d.player_id
+        WHERE d.rn = 1
+        ORDER BY d.change_date DESC, d.id DESC
     """, (team_id, days))
     rows = cur.fetchall()
     cur.close()
@@ -439,7 +448,7 @@ def get_batting_order_stats(team_id: int, season: int = 2026):
     # 타순별 최다 출전 선수
     cur.execute("""
         WITH slot_players AS (
-            SELECT gb.batting_order, p.name AS player_name,
+            SELECT gb.batting_order, p.id AS player_id, p.name AS player_name, p.profile_image,
                    COUNT(*) AS apps,
                    ROW_NUMBER() OVER (
                        PARTITION BY gb.batting_order ORDER BY COUNT(*) DESC
@@ -453,11 +462,11 @@ def get_batting_order_stats(team_id: int, season: int = 2026):
               AND EXTRACT(YEAR FROM g.game_date) = %s
               AND gb.batting_order BETWEEN 1 AND 9
               AND gb.at_bats > 0
-            GROUP BY gb.batting_order, p.name
+            GROUP BY gb.batting_order, p.id, p.name, p.profile_image
         )
-        SELECT batting_order, player_name FROM slot_players WHERE rn = 1
+        SELECT batting_order, player_id, player_name, profile_image FROM slot_players WHERE rn = 1
     """, (team_id, team_id, season))
-    top_players = {r[0]: r[1] for r in cur.fetchall()}
+    top_players = {r[0]: (r[1], r[2], r[3]) for r in cur.fetchall()}  # order → (id, name, image)
 
     cur.close()
     conn.close()
@@ -468,19 +477,22 @@ def get_batting_order_stats(team_id: int, season: int = 2026):
         avg = round(h / ab, 3) if ab > 0 else 0.0
         obp = round((h + bb) / (ab + bb), 3) if (ab + bb) > 0 else 0.0
         slg = round((h + hr) / ab, 3) if ab > 0 else 0.0  # simplified (no 2B/3B)
+        tp = top_players.get(order, (None, None, None))
         stats.append({
-            "batting_order": order,
-            "games":         games,
-            "at_bats":       ab,
-            "hits":          h,
-            "runs":          runs,
-            "rbis":          rbi,
-            "home_runs":     hr,
-            "walks":         bb,
-            "strikeouts":    so,
-            "avg":           avg,
-            "obp":           obp,
-            "top_player":    top_players.get(order),
+            "batting_order":    order,
+            "games":            games,
+            "at_bats":          ab,
+            "hits":             h,
+            "runs":             runs,
+            "rbis":             rbi,
+            "home_runs":        hr,
+            "walks":            bb,
+            "strikeouts":       so,
+            "avg":              avg,
+            "obp":              obp,
+            "top_player":       tp[1],
+            "top_player_id":    tp[0],
+            "top_player_image": tp[2],
         })
     return {"team_id": team_id, "season": season, "stats": stats}
 

@@ -305,12 +305,16 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 
   Widget _buildDateStrip() {
     final today = DateTime.now();
+    final isOnToday = _isSameDay(_selectedDate, today);
     const dayNames = ['월', '화', '수', '목', '금', '토', '일'];
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return SizedBox(
-      height: 68,
-      child: ListView.builder(
+    return Stack(
+      alignment: Alignment.centerRight,
+      children: [
+        SizedBox(
+          height: 68,
+          child: ListView.builder(
         controller: _dateScrollController,
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
@@ -379,7 +383,29 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
             ),
           );
         },
-      ),
+        ),
+        ),
+        if (!isOnToday)
+          Positioned(
+            right: 6,
+            child: GestureDetector(
+              onTap: () {
+                setState(() => _selectedDate = today);
+                _loadGames();
+                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A237E),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
+                ),
+                child: const Text('오늘', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -644,10 +670,10 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
                   ),
                 ),
                 Container(
-                  width: 26, height: 26,
-                  decoration: BoxDecoration(color: rankBg, shape: BoxShape.circle),
+                  width: 32, height: 26,
+                  decoration: BoxDecoration(color: rankBg, borderRadius: BorderRadius.circular(13)),
                   alignment: Alignment.center,
-                  child: Text('$rank', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  child: Text('${rank}위', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -997,8 +1023,6 @@ class GameCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(isHome ? '홈 ' : '원정 ',
-            style: TextStyle(fontSize: 9, color: Colors.grey[400])),
         ...displayed.asMap().entries.map((e) {
           final idx = e.key;
           final r = e.value;

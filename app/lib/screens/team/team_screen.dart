@@ -216,15 +216,15 @@ class _TeamScreenState extends State<TeamScreen>
               Row(
                 children: [
                   Container(
-                    width: 30,
+                    width: 36,
                     height: 30,
-                    decoration: BoxDecoration(color: rankBg, shape: BoxShape.circle),
+                    decoration: BoxDecoration(color: rankBg, borderRadius: BorderRadius.circular(15)),
                     alignment: Alignment.center,
                     child: Text(
-                      '$rank',
+                      '${rank}위',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 12,
                         color: Colors.white,
                       ),
                     ),

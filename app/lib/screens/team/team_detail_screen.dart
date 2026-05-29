@@ -1376,6 +1376,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           final hr = s['home_runs'] as int? ?? 0;
           final rbi = s['rbis'] as int? ?? 0;
           final topPlayer = s['top_player'] as String? ?? '-';
+          final topPlayerId = s['top_player_id'] as int?;
+          final topPlayerImage = s['top_player_image'] as String?;
 
           // AVG 기반 배경색 (높을수록 진한 파랑)
           final t = maxAvg > minAvg ? (avg - minAvg) / (maxAvg - minAvg) : 0.5;
@@ -1389,7 +1391,12 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: Colors.grey.shade200),
             ),
-            child: Row(
+            child: GestureDetector(
+              onTap: topPlayerId != null
+                  ? () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => PlayerDetailScreen(playerId: topPlayerId)))
+                  : null,
+              child: Row(
               children: [
                 SizedBox(
                   width: 36,
@@ -1405,9 +1412,26 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 ),
                 SizedBox(
                   width: 90,
-                  child: Text(topPlayer,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 11,
+                        backgroundColor: color.withOpacity(0.15),
+                        backgroundImage: (topPlayerImage != null && topPlayerImage.isNotEmpty)
+                            ? CachedNetworkImageProvider(topPlayerImage)
+                            : null,
+                        child: (topPlayerImage == null || topPlayerImage.isEmpty)
+                            ? Icon(Icons.person, size: 13, color: color)
+                            : null,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(topPlayer,
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                  ),
                 ),
                 _boValue(avg.toStringAsFixed(3), 52,
                     avg >= 0.300 ? Colors.blue.shade700 : avg < 0.230 ? Colors.red.shade400 : null),
@@ -1416,6 +1440,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 _boValue('$hr', 40, hr >= 5 ? Colors.deepOrange : null),
                 _boValue('$rbi', 40, rbi >= 30 ? Colors.deepOrange : null),
               ],
+            ),
             ),
           );
         }),

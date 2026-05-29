@@ -86,12 +86,12 @@ class _SearchScreenState extends State<SearchScreen> {
         title: TextField(
           controller: _ctrl,
           autofocus: true,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: '선수, 팀 검색',
             border: InputBorder.none,
-            hintStyle: TextStyle(color: Colors.white70),
+            hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
           ),
-          style: const TextStyle(color: Colors.white, fontSize: 16),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
           onSubmitted: _search,
         ),
         actions: [
