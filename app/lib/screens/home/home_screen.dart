@@ -1085,16 +1085,15 @@ class GameCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
-          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TeamLogo(teamCode: series['code'] ?? '', size: 20),
             const SizedBox(width: 3),
-            Flexible(child: Text(series['name'] ?? '', style: const TextStyle(fontSize: 10, color: Colors.blueGrey, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+            Flexible(child: Text(series['name'] ?? '', style: const TextStyle(fontSize: 10, color: Colors.blueGrey, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis, maxLines: 1)),
           ],
         ),
         const SizedBox(height: 1),
-        Text('다음 시리즈', style: TextStyle(fontSize: 9, color: Colors.grey[500])),
+        Text('다음 시리즈', style: TextStyle(fontSize: 9, color: Colors.grey[500]), overflow: TextOverflow.ellipsis, maxLines: 1),
       ],
     );
   }
