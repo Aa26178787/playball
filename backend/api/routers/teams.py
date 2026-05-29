@@ -1,3 +1,4 @@
+import random
 from fastapi import APIRouter, HTTPException, Depends
 from database.connection import get_connection
 from api.routers.auth import get_current_user, get_optional_user
@@ -201,6 +202,72 @@ def get_team_rankings():
     cur.close()
     conn.close()
     return {"count": len(result), "rankings": result}
+
+
+@router.get("/postseason-odds")
+@cached(300)
+def get_postseason_odds():
+    """포스트시즌 진출 확률 (Monte Carlo 10,000회 시뮬레이션)"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, name, short_name, wins, losses, draws, win_rate
+        FROM teams ORDER BY rank ASC NULLS LAST
+    """)
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+
+    TOTAL_GAMES = 144
+    N_SIM = 10000
+    PS_SPOTS = 5  # 포스트시즌 진출 팀 수
+
+    teams = []
+    for r in rows:
+        played = (r[3] or 0) + (r[4] or 0) + (r[5] or 0)
+        remaining = max(0, TOTAL_GAMES - played)
+        # 무승부 고려한 실질 승률 (무승부 제외 계산)
+        w, l = r[3] or 0, r[4] or 0
+        wr = w / (w + l) if (w + l) > 0 else 0.5
+        teams.append({
+            "id": r[0], "name": r[1], "short_name": r[2],
+            "wins": w, "losses": l, "draws": r[5] or 0,
+            "win_rate": wr, "remaining": remaining,
+        })
+
+    ps_count   = {t["id"]: 0 for t in teams}
+    champ_count = {t["id"]: 0 for t in teams}
+
+    for _ in range(N_SIM):
+        sim_wins = {}
+        for t in teams:
+            extra = sum(1 for _ in range(t["remaining"]) if random.random() < t["win_rate"])
+            sim_wins[t["id"]] = t["wins"] + extra
+
+        ranked = sorted(sim_wins.items(), key=lambda x: -x[1])
+        for i, (tid, _) in enumerate(ranked):
+            if i < PS_SPOTS:
+                ps_count[tid] += 1
+            if i == 0:
+                champ_count[tid] += 1
+
+    result = []
+    for t in teams:
+        tid = t["id"]
+        result.append({
+            "id":           tid,
+            "name":         t["name"],
+            "short_name":   t["short_name"],
+            "wins":         t["wins"],
+            "losses":       t["losses"],
+            "draws":        t["draws"],
+            "remaining":    t["remaining"],
+            "ps_prob":      round(ps_count[tid] / N_SIM, 4),
+            "champ_prob":   round(champ_count[tid] / N_SIM, 4),
+        })
+    result.sort(key=lambda x: -x["ps_prob"])
+    return {"odds": result}
 
 
 @router.get("/")

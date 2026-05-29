@@ -21,6 +21,7 @@ class _TeamScreenState extends State<TeamScreen>
   List _teams = [];
   bool _isLoading = true;
   Set<int> _favoriteTeamIds = {};
+  List _odds = [];
 
   @override
   void initState() {
@@ -28,6 +29,7 @@ class _TeamScreenState extends State<TeamScreen>
     _tabController = TabController(length: 3, vsync: this);
     _loadTeams();
     _loadFavoriteTeams();
+    _loadOdds();
   }
 
   @override
@@ -51,6 +53,14 @@ class _TeamScreenState extends State<TeamScreen>
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _loadOdds() async {
+    try {
+      final data = await ApiService.getPostseasonOdds();
+      final odds = (data['odds'] as List? ?? []).cast<Map>();
+      if (mounted) setState(() => _odds = odds);
+    } catch (_) {}
   }
 
   Future<void> _loadFavoriteTeams() async {
@@ -145,14 +155,97 @@ class _TeamScreenState extends State<TeamScreen>
       rankCounts[r] = (rankCounts[r] ?? 0) + 1;
     }
     return RefreshIndicator(
-      onRefresh: _loadTeams,
+      onRefresh: () async { await _loadTeams(); await _loadOdds(); },
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
-        children: _teams.map((team) {
-          final r = team['rank'] as int? ?? 0;
-          return _buildTeamRow(team, isTied: (rankCounts[r] ?? 1) > 1);
-        }).toList(),
+        children: [
+          ..._teams.map((team) {
+            final r = team['rank'] as int? ?? 0;
+            return _buildTeamRow(team, isTied: (rankCounts[r] ?? 1) > 1);
+          }),
+          if (_odds.isNotEmpty) _buildPostseasonOdds(),
+        ],
       ),
+    );
+  }
+
+  Widget _buildPostseasonOdds() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            const Text('포스트시즌 진출 확률', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
+              child: const Text('BETA', style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold)),
+            ),
+            const Spacer(),
+            Text('Monte Carlo 10,000회', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ..._odds.map((o) {
+          final code = o['short_name'] as String? ?? '';
+          final psPct = ((o['ps_prob'] as num? ?? 0) * 100);
+          final champPct = ((o['champ_prob'] as num? ?? 0) * 100);
+          final color = teamColor(code);
+          final isPS = psPct >= 50;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                TeamLogo(teamCode: code, size: 28),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(o['name'] as String? ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          const Spacer(),
+                          Text(
+                            '${psPct.toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: psPct >= 95 ? Colors.blue : psPct >= 50 ? color : Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text('우승 ${champPct.toStringAsFixed(1)}%',
+                              style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(
+                          value: (psPct / 100).clamp(0.0, 1.0),
+                          minHeight: 6,
+                          backgroundColor: Colors.grey.withOpacity(0.15),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            isPS ? color.withOpacity(0.8) : Colors.grey.withOpacity(0.4),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text('* 잔여경기 win rate 기반 시뮬레이션. 일정/상대 미반영.',
+              style: TextStyle(fontSize: 10, color: Colors.grey[400])),
+        ),
+      ],
     );
   }
 
