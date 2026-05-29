@@ -120,6 +120,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     final target = DateTime(2026, month, 1);
     setState(() => _selectedDate = target);
     _loadGames();
+    _loadTomorrowGames();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
   }
 
@@ -223,9 +224,11 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 
   Future<void> _loadTomorrowGames() async {
     try {
-      final now = DateTime.now();
+      final base = _selectedDate.isAfter(DateTime.now())
+          ? _selectedDate
+          : DateTime.now();
       String _ds(int offset) {
-        final d = now.add(Duration(days: offset));
+        final d = base.add(Duration(days: offset));
         return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
       }
 
@@ -233,6 +236,10 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
         ApiService.getGamesByDate(_ds(1)).catchError((_) => <String, dynamic>{}),
         ApiService.getGamesByDate(_ds(2)).catchError((_) => <String, dynamic>{}),
         ApiService.getGamesByDate(_ds(3)).catchError((_) => <String, dynamic>{}),
+        ApiService.getGamesByDate(_ds(4)).catchError((_) => <String, dynamic>{}),
+        ApiService.getGamesByDate(_ds(5)).catchError((_) => <String, dynamic>{}),
+        ApiService.getGamesByDate(_ds(6)).catchError((_) => <String, dynamic>{}),
+        ApiService.getGamesByDate(_ds(7)).catchError((_) => <String, dynamic>{}),
       ]);
 
       final combined = <dynamic>[];
@@ -343,6 +350,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
               if (!isSelected) {
                 setState(() => _selectedDate = date);
                 _loadGames();
+                _loadTomorrowGames();
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
               }
             },
@@ -392,6 +400,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
               onTap: () {
                 setState(() => _selectedDate = today);
                 _loadGames();
+                _loadTomorrowGames();
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
               },
               child: Container(
@@ -973,6 +982,84 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   );
 }
 
+// ===== Neon Glow Logo =====
+
+class _NeonGlowLogo extends StatefulWidget {
+  final String teamCode;
+  final Color color;
+  final double size;
+  final Widget logo;
+  const _NeonGlowLogo({required this.teamCode, required this.color, required this.size, required this.logo});
+
+  @override
+  State<_NeonGlowLogo> createState() => _NeonGlowLogoState();
+}
+
+class _NeonGlowLogoState extends State<_NeonGlowLogo> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))
+      ..repeat(reverse: true);
+    _anim = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.color;
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, child) {
+        final intensity = _anim.value;
+        return Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              // inner bright core
+              BoxShadow(
+                color: c.withValues(alpha: 0.9 * intensity),
+                blurRadius: 6,
+                spreadRadius: 1,
+              ),
+              // mid glow
+              BoxShadow(
+                color: c.withValues(alpha: 0.55 * intensity),
+                blurRadius: 14,
+                spreadRadius: 4,
+              ),
+              // outer diffuse
+              BoxShadow(
+                color: c.withValues(alpha: 0.25 * intensity),
+                blurRadius: 28,
+                spreadRadius: 8,
+              ),
+              // white hot center
+              BoxShadow(
+                color: Colors.white.withValues(alpha: 0.35 * intensity),
+                blurRadius: 4,
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          child: child,
+        );
+      },
+      child: widget.logo,
+    );
+  }
+}
+
 class GameCard extends StatelessWidget {
   final Game game;
   final bool isMyTeam;
@@ -1086,19 +1173,8 @@ class GameCard extends StatelessWidget {
   Widget _winnerGlowLogo(String teamCode, bool isWinner) {
     final logo = TeamLogo(teamCode: teamCode, size: 44);
     if (!isWinner) return logo;
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: teamColor(teamCode).withOpacity(0.55),
-            blurRadius: 18,
-            spreadRadius: 5,
-          ),
-        ],
-      ),
-      child: logo,
-    );
+    final c = teamColor(teamCode);
+    return _NeonGlowLogo(teamCode: teamCode, color: c, size: 44, logo: logo);
   }
 
   @override
