@@ -285,11 +285,50 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       await LocalCache.set('games_$dateStr', games);
       if (!mounted || _loadGen != gen) return;
       setState(() { _games = games; _isLoading = false; _loadError = false; });
+      _prefetchAdjacentDates(dateStr);
+      _prefetchGameDetails(games);
     } catch (e) {
       if (!mounted || _loadGen != gen) return;
       // Dio 인터셉터가 이미 1회 재시도함 — 캐시 데이터 유지, 로딩 해제
       setState(() { _isLoading = false; _loadError = cached == null; });
     }
+  }
+
+  // 인접 날짜 게임 목록 선제 캐시 (날짜 전환 즉시 표시)
+  void _prefetchAdjacentDates(String dateStr) {
+    Future(() async {
+      final date = DateTime.parse(dateStr);
+      for (final delta in [-1, 1]) {
+        final adj = date.add(Duration(days: delta));
+        final adjStr = '${adj.year}-${adj.month.toString().padLeft(2, '0')}-${adj.day.toString().padLeft(2, '0')}';
+        if (await LocalCache.get('games_$adjStr', maxAgeSeconds: 3600) != null) continue;
+        try {
+          final data = await ApiService.getGamesByDate(adjStr);
+          await LocalCache.set('games_$adjStr', data['games'] ?? []);
+        } catch (_) {}
+      }
+    });
+  }
+
+  // 종료/예정 경기 상세 선제 캐시 (게임 상세 첫 진입 즉시 표시)
+  void _prefetchGameDetails(List games) {
+    Future(() async {
+      for (final game in games) {
+        final id = game['id'] as int?;
+        final status = game['status'] as String? ?? '';
+        if (id == null || status == '진행') continue; // 진행중은 실시간 → 캐시 불필요
+        if (await LocalCache.get('game_${id}_detail', maxAgeSeconds: 86400) != null) continue;
+        try {
+          final detail = await ApiService.getGameDetail(id);
+          await LocalCache.set('game_${id}_detail', detail);
+          if (status == '종료' || status == '취소') {
+            // 중계 탭도 미리 캐시
+            final relay = await ApiService.getGameRelayAll(id);
+            await LocalCache.set('game_${id}_relay', relay);
+          }
+        } catch (_) {}
+      }
+    });
   }
 
   Widget _buildMonthStrip() {

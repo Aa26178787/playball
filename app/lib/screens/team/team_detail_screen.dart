@@ -88,8 +88,13 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Future<void> _loadSeasonStats() async {
+    final teamId = widget.team['id'] as int;
+    final ck = 'team_season_stats_$teamId';
+    final cached = await LocalCache.get(ck, maxAgeSeconds: 1800) as Map?;
+    if (cached != null && mounted) setState(() => _seasonStats = Map<String, dynamic>.from(cached));
     try {
-      final data = await ApiService.getTeamSeasonStats(widget.team['id'] as int);
+      final data = await ApiService.getTeamSeasonStats(teamId);
+      await LocalCache.set(ck, data);
       if (mounted) setState(() => _seasonStats = data);
     } catch (_) {}
   }
@@ -136,105 +141,112 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Future<void> _loadGames() async {
-    setState(() => _gamesLoading = true);
+    final teamId = widget.team['id'] as int;
+    final ck = 'team_games_$teamId';
+    final cached = await LocalCache.get(ck, maxAgeSeconds: 600) as List?;
+    if (cached != null && mounted) setState(() { _games = cached; _gamesLoading = false; });
+    else if (mounted) setState(() => _gamesLoading = true);
     try {
-      final data = await ApiService.getTeamGames(widget.team['id']);
-      if (mounted) {
-        setState(() {
-          _games = data['games'] ?? [];
-          _gamesLoading = false;
-        });
-      }
+      final data = await ApiService.getTeamGames(teamId);
+      final games = data['games'] as List? ?? [];
+      await LocalCache.set(ck, games);
+      if (mounted) setState(() { _games = games; _gamesLoading = false; });
     } catch (_) {
       if (mounted) setState(() => _gamesLoading = false);
     }
   }
 
   Future<void> _loadRosterChanges() async {
-    setState(() => _rosterLoading = true);
+    final teamId = widget.team['id'] as int;
+    final ck = 'team_roster_changes_$teamId';
+    final cached = await LocalCache.get(ck, maxAgeSeconds: 300) as List?;
+    if (cached != null && mounted) setState(() { _rosterChanges = cached; _rosterLoading = false; });
+    else if (mounted) setState(() => _rosterLoading = true);
     try {
-      final data = await ApiService.getTeamRosterChanges(widget.team['id'], days: 30);
-      if (mounted) {
-        setState(() {
-          _rosterChanges = data['changes'] ?? [];
-          _rosterLoading = false;
-        });
-      }
+      final data = await ApiService.getTeamRosterChanges(teamId, days: 30);
+      final changes = data['changes'] as List? ?? [];
+      await LocalCache.set(ck, changes);
+      if (mounted) setState(() { _rosterChanges = changes; _rosterLoading = false; });
     } catch (_) {
       if (mounted) setState(() => _rosterLoading = false);
     }
   }
 
   Future<void> _loadNews() async {
-    setState(() => _newsLoading = true);
+    final teamId = widget.team['id'] as int;
+    final ck = 'team_news_$teamId';
+    final cached = await LocalCache.get(ck, maxAgeSeconds: 1800) as List?;
+    if (cached != null && mounted) setState(() { _news = cached; _newsLoading = false; });
+    else if (mounted) setState(() => _newsLoading = true);
     try {
-      final data = await ApiService.getTeamNews(widget.team['id'] as int, limit: 30);
-      if (mounted) {
-        setState(() {
-          _news = data['news'] ?? [];
-          _newsLoading = false;
-        });
-      }
+      final data = await ApiService.getTeamNews(teamId, limit: 30);
+      final news = data['news'] as List? ?? [];
+      await LocalCache.set(ck, news);
+      if (mounted) setState(() { _news = news; _newsLoading = false; });
     } catch (_) {
       if (mounted) setState(() => _newsLoading = false);
     }
   }
 
   Future<void> _loadCommunityPosts() async {
-    setState(() => _communityLoading = true);
+    final teamId = widget.team['id'] as int;
+    final ck = 'team_community_$teamId';
+    final cached = await LocalCache.get(ck, maxAgeSeconds: 300) as List?;
+    if (cached != null && mounted) setState(() { _communityPosts = cached; _communityLoading = false; });
+    else if (mounted) setState(() => _communityLoading = true);
     try {
-      final data = await ApiService.getPosts(teamId: widget.team['id'] as int, sort: 'latest', page: 1);
-      if (mounted) {
-        setState(() {
-          _communityPosts = data['posts'] ?? [];
-          _communityLoading = false;
-        });
-      }
+      final data = await ApiService.getPosts(teamId: teamId, sort: 'latest', page: 1);
+      final posts = data['posts'] as List? ?? [];
+      await LocalCache.set(ck, posts);
+      if (mounted) setState(() { _communityPosts = posts; _communityLoading = false; });
     } catch (_) {
       if (mounted) setState(() => _communityLoading = false);
     }
   }
 
   Future<void> _loadMonthlyStats() async {
-    setState(() => _monthlyLoading = true);
+    final teamId = widget.team['id'] as int;
+    final ck = 'team_monthly_$teamId';
+    final cached = await LocalCache.get(ck, maxAgeSeconds: 3600) as List?;
+    if (cached != null && mounted) setState(() { _monthlyStats = cached; _monthlyLoading = false; });
+    else if (mounted) setState(() => _monthlyLoading = true);
     try {
-      final data = await ApiService.getTeamMonthlyStats(widget.team['id'] as int);
-      if (mounted) {
-        setState(() {
-          _monthlyStats = data['monthly'] ?? [];
-          _monthlyLoading = false;
-        });
-      }
+      final data = await ApiService.getTeamMonthlyStats(teamId);
+      final stats = data['monthly'] as List? ?? [];
+      await LocalCache.set(ck, stats);
+      if (mounted) setState(() { _monthlyStats = stats; _monthlyLoading = false; });
     } catch (_) {
       if (mounted) setState(() => _monthlyLoading = false);
     }
   }
 
   Future<void> _loadH2H() async {
-    setState(() => _h2hLoading = true);
+    final teamId = widget.team['id'] as int;
+    final ck = 'team_h2h_$teamId';
+    final cached = await LocalCache.get(ck, maxAgeSeconds: 3600) as List?;
+    if (cached != null && mounted) setState(() { _h2hRecords = cached; _h2hLoading = false; });
+    else if (mounted) setState(() => _h2hLoading = true);
     try {
-      final data = await ApiService.getTeamHeadToHead(widget.team['id'] as int);
-      if (mounted) {
-        setState(() {
-          _h2hRecords = data['records'] ?? [];
-          _h2hLoading = false;
-        });
-      }
+      final data = await ApiService.getTeamHeadToHead(teamId);
+      final records = data['records'] as List? ?? [];
+      await LocalCache.set(ck, records);
+      if (mounted) setState(() { _h2hRecords = records; _h2hLoading = false; });
     } catch (_) {
       if (mounted) setState(() => _h2hLoading = false);
     }
   }
 
   Future<void> _loadBattingOrder() async {
-    setState(() => _battingOrderLoading = true);
+    final teamId = widget.team['id'] as int;
+    final ck = 'team_batting_order_$teamId';
+    final cached = await LocalCache.get(ck, maxAgeSeconds: 1800) as List?;
+    if (cached != null && mounted) setState(() { _battingOrderStats = cached; _battingOrderLoading = false; });
+    else if (mounted) setState(() => _battingOrderLoading = true);
     try {
-      final data = await ApiService.getTeamBattingOrder(widget.team['id'] as int);
-      if (mounted) {
-        setState(() {
-          _battingOrderStats = data['stats'] ?? [];
-          _battingOrderLoading = false;
-        });
-      }
+      final data = await ApiService.getTeamBattingOrder(teamId);
+      final stats = data['stats'] as List? ?? [];
+      await LocalCache.set(ck, stats);
+      if (mounted) setState(() { _battingOrderStats = stats; _battingOrderLoading = false; });
     } catch (_) {
       if (mounted) setState(() => _battingOrderLoading = false);
     }
