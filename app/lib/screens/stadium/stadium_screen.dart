@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:kakao_map_plugin/kakao_map_plugin.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/team_theme.dart';
 import '../../api/api_service.dart';
@@ -13,19 +13,9 @@ class StadiumScreen extends StatefulWidget {
 }
 
 class _StadiumScreenState extends State<StadiumScreen> {
-  KakaoMapController? _mapController;
+  InAppWebViewController? _webController;
+  bool _mapReady = false;
   int _selected = -1;
-  bool _mapCreated = false;
-  bool _mapTimeout = false;
-  int _retryKey = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(seconds: 30), () {
-      if (mounted && !_mapCreated) setState(() => _mapTimeout = true);
-    });
-  }
 
   static const _stadiums = [
     {
@@ -111,20 +101,67 @@ class _StadiumScreenState extends State<StadiumScreen> {
     },
   ];
 
-  static final _koreaCenter = LatLng(36.5, 127.7);
-
-  Set<Marker> get _markers => _stadiums.asMap().entries.map((e) {
-    return Marker(
-      markerId: 'stadium_${e.key}',
-      latLng: LatLng(e.value['lat'] as double, e.value['lng'] as double),
-    );
-  }).toSet();
+  static const _mapHtml = '''
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body, #map { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=28893522eb71ed933caf1bb2e080bbf6"></script>
+<script>
+var map;
+var stadiums = [
+  {lat:37.5121, lng:127.0719},
+  {lat:37.4982, lng:126.8672},
+  {lat:37.2997, lng:127.0095},
+  {lat:37.4370, lng:126.6934},
+  {lat:36.3169, lng:127.4289},
+  {lat:35.1685, lng:126.8890},
+  {lat:35.8411, lng:128.6813},
+  {lat:35.2225, lng:128.5816},
+  {lat:35.1940, lng:129.0613}
+];
+kakao.maps.load(function() {
+  var container = document.getElementById('map');
+  map = new kakao.maps.Map(container, {
+    center: new kakao.maps.LatLng(36.5, 127.7),
+    level: 13
+  });
+  stadiums.forEach(function(s) {
+    new kakao.maps.Marker({
+      position: new kakao.maps.LatLng(s.lat, s.lng),
+      map: map
+    });
+  });
+});
+function moveTo(lat, lng) {
+  if (!map) return;
+  map.setCenter(new kakao.maps.LatLng(lat, lng));
+  map.setLevel(4);
+}
+function resetView() {
+  if (!map) return;
+  map.setCenter(new kakao.maps.LatLng(36.5, 127.7));
+  map.setLevel(13);
+}
+</script>
+</body>
+</html>
+''';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('구장 안내'),
+        surfaceTintColor: Colors.transparent,
         actions: [
           if (_selected >= 0)
             TextButton(
@@ -138,17 +175,25 @@ class _StadiumScreenState extends State<StadiumScreen> {
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.38,
             child: Stack(children: [
-              KakaoMap(
-                key: ValueKey(_retryKey),
-                onMapCreated: (controller) {
-                  _mapController = controller;
-                  if (mounted) setState(() => _mapCreated = true);
+              InAppWebView(
+                initialData: InAppWebViewInitialData(
+                  data: _mapHtml,
+                  mimeType: 'text/html',
+                  encoding: 'utf-8',
+                  baseUrl: WebUri('https://playball.duckdns.org'),
+                ),
+                initialSettings: InAppWebViewSettings(
+                  javaScriptEnabled: true,
+                  transparentBackground: true,
+                ),
+                onWebViewCreated: (controller) {
+                  _webController = controller;
                 },
-                markers: _markers.toList(),
-                center: _koreaCenter,
-                currentLevel: 13,
+                onLoadStop: (controller, url) {
+                  if (mounted) setState(() => _mapReady = true);
+                },
               ),
-              if (!_mapCreated && !_mapTimeout)
+              if (!_mapReady)
                 Container(
                   color: Colors.grey[50],
                   child: const Center(
@@ -158,36 +203,6 @@ class _StadiumScreenState extends State<StadiumScreen> {
                         CircularProgressIndicator(strokeWidth: 2),
                         SizedBox(height: 12),
                         Text('지도 불러오는 중...', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      ],
-                    ),
-                  ),
-                ),
-              if (_mapTimeout && !_mapCreated)
-                Container(
-                  color: Colors.grey[100],
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.map_outlined, size: 40, color: Colors.grey),
-                        const SizedBox(height: 8),
-                        const Text('지도 로드 실패',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 13, color: Colors.grey)),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _mapTimeout = false;
-                              _mapCreated = false;
-                              _retryKey++;
-                            });
-                            Future.delayed(const Duration(seconds: 30), () {
-                              if (mounted && !_mapCreated) setState(() => _mapTimeout = true);
-                            });
-                          },
-                          child: const Text('다시 시도'),
-                        ),
                       ],
                     ),
                   ),
@@ -208,9 +223,9 @@ class _StadiumScreenState extends State<StadiumScreen> {
   Future<void> _focusStadium(int i) async {
     setState(() => _selected = i);
     final s = _stadiums[i];
-    final latLng = LatLng(s['lat'] as double, s['lng'] as double);
-    _mapController?.setCenter(latLng);
-    _mapController?.setLevel(4);
+    final lat = s['lat'] as double;
+    final lng = s['lng'] as double;
+    await _webController?.evaluateJavascript(source: 'moveTo($lat, $lng)');
   }
 
   void _openFoodSheet(int i) {
@@ -232,8 +247,7 @@ class _StadiumScreenState extends State<StadiumScreen> {
 
   Future<void> _resetView() async {
     setState(() => _selected = -1);
-    _mapController?.setCenter(_koreaCenter);
-    _mapController?.setLevel(13);
+    await _webController?.evaluateJavascript(source: 'resetView()');
   }
 
   Widget _buildStadiumCard(int i) {
