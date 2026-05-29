@@ -3,10 +3,12 @@
 KBO 야구 앱 | Flutter + FastAPI + PostgreSQL
 
 ## 인프라
-- 서버: Oracle Cloud Ubuntu 22.04 | 168.107.61.147:8000
+- 서버: Oracle Cloud Ubuntu 22.04 | 168.107.61.147:8000 (내부), HTTPS: playball.duckdns.org
 - SSH 키: `C:\Users\qq772\Downloads\ssh-key-2026-03-28 (2).key`
 - DB: localhost:5432(서버)/5433(터널), db=playball, user=playball_user, pw=playball1234
 - 레포: https://github.com/Aa26178787/playball
+- HTTPS: nginx + Let's Encrypt, playball.duckdns.org → 168.107.61.147:8000 리버스프록시
+  - Android 9+ HTTP 평문 차단 → 앱은 반드시 HTTPS 사용 (`usesCleartextTraffic` 미설정)
 
 ## 폴더 구조
 - 로컬: `C:\Users\qq772\playball\` → `app\`(Flutter), `backend\`(FastAPI)
@@ -33,8 +35,10 @@ Environment=EMAIL_PASS=tsgi xehp bgvt nawo
 
 ## 앱 설정
 - 패키지명: com.playball.app
-- baseUrl: http://168.107.61.147:8000
-- 인증: JWT Bearer → SharedPreferences `access_token`
+- baseUrl: https://playball.duckdns.org  ← **HTTP로 변경 금지** (Android 9+ 차단)
+- 인증: JWT Bearer → FlutterSecureStorage `access_token` / `refresh_token`
+  - access token: 24시간, refresh token: 365일
+  - checkLoginStatus(): 토큰 없으면 refresh 시도 → 실패 시 로그인 화면 (토큰은 401/403만 삭제)
 
 ## 앱 실행 / 배포
 
@@ -117,7 +121,7 @@ DELETE /auth/me              [Bearer] → 회원탈퇴
 ### 경기
 ```
 GET /games/today             (weather, home/away_recent_5, home/away_team_id 포함) @cached(30)
-GET /games/date/{date_str}   (home_starter, away_starter, weather, recent_5 포함) @cached(30)
+GET /games/date/{date_str}   (home_starter, away_starter, weather, recent_5 포함) @cached(300)
 GET /games/{id}              (innings, pitchers, batters) @cached(30)
 GET /games/{id}/relay        실시간(진행중만)
 GET /games/{id}/relay_all    ※ ThreadPoolExecutor 병렬 이닝 fetch
@@ -292,14 +296,27 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
   - 승리팀 로고 주변 후광 효과 (_winnerGlowLogo)
   - 하단 "다음 vs 상대팀" 한 줄 표시 (날짜/홈원정 없음)
 - 로딩: Shimmer 게임카드 스켈레톤 4개
-- 캐시: games/favorite-teams/rankings — stale-while-revalidate (games TTL=5분)
+- 캐시: games/favorite-teams/rankings — stale-while-revalidate
+  - 오늘 날짜: games TTL=300초, 과거 날짜: TTL=86400초 (1일)
+- _loadGames race condition: _loadGen generation counter (날짜 전환 중복 호출 방지)
+  - Dio retry interceptor: DioExceptionType.unknown 포함 (앱 시작 시 네트워크 미초기화 대응)
+  - catch 시 2초 후 1회 자동 재시도 (isRetry 파라미터)
+- _gamesDateMismatch: 선택 날짜와 _games 날짜 불일치 시 shimmer 표시
 
 ### game_detail_screen.dart
-- 탭 7개 (isScrollable): 이닝/프리뷰/로스터/투수/타자/기록/하이라이트
+- 탭 4개 (isScrollable): 중계/라인업/기록/하이라이트
 - 투수 탭: 구종차트 + 투구위치 보기 → PitchLocationSheet
 - 하이라이트 탭: url_launcher 외부 브라우저
 - 공유 버튼: share_plus
 - 자동새로고침: 30초 (진행중만)
+- **필드뷰 (_buildFieldSection)**:
+  - 진행중 + relay 로드됨: BSO 카운트 + 실시간 수비/타자/주자 (_buildLiveStatus)
+  - 종료/예정/라인업: 홈팀 수비 스타팅 라인업 정적 표시 (_rosterData 기반)
+  - 조건: `_relayData != null || _rosterData != null`
+- **득점 상세 (_buildScoringSection)**:
+  - 타석 이벤트(type 13/23) + 후속 홈인 이벤트(type 14/24/31) 그룹화
+  - RBI/홈런 타석 표시 → 홈인 주자 들여쓰기로 연결 표시
+  - standalone 홈인 (폭투/보크 등): 타석 없이 독립 표시
 
 ### pitch_location_chart.dart (PitchLocationSheet)
 - 3단계 필터: 투수 → 이닝 → 타자
@@ -405,7 +422,8 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 ### 서버사이드
 - **DB 커넥션 풀**: ThreadedConnectionPool(5-20), _PooledConn 래퍼 (close()→putconn())
 - **TTL 인메모리 캐시** (api/cache.py): @cached(30)/60/300/3600 데코레이터
-  - /games/today, /games/date → 30초
+  - /games/today → 30초
+  - /games/date/{date_str} → 300초 (과거 날짜 데이터 변경 없음)
   - /games/{id} → 30초
   - /teams/rankings → 60초
   - /players/rankings, /players/{id} → 300초
@@ -422,6 +440,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
   - 로그아웃 시 clearUser() 자동 호출
 
 ## 주의사항
+- **baseUrl 반드시 `https://playball.duckdns.org`** — HTTP로 변경 시 Android 9+ 전체 API 차단
 - 과거경기 수정: game_date < '2026-05-09' 조건 필수
 - 동명이인: team_id 기준 조회
 - 서버 백엔드 루트: ~/playball/backend/
@@ -506,9 +525,13 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [x] 이미지 공유 팀 로고 + 승투/패투 얼굴 수정 (precacheImage + CachedNetworkImageProvider, Naver CDN 403 우회)
 - [x] 등록말소 배너 자정 자동 숨김 (60초 타이머 setState)
 - [x] 직관승률 랭킹 API — GET /user/stadium-ranking (5회 이상 기준)
-- [x] 홈화면 게임카드 날짜 race condition 수정 (_loadGames requestDate 체크, 이전 응답 무시)
+- [x] 홈화면 게임카드 날짜 race condition 근본 해결 (_loadGen generation counter + DioExceptionType.unknown 재시도)
 - [x] 게임카드 스코어 정중앙 배치 (CrossAxisAlignment.center)
+- [x] 게임카드 다음 시리즈 텍스트 overflow 수정 (Row mainAxisSize.min 제거 + ellipsis)
 - [x] 실시간 필드뷰 (야구장 다이아몬드 CustomPainter + BSO 카운트, _buildLiveStatus 교체)
+- [x] 필드뷰 비라이브 표시 — 종료/예정 경기에서 홈팀 수비 라인업 정적 표시 (_buildFieldSection)
+- [x] 득점 상세 홈인-타석 연결 — 홈인 이벤트를 preceding 타석 아래 들여쓰기 표시
+- [x] 과거 날짜 로딩 속도 개선 — LocalCache TTL 86400초 + 서버 @cached(300)
 - [x] 중계 타자별 헤더 Flexible 적용 (이름 overflow 방지)
 - [x] pitch-locations batter 타순 접두사 제거 ("N번타자 이름" → "이름", DB+실시간 양쪽)
 - [x] FCM 서비스 계정 키 복원 (서버에서 사라진 firebase-service-account.json 재업로드)
