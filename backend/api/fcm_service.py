@@ -215,12 +215,18 @@ def _send(targets: list[tuple[int, str]], title: str, body: str,
 
 def notify_game_start(game_id: int, home_team: str, away_team: str,
                       home_team_id: int, away_team_id: int,
-                      start_time: str = ''):
+                      start_time: str = '',
+                      home_starter: str = '', away_starter: str = ''):
     targets = _get_targets('notify_game_start', [home_team_id, away_team_id])
     time_str = f" ({start_time})" if start_time else ""
-    _send(targets,
-          f"⚾ {home_team} vs {away_team} 시작!{time_str}",
-          f"{home_team}(홈) vs {away_team}(원정) 경기가 시작되었습니다.",
+    title = f"⚾ {home_team} vs {away_team} 시작!{time_str}"
+    if home_starter and away_starter:
+        body = f"홈: {home_team} ({home_starter}) vs 원정: {away_team} ({away_starter})"
+    elif home_starter or away_starter:
+        body = f"{home_team}(홈) vs {away_team}(원정) | 선발: {home_starter or away_starter}"
+    else:
+        body = f"{home_team}(홈) vs {away_team}(원정) 경기가 시작되었습니다."
+    _send(targets, title, body,
           {"game_id": str(game_id), "type": "game_start"}, "game_start", game_id)
 
 
@@ -230,25 +236,42 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
                         is_comeback: bool = False,
                         inning: int = 0, inning_half: str = '',
                         scoring_team: str = '',
+                        runs: int = 1,
                         batter: str = '', pitcher: str = '', play_text: str = '',
-                        stuff: str = '', speed: int = 0):
+                        stuff: str = '', speed: int = 0, homein: list = None):
     targets = _get_targets('notify_score_change', [home_team_id, away_team_id])
     half_str = '초' if inning_half == 'top' else '말' if inning_half == 'bottom' else ''
     inning_str = f" [{inning}{half_str}]" if inning > 0 else ""
     team_prefix = f"{scoring_team} " if scoring_team else ""
-    title = f"⚡ {team_prefix}역전!{inning_str}" if is_comeback else f"⚾ {team_prefix}득점!{inning_str}"
-    score_line = f"{home_team} {home_score} : {away_score} {away_team}"
-    if batter and play_text:
-        pitch_info = ""
-        if stuff:
-            pitch_info = f" {stuff}"
-            if speed > 0:
-                pitch_info += f" {speed}km"
-        vs_pitcher = f" vs {pitcher}" if pitcher else ""
-        play_line = f"{batter} {play_text}{pitch_info}{vs_pitcher}"
-        body = f"{play_line}\n{score_line}"
+
+    if is_comeback:
+        title = f"⚡ {team_prefix}역전!{inning_str}"
+    elif runs > 1:
+        title = f"⚾ {team_prefix}{runs}점 득점!{inning_str}"
     else:
-        body = score_line
+        title = f"⚾ {team_prefix}득점!{inning_str}"
+
+    score_line = f"{home_team} {home_score} : {away_score} {away_team}"
+    # 리드 상황
+    if home_score > away_score:
+        lead_str = f"({home_team} {home_score - away_score}점 리드)"
+    elif away_score > home_score:
+        lead_str = f"({away_team} {away_score - home_score}점 리드)"
+    else:
+        lead_str = "(동점)"
+
+    lines = []
+    if batter and play_text:
+        pitch_info = f" {stuff}" if stuff else ""
+        if pitch_info and speed > 0:
+            pitch_info += f" {speed}km"
+        vs_pitcher = f" vs {pitcher}" if pitcher else ""
+        lines.append(f"{batter} {play_text}{pitch_info}{vs_pitcher}")
+    if homein:
+        lines.append(f"홈인: {', '.join(homein)}")
+    lines.append(f"{score_line} {lead_str}")
+
+    body = "\n".join(lines)
     ntype = "comeback" if is_comeback else "score_change"
     _send(targets, title, body,
           {"game_id": str(game_id), "type": ntype}, ntype, game_id)
@@ -258,11 +281,21 @@ def notify_game_end(game_id: int, home_team: str, away_team: str,
                     home_score: int, away_score: int,
                     home_team_id: int, away_team_id: int):
     targets = _get_targets('notify_game_end', [home_team_id, away_team_id])
-    result = (f"{home_team} 승리!" if home_score > away_score
-              else f"{away_team} 승리!" if away_score > home_score else "무승부")
-    _send(targets,
-          "⚾ 경기 종료",
-          f"{home_team} {home_score} : {away_score} {away_team} — {result}",
+    if home_score > away_score:
+        winner, loser = home_team, away_team
+        result_emoji = "🏆"
+    elif away_score > home_score:
+        winner, loser = away_team, home_team
+        result_emoji = "🏆"
+    else:
+        winner = loser = ''
+        result_emoji = "🤝"
+    diff = abs(home_score - away_score)
+    title = (f"{result_emoji} {winner} {home_score}:{away_score} 승리!"
+             if winner else f"🤝 {home_team} {home_score}:{away_score} 무승부")
+    body = (f"{home_team} {home_score} : {away_score} {away_team} | {winner} {diff}점 차 승리"
+            if winner else f"{home_team} {home_score} : {away_score} {away_team}")
+    _send(targets, title, body,
           {"game_id": str(game_id), "type": "game_end"}, "game_end", game_id)
 
 
@@ -295,26 +328,34 @@ def notify_rank_change(team_id: int, team_name: str,
     """순위 변동 — 해당 팀 마이팀 팬에게 (notify_rank_change ON)"""
     targets = _get_team_fan_targets(team_id, 'notify_rank_change')
     direction = "▲" if new_rank < old_rank else "▼"
-    gb_str = f" (1위와 {games_behind}게임차)" if new_rank > 1 and games_behind is not None else " (1위!)" if new_rank == 1 else ""
-    _send(targets,
-          f"📊 {team_name} {direction}{abs(old_rank - new_rank)}위 {new_rank}위",
-          f"{old_rank}위에서 {new_rank}위로 변동{gb_str}",
+    moved = abs(old_rank - new_rank)
+    if new_rank == 1:
+        gb_str = " — 단독 선두!"
+    elif games_behind is not None and games_behind > 0:
+        gb_str = f" (1위와 {games_behind:.1f}게임차)"
+    else:
+        gb_str = ""
+    title = f"📊 {team_name} {direction}{moved}계단 → {new_rank}위"
+    body = f"{old_rank}위 → {new_rank}위 변동{gb_str}"
+    _send(targets, title, body,
           {"team_id": str(team_id), "type": "rank_change"}, "rank_change", None)
 
 
 # ── 연승/연패 알림 ────────────────────────────────────────────────────────────
 
-def notify_streak(team_id: int, team_name: str, count: int, is_winning: bool):
+def notify_streak(team_id: int, team_name: str, count: int, is_winning: bool,
+                  rank: int = 0):
     targets = _get_team_fan_targets(team_id, 'notify_streak')
+    rank_str = f" (현재 {rank}위)" if rank > 0 else ""
     if is_winning:
         _send(targets,
               f"🔥 {team_name} {count}연승!",
-              f"{team_name}가 {count}연승을 달리고 있습니다!",
+              f"{team_name} {count}연승 행진 중!{rank_str} 다음 경기도 응원해요.",
               {"team_id": str(team_id), "type": "winning_streak"}, "winning_streak", None)
     else:
         _send(targets,
               f"😰 {team_name} {count}연패",
-              f"{team_name}가 {count}연패 중입니다.",
+              f"{team_name} {count}연패 중...{rank_str} 반등을 기다려요.",
               {"team_id": str(team_id), "type": "losing_streak"}, "losing_streak", None)
 
 
@@ -401,14 +442,16 @@ def notify_new_comment(post_author_id: int, post_id: int,
 
 # ── 즐겨찾기 선수 홈런 ──────────────────────────────────────────────────────────
 
-def notify_fav_hr(player_id: int, player_name: str, team_name: str, game_id: int):
+def notify_fav_hr(player_id: int, player_name: str, team_name: str, game_id: int,
+                  hr_type: str = ''):
     """즐겨찾기 선수 홈런 — notify_fav_hr ON 팬에게"""
     targets = _get_player_fan_targets(player_id, 'notify_fav_hr')
     if not targets:
         return
+    hr_str = f" ({hr_type})" if hr_type else ""
     _send(targets,
-          f"⚾ {player_name} 홈런!",
-          f"{team_name} {player_name}이(가) 홈런을 쳤습니다!",
+          f"💣 {player_name} 홈런!{hr_str}",
+          f"{team_name} {player_name} 홈런{hr_str}! 담장을 넘었습니다.",
           {"game_id": str(game_id), "player_id": str(player_id), "type": "fav_hr"},
           "fav_hr", game_id)
 

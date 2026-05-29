@@ -289,9 +289,28 @@ def smart_update():
 
                 # 경기 시작
                 if cs == '진행' and ps in ('예정', '라인업', ''):
+                    # 선발 투수 조회
+                    _hs = _ls = ''
+                    try:
+                        _c2 = get_connection()
+                        if _c2:
+                            _cur2 = _c2.cursor()
+                            _cur2.execute("""
+                                SELECT p.name, gp.side FROM game_pitchers gp
+                                JOIN players p ON p.id = gp.player_id
+                                WHERE gp.game_id = %s AND gp.pitch_order = 1
+                            """, (gid,))
+                            for _name, _side in _cur2.fetchall():
+                                if _side == 'home': _hs = _name
+                                else: _ls = _name
+                            _cur2.close()
+                            _c2.close()
+                    except Exception:
+                        pass
                     notify_game_start(gid, curr['home_team'], curr['away_team'],
                                       curr['home_team_id'], curr['away_team_id'],
-                                      start_time=curr.get('start_time', ''))
+                                      start_time=curr.get('start_time', ''),
+                                      home_starter=_hs, away_starter=_ls)
 
                 # 득점 변화
                 elif (cs == '진행' and ps == '진행' and
@@ -301,16 +320,18 @@ def smart_update():
                     ch, ca = curr['home_score'], curr['away_score']
                     # 역전: 득점 전 앞서던 팀이 뒤처짐
                     is_comeback = ((ph > pa and ch < ca) or (pa > ph and ca < ch))
-                    # 득점 팀 판별
+                    # 득점 팀 판별 + 득점 수
                     scoring_team = curr['home_team'] if ch > ph else curr['away_team'] if ca > pa else ''
-                    # 득점 상세 (타자/투수/타구)
+                    runs_scored = (ch - ph) if ch > ph else (ca - pa) if ca > pa else 1
+                    # 득점 상세 (타자/투수/타구/홈인)
                     naver_gid = curr.get('naver_game_id', '')
                     inning_now = curr.get('current_inning', 0)
                     batter = pitcher = play_text = stuff = ''
                     speed = 0
+                    homein = []
                     if naver_gid and inning_now:
                         try:
-                            batter, pitcher, play_text, stuff, speed = _get_scoring_play_detail(
+                            batter, pitcher, play_text, stuff, speed, homein = _get_scoring_play_detail(
                                 naver_gid, inning_now, ch, ca)
                         except Exception:
                             pass
@@ -321,8 +342,9 @@ def smart_update():
                                         inning=inning_now,
                                         inning_half=curr.get('inning_half', ''),
                                         scoring_team=scoring_team,
+                                        runs=runs_scored,
                                         batter=batter, pitcher=pitcher, play_text=play_text,
-                                        stuff=stuff, speed=speed)
+                                        stuff=stuff, speed=speed, homein=homein)
                     _check_new_hrs(gid, curr['home_team_id'], curr['away_team_id'])
 
                 # 경기 종료
@@ -1005,6 +1027,8 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
         curr_speed = 0
         result_batter = result_pitcher = result_text = result_stuff = ''
         result_speed = 0
+        result_homein = []
+        found_scoring = False
 
         for item in text_relays:
             for opt in item.get('textOptions', []):
@@ -1025,30 +1049,40 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
                     m = _re.match(r'^(?:\d+번타자|대타)\s+(\S+)', opt.get('text', ''))
                     if m:
                         curr_batter = m.group(1)
+                    if found_scoring:
+                        break  # 다음 타자 시작 → homeIn 수집 종료
 
                 # 투구 구종/구속 추적 (scoring pitch에 그대로 붙어 있음)
                 if opt.get('stuff'):
                     curr_stuff = opt.get('stuff', '')
                     curr_speed = int(opt.get('speed', 0) or 0)
 
+                # 득점 이후 홈인 선수 수집 (type 24)
+                if found_scoring and opt.get('type') == 24:
+                    txt = opt.get('text', '')
+                    m2 = _re.search(r'([가-힣A-Za-z]+)\s*홈인', txt)
+                    if m2 and m2.group(1) not in result_homein:
+                        result_homein.append(m2.group(1))
+
                 hs = state.get('homeScore')
                 aws = state.get('awayScore')
                 if hs is not None and aws is not None:
                     if int(hs) >= new_home_score and int(aws) >= new_away_score:
-                        if opt.get('type') == 1:
+                        if opt.get('type') == 1 and not found_scoring:
                             result_batter = curr_batter
                             result_pitcher = curr_pitcher
                             result_text = opt.get('text', '')
                             result_stuff = curr_stuff
                             result_speed = curr_speed
+                            found_scoring = True
 
         if cur:
             cur.close()
         if conn:
             conn.close()
-        return result_batter, result_pitcher, result_text, result_stuff, result_speed
+        return result_batter, result_pitcher, result_text, result_stuff, result_speed, result_homein
     except Exception:
-        return '', '', '', '', 0
+        return '', '', '', '', 0, []
 
 
 def _notify_roster_for_fans():
