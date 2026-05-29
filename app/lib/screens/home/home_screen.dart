@@ -98,6 +98,13 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 
   bool get _hasLiveGames => _games.any((g) => g['status'] == '진행');
 
+  String get _selectedDateStr =>
+      '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
+
+  bool get _gamesDateMismatch =>
+      _games.isNotEmpty &&
+      (_games.first as Map)['game_date'] != _selectedDateStr;
+
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
@@ -274,7 +281,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       setState(() { _games = games; _isLoading = false; });
     } catch (e) {
       if (!mounted || !_isSameDay(_selectedDate, requestDate)) return;
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _isLoading = false; _games = []; });
     }
   }
 
@@ -545,7 +552,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 
           // 경기 목록
           Expanded(
-            child: _isLoading
+            child: _isLoading || _gamesDateMismatch
                 ? _buildGameShimmer()
                 : _buildGameList(),
           ),
