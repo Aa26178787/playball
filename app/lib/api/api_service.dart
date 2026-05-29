@@ -5,8 +5,8 @@ class ApiService {
   static const String baseUrl = 'https://playball.duckdns.org';
   static final Dio _dio = Dio(BaseOptions(
     baseUrl: baseUrl,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 20),
+    connectTimeout: const Duration(seconds: 6),
+    receiveTimeout: const Duration(seconds: 12),
   ));
   static bool _interceptorAdded = false;
 
@@ -27,7 +27,7 @@ class ApiService {
         final is5xx = (err.response?.statusCode ?? 0) >= 500;
         if ((isNetworkError || is5xx) && err.requestOptions.extra['_retried'] != true) {
           err.requestOptions.extra['_retried'] = true;
-          await Future.delayed(const Duration(seconds: 2));
+          await Future.delayed(const Duration(milliseconds: 300));
           try {
             final res = await _dio.fetch(err.requestOptions);
             return handler.resolve(res);
@@ -136,7 +136,7 @@ class ApiService {
 
   static Future<Map<String, String>> optionalAuthHeaders() async {
     try {
-      final token = await _secure.read(key: 'access_token');
+      final token = await getToken();
       if (token != null && token.isNotEmpty) {
         return {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'};
       }

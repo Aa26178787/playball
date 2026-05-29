@@ -137,16 +137,20 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   @override
   void initState() {
     super.initState();
-    _loadGames();
-    _loadTodayRosterChanges();
+    _loadGames();        // 최우선
     _loadFavoriteTeams();
     _loadRankings();
-    _loadUnreadCount();
-    _loadTomorrowGames();
     _startAutoRefresh();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToSelected();
-      _backgroundPrefetch();
+      // 핵심 로드 후 비우선 작업 지연
+      Future.delayed(const Duration(seconds: 2), () {
+        if (!mounted) return;
+        _loadTodayRosterChanges();
+        _loadUnreadCount();
+        _loadTomorrowGames();
+        _backgroundPrefetch();
+      });
     });
   }
 
@@ -242,15 +246,13 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
         return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
       }
 
-      final results = await Future.wait([
-        ApiService.getGamesByDate(_ds(1)).catchError((_) => <String, dynamic>{}),
-        ApiService.getGamesByDate(_ds(2)).catchError((_) => <String, dynamic>{}),
-        ApiService.getGamesByDate(_ds(3)).catchError((_) => <String, dynamic>{}),
-        ApiService.getGamesByDate(_ds(4)).catchError((_) => <String, dynamic>{}),
-        ApiService.getGamesByDate(_ds(5)).catchError((_) => <String, dynamic>{}),
-        ApiService.getGamesByDate(_ds(6)).catchError((_) => <String, dynamic>{}),
-        ApiService.getGamesByDate(_ds(7)).catchError((_) => <String, dynamic>{}),
-      ]);
+      // 캐시 먼저 확인 — 없는 날짜만 API 호출
+      final dates = List.generate(7, (i) => _ds(i + 1));
+      final results = await Future.wait(dates.map((d) async {
+        final c = await LocalCache.get('games_$d', maxAgeSeconds: 86400) as List?;
+        if (c != null) return <String, dynamic>{'games': c};
+        return ApiService.getGamesByDate(d).catchError((_) => <String, dynamic>{});
+      }));
 
       final combined = <dynamic>[];
       for (final r in results) {
@@ -261,7 +263,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     } catch (_) {}
   }
 
-  Future<void> _loadGames({bool isRetry = false}) async {
+  Future<void> _loadGames() async {
     final gen = ++_loadGen;
     final dateStr = _selectedDateStr;
 
@@ -285,14 +287,8 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       setState(() { _games = games; _isLoading = false; _loadError = false; });
     } catch (e) {
       if (!mounted || _loadGen != gen) return;
-      if (!isRetry) {
-        await Future.delayed(const Duration(seconds: 2));
-        if (!mounted || _loadGen != gen) return;
-        await _loadGames(isRetry: true);
-        return;
-      }
-      // API 실패: 캐시 데이터 유지, 에러 플래그만 설정
-      setState(() { _isLoading = false; _loadError = true; });
+      // Dio 인터셉터가 이미 1회 재시도함 — 캐시 데이터 유지, 로딩 해제
+      setState(() { _isLoading = false; _loadError = cached == null; });
     }
   }
 

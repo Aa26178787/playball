@@ -135,36 +135,39 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   String _ck(String suffix) => 'game_${widget.gameId}_$suffix';
 
   Future<void> _loadData() async {
-    // Phase 1: load from cache (past games only)
-    final cachedDetail = await LocalCache.get(_ck('detail'), maxAgeSeconds: 86400) as Map?;
-    if (cachedDetail != null && cachedDetail['game']?['home_team_code'] != null && mounted) {
-      setState(() { _gameData = Map<String, dynamic>.from(cachedDetail); _isLoading = false; });
-    } else {
-      if (mounted) setState(() => _isLoading = true);
-    }
+    // Phase 1: 모든 캐시를 병렬로 읽기
+    final cacheResults = await Future.wait([
+      LocalCache.get(_ck('detail'), maxAgeSeconds: 86400),
+      LocalCache.get(_ck('roster'), maxAgeSeconds: 86400),
+      LocalCache.get(_ck('relay'), maxAgeSeconds: 86400),
+      LocalCache.get(_ck('preview'), maxAgeSeconds: 86400),
+      LocalCache.get(_ck('record'), maxAgeSeconds: 86400),
+      LocalCache.get(_ck('highlights'), maxAgeSeconds: 3600),
+      LocalCache.get('team_rankings'),
+    ]);
+    final cachedDetail   = cacheResults[0] as Map?;
+    final cachedRoster   = cacheResults[1] as Map?;
+    final cachedRelay    = cacheResults[2] as Map?;
+    final cachedPreview  = cacheResults[3] as Map?;
+    final cachedRecord   = cacheResults[4] as Map?;
+    final cachedHL       = cacheResults[5] as Map?;
+    final cachedRankings = cacheResults[6] as List?;
 
-    final cachedRoster = await LocalCache.get(_ck('roster'), maxAgeSeconds: 86400) as Map?;
-    if (cachedRoster != null && mounted) setState(() => _rosterData = Map<String, dynamic>.from(cachedRoster));
-
-    final cachedRelay = await LocalCache.get(_ck('relay'), maxAgeSeconds: 86400) as Map?;
-    if (cachedRelay != null && mounted) {
-      setState(() { _relayAllData = Map<String, dynamic>.from(cachedRelay); });
-    }
-
-    final cachedPreview = await LocalCache.get(_ck('preview'), maxAgeSeconds: 86400) as Map?;
-    if (cachedPreview != null && mounted) setState(() => _previewData = Map<String, dynamic>.from(cachedPreview));
-
-    final cachedRecord = await LocalCache.get(_ck('record'), maxAgeSeconds: 86400) as Map?;
-    if (cachedRecord != null && mounted) setState(() => _recordDetailData = Map<String, dynamic>.from(cachedRecord));
-
-    final cachedHL = await LocalCache.get(_ck('highlights'), maxAgeSeconds: 3600) as Map?;
-    if (cachedHL != null && mounted) setState(() => _highlights = cachedHL['highlights'] as List? ?? []);
-
-    // Rankings for rank display in header
-    final cachedRankings = await LocalCache.get('team_rankings') as List?;
-    if (cachedRankings != null && mounted) {
-      setState(() => _rankMap = {for (final r in cachedRankings) (r['id'] as int): (r['rank'] as int? ?? 0)});
-    }
+    if (!mounted) return;
+    setState(() {
+      if (cachedDetail != null && cachedDetail['game']?['home_team_code'] != null) {
+        _gameData = Map<String, dynamic>.from(cachedDetail);
+        _isLoading = false;
+      } else {
+        _isLoading = true;
+      }
+      if (cachedRoster   != null) _rosterData      = Map<String, dynamic>.from(cachedRoster);
+      if (cachedRelay    != null) _relayAllData     = Map<String, dynamic>.from(cachedRelay);
+      if (cachedPreview  != null) _previewData      = Map<String, dynamic>.from(cachedPreview);
+      if (cachedRecord   != null) _recordDetailData = Map<String, dynamic>.from(cachedRecord);
+      if (cachedHL       != null) _highlights       = cachedHL['highlights'] as List? ?? [];
+      if (cachedRankings != null) _rankMap = {for (final r in cachedRankings) (r['id'] as int): (r['rank'] as int? ?? 0)};
+    });
     ApiService.getTeamRankings().then((data) {
       final list = data['rankings'] as List? ?? [];
       if (mounted) setState(() => _rankMap = {for (final r in list) (r['id'] as int): (r['rank'] as int? ?? 0)});
@@ -198,10 +201,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               try {
                 final homeId = gameData['game']['home_team_id'] as int?;
                 final awayId = gameData['game']['away_team_id'] as int?;
+                final teamIds = [homeId, awayId].whereType<int>().toList();
+                final changesList = await Future.wait(teamIds.map((id) =>
+                    ApiService.getTeamRosterChanges(id, days: 60)
+                        .catchError((_) => <String, dynamic>{})));
                 final statusMap = <String, String>{};
-                for (final teamId in [homeId, awayId]) {
-                  if (teamId == null) continue;
-                  final changes = await ApiService.getTeamRosterChanges(teamId, days: 60);
+                for (final changes in changesList) {
                   for (final c in (changes['changes'] as List? ?? [])) {
                     final name = c['player_name'] as String? ?? '';
                     final type = c['change_type'] as String? ?? '';

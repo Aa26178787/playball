@@ -74,10 +74,15 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Future<void> _loadFavStatus() async {
+    final cached = await LocalCache.get('favorite_teams') as List?;
+    final id = widget.team['id'] as int;
+    if (cached != null && mounted) {
+      setState(() => _isFav = cached.any((t) => (t as Map)['id'] == id));
+    }
     try {
       final data = await ApiService.getFavoriteTeams();
       final teams = data['teams'] as List? ?? [];
-      final id = widget.team['id'] as int;
+      await LocalCache.set('favorite_teams', teams);
       if (mounted) setState(() => _isFav = teams.any((t) => t['id'] == id));
     } catch (_) {}
   }

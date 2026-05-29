@@ -33,9 +33,14 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 
   Future<void> _loadFavStatus() async {
+    final cached = await LocalCache.get('favorite_players') as List?;
+    if (cached != null && mounted) {
+      setState(() => _isFav = cached.any((p) => (p as Map)['id'] == widget.playerId));
+    }
     try {
       final data = await ApiService.getFavoritePlayers();
       final players = data['players'] as List? ?? [];
+      await LocalCache.set('favorite_players', players);
       if (mounted) setState(() => _isFav = players.any((p) => p['id'] == widget.playerId));
     } catch (_) {}
   }
@@ -95,9 +100,13 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   String get _dailyCacheKey => 'player_daily_${widget.playerId}';
 
   Future<void> _loadPlayer() async {
-    // 캐시 먼저 표시
-    final cached = await LocalCache.get(_cacheKey, maxAgeSeconds: 300) as Map?;
-    final cachedDaily = await LocalCache.get(_dailyCacheKey, maxAgeSeconds: 300) as Map?;
+    // 캐시 병렬 읽기
+    final cacheResults = await Future.wait([
+      LocalCache.get(_cacheKey, maxAgeSeconds: 300),
+      LocalCache.get(_dailyCacheKey, maxAgeSeconds: 300),
+    ]);
+    final cached = cacheResults[0] as Map?;
+    final cachedDaily = cacheResults[1] as Map?;
     if (cached != null && mounted) {
       setState(() {
         _playerData = Map<String, dynamic>.from(cached);
