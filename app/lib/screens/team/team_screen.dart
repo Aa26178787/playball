@@ -4,6 +4,7 @@ import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import '../../utils/local_cache.dart';
 import '../player/player_detail_screen.dart';
+import '../mypage/my_page_screen.dart';
 import 'team_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -68,7 +69,15 @@ class _TeamScreenState extends State<TeamScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        scrolledUnderElevation: 0,
         title: const Text('순위'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            tooltip: '마이페이지',
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [

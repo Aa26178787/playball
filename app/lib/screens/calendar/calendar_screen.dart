@@ -5,6 +5,7 @@ import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
 import '../game/game_detail_screen.dart';
+import '../mypage/my_page_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -20,12 +21,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Map<int, Map> _visitedGames = {}; // gameId → visit {id, result, memo}
   bool _isLoading = false;
   DateTime? _selectedDate;
+  Set<int> _favoriteTeamIds = {};
+  bool _myTeamOnly = false;
 
   @override
   void initState() {
     super.initState();
     _loadCalendar();
     _loadPersonalEvents();
+    _loadFavoriteTeams();
+  }
+
+  Future<void> _loadFavoriteTeams() async {
+    final cached = await LocalCache.get('favorite_teams') as List?;
+    if (cached != null && mounted) {
+      setState(() => _favoriteTeamIds = Set.from(cached.map((t) => (t as Map)['id'] as int)));
+    }
+    try {
+      final data = await ApiService.getFavoriteTeams();
+      final teams = data['teams'] as List? ?? [];
+      await LocalCache.set('favorite_teams', teams);
+      if (mounted) setState(() => _favoriteTeamIds = Set.from(teams.map((t) => (t as Map)['id'] as int)));
+    } catch (_) {}
   }
 
   String get _calendarCacheKey =>
@@ -107,7 +124,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
   String _dateKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  List _gamesOn(DateTime d) => _gamesByDate[_dateKey(d)] ?? [];
+  List _gamesOn(DateTime d) {
+    final all = _gamesByDate[_dateKey(d)] ?? [];
+    if (!_myTeamOnly || _favoriteTeamIds.isEmpty) return all;
+    return all.where((g) {
+      final homeId = (g as Map)['home_team_id'] as int?;
+      final awayId = g['away_team_id'] as int?;
+      return _favoriteTeamIds.contains(homeId) || _favoriteTeamIds.contains(awayId);
+    }).toList();
+  }
 
   // dateKey → visit result for days with a visited game (current month data)
   Map<String, String> get _dayVisitResult {
@@ -319,12 +344,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        scrolledUnderElevation: 0,
         title: const Text('캘린더', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+        actions: [
+          if (_favoriteTeamIds.isNotEmpty)
+            IconButton(
+              icon: Icon(_myTeamOnly ? Icons.star : Icons.star_border, color: _myTeamOnly ? const Color(0xFF1A237E) : null),
+              tooltip: '마이팀만 보기',
+              onPressed: () => setState(() => _myTeamOnly = !_myTeamOnly),
+            ),
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            tooltip: '마이페이지',
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
+          ),
+        ],
       ),
       floatingActionButton: selected != null
-          ? FloatingActionButton.small(
+          ? FloatingActionButton(
               backgroundColor: const Color(0xFF1A237E),
-              onPressed: () => _showAddEventDialog(selected),
+              onPressed: () => _showAddMenu(selected),
               child: const Icon(Icons.add, color: Colors.white),
             )
           : null,
@@ -683,6 +722,85 @@ class _CalendarScreenState extends State<CalendarScreen> {
         await _loadPersonalEvents();
       } catch (_) {}
     }
+  }
+
+  Future<void> _showAddMenu(DateTime date) async {
+    final selectedGames = _gamesByDate[_dateKey(date)] ?? [];
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 4),
+              width: 36, height: 4,
+              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+            ),
+            ListTile(
+              leading: const CircleAvatar(backgroundColor: Color(0xFF1A237E), child: Icon(Icons.event, color: Colors.white, size: 20)),
+              title: const Text('일정 추가', style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text('${date.month}/${date.day} 개인 일정 등록'),
+              onTap: () { Navigator.pop(context); _showAddEventDialog(date); },
+            ),
+            ListTile(
+              leading: const CircleAvatar(backgroundColor: Color(0xFFE65100), child: Icon(Icons.stadium, color: Colors.white, size: 20)),
+              title: const Text('직관 기록', style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text(selectedGames.isEmpty ? '이 날은 경기가 없습니다' : '${selectedGames.length}경기 중 선택'),
+              enabled: selectedGames.isNotEmpty,
+              onTap: selectedGames.isEmpty ? null : () {
+                Navigator.pop(context);
+                if (selectedGames.length == 1) {
+                  final game = selectedGames[0] as Map;
+                  _showVisitDialog(game['id'] as int, _visitedGames[game['id'] as int]);
+                } else {
+                  _showPickGameForVisit(date, selectedGames);
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showPickGameForVisit(DateTime date, List games) async {
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 10, bottom: 4),
+            width: 36, height: 4,
+            decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Text('직관 기록할 경기 선택', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          ),
+          ...games.map((g) {
+            final gm = g as Map;
+            final gameId = gm['id'] as int;
+            final visited = _visitedGames.containsKey(gameId);
+            return ListTile(
+              leading: TeamLogo(teamCode: gm['home_team_code'] ?? '', size: 28),
+              title: Text('${gm['home_team']} vs ${gm['away_team']}'),
+              subtitle: Text(gm['start_time'] ?? ''),
+              trailing: visited ? const Icon(Icons.check_circle, color: Colors.green, size: 18) : null,
+              onTap: () {
+                Navigator.pop(context);
+                _showVisitDialog(gameId, _visitedGames[gameId]);
+              },
+            );
+          }),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
   }
 
   Future<void> _showAddEventDialog(DateTime date) async {

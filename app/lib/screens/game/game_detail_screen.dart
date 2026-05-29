@@ -601,10 +601,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               Expanded(
                 child: Column(
                   children: [
+                    TeamLogo(teamCode: game['home_team_code'] as String? ?? '', size: 48),
+                    const SizedBox(height: 6),
                     Text(game['home_team'],
                         style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center),
                     if (homeRank != null && homeRank > 0)
@@ -628,10 +630,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               Expanded(
                 child: Column(
                   children: [
+                    TeamLogo(teamCode: game['away_team_code'] as String? ?? '', size: 48),
+                    const SizedBox(height: 6),
                     Text(game['away_team'],
                         style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center),
                     if (awayRank != null && awayRank > 0)

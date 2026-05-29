@@ -677,6 +677,77 @@ def get_team_season_stats(team_id: int, season: int = 2026):
     }
 
 
+@router.get("/all-stats")
+def get_all_team_stats(season: int = 2026):
+    """모든 팀 시즌 기록 (타율/방어율/WHIP/득점/실점/홈런/도루)"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+
+    # 팀 목록
+    cur.execute("SELECT id, name, short_name FROM teams ORDER BY id")
+    teams = {r[0]: {"id": r[0], "name": r[1], "short_name": r[2]} for r in cur.fetchall()}
+
+    # 팀 타격 (batter_stats)
+    cur.execute("""
+        SELECT p.team_id,
+               SUM(bs.at_bats) AS ab, SUM(bs.hits) AS h,
+               SUM(bs.home_runs) AS hr, SUM(bs.rbis) AS rbi,
+               SUM(bs.walks) AS bb, SUM(bs.strikeouts) AS so,
+               SUM(bs.runs) AS runs, SUM(bs.stolen_bases) AS sb,
+               SUM(bs.doubles) AS d2, SUM(bs.triples) AS d3
+        FROM batter_stats bs JOIN players p ON p.id = bs.player_id
+        WHERE bs.season = %s AND p.team_id IS NOT NULL
+        GROUP BY p.team_id
+    """, (season,))
+    batting = {}
+    for r in cur.fetchall():
+        tid, ab, h, hr, rbi, bb, so, runs, sb, d2, d3 = r
+        ab = int(ab or 0); h = int(h or 0); hr = int(hr or 0)
+        rbi = int(rbi or 0); bb = int(bb or 0); so = int(so or 0)
+        runs = int(runs or 0); sb = int(sb or 0)
+        d2 = int(d2 or 0); d3 = int(d3 or 0)
+        avg = round(h / ab, 3) if ab > 0 else 0.0
+        tb = h + d2 + 2*d3 + 3*hr
+        obp = round((h + bb) / (ab + bb), 3) if (ab + bb) > 0 else 0.0
+        slg = round(tb / ab, 3) if ab > 0 else 0.0
+        batting[tid] = {"avg": avg, "obp": obp, "slg": slg, "ops": round(obp + slg, 3),
+                        "hr": hr, "rbi": rbi, "sb": sb, "runs": runs, "so": so, "bb": bb}
+
+    # 팀 투구 (pitcher_stats)
+    cur.execute("""
+        SELECT p.team_id,
+               SUM(ps.innings_pitched) AS ip, SUM(ps.earned_runs) AS er,
+               SUM(ps.hits_allowed) AS ha, SUM(ps.walks) AS bb,
+               SUM(ps.strikeouts) AS so, SUM(ps.home_runs_allowed) AS hra,
+               SUM(ps.wins) AS wins, SUM(ps.saves) AS saves, SUM(ps.holds) AS holds
+        FROM pitcher_stats ps JOIN players p ON p.id = ps.player_id
+        WHERE ps.season = %s AND p.team_id IS NOT NULL
+        GROUP BY p.team_id
+    """, (season,))
+    pitching = {}
+    for r in cur.fetchall():
+        tid, ip, er, ha, bb, so, hra, wins, saves, holds = r
+        ip = float(ip or 0); er = int(er or 0); ha = int(ha or 0)
+        bb = int(bb or 0); so = int(so or 0); hra = int(hra or 0)
+        wins = int(wins or 0); saves = int(saves or 0); holds = int(holds or 0)
+        era = round(er / ip * 9, 2) if ip > 0 else 0.0
+        whip = round((ha + bb) / ip, 2) if ip > 0 else 0.0
+        k9 = round(so / ip * 9, 2) if ip > 0 else 0.0
+        pitching[tid] = {"era": era, "whip": whip, "k9": k9, "hra": hra,
+                         "wins": wins, "saves": saves, "holds": holds}
+
+    cur.close(); conn.close()
+    result = []
+    for tid, t in teams.items():
+        b = batting.get(tid, {})
+        p = pitching.get(tid, {})
+        result.append({"id": tid, "name": t["name"], "short_name": t["short_name"],
+                       "batting": b, "pitching": p})
+    return {"season": season, "teams": result}
+
+
 @router.get("/roster-changes/today")
 def get_today_roster_changes():
     """오늘 전체 팀 등록말소"""

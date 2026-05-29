@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
+import '../mypage/my_page_screen.dart';
 import 'post_detail_screen.dart';
 import 'create_post_screen.dart';
 
@@ -38,7 +39,15 @@ class _CommunityScreenState extends State<CommunityScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        scrolledUnderElevation: 0,
         title: const Text('커뮤니티'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline),
+            tooltip: '마이페이지',
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabCtrl,
           tabs: const [

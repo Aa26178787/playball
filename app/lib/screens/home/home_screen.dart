@@ -413,6 +413,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        scrolledUnderElevation: 0,
         title: const Text(
           'PlayBall',
           style: TextStyle(
@@ -849,15 +850,15 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
             isMyTeam: isMyTeam && !_myTeamOnly,
             homeRank: rankMap[homeId],
             awayRank: rankMap[awayId],
-            nextHomeSeries: _nextSeriesLabel(homeId, awayId),
-            nextAwaySeries: _nextSeriesLabel(awayId, homeId),
+            nextHomeSeries: _nextSeries(homeId, awayId),
+            nextAwaySeries: _nextSeries(awayId, homeId),
           );
         },
       ),
     );
   }
 
-  String? _nextSeriesLabel(int teamId, int currentOpponentId) {
+  Map<String, String>? _nextSeries(int teamId, int currentOpponentId) {
     for (final sg in _seriesGames) {
       final gm = sg as Map;
       final homeId = gm['home_team_id'] as int? ?? 0;
@@ -865,10 +866,9 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       if (homeId != teamId && awayId != teamId) continue;
       final oppId = homeId == teamId ? awayId : homeId;
       if (oppId == currentOpponentId) continue;
-      final oppName = homeId == teamId
-          ? gm['away_team'] as String? ?? ''
-          : gm['home_team'] as String? ?? '';
-      return 'vs $oppName';
+      final oppName = homeId == teamId ? gm['away_team'] as String? ?? '' : gm['home_team'] as String? ?? '';
+      final oppCode = homeId == teamId ? gm['away_team_code'] as String? ?? '' : gm['home_team_code'] as String? ?? '';
+      return {'code': oppCode, 'name': oppName};
     }
     return null;
   }
@@ -978,22 +978,32 @@ class GameCard extends StatelessWidget {
   final bool isMyTeam;
   final int? homeRank;
   final int? awayRank;
-  final String? nextHomeSeries;
-  final String? nextAwaySeries;
+  final Map<String, String>? nextHomeSeries;
+  final Map<String, String>? nextAwaySeries;
 
   const GameCard({super.key, required this.game, this.isMyTeam = false, this.homeRank, this.awayRank, this.nextHomeSeries, this.nextAwaySeries});
 
-  Widget _starterChip(String name, bool isHome) {
+  Widget _starterChip(String name) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: Colors.indigo.withOpacity(0.08),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(
-        '${isHome ? '홈' : '원정'} $name',
-        style: const TextStyle(fontSize: 10, color: Colors.indigo),
-      ),
+      child: Text(name, style: const TextStyle(fontSize: 10, color: Colors.indigo), overflow: TextOverflow.ellipsis),
+    );
+  }
+
+  Widget _buildNextSeriesWidget(Map<String, String> series) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.arrow_right, size: 13, color: Colors.grey),
+        TeamLogo(teamCode: series['code'] ?? '', size: 18),
+        const SizedBox(width: 2),
+        Flexible(child: Text(series['name'] ?? '', style: const TextStyle(fontSize: 10, color: Colors.blueGrey), overflow: TextOverflow.ellipsis)),
+      ],
     );
   }
 
@@ -1097,280 +1107,124 @@ class GameCard extends StatelessWidget {
     final isDraw = game.isDraw ?? false;
     final homeWon = isFinished && !isDraw && game.homeScore > game.awayScore;
     final awayWon = isFinished && !isDraw && game.awayScore > game.homeScore;
+    final showStarters = game.status == '예정' || game.status == '라인업' || game.status == '진행';
+
+    Widget teamCol(String code, String name, int? rank, bool isHome, bool isWinner, String? starter, List<String> recent, Map<String, String>? nextSeries) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _winnerGlowLogo(code, isWinner),
+          const SizedBox(height: 4),
+          Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(
+            rank != null ? (isHome ? '${rank}위 · 홈' : '원정 · ${rank}위') : (isHome ? '홈' : '원정'),
+            style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+          ),
+          if (showStarters && starter != null) ...[
+            const SizedBox(height: 5),
+            _starterChip(starter),
+          ],
+          if (recent.isNotEmpty) ...[
+            const SizedBox(height: 5),
+            _buildRecentBar(recent, isHome),
+          ],
+          if (nextSeries != null) ...[
+            const SizedBox(height: 5),
+            _buildNextSeriesWidget(nextSeries),
+          ],
+        ],
+      );
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: isMyTeam
-            ? const BorderSide(color: Color(0xFF1A237E), width: 1.5)
-            : BorderSide.none,
+        side: isMyTeam ? const BorderSide(color: Color(0xFF1A237E), width: 1.5) : BorderSide.none,
       ),
       child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => GameDetailScreen(gameId: game.id),
-            ),
-          );
-        },
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
           child: Column(
             children: [
-              // 상태 + 경기장
+              // 상태 + 날씨/구장
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isMyTeam)
-                        Container(
-                          margin: const EdgeInsets.only(right: 6),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1A237E),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text('MY',
-                              style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                        ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _statusColor().withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      game.status == '진행'
-                          ? '${game.currentInning ?? 0}회 ${game.inningHalf ?? ''}'
-                          : game.status == '취소'
-                              ? '취소'
-                              : game.status == '라인업'
-                                  ? '라인업'
-                                  : game.status,
-                      style: TextStyle(
-                        color: _statusColor(),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_buildWeatherChip() != null) ...[
-                        _buildWeatherChip()!,
-                        const SizedBox(width: 6),
-                      ],
-                      Text(
-                        game.stadium ?? '',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    if (isMyTeam) ...[
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(color: const Color(0xFF1A237E), borderRadius: BorderRadius.circular(4)),
+                        child: const Text('MY', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                       ),
                     ],
-                  ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: _statusColor().withOpacity(0.2), borderRadius: BorderRadius.circular(4)),
+                      child: Text(
+                        game.status == '진행' ? '${game.currentInning ?? 0}회 ${game.inningHalf ?? ''}' :
+                        game.status == '취소' ? '취소' :
+                        game.status == '라인업' ? '라인업' : game.status,
+                        style: TextStyle(color: _statusColor(), fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ),
+                  ]),
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    if (_buildWeatherChip() != null) ...[_buildWeatherChip()!, const SizedBox(width: 6)],
+                    Text(game.stadium ?? '', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  ]),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
-              // 팀 vs 스코어
+              // 두 팀 정보 + 가운데 스코어/시간
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        _winnerGlowLogo(game.homeTeamCode, homeWon),
-                        const SizedBox(height: 4),
-                        Text(
-                          game.homeTeam,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                        ),
-                        Text(
-                          homeRank != null ? '${homeRank}위 · 홈' : '홈',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[400]),
-                        ),
-                      ],
-                    ),
-                  ),
+                  Expanded(child: teamCol(game.homeTeamCode, game.homeTeam, homeRank, true, homeWon, game.homeStarter, game.homeRecent5, nextHomeSeries)),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: game.status == '예정' || game.status == '취소' || game.status == '라인업'
-                        ? Text(
-                            game.status == '취소' ? '취소' : (game.startTime ?? ''),
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: game.status == '취소' ? Colors.red : null,
+                    padding: const EdgeInsets.only(top: 6),
+                    child: SizedBox(
+                      width: 76,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          game.status == '예정' || game.status == '취소' || game.status == '라인업'
+                              ? Text(
+                                  game.status == '취소' ? '취소' : (game.startTime ?? ''),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: game.status == '취소' ? Colors.red : null),
+                                )
+                              : Text('${game.homeScore} : ${game.awayScore}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                          if (game.status == '라인업')
+                            Container(
+                              margin: const EdgeInsets.only(top: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                              child: const Text('라인업', style: TextStyle(fontSize: 9, color: Colors.green)),
                             ),
-                          )
-                        : Text(
-                            '${game.homeScore} : ${game.awayScore}',
-                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                          ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        _winnerGlowLogo(game.awayTeamCode, awayWon),
-                        const SizedBox(height: 4),
-                        Text(
-                          game.awayTeam,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                        ),
-                        Text(
-                          awayRank != null ? '원정 · ${awayRank}위' : '원정',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[400]),
-                        ),
-                      ],
+                          if (isFinished && isDraw) ...[
+                            const SizedBox(height: 3),
+                            Text('무승부', style: TextStyle(fontSize: 10, color: Colors.grey[600]), textAlign: TextAlign.center),
+                          ],
+                          if (isFinished && !isDraw && (game.winPitcher != null || game.losePitcher != null)) ...[
+                            const SizedBox(height: 3),
+                            if (game.winPitcher != null)
+                              Text('승 ${game.winPitcher}', style: const TextStyle(fontSize: 10, color: Colors.blue), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            if (game.losePitcher != null)
+                              Text('패 ${game.losePitcher}', style: const TextStyle(fontSize: 10, color: Colors.red), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
+                  Expanded(child: teamCol(game.awayTeamCode, game.awayTeam, awayRank, false, awayWon, game.awayStarter, game.awayRecent5, nextAwaySeries)),
                 ],
               ),
-
-              // 승/패 투수 또는 무승부 (종료 경기만)
-              if (game.status == '종료' && (game.winPitcher != null || game.losePitcher != null || (game.isDraw ?? false)))
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: (game.isDraw ?? false)
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text('무승부',
-                              style: TextStyle(fontSize: 11, color: Colors.grey)),
-                        )
-                      : () {
-                          final homeWon = game.homeScore > game.awayScore;
-                          final homePitcher = homeWon ? game.winPitcher : game.losePitcher;
-                          final awayPitcher = homeWon ? game.losePitcher : game.winPitcher;
-                          final homeColor = homeWon ? Colors.blue : Colors.red;
-                          final awayColor = homeWon ? Colors.red : Colors.blue;
-                          final homeLabel = homeWon ? '승' : '패';
-                          final awayLabel = homeWon ? '패' : '승';
-                          return Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              homePitcher != null
-                                  ? Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: homeColor.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text('$homeLabel $homePitcher',
-                                          style: TextStyle(fontSize: 11, color: homeColor)),
-                                    )
-                                  : const SizedBox.shrink(),
-                              awayPitcher != null
-                                  ? Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: awayColor.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text('$awayLabel $awayPitcher',
-                                          style: TextStyle(fontSize: 11, color: awayColor)),
-                                    )
-                                  : const SizedBox.shrink(),
-                            ],
-                          );
-                        }(),
-                ),
-
-              // 선발투수 표시 (예정/라인업/진행)
-              if ((game.status == '예정' || game.status == '라인업' || game.status == '진행') &&
-                  (game.homeStarter != null || game.awayStarter != null))
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      if (game.homeStarter != null)
-                        _starterChip(game.homeStarter!, true),
-                      if (game.homeStarter != null && game.awayStarter != null)
-                        const Text('vs', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                      if (game.awayStarter != null)
-                        _starterChip(game.awayStarter!, false),
-                    ],
-                  ),
-                ),
-
-              // 라인업 확정 표시
-              if (game.status == '라인업')
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text('라인업 확정',
-                        style: TextStyle(fontSize: 11, color: Colors.green)),
-                  ),
-                ),
-
-              // 최근 5경기 W/L/D
-              if (game.homeRecent5.isNotEmpty || game.awayRecent5.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _buildRecentBar(game.homeRecent5, true),
-                      _buildRecentBar(game.awayRecent5, false),
-                    ],
-                  ),
-                ),
-
-              // 다음 시리즈 예고
-              if (nextHomeSeries != null || nextAwaySeries != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(5),
-                      border: Border.all(color: Colors.grey.withOpacity(0.15)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.arrow_forward, size: 10, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        const Text('다음', style: TextStyle(fontSize: 9, color: Colors.grey)),
-                        const SizedBox(width: 8),
-                        if (nextHomeSeries != null)
-                          Expanded(
-                            child: Text('${game.homeTeam} $nextHomeSeries',
-                                style: const TextStyle(fontSize: 10, color: Colors.blueGrey),
-                                overflow: TextOverflow.ellipsis),
-                          ),
-                        if (nextHomeSeries != null && nextAwaySeries != null)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 4),
-                            child: Text('·', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                          ),
-                        if (nextAwaySeries != null)
-                          Expanded(
-                            child: Text('${game.awayTeam} $nextAwaySeries',
-                                style: const TextStyle(fontSize: 10, color: Colors.blueGrey),
-                                overflow: TextOverflow.ellipsis),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
