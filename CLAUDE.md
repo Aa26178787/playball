@@ -574,6 +574,11 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [ ] 홈화면 위젯 (Android AppWidget — native kotlin 필요)
 - [ ] 카카오맵 구장 화면 재작성 (kakao_map_plugin 불안정 → WebView + 카카오 JS SDK, flutter_inappwebview)
 
+### 추가 기능 (완료)
+- [x] 직관 통계 강화 — `/user/stadium-stats` (구장별/월별) + 캘린더 통계 버튼/바텀시트
+- [x] 팬 승리예측 투표 — `/games/{id}/predict`, `/games/{id}/predictions` + GameCard 투표 UI (예정경기)
+  ※ game_predictions 테이블: user_id, game_id, predicted_team_id, UNIQUE(user_id, game_id)
+
 ## 알려진 버그 / 성능 이슈
 
 - relay_all 서버사이드 캐시 없음 — 라이브 경기 30초 새로고침마다 Naver API 전체 이닝 재조회 (병렬이지만 느림)
