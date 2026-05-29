@@ -90,6 +90,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   bool _myTeamOnly = false;
   Timer? _autoRefreshTimer;
   int _unreadNotifCount = 0;
+  int _loadGen = 0;
 
   final ScrollController _dateScrollController = ScrollController();
   static final _seasonStart = DateTime(2026, 3, 1);
@@ -126,7 +127,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 
   void _scrollToMonthStart(int month) {
     final target = DateTime(2026, month, 1);
-    setState(() { _selectedDate = target; _isLoading = true; });
+    setState(() { _selectedDate = target; _isLoading = true; _loadGen++; });
     _loadGames();
     _loadTomorrowGames();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
@@ -260,12 +261,11 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   }
 
   Future<void> _loadGames() async {
-    final requestDate = _selectedDate;
-    final dateStr =
-        "${requestDate.year}-${requestDate.month.toString().padLeft(2, '0')}-${requestDate.day.toString().padLeft(2, '0')}";
+    final gen = ++_loadGen;
+    final dateStr = _selectedDateStr;
 
     final cached = await LocalCache.get('games_$dateStr', maxAgeSeconds: 300) as List?;
-    if (!mounted || !_isSameDay(_selectedDate, requestDate)) return;
+    if (!mounted || _loadGen != gen) return;
     if (cached != null) {
       setState(() { _games = cached; _isLoading = false; });
     } else {
@@ -274,14 +274,14 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 
     try {
       final data = await ApiService.getGamesByDate(dateStr);
-      if (!mounted || !_isSameDay(_selectedDate, requestDate)) return;
+      if (!mounted || _loadGen != gen) return;
       final games = data['games'] as List? ?? [];
       await LocalCache.set('games_$dateStr', games);
-      if (!mounted || !_isSameDay(_selectedDate, requestDate)) return;
+      if (!mounted || _loadGen != gen) return;
       setState(() { _games = games; _isLoading = false; });
     } catch (e) {
-      if (!mounted || !_isSameDay(_selectedDate, requestDate)) return;
-      if (mounted) setState(() { _isLoading = false; _games = []; });
+      if (!mounted || _loadGen != gen) return;
+      setState(() { _isLoading = false; _games = []; });
     }
   }
 
@@ -361,7 +361,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
           return GestureDetector(
             onTap: () {
               if (!isSelected) {
-                setState(() { _selectedDate = date; _isLoading = true; });
+                setState(() { _selectedDate = date; _isLoading = true; _loadGen++; });
                 _loadGames();
                 _loadTomorrowGames();
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
@@ -411,7 +411,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
             right: 6,
             child: GestureDetector(
               onTap: () {
-                setState(() { _selectedDate = today; _isLoading = true; });
+                setState(() { _selectedDate = today; _isLoading = true; _loadGen++; });
                 _loadGames();
                 _loadTomorrowGames();
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
