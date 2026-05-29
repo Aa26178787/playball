@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:dio/dio.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
@@ -599,75 +600,100 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildSameDayStrip() {
-    return Container(
-      height: 48,
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
-      ),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        itemCount: _sameDayGames.length,
-        itemBuilder: (_, i) {
-          final g = _sameDayGames[i] as Map;
-          final homeCode = g['home_team_code'] as String? ?? '';
-          final awayCode = g['away_team_code'] as String? ?? '';
-          final homeScore = g['home_score'];
-          final awayScore = g['away_score'];
-          final status = g['status'] as String? ?? '';
-          final isLive = status == '진행';
-          final isDone = status == '종료';
+    return LayoutBuilder(builder: (context, constraints) {
+      final screenW = constraints.maxWidth > 0
+          ? constraints.maxWidth
+          : MediaQuery.of(context).size.width;
+      final cardW = screenW / 4;
 
-          String scoreText;
-          if (isDone || isLive) {
-            scoreText = '${awayScore ?? 0}:${homeScore ?? 0}';
-          } else {
-            scoreText = g['start_time'] as String? ?? '-';
-          }
+      return Container(
+        height: 76,
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+        ),
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.zero,
+          itemCount: _sameDayGames.length,
+          itemBuilder: (_, i) {
+            final g = _sameDayGames[i] as Map;
+            final homeCode = g['home_team_code'] as String? ?? '';
+            final awayCode = g['away_team_code'] as String? ?? '';
+            final homeScore = g['home_score'];
+            final awayScore = g['away_score'];
+            final status = g['status'] as String? ?? '';
+            final isLive = status == '진행';
+            final isDone = status == '종료';
+            final isCurrent = g['id'] == widget.gameId;
 
-          return GestureDetector(
-            onTap: () => Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => GameDetailScreen(gameId: g['id'] as int),
-              ),
-            ),
-            child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TeamLogo(teamCode: awayCode, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    scoreText,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: isLive ? Colors.red : null,
-                    ),
+            String scoreText;
+            if (isDone || isLive) {
+              scoreText = '${awayScore ?? 0}:${homeScore ?? 0}';
+            } else {
+              scoreText = g['start_time'] as String? ?? '-';
+            }
+
+            return GestureDetector(
+              onTap: isCurrent
+                  ? null
+                  : () => Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => GameDetailScreen(gameId: g['id'] as int),
+                        ),
+                      ),
+              child: Container(
+                width: cardW,
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: isCurrent
+                      ? const Color(0xFF1A237E).withValues(alpha: 0.08)
+                      : Colors.transparent,
+                  border: Border(
+                    right: BorderSide(color: Colors.grey.withValues(alpha: 0.15)),
+                    bottom: isCurrent
+                        ? const BorderSide(color: Color(0xFF1A237E), width: 2)
+                        : BorderSide.none,
                   ),
-                  if (isLive)
-                    Container(
-                      margin: const EdgeInsets.only(left: 2),
-                      width: 5, height: 5,
-                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TeamLogo(teamCode: awayCode, size: 22),
+                        const SizedBox(width: 6),
+                        TeamLogo(teamCode: homeCode, size: 22),
+                      ],
                     ),
-                  const SizedBox(width: 4),
-                  TeamLogo(teamCode: homeCode, size: 16),
-                ],
+                    const SizedBox(height: 3),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(scoreText,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isLive ? Colors.red : Colors.black87,
+                            )),
+                        if (isLive) ...[
+                          const SizedBox(width: 2),
+                          Container(
+                            width: 5, height: 5,
+                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
-      ),
-    );
+            );
+          },
+        ),
+      );
+    });
   }
 
   Widget _buildScoreHeader(Map<String, dynamic> game) {
@@ -1373,81 +1399,160 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
     if (items.isEmpty) return const SizedBox.shrink();
 
-    final scoringItems = items.map((item) {
+    // Helper: best description text from relay entry
+    String _relayText(Map r) {
+      final t = (r['title'] as String? ?? '').trim();
+      final x = (r['text'] as String? ?? '').trim();
+      if (t.isNotEmpty) return t;
+      return x;
+    }
+
+    // Parse "배터 : 결과" or just return as-is
+    ({String batter, String result}) _parsePlay(String raw) {
+      if (raw.contains(' : ')) {
+        final idx = raw.indexOf(' : ');
+        return (batter: raw.substring(0, idx).trim(), result: raw.substring(idx + 3).trim());
+      }
+      return (batter: '', result: raw);
+    }
+
+    final halfCards = items.map((item) {
       final ing = item['inning'] as int;
       final half = item['half'] as String;
       final runs = item['runs'] as int;
       final team = item['team'] as String;
       final halfRelays = item['relays'] as List;
       final halfLabel = half == 'top' ? '초' : '말';
+      final halfColor = half == 'top' ? Colors.blue : Colors.red;
 
-      final plays = <String>[];
+      // Build play rows
+      final playWidgets = <Widget>[];
       for (final r in halfRelays) {
         final rtype = r['type'] as int?;
+        final txt = _relayText(r as Map);
+        if (txt.isEmpty) continue;
+
         if (rtype == 13 || rtype == 23) {
-          final title = r['title'] as String? ?? '';
-          if (title.contains('타점') || title.contains('홈런') ||
-              title.contains('희비') || (title.contains('볼넷') && title.contains('만루'))) {
-            if (title.contains(' : ')) {
-              final parts = title.split(' : ');
-              plays.add('${parts[0].trim()} → ${parts.sublist(1).join(' : ').trim()}');
-            } else {
-              plays.add(title);
-            }
-          }
+          // At-bat result
+          final parsed = _parsePlay(txt);
+          final result = parsed.result;
+          final batter = parsed.batter.isNotEmpty
+              ? parsed.batter
+              : (r['batter_name'] as String? ?? '');
+
+          final isHR = result.contains('홈런');
+          final isRBI = result.contains('타점') || result.contains('희비') ||
+              (result.contains('볼넷') && result.contains('만루'));
+          if (!isHR && !isRBI) continue;
+
+          final playColor = isHR ? Colors.deepOrange : Colors.orange;
+          final icon = isHR ? Icons.sports_baseball : Icons.people_alt_outlined;
+
+          playWidgets.add(Padding(
+            padding: const EdgeInsets.only(top: 5),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, size: 14, color: playColor),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(
+                      style: const TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
+                      children: [
+                        if (batter.isNotEmpty) ...[
+                          TextSpan(
+                            text: batter,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const TextSpan(text: '  '),
+                        ],
+                        TextSpan(
+                          text: result,
+                          style: TextStyle(color: playColor, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ));
+        } else if (rtype == 14 || rtype == 31) {
+          // Runner movement / 홈인
+          if (!txt.contains('홈인') && !txt.contains('득점') && !txt.contains('홈')) continue;
+          playWidgets.add(Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                Icon(Icons.directions_run, size: 13, color: Colors.teal[600]),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(txt,
+                      style: TextStyle(fontSize: 11.5, color: Colors.teal[700]),
+                      overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
+          ));
         }
       }
 
       return Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: half == 'top'
-              ? Colors.blue.withValues(alpha: 0.06)
-              : Colors.red.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: half == 'top'
-                ? Colors.blue.withValues(alpha: 0.2)
-                : Colors.red.withValues(alpha: 0.2),
-          ),
+          color: halfColor.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: halfColor.withValues(alpha: 0.18)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: half == 'top' ? Colors.blue : Colors.red,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  '$ing회$halfLabel',
-                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                ),
+            // Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: halfColor.withValues(alpha: 0.1),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(9)),
               ),
-              const SizedBox(width: 8),
-              Text(team, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(3),
+              child: Row(children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: halfColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text('$ing회$halfLabel',
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
-                child: Text('+$runs점',
-                    style: const TextStyle(
-                        color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                Text(team, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text('+$runs점',
+                      style: const TextStyle(color: Colors.deepOrange, fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+              ]),
+            ),
+            // Play rows
+            if (playWidgets.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 2, 12, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: playWidgets,
+                ),
+              )
+            else
+              const Padding(
+                padding: EdgeInsets.fromLTRB(12, 6, 12, 8),
+                child: Text('상세 정보 없음', style: TextStyle(fontSize: 11, color: Colors.grey)),
               ),
-            ]),
-            if (plays.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              ...plays.map((p) => Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(p, style: const TextStyle(fontSize: 12)),
-              )),
-            ],
           ],
         ),
       );
@@ -1485,7 +1590,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ),
         if (_scoringExpanded) ...[
           const SizedBox(height: 6),
-          ...scoringItems,
+          ...halfCards,
         ],
       ],
     );
@@ -2892,23 +2997,14 @@ class _GameShareSheetState extends State<_GameShareSheet> {
   Future<Uint8List?> _fetchLogoBytes(String? url) async {
     if (url == null) return null;
     try {
-      final provider = CachedNetworkImageProvider(url);
-      final completer = Completer<Uint8List?>();
-      final stream = provider.resolve(const ImageConfiguration());
-      late ImageStreamListener listener;
-      listener = ImageStreamListener(
-        (info, _) async {
-          final bd = await info.image.toByteData(format: ui.ImageByteFormat.png);
-          if (!completer.isCompleted) completer.complete(bd?.buffer.asUint8List());
-          stream.removeListener(listener);
-        },
-        onError: (_, __) {
-          if (!completer.isCompleted) completer.complete(null);
-          stream.removeListener(listener);
-        },
-      );
-      stream.addListener(listener);
-      return await completer.future.timeout(const Duration(seconds: 5), onTimeout: () => null);
+      final dio = Dio();
+      final resp = await dio.get<List<int>>(
+        url,
+        options: Options(responseType: ResponseType.bytes),
+      ).timeout(const Duration(seconds: 5));
+      final bytes = resp.data;
+      if (bytes == null) return null;
+      return Uint8List.fromList(bytes);
     } catch (_) {
       return null;
     }
@@ -2922,7 +3018,9 @@ class _GameShareSheetState extends State<_GameShareSheet> {
       final awayUrl = kTeamLogoUrls[g['away_team_code'] as String? ?? ''];
       final results = await Future.wait([_fetchLogoBytes(homeUrl), _fetchLogoBytes(awayUrl)]);
       if (mounted) setState(() { _homeLogoBytes = results[0]; _awayLogoBytes = results[1]; });
-      await Future.delayed(const Duration(milliseconds: 80));
+      // wait 2 frames so Image.memory finishes decoding + layout
+      await WidgetsBinding.instance.endOfFrame;
+      await WidgetsBinding.instance.endOfFrame;
       final boundary =
           _cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 3.0);
