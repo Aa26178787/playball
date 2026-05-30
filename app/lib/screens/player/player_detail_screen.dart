@@ -118,7 +118,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     // 1순위: 세션 메모리 캐시 (동기, 즉시)
     final memCached = ApiService.getPlayerDetailMem(widget.playerId);
     if (memCached != null && mounted) {
-      setState(() { _playerData = memCached; _isLoading = false; });
+      setState(() { _playerData = memCached; _isLoading = false; _bodyLoading = false; });
     }
 
     // 2순위: SharedPreferences stale 캐시 (비동기, 빠름) — 메모리 캐시 없을 때만
