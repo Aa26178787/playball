@@ -267,8 +267,10 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     final dateStr = _selectedDateStr;
 
     final today = DateTime.now();
-    final isPast = _selectedDate.isBefore(DateTime(today.year, today.month, today.day));
-    final cacheSeconds = isPast ? 86400 : 300;
+    final todayMidnight = DateTime(today.year, today.month, today.day);
+    final isPast   = _selectedDate.isBefore(todayMidnight);
+    final isFuture = _selectedDate.isAfter(todayMidnight);
+    final cacheSeconds = isPast ? 86400 : isFuture ? 3600 : 300;
     final cached = await LocalCache.get('games_$dateStr', maxAgeSeconds: cacheSeconds) as List?;
     if (!mounted || _loadGen != gen) return;
     if (cached != null) {
@@ -938,7 +940,8 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       if (oppId == currentOpponentId) continue;
       final oppName = homeId == teamId ? gm['away_team'] as String? ?? '' : gm['home_team'] as String? ?? '';
       final oppCode = homeId == teamId ? gm['away_team_code'] as String? ?? '' : gm['home_team_code'] as String? ?? '';
-      return {'code': oppCode, 'name': oppName};
+      final gameDate = gm['game_date'] as String? ?? '';
+      return {'code': oppCode, 'name': oppName, 'date': gameDate};
     }
     return null;
   }
@@ -1123,6 +1126,16 @@ class GameCard extends StatelessWidget {
   }
 
   Widget _buildNextSeriesWidget(Map<String, String> series) {
+    final dateStr = series['date'] ?? '';
+    String dateLabel = '다음 시리즈';
+    if (dateStr.length >= 10) {
+      final parts = dateStr.split('-');
+      if (parts.length == 3) {
+        final m = int.tryParse(parts[1]) ?? 0;
+        final d = int.tryParse(parts[2]) ?? 0;
+        if (m > 0 && d > 0) dateLabel = '다음 시리즈 $m/$d~';
+      }
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1135,7 +1148,7 @@ class GameCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 1),
-        Text('다음 시리즈', style: TextStyle(fontSize: 9, color: Colors.grey[500]), overflow: TextOverflow.ellipsis, maxLines: 1),
+        Text(dateLabel, style: TextStyle(fontSize: 9, color: Colors.grey[500]), overflow: TextOverflow.ellipsis, maxLines: 1),
       ],
     );
   }
@@ -1243,10 +1256,10 @@ class GameCard extends StatelessWidget {
             rank != null ? (isHome ? '${rank}위 · 홈' : '원정 · ${rank}위') : (isHome ? '홈' : '원정'),
             style: TextStyle(fontSize: 10, color: Colors.grey[500]),
           ),
-          if (showStarters && starter != null) ...[
-            const SizedBox(height: 5),
-            _starterChip(starter),
-          ],
+          const SizedBox(height: 5),
+          starter != null && showStarters
+              ? _starterChip(starter)
+              : const SizedBox(height: 20),
           if (recent.isNotEmpty) ...[
             const SizedBox(height: 5),
             _buildRecentBar(recent, isHome),

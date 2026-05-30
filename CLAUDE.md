@@ -570,7 +570,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 ### 장기 (설계/리소스/난이도 높음)
 - [ ] 게임카드 배경: 경기 구장별 사진 삽입
 - [x] 실시간 중계 필드뷰 표시 (BSO + 야구장 다이아몬드 CustomPainter, 진행중 경기)
-- [ ] 포스트시즌 진출 확률 (매직넘버/수학적 탈락 계산)
+- [x] 포스트시즌 진출 확률 — Monte Carlo 10,000회, GET /teams/postseason-odds @cached(300), 순위탭 하단 바차트
 - [ ] 홈화면 위젯 (Android AppWidget — native kotlin 필요)
 - [ ] 카카오맵 구장 화면 재작성 (kakao_map_plugin 불안정 → WebView + 카카오 JS SDK, flutter_inappwebview)
 

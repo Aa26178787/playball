@@ -493,10 +493,21 @@ class _TeamStatsTabState extends State<TeamStatsTab>
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    // Phase 1: 캐시 즉시 표시
+    final cached = await LocalCache.get('team_all_stats', maxAgeSeconds: 3600) as Map?;
+    if (cached != null && mounted) {
+      setState(() {
+        _teams = List<Map<String, dynamic>>.from(cached['teams'] ?? []);
+        _loading = false;
+      });
+    } else {
+      if (mounted) setState(() => _loading = true);
+    }
+    // Phase 2: 백그라운드 갱신
     try {
       final data = await ApiService.getTeamAllStats();
       if (!mounted) return;
+      await LocalCache.set('team_all_stats', data);
       setState(() {
         _teams = List<Map<String, dynamic>>.from(data['teams'] ?? []);
         _loading = false;
