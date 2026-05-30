@@ -92,6 +92,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   Timer? _autoRefreshTimer;
   int _unreadNotifCount = 0;
   int _loadGen = 0;
+  int _seriesGen = 0;
 
   final ScrollController _dateScrollController = ScrollController();
   static final _seasonStart = DateTime(2026, 3, 1);
@@ -249,6 +250,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   }
 
   Future<void> _loadTomorrowGames() async {
+    final gen = ++_seriesGen;
     try {
       final base = _selectedDate.isAfter(DateTime.now())
           ? _selectedDate
@@ -278,7 +280,10 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
         final games = (r as Map<String, dynamic>)['games'] as List? ?? [];
         combined.addAll(games);
       }
-      if (mounted) setState(() => _seriesGames = combined);
+      // race condition 방지: 최신 호출만 반영, empty면 기존 데이터 유지
+      if (mounted && _seriesGen == gen && combined.isNotEmpty) {
+        setState(() => _seriesGames = combined);
+      }
     } catch (_) {}
   }
 
