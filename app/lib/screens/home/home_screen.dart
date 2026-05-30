@@ -1486,6 +1486,7 @@ class _PredictionBar extends StatefulWidget {
   final String awayCode;
 
   const _PredictionBar({
+    super.key,
     required this.gameId,
     required this.homeTeamId,
     required this.awayTeamId,

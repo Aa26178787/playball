@@ -1140,24 +1140,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildVisitButton(int gameId) {
-    final visit = _visitedGames[gameId];
-    final Color color;
-    final IconData icon;
-    if (visit == null) {
-      color = Colors.grey.shade400;
-      icon = Icons.stadium_outlined;
-    } else {
-      final result = visit['result'] as String;
-      color = result == 'win' ? Colors.blue : result == 'loss' ? Colors.red : Colors.grey;
-      icon = Icons.stadium;
-    }
-    return GestureDetector(
-      onTap: () => _showVisitDialog(gameId, visit),
-      child: Icon(icon, size: 20, color: color),
-    );
-  }
-
   Future<void> _showVisitDialog(int gameId, Map? existing) async {
     if (existing != null) {
       final imageUrl = existing['image_url'] as String?;
@@ -1292,8 +1274,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         String? imageUrl;
         if (pickedImagePath != null) {
           try {
-            final uploaded = await ApiService.uploadPostImage(pickedImagePath!);
-            imageUrl = uploaded['image_url'] as String?;
+            imageUrl = await ApiService.uploadPostImage(pickedImagePath!);
           } catch (_) {}
         }
         final res = await ApiService.addStadiumVisit(
