@@ -3794,7 +3794,8 @@ class _FullFieldView extends StatelessWidget {
       for (final p in defenseWithPitcher) {
         final posCode = _korToCode[p['position'] as String? ?? '']
             ?? (p['pos_code'] as String? ?? '');
-        final coord = _posCoords[posCode] ?? _posCoords['C']!;
+        final coord = _posCoords[posCode];
+        if (coord == null) continue;
         final label = _posLabel[posCode] ?? posCode;
         defenseWidgets.add(placed(
           coord,
