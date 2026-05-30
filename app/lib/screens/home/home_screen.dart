@@ -1575,16 +1575,66 @@ class _PredictionBarState extends State<_PredictionBar> {
     }
   }
 
+  Widget _voteButton({
+    required bool isSelected,
+    required Color color,
+    required String name,
+    required String pct,
+    required VoidCallback? onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withOpacity(0.12) : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? color : Colors.grey[300]!,
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                name,
+                style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.bold,
+                  color: isSelected ? color : Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                pct,
+                style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w800,
+                  color: isSelected ? color : Colors.grey[400],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final total = _homeVotes + _awayVotes;
     final homePct = total > 0 ? _homeVotes / total : 0.5;
     final awayPct = 1.0 - homePct;
-    // 로딩 중: 회색 50/50 표시 (SizedBox placeholder 제거 — 높이 변화 → layout jump → 플리커 원인)
-    final homeColor = _loading ? Colors.grey[300]! : teamColor(widget.homeCode);
-    final awayColor = _loading ? Colors.grey[300]! : teamColor(widget.awayCode);
+    final homeColor = teamColor(widget.homeCode);
+    final awayColor = teamColor(widget.awayCode);
     final homeFlex = (homePct * 100).round().clamp(1, 99);
     final awayFlex = 100 - homeFlex;
+    final homeSelected = _userVote == widget.homeTeamId;
+    final awaySelected = _userVote == widget.awayTeamId;
+    final homePctStr = _loading ? '-' : '${(homePct * 100).round()}%';
+    final awayPctStr = _loading ? '-' : '${(awayPct * 100).round()}%';
 
     // GestureDetector(opaque) — 부모 Card InkWell로 탭 전파 차단
     return GestureDetector(
@@ -1594,84 +1644,62 @@ class _PredictionBarState extends State<_PredictionBar> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Divider(height: 8, thickness: 0.5),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: [
+                Text('승리 예측',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[500])),
+                const Spacer(),
+                if (total > 0)
+                  Text('$total명 참여',
+                      style: TextStyle(fontSize: 10, color: Colors.grey[400])),
+              ],
+            ),
+          ),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 홈팀 투표 영역 — 텍스트+바 전체가 터치 대상
-              Expanded(
-                flex: homeFlex,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _loading ? null : () => _vote(widget.homeTeamId),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _loading ? '...' : '${(homePct * 100).round()}%',
-                          style: TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.bold,
-                            color: _userVote == widget.homeTeamId ? homeColor : Colors.grey[500],
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Container(
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: homeColor.withOpacity(_loading ? 0.3 : (_userVote == widget.homeTeamId ? 0.75 : 0.35)),
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(3), bottomLeft: Radius.circular(3),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              _voteButton(
+                isSelected: homeSelected,
+                color: homeColor,
+                name: teamDisplayName(widget.homeCode),
+                pct: homePctStr,
+                onTap: _loading ? null : () => _vote(widget.homeTeamId),
               ),
-              // 원정팀 투표 영역 — 텍스트+바 전체가 터치 대상
-              Expanded(
-                flex: awayFlex,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _loading ? null : () => _vote(widget.awayTeamId),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          _loading ? '...' : '${(awayPct * 100).round()}%',
-                          style: TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.bold,
-                            color: _userVote == widget.awayTeamId ? awayColor : Colors.grey[500],
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Container(
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: awayColor.withOpacity(_loading ? 0.3 : (_userVote == widget.awayTeamId ? 0.75 : 0.35)),
-                            borderRadius: const BorderRadius.only(
-                              topRight: Radius.circular(3), bottomRight: Radius.circular(3),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              const SizedBox(width: 8),
+              _voteButton(
+                isSelected: awaySelected,
+                color: awayColor,
+                name: teamDisplayName(widget.awayCode),
+                pct: awayPctStr,
+                onTap: _loading ? null : () => _vote(widget.awayTeamId),
               ),
             ],
           ),
-          if (total > 0)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Center(
-                child: Text('$total명 참여', style: TextStyle(fontSize: 9, color: Colors.grey[400])),
-              ),
+          const SizedBox(height: 6),
+          // 비율 바
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: homeFlex,
+                  child: Container(
+                    height: 3,
+                    color: homeColor.withOpacity(homeSelected ? 0.8 : 0.25),
+                  ),
+                ),
+                Expanded(
+                  flex: awayFlex,
+                  child: Container(
+                    height: 3,
+                    color: awayColor.withOpacity(awaySelected ? 0.8 : 0.25),
+                  ),
+                ),
+              ],
             ),
+          ),
+          const SizedBox(height: 4),
         ],
       ),
     );
