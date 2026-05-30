@@ -128,7 +128,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 
   void _scrollToMonthStart(int month) {
     final target = DateTime(2026, month, 1);
-    setState(() { _selectedDate = target; _isLoading = true; _loadGen++; });
+    setState(() { _selectedDate = target; _isLoading = true; _games = []; _loadGen++; });
     _loadGames();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
   }
@@ -434,7 +434,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
           return GestureDetector(
             onTap: () {
               if (!isSelected) {
-                setState(() { _selectedDate = date; _isLoading = true; _loadGen++; });
+                setState(() { _selectedDate = date; _isLoading = true; _games = []; _loadGen++; });
                 _loadGames();
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
               }
@@ -483,7 +483,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
             right: 6,
             child: GestureDetector(
               onTap: () {
-                setState(() { _selectedDate = today; _isLoading = true; _loadGen++; });
+                setState(() { _selectedDate = today; _isLoading = true; _games = []; _loadGen++; });
                 _loadGames();
                 _loadTomorrowGames();
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
