@@ -3563,9 +3563,9 @@ class _FullFieldView extends StatelessWidget {
             label: label,
             isOffense: false,
             isDark: isDark,
-            size: 22,
+            size: 24,
           ),
-          22, 36,
+          24, 40,
         ));
       }
 
@@ -3669,26 +3669,24 @@ class _PlayerDot extends StatelessWidget {
                   : Icon(Icons.person, size: size * 0.55, color: Colors.white70),
             ),
           ),
-          if (isOffense && displayName.isNotEmpty) ...[
-            const SizedBox(height: 1),
-            Text(
-              displayName,
-              style: TextStyle(
-                fontSize: 7.5, color: Colors.orange[200],
-                fontWeight: FontWeight.bold,
-                shadows: const [Shadow(offset: Offset(0, 1), blurRadius: 2, color: Colors.black)],
+          if (displayName.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(3),
               ),
-              textAlign: TextAlign.center,
-            ),
-          ] else if (!isOffense && displayName.isNotEmpty) ...[
-            const SizedBox(height: 1),
-            Text(
-              displayName,
-              style: const TextStyle(
-                fontSize: 7, color: Colors.white70,
-                shadows: [Shadow(offset: Offset(0, 1), blurRadius: 2, color: Colors.black)],
+              child: Text(
+                displayName,
+                style: TextStyle(
+                  fontSize: 8.5,
+                  color: isOffense ? Colors.orange[100] : Colors.white,
+                  fontWeight: FontWeight.bold,
+                  shadows: const [Shadow(offset: Offset(0, 1), blurRadius: 1, color: Colors.black)],
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ],
