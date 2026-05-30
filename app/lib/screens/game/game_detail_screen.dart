@@ -3680,10 +3680,10 @@ class _PlayerDot extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-          ] else if (!isOffense && displayLabel.isNotEmpty) ...[
+          ] else if (!isOffense && displayName.isNotEmpty) ...[
             const SizedBox(height: 1),
             Text(
-              displayLabel,
+              displayName,
               style: const TextStyle(
                 fontSize: 7, color: Colors.white70,
                 shadows: [Shadow(offset: Offset(0, 1), blurRadius: 2, color: Colors.black)],
