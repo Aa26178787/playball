@@ -3661,14 +3661,14 @@ class _FullFieldView extends StatelessWidget {
     '3B': Offset(0.21, 0.60),
     '1B': Offset(0.79, 0.60),
     'P':  Offset(0.50, 0.60),
-    'C':  Offset(0.50, 0.85),
+    'C':  Offset(0.50, 0.90),  // 포수: 홈플레이트 뒤
     'DH': Offset(0.05, 0.92),
   };
   static const Map<String, Offset> _baseCoords = {
     'base1': Offset(0.79, 0.62),
     'base2': Offset(0.50, 0.42),
     'base3': Offset(0.21, 0.62),
-    'batter': Offset(0.50, 0.85),
+    'batter': Offset(0.35, 0.82),  // 타자: 좌타석 위치 (포수와 분리)
   };
   static const Map<String, String> _posLabel = {
     'P': '투수', 'C': '포수', '1B': '1루', '2B': '2루',
@@ -3731,13 +3731,12 @@ class _FullFieldView extends StatelessWidget {
         ));
       }
 
-      Widget? runnerWidget(Map<String, dynamic>? p, String baseKey) {
-        if (p == null) return null;
+      Widget runnerWidget(Map<String, dynamic>? p, String baseKey, bool isOccupied) {
         final coord = _baseCoords[baseKey]!;
         return placed(coord,
           _PlayerDot(
-            name: p['name'] as String? ?? '',
-            imageUrl: p['image'] as String?,
+            name: p?['name'] as String? ?? '',
+            imageUrl: p?['image'] as String?,
             label: '',
             isOffense: true,
             isDark: isDark,
@@ -3758,9 +3757,9 @@ class _FullFieldView extends StatelessWidget {
             ),
           ),
           ...defenseWidgets,
-          if (runnerWidget(runner1, 'base1') != null) runnerWidget(runner1, 'base1')!,
-          if (runnerWidget(runner2, 'base2') != null) runnerWidget(runner2, 'base2')!,
-          if (runnerWidget(runner3, 'base3') != null) runnerWidget(runner3, 'base3')!,
+          if (base1 || runner1 != null) runnerWidget(runner1, 'base1', base1),
+          if (base2 || runner2 != null) runnerWidget(runner2, 'base2', base2),
+          if (base3 || runner3 != null) runnerWidget(runner3, 'base3', base3),
           if (batter != null)
             placed(
               _baseCoords['batter']!,
