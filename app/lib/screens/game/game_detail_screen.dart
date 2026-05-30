@@ -613,10 +613,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       ),
       body: Column(
         children: [
-          _buildScoreHeader(game),
+          _buildGameHeader(game),
           if (_sameDayGames.isNotEmpty) _buildSameDayStrip(),
-          if (_relayData != null || _rosterData != null)
-            _buildFieldSection(game),
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -729,6 +727,210 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ),
       );
     });
+  }
+
+  Widget _buildGameHeader(Map<String, dynamic> game) {
+    final status = game['status'] as String? ?? '';
+    final isLive = status == '진행';
+    final isDone = status == '종료';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final homeCode  = game['home_team_code'] as String? ?? '';
+    final awayCode  = game['away_team_code']  as String? ?? '';
+    final homeTeam  = game['home_team']  as String? ?? '';
+    final awayTeam  = game['away_team']  as String? ?? '';
+    final homeScore = game['home_score'] as int? ?? 0;
+    final awayScore = game['away_score'] as int? ?? 0;
+    final homeRank  = _rankMap[game['home_team_id'] as int?];
+    final awayRank  = _rankMap[game['away_team_id'] as int?];
+    final homeRecent = List<String>.from(game['home_recent_5'] ?? []);
+    final awayRecent = List<String>.from(game['away_recent_5'] ?? []);
+
+    // Build field widget
+    Widget? fieldWidget;
+    if (isLive && _relayData != null) {
+      final relayState = _relayData!['current_state'];
+      final fieldView  = _relayData!['field_view'] as Map<String, dynamic>?;
+      if (relayState != null) {
+        fieldWidget = _FullFieldView(
+          base1: relayState['base1'] == true,
+          base2: relayState['base2'] == true,
+          base3: relayState['base3'] == true,
+          fieldView: fieldView,
+          isDark: isDark,
+        );
+      }
+    } else if (_rosterData != null) {
+      final homeBatters  = (_rosterData!['home']['batters']  as List? ?? []).cast<Map<String, dynamic>>();
+      final homePitchers = (_rosterData!['home']['pitchers'] as List? ?? []).cast<Map<String, dynamic>>();
+      final defense = homeBatters
+          .where((b) => b['is_starter'] == true && b['batting_order'] != null && b['batting_order'] != 0)
+          .map<Map<String, dynamic>>((b) => {
+            'name': b['name'] as String? ?? '',
+            'image': b['profile_image'],
+            'position': b['position'] as String? ?? '',
+            'pos_code': '',
+          }).toList();
+      if (!defense.any((d) => d['position'] == '투수')) {
+        final sp = homePitchers.where((p) => p['is_starter'] == true).toList();
+        if (sp.isNotEmpty) defense.add({'name': sp.first['name'] as String? ?? '', 'image': sp.first['profile_image'], 'position': '투수', 'pos_code': 'P'});
+      }
+      fieldWidget = _FullFieldView(
+        base1: false, base2: false, base3: false,
+        fieldView: {'defense': defense, 'batter': null, 'pitcher': null, 'runners': null},
+        isDark: isDark,
+      );
+    }
+
+    // BSO dots helper (for live bottom bar)
+    Widget bsoDot(bool on, Color c) => Container(
+      width: 9, height: 9,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: on ? c : Colors.white.withValues(alpha: 0.2),
+        boxShadow: on ? [BoxShadow(color: c.withValues(alpha: 0.6), blurRadius: 4, spreadRadius: 0.5)] : null,
+      ),
+    );
+    Widget bsoGroup(String lbl, int count, int max, Color c) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(lbl, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white60)),
+        const SizedBox(width: 3),
+        ...List.generate(max, (i) => bsoDot(i < count, c)),
+      ],
+    );
+
+    final gradientColors = isDark
+        ? [const Color(0xFF0D2818), const Color(0xFF1B3A22)]
+        : [const Color(0xFF1B4332), const Color(0xFF2D6A4F)];
+
+    String shortName(String n) => n.length > 3 ? n.substring(0, 3) : n;
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter, end: Alignment.bottomCenter,
+            colors: gradientColors,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── 스코어 바 ──────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // 홈팀
+                  Expanded(
+                    child: Column(
+                      children: [
+                        TeamLogo(teamCode: homeCode, size: 40),
+                        const SizedBox(height: 3),
+                        Text(shortName(homeTeam), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                        if (homeRank != null && homeRank > 0)
+                          Text('${homeRank}위', style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                        if (homeRecent.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          _buildRecentBar(homeRecent, true),
+                        ],
+                      ],
+                    ),
+                  ),
+                  // 스코어 중앙
+                  Column(
+                    children: [
+                      Text(
+                        isDone || isLive ? '$homeScore : $awayScore' : 'VS',
+                        style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        isLive
+                            ? '${game['current_inning']}회 ${game['inning_half'] ?? ''}'
+                            : isDone ? '종료'
+                            : status == '예정' || status == '라인업' ? (game['start_time'] as String? ?? '예정') : status,
+                        style: const TextStyle(color: Colors.white60, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                  // 원정팀
+                  Expanded(
+                    child: Column(
+                      children: [
+                        TeamLogo(teamCode: awayCode, size: 40),
+                        const SizedBox(height: 3),
+                        Text(shortName(awayTeam), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                        if (awayRank != null && awayRank > 0)
+                          Text('${awayRank}위', style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                        if (awayRecent.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          _buildRecentBar(awayRecent, false),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── 필드뷰 ──────────────────────────────────────
+            if (fieldWidget != null)
+              SizedBox(height: 190, child: fieldWidget),
+
+            // ── 하단 바 ─────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+              child: Row(
+                children: [
+                  if (isLive && _relayData?['current_state'] != null) ...[
+                    // LIVE 뱃지
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.green[600],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 10),
+                    // BSO
+                    bsoGroup('B', (_relayData!['current_state']['ball'] as int? ?? 0).clamp(0, 3), 3, Colors.green[300]!),
+                    const SizedBox(width: 8),
+                    bsoGroup('S', (_relayData!['current_state']['strike'] as int? ?? 0).clamp(0, 2), 2, Colors.red[300]!),
+                    const SizedBox(width: 8),
+                    bsoGroup('O', (_relayData!['current_state']['out'] as int? ?? 0).clamp(0, 2), 2, Colors.orange[300]!),
+                    const Spacer(),
+                    // 새로고침
+                    _isRelayRefreshing
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white60))
+                        : GestureDetector(
+                            onTap: _refreshRelayAll,
+                            child: const Icon(Icons.refresh, size: 20, color: Colors.white60),
+                          ),
+                  ] else if (isDone && (game['win_pitcher'] != null || game['lose_pitcher'] != null)) ...[
+                    // 승투/패투
+                    const Spacer(),
+                    if (game['win_pitcher'] != null)
+                      _pitcherBadge(game['win_pitcher'] as String, game['win_pitcher_image'] as String?, Colors.lightBlueAccent, '승'),
+                    if (game['win_pitcher'] != null && game['lose_pitcher'] != null) const SizedBox(width: 20),
+                    if (game['lose_pitcher'] != null)
+                      _pitcherBadge(game['lose_pitcher'] as String, game['lose_pitcher_image'] as String?, Colors.redAccent, '패'),
+                    const Spacer(),
+                  ] else if (_weatherData != null) ...[
+                    Expanded(child: Center(child: _buildWeatherRow(_weatherData!))),
+                  ] else
+                    const SizedBox.shrink(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildScoreHeader(Map<String, dynamic> game) {
@@ -1135,44 +1337,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     final winRate = _getWinRate();
 
-    final isLive = _gameData!['game']['status'] == '진행';
-
-    return Column(
-      children: [
-        // 새로고침 헤더
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          color: isLive ? const Color(0xFFE8F5E9) : const Color(0xFFF5F5F5),
-          child: Row(
-            children: [
-              if (isLive) ...[
-                const Icon(Icons.circle, size: 8, color: Colors.green),
-                const SizedBox(width: 6),
-                const Text('30초 자동 새로고침', style: TextStyle(fontSize: 12, color: Colors.green)),
-              ] else if (_gameData!['game']['status'] == '예정' || _gameData!['game']['status'] == '라인업')
-                Text('경기 전', style: TextStyle(fontSize: 12, color: Colors.grey[600]))
-              else
-                Text('경기 종료', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-              const Spacer(),
-              if (isLive)
-                _isRelayRefreshing
-                    ? const SizedBox(width: 18, height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : GestureDetector(
-                        onTap: _refreshRelayAll,
-                        child: Row(
-                          children: [
-                            Icon(Icons.refresh, size: 18, color: Colors.grey[700]),
-                            const SizedBox(width: 4),
-                            Text('새로고침', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                          ],
-                        ),
-                      ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: SingleChildScrollView(
+    return SingleChildScrollView(
       controller: _inningScrollController,
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1294,10 +1459,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           ],
         ],
       ),
-    ),         // close SingleChildScrollView
-  ),           // close Expanded
-],             // close outer Column children
-);             // close outer Column
+    );
   }
 
   Widget _buildBatterRelayTile(Map<String, dynamic> entry) {
