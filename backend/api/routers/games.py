@@ -54,6 +54,17 @@ NAVER_HEADERS = {
 
 @router.get("/{game_id}/relay_all")
 def get_game_relay_all(game_id: int):
+    # ─── relay_all 서버사이드 캐시 ────────────────────────────────────────
+    # 목적: 1000명 동시접속 시 매 요청마다 Naver API 전체 이닝 재조회 방지
+    #       → Naver IP 차단 + 서버 과부하 방지
+    # TTL: 진행중=30초(클라이언트 새로고침 주기와 일치), 종료=3600초(불변)
+    # 삭제 금지: 고부하 시 Naver 차단 즉시 재발
+    from api.cache import cache_get, cache_set
+    _cache_key = f"relay_all:{game_id}"
+    _hit, _cached = cache_get(_cache_key)
+    if _hit:
+        return _cached
+
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -204,11 +215,13 @@ def get_game_relay_all(game_id: int):
                             "type": rtype,
                         })
 
-            return {
+            result = {
                 "relays": all_relays,
                 "inning_scores": inning_scores,
                 "source": "api"
             }
+            cache_set(_cache_key, result, 30)  # 진행중: 30초 캐시
+            return result
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"중계 조회 실패: {str(e)}")
@@ -350,12 +363,14 @@ def get_game_relay_all(game_id: int):
             "awayTeamWinRate": float(wr[1]),
         }
 
-    return {
+    result = {
         "relays": relay_list,
         "inning_scores": inning_scores,
         "win_rate": win_rate,
         "source": "db",
     }
+    cache_set(_cache_key, result, 3600)  # 종료 경기: 1시간 캐시 (데이터 불변)
+    return result
 
 
 
