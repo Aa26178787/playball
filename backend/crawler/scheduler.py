@@ -1387,6 +1387,12 @@ def _crawl_kbo_stats_for_game(game_id):
             return
         print(f"[{datetime.now()}] game_id={game_id} 출전 선수 {len(player_ids)}명 KBO 크롤 시작")
         update_kbo_player_stats(player_ids=player_ids)
+        # game_pitchers 최종값 반영 — T+25 이후 daily_stats 재동기화
+        try:
+            from datetime import date as _d
+            _save_player_daily_stats_today()
+        except Exception as _ds_e:
+            print(f"[{datetime.now()}] daily_stats 재동기화 오류: {_ds_e}")
     except Exception as e:
         print(f"[{datetime.now()}] 경기별 KBO 크롤 오류 (game_id={game_id}): {e}")
 
