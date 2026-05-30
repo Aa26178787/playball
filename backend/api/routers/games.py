@@ -376,6 +376,7 @@ def get_game_relay_all(game_id: int):
 
 
 @router.get("/{game_id}/preview")
+@cached(300)
 def get_game_preview(game_id: int):
     conn = get_connection()
     if not conn:
@@ -486,6 +487,7 @@ def get_game_preview(game_id: int):
 
 
 @router.get("/{game_id}/record_detail")
+@cached(60)
 def get_game_record_detail(game_id: int):
     conn = get_connection()
     if not conn:
@@ -564,6 +566,7 @@ def get_game_record_detail(game_id: int):
 
 
 @router.get("/{game_id}/roster")
+@cached(60)
 def get_game_roster(game_id: int):
     conn = get_connection()
     if not conn:

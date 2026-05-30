@@ -1511,7 +1511,7 @@ class _PredictionBarState extends State<_PredictionBar> {
   void initState() {
     super.initState();
     _applyCache();
-    _load();
+    if (_loading) _load(); // 캐시 hit 시 재호출 금지 — setState 플리커 방지
   }
 
   @override
@@ -1577,12 +1577,12 @@ class _PredictionBarState extends State<_PredictionBar> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const SizedBox(height: 20);
     final total = _homeVotes + _awayVotes;
     final homePct = total > 0 ? _homeVotes / total : 0.5;
     final awayPct = 1.0 - homePct;
-    final homeColor = teamColor(widget.homeCode);
-    final awayColor = teamColor(widget.awayCode);
+    // 로딩 중: 회색 50/50 표시 (SizedBox placeholder 제거 — 높이 변화 → layout jump → 플리커 원인)
+    final homeColor = _loading ? Colors.grey[300]! : teamColor(widget.homeCode);
+    final awayColor = _loading ? Colors.grey[300]! : teamColor(widget.awayCode);
     final homeFlex = (homePct * 100).round().clamp(1, 99);
     final awayFlex = 100 - homeFlex;
 
@@ -1602,14 +1602,14 @@ class _PredictionBarState extends State<_PredictionBar> {
                 flex: homeFlex,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => _vote(widget.homeTeamId),
+                  onTap: _loading ? null : () => _vote(widget.homeTeamId),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 5),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${(homePct * 100).round()}%',
+                          _loading ? '...' : '${(homePct * 100).round()}%',
                           style: TextStyle(
                             fontSize: 11, fontWeight: FontWeight.bold,
                             color: _userVote == widget.homeTeamId ? homeColor : Colors.grey[500],
@@ -1619,7 +1619,7 @@ class _PredictionBarState extends State<_PredictionBar> {
                         Container(
                           height: 5,
                           decoration: BoxDecoration(
-                            color: homeColor.withOpacity(_userVote == widget.homeTeamId ? 0.75 : 0.35),
+                            color: homeColor.withOpacity(_loading ? 0.3 : (_userVote == widget.homeTeamId ? 0.75 : 0.35)),
                             borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(3), bottomLeft: Radius.circular(3),
                             ),
@@ -1635,14 +1635,14 @@ class _PredictionBarState extends State<_PredictionBar> {
                 flex: awayFlex,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => _vote(widget.awayTeamId),
+                  onTap: _loading ? null : () => _vote(widget.awayTeamId),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 5),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          '${(awayPct * 100).round()}%',
+                          _loading ? '...' : '${(awayPct * 100).round()}%',
                           style: TextStyle(
                             fontSize: 11, fontWeight: FontWeight.bold,
                             color: _userVote == widget.awayTeamId ? awayColor : Colors.grey[500],
@@ -1652,7 +1652,7 @@ class _PredictionBarState extends State<_PredictionBar> {
                         Container(
                           height: 5,
                           decoration: BoxDecoration(
-                            color: awayColor.withOpacity(_userVote == widget.awayTeamId ? 0.75 : 0.35),
+                            color: awayColor.withOpacity(_loading ? 0.3 : (_userVote == widget.awayTeamId ? 0.75 : 0.35)),
                             borderRadius: const BorderRadius.only(
                               topRight: Radius.circular(3), bottomRight: Radius.circular(3),
                             ),
