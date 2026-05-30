@@ -958,7 +958,10 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
       final img = p['profile_image'] as String?;
       return GestureDetector(
         onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
+            MaterialPageRoute(builder: (_) => PlayerDetailScreen(
+              playerId: p['id'],
+              initialData: {'name': p['name'], 'team': p['team_name'], 'profile_image': p['profile_image'], 'position': p['position'], 'player_type': p['player_type']},
+            ))),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [

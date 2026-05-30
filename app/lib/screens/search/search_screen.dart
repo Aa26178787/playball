@@ -191,7 +191,10 @@ class _SearchScreenState extends State<SearchScreen> {
             subtitle: Text('${p['team'] ?? ''} | ${p['position'] ?? ''} | ${p['player_type'] ?? ''}',
                 style: const TextStyle(fontSize: 12)),
             onTap: () => Navigator.push(context, MaterialPageRoute(
-                builder: (_) => PlayerDetailScreen(playerId: p['id']))),
+                builder: (_) => PlayerDetailScreen(
+                  playerId: p['id'],
+                  initialData: {'name': p['name'], 'team': p['team'], 'profile_image': p['profile_image'], 'position': p['position'], 'player_type': p['player_type']},
+                ))),
           )),
         ],
       ],

@@ -492,7 +492,10 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     return InkWell(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id'])),
+        MaterialPageRoute(builder: (_) => PlayerDetailScreen(
+          playerId: p['id'],
+          initialData: {'name': p['name'], 'team': widget.team['name'], 'profile_image': p['profile_image'], 'position': p['position'], 'player_type': p['player_type'], 'number': p['number']},
+        )),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),

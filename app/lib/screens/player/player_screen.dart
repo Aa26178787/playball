@@ -428,7 +428,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id'])),
+        MaterialPageRoute(builder: (_) => PlayerDetailScreen(
+          playerId: p['id'],
+          initialData: {'name': p['name'], 'team': teamDisplayName(code), 'profile_image': p['profile_image'], 'number': p['number'], 'player_type': p['player_type']},
+        )),
       ),
       child: Container(
         decoration: BoxDecoration(
@@ -583,7 +586,10 @@ class _PlayerScreenState extends State<PlayerScreen>
           title: Text('${p['name']}', style: const TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Text('${p['team'] ?? ''} | ${p['player_type'] ?? ''} | #${p['number'] ?? '-'}'),
           onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
+              MaterialPageRoute(builder: (_) => PlayerDetailScreen(
+                playerId: p['id'],
+                initialData: {'name': p['name'], 'team': p['team'], 'profile_image': p['profile_image'], 'number': p['number'], 'player_type': p['player_type']},
+              ))),
         );
       },
     );
@@ -783,7 +789,10 @@ class _PlayerScreenState extends State<PlayerScreen>
                         ),
                       ),
                       onTap: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: item['id'] as int))),
+                          MaterialPageRoute(builder: (_) => PlayerDetailScreen(
+                            playerId: item['id'] as int,
+                            initialData: {'name': item['name'], 'team': item['team_name'] ?? teamDisplayName(item['team_code'] ?? ''), 'profile_image': item['profile_image'], 'position': item['position'], 'player_type': item['player_type']},
+                          ))),
                     );
                   }
                 },

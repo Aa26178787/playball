@@ -8,7 +8,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 class PlayerDetailScreen extends StatefulWidget {
   final int playerId;
-  const PlayerDetailScreen({super.key, required this.playerId});
+  /// 리스트에서 넘어온 기본 데이터 (name, team, profile_image, player_type, position, number)
+  /// 제공 시 헤더 즉시 표시, 스탯은 백그라운드 로드
+  final Map<String, dynamic>? initialData;
+  const PlayerDetailScreen({super.key, required this.playerId, this.initialData});
 
   @override
   State<PlayerDetailScreen> createState() => _PlayerDetailScreenState();
@@ -28,6 +31,17 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   @override
   void initState() {
     super.initState();
+    // initialData 있으면 헤더 즉시 표시 (shimmer 없음)
+    if (widget.initialData != null) {
+      final d = widget.initialData!;
+      _playerData = <String, dynamic>{
+        ...d,
+        // team_name / team_code → team 정규화
+        if (!d.containsKey('team'))
+          'team': d['team_name'] ?? d['team_code'] ?? '',
+      };
+      _isLoading = false;
+    }
     _loadPlayer();
     _loadFavStatus();
   }
@@ -106,8 +120,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       setState(() { _playerData = memCached; _isLoading = false; });
     }
 
-    // 2순위: SharedPreferences stale 캐시 (비동기, 빠름)
-    if (_playerData == null) {
+    // 2순위: SharedPreferences stale 캐시 (비동기, 빠름) — 메모리 캐시 없을 때만
+    if (memCached == null) {
       final cacheResults = await Future.wait([
         LocalCache.getStale(_cacheKey),
         LocalCache.getStale(_dailyCacheKey),

@@ -505,7 +505,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   subtitle: Text('${p['team'] ?? ''} | ${p['position'] ?? ''}',
                       style: const TextStyle(fontSize: 12)),
                   onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => PlayerDetailScreen(playerId: p['id']))),
+                      builder: (_) => PlayerDetailScreen(
+                        playerId: p['id'],
+                        initialData: {'name': p['name'], 'team': p['team'], 'profile_image': p['profile_image'], 'position': p['position']},
+                      ))),
                 );
               }).toList(),
             ),
