@@ -129,7 +129,6 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     final target = DateTime(2026, month, 1);
     setState(() { _selectedDate = target; _isLoading = true; _loadGen++; });
     _loadGames();
-    _loadTomorrowGames();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
   }
 
@@ -155,6 +154,18 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 
   void _backgroundPrefetch() {
     Future(() async {
+      // 최근 7일 경기 목록 미리 캐시 (날짜 전환 즉시 표시, 미래는 _loadTomorrowGames가 처리)
+      final now = DateTime.now();
+      for (int delta = -7; delta <= -1; delta++) {
+        final d = now.add(Duration(days: delta));
+        final ds = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+        if (await LocalCache.getStale('games_$ds') != null) continue; // 이미 캐시됨
+        try {
+          final data = await ApiService.getGamesByDate(ds);
+          await LocalCache.set('games_$ds', data['games'] ?? []);
+        } catch (_) {}
+      }
+
       // 선수 탭 데이터 미리 로드 (캐시 없을 때만)
       if (await LocalCache.get('hitters_list', maxAgeSeconds: 300) == null) {
         try {
@@ -266,9 +277,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     final gen = ++_loadGen;
     final dateStr = _selectedDateStr;
 
-    final today = DateTime.now();
-    final todayMidnight = DateTime(today.year, today.month, today.day);
-    final isToday  = !_selectedDate.isBefore(todayMidnight) && !_selectedDate.isAfter(todayMidnight);
+    final isToday = _isSameDay(_selectedDate, DateTime.now());
 
     List? cached;
     if (isToday) {
@@ -418,7 +427,6 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
               if (!isSelected) {
                 setState(() { _selectedDate = date; _isLoading = true; _loadGen++; });
                 _loadGames();
-                _loadTomorrowGames();
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
               }
             },
