@@ -21,7 +21,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   Map<String, dynamic>? _playerData;
   List<dynamic> _dailyStats = [];
   Map<String, dynamic>? _pitchStats;
-  bool _isLoading = true;
+  bool _isLoading = true;   // 전체 shimmer (initialData 없을 때)
+  bool _bodyLoading = false; // 바디 shimmer (initialData 있어서 헤더만 먼저 표시할 때)
   bool _useEng = false;
   bool _isFav = false;
   bool _favLoading = false;
@@ -31,16 +32,16 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // initialData 있으면 헤더 즉시 표시 (shimmer 없음)
+    // initialData 있으면 헤더만 즉시 표시, 바디는 shimmer 유지
     if (widget.initialData != null) {
       final d = widget.initialData!;
       _playerData = <String, dynamic>{
         ...d,
-        // team_name / team_code → team 정규화
         if (!d.containsKey('team'))
           'team': d['team_name'] ?? d['team_code'] ?? '',
       };
       _isLoading = false;
+      _bodyLoading = true; // 바디(스탯/기본정보)는 API 완료 후 표시
     }
     _loadPlayer();
     _loadFavStatus();
@@ -133,6 +134,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           _playerData = Map<String, dynamic>.from(cached);
           if (cachedDaily != null) _dailyStats = cachedDaily['daily'] as List? ?? [];
           _isLoading = false;
+          _bodyLoading = false;
         });
       }
     }
@@ -140,9 +142,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     // 3순위: API — getPlayerDetail / getPlayerDaily 독립 처리 (한 쪽 실패해도 다른 쪽 표시)
     try {
       final playerData = await ApiService.getPlayerDetail(widget.playerId);
-      await LocalCache.set(_cacheKey, playerData);
       ApiService.setPlayerDetailMem(widget.playerId, playerData);
-      if (mounted) setState(() { _playerData = playerData; _isLoading = false; });
+      if (mounted) setState(() { _playerData = playerData; _isLoading = false; _bodyLoading = false; });
+      // 캐시 저장은 UI 업데이트 후 비동기 (실패해도 무관)
+      LocalCache.set(_cacheKey, playerData).catchError((_) {});
 
       // daily stats 별도 처리 (실패 허용)
       try {
@@ -158,7 +161,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         } catch (_) {}
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _isLoading = false; _bodyLoading = false; });
     }
   }
 
@@ -193,6 +196,12 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(player['name'] ?? ''),
+        // initialData로 헤더 표시 중, 바디 로딩 진행 표시
+        bottom: _bodyLoading
+            ? const PreferredSize(
+                preferredSize: Size.fromHeight(2),
+                child: LinearProgressIndicator())
+            : null,
         actions: [
           _favLoading
               ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
@@ -207,22 +216,52 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         onPressed: () => _showMatchupSheet(player),
         child: const Icon(Icons.compare_arrows),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeader(player),
-            _buildInfoCard(player),
-            if (_dailyStats.isNotEmpty) _buildRecent5Games(player),
-            if (_pitchStats != null) _buildPitchStatsCard(),
-            if (_dailyStats.isNotEmpty) _buildTrendCard(player),
-            PlayerStatsSection(
-              statsList: (_playerData!['stats'] as List?) ?? [],
-              playerType: playerType,
-              useEng: _useEng,
-              onToggleEng: () => setState(() => _useEng = !_useEng),
-              position: _playerData!['position'] as String?,
+      body: _bodyLoading
+          ? _buildBodyShimmer()
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildHeader(player),
+                  _buildInfoCard(player),
+                  if (_dailyStats.isNotEmpty) _buildRecent5Games(player),
+                  if (_pitchStats != null) _buildPitchStatsCard(),
+                  if (_dailyStats.isNotEmpty) _buildTrendCard(player),
+                  PlayerStatsSection(
+                    statsList: (_playerData!['stats'] as List?) ?? [],
+                    playerType: playerType,
+                    useEng: _useEng,
+                    onToggleEng: () => setState(() => _useEng = !_useEng),
+                    position: _playerData!['position'] as String?,
+                  ),
+                  const SizedBox(height: 80),
+                ],
+              ),
             ),
-            const SizedBox(height: 80),
+    );
+  }
+
+  Widget _buildBodyShimmer() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final base = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final hi = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+    box(double w, double h) => Container(
+          width: w, height: h,
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+        );
+    return Shimmer.fromColors(
+      baseColor: base, highlightColor: hi,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(_playerData!),
+            const SizedBox(height: 12),
+            box(double.infinity, 100),
+            const SizedBox(height: 12),
+            box(double.infinity, 180),
+            const SizedBox(height: 12),
+            box(double.infinity, 120),
           ],
         ),
       ),
