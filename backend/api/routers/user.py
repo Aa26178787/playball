@@ -49,6 +49,7 @@ class StadiumVisitCreate(BaseModel):
     game_id: int
     result: str  # win / loss / draw
     memo: Optional[str] = None
+    image_url: Optional[str] = None
 
 
 # ===== 닉네임 변경 =====
@@ -598,7 +599,8 @@ def get_stadium_visits(limit: int = 20, current_user: dict = Depends(get_current
         SELECT v.id, v.game_id, v.result, v.memo, v.created_at,
                g.game_date, g.home_score, g.away_score, g.status,
                ht.name AS home_team, ht.short_name AS home_code,
-               at2.name AS away_team, at2.short_name AS away_code
+               at2.name AS away_team, at2.short_name AS away_code,
+               v.image_url
         FROM user_stadium_visits v
         JOIN games g ON g.id = v.game_id
         JOIN teams ht ON ht.id = g.home_team_id
@@ -618,6 +620,7 @@ def get_stadium_visits(limit: int = 20, current_user: dict = Depends(get_current
             "home_score": r[6], "away_score": r[7], "status": r[8],
             "home_team": r[9], "home_code": r[10],
             "away_team": r[11], "away_code": r[12],
+            "image_url": r[13],
         })
     return {"visits": visits}
 
@@ -632,11 +635,12 @@ def add_stadium_visit(body: StadiumVisitCreate, current_user: dict = Depends(get
     cur = conn.cursor()
     try:
         cur.execute("""
-            INSERT INTO user_stadium_visits (user_id, game_id, result, memo)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT (user_id, game_id) DO UPDATE SET result=EXCLUDED.result, memo=EXCLUDED.memo
+            INSERT INTO user_stadium_visits (user_id, game_id, result, memo, image_url)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (user_id, game_id) DO UPDATE
+                SET result=EXCLUDED.result, memo=EXCLUDED.memo, image_url=EXCLUDED.image_url
             RETURNING id
-        """, (current_user['user_id'], body.game_id, body.result, body.memo))
+        """, (current_user['user_id'], body.game_id, body.result, body.memo, body.image_url))
         visit_id = cur.fetchone()[0]
         conn.commit()
     except Exception as e:

@@ -1579,58 +1579,100 @@ class _PredictionBarState extends State<_PredictionBar> {
     if (_loading) return const SizedBox(height: 20);
     final total = _homeVotes + _awayVotes;
     final homePct = total > 0 ? _homeVotes / total : 0.5;
-    final awayPct = total > 0 ? _awayVotes / total : 0.5;
+    final awayPct = 1.0 - homePct;
     final homeColor = teamColor(widget.homeCode);
     final awayColor = teamColor(widget.awayCode);
+    final homeFlex = (homePct * 100).round().clamp(1, 99);
+    final awayFlex = 100 - homeFlex;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Divider(height: 8, thickness: 0.5),
-        Row(
-          children: [
-            GestureDetector(
-              onTap: () => _vote(widget.homeTeamId),
-              child: Text(
-                '${(homePct * 100).round()}%',
-                style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.bold,
-                  color: _userVote == widget.homeTeamId ? homeColor : Colors.grey[500],
+    // GestureDetector(opaque) — 부모 Card InkWell로 탭 전파 차단
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {},
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Divider(height: 8, thickness: 0.5),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // 홈팀 투표 영역 — 텍스트+바 전체가 터치 대상
+              Expanded(
+                flex: homeFlex,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _vote(widget.homeTeamId),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${(homePct * 100).round()}%',
+                          style: TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.bold,
+                            color: _userVote == widget.homeTeamId ? homeColor : Colors.grey[500],
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Container(
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: homeColor.withOpacity(_userVote == widget.homeTeamId ? 0.75 : 0.35),
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(3), bottomLeft: Radius.circular(3),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 5),
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(3),
-                child: SizedBox(
-                  height: 5,
-                  child: Row(children: [
-                    Expanded(flex: (homePct * 100).round().clamp(1, 99), child: GestureDetector(onTap: () => _vote(widget.homeTeamId), child: Container(color: homeColor.withOpacity(_userVote == widget.homeTeamId ? 0.75 : 0.35)))),
-                    Expanded(flex: (awayPct * 100).round().clamp(1, 99), child: GestureDetector(onTap: () => _vote(widget.awayTeamId), child: Container(color: awayColor.withOpacity(_userVote == widget.awayTeamId ? 0.75 : 0.35)))),
-                  ]),
+              // 원정팀 투표 영역 — 텍스트+바 전체가 터치 대상
+              Expanded(
+                flex: awayFlex,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _vote(widget.awayTeamId),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${(awayPct * 100).round()}%',
+                          style: TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.bold,
+                            color: _userVote == widget.awayTeamId ? awayColor : Colors.grey[500],
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Container(
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: awayColor.withOpacity(_userVote == widget.awayTeamId ? 0.75 : 0.35),
+                            borderRadius: const BorderRadius.only(
+                              topRight: Radius.circular(3), bottomRight: Radius.circular(3),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 6),
-            const SizedBox(width: 5),
-            GestureDetector(
-              onTap: () => _vote(widget.awayTeamId),
-              child: Text(
-                '${(awayPct * 100).round()}%',
-                style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.bold,
-                  color: _userVote == widget.awayTeamId ? awayColor : Colors.grey[500],
-                ),
-              ),
-            ),
-            if (total > 0) ...[
-              const SizedBox(width: 4),
-              Text('($total명)', style: TextStyle(fontSize: 9, color: Colors.grey[400])),
             ],
-          ],
-        ),
-      ],
+          ),
+          if (total > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Center(
+                child: Text('$total명 참여', style: TextStyle(fontSize: 9, color: Colors.grey[400])),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

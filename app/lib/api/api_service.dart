@@ -5,8 +5,8 @@ class ApiService {
   static const String baseUrl = 'https://playball.duckdns.org';
   static final Dio _dio = Dio(BaseOptions(
     baseUrl: baseUrl,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 15),
+    connectTimeout: const Duration(seconds: 8),
+    receiveTimeout: const Duration(seconds: 8),
   ));
   static bool _interceptorAdded = false;
 
@@ -699,10 +699,10 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> addStadiumVisit(
-      int gameId, String result, {String? memo}) async {
+      int gameId, String result, {String? memo, String? imageUrl}) async {
     final headers = await authHeaders();
     final res = await _dio.post('/user/stadium-visits',
-        data: {'game_id': gameId, 'result': result, 'memo': memo},
+        data: {'game_id': gameId, 'result': result, 'memo': memo, 'image_url': imageUrl},
         options: Options(headers: headers));
     return Map<String, dynamic>.from(res.data);
   }

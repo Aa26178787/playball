@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
@@ -1018,10 +1021,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           child: const Icon(Icons.calendar_today, size: 18, color: Color(0xFF1A237E)),
                         ),
                       ],
-                      if (status == '종료') ...[
-                        const SizedBox(width: 8),
-                        _buildVisitButton(id),
-                      ],
                     ],
                   ),
                 ],
@@ -1161,21 +1160,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Future<void> _showVisitDialog(int gameId, Map? existing) async {
     if (existing != null) {
+      final imageUrl = existing['image_url'] as String?;
       final ok = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
           title: const Text('직관 기록'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('결과: ${existing['result'] == 'win' ? '승리' : existing['result'] == 'loss' ? '패배' : '무승부'}'),
-              if ((existing['memo'] as String?)?.isNotEmpty == true)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text('메모: ${existing['memo']}'),
-                ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('결과: ${existing['result'] == 'win' ? '승리' : existing['result'] == 'loss' ? '패배' : '무승부'}'),
+                if ((existing['memo'] as String?)?.isNotEmpty == true)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text('메모: ${existing['memo']}'),
+                  ),
+                if (imageUrl != null && imageUrl.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 140,
+                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -1202,35 +1217,68 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // 새 직관 기록
     String selectedResult = 'win';
     final memoCtrl = TextEditingController();
+    String? pickedImagePath;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(
           title: const Text('직관 기록 추가'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('경기 결과', style: TextStyle(fontSize: 13, color: Colors.grey)),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _resultChip('win', '승리', Colors.blue, selectedResult, (v) => setS(() => selectedResult = v)),
-                  _resultChip('loss', '패배', Colors.red, selectedResult, (v) => setS(() => selectedResult = v)),
-                  _resultChip('draw', '무승부', Colors.grey, selectedResult, (v) => setS(() => selectedResult = v)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: memoCtrl,
-                decoration: const InputDecoration(
-                  labelText: '메모 (선택)',
-                  hintText: '직관 후기 입력',
-                  isDense: true,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('경기 결과', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _resultChip('win', '승리', Colors.blue, selectedResult, (v) => setS(() => selectedResult = v)),
+                    _resultChip('loss', '패배', Colors.red, selectedResult, (v) => setS(() => selectedResult = v)),
+                    _resultChip('draw', '무승부', Colors.grey, selectedResult, (v) => setS(() => selectedResult = v)),
+                  ],
                 ),
-                maxLines: 2,
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextField(
+                  controller: memoCtrl,
+                  decoration: const InputDecoration(
+                    labelText: '메모 (선택)',
+                    hintText: '직관 후기 입력',
+                    isDense: true,
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: () async {
+                    final picker = ImagePicker();
+                    final xfile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+                    if (xfile != null) setS(() => pickedImagePath = xfile.path);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    height: pickedImagePath != null ? 140 : 60,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: pickedImagePath != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(File(pickedImagePath!), fit: BoxFit.cover),
+                          )
+                        : const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_photo_alternate_outlined, color: Colors.grey, size: 24),
+                              SizedBox(height: 4),
+                              Text('사진 추가 (선택)', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                            ],
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
@@ -1241,14 +1289,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
     if (ok == true && mounted) {
       try {
+        String? imageUrl;
+        if (pickedImagePath != null) {
+          try {
+            final uploaded = await ApiService.uploadPostImage(pickedImagePath!);
+            imageUrl = uploaded['image_url'] as String?;
+          } catch (_) {}
+        }
         final res = await ApiService.addStadiumVisit(
-          gameId, selectedResult, memo: memoCtrl.text.trim().isEmpty ? null : memoCtrl.text.trim());
+          gameId, selectedResult,
+          memo: memoCtrl.text.trim().isEmpty ? null : memoCtrl.text.trim(),
+          imageUrl: imageUrl,
+        );
         setState(() {
           _visitedGames[gameId] = {
             'id': res['id'],
             'game_id': gameId,
             'result': selectedResult,
             'memo': memoCtrl.text.trim(),
+            'image_url': imageUrl,
           };
         });
       } catch (_) {}
