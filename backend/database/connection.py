@@ -3,7 +3,13 @@ from psycopg2 import pool
 
 DB_CONFIG = {
     "host": "localhost",
-    "port": 5432,
+    # PgBouncer 포트 (6432) → PostgreSQL 5432로 중계
+    # 목적: 1000명 동시접속 시 connection pool 고갈 방지
+    #   - PgBouncer: 클라이언트 최대 1000 소켓 수용
+    #   - PostgreSQL: 실제 20개 연결만 유지 (transaction pool mode)
+    # 삭제/변경 금지: 5432로 되돌리면 동시접속 폭증 시 DB pool 즉시 고갈
+    # PgBouncer 설정: /etc/pgbouncer/pgbouncer.ini
+    "port": 6432,
     "dbname": "playball",
     "user": "playball_user",
     "password": "playball1234",
