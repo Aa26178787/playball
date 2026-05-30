@@ -43,6 +43,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Map<String, String> _playerRosterStatus = {};
   Map<int, int> _rankMap = {};
   bool _isLoading = true;
+  int _loadAttempt = 0;
   bool _isRelayRefreshing = false;
   bool _scoringExpanded = true;
   List _sameDayGames = [];
@@ -93,6 +94,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         _loadHighlights();
       }
     });
+
+    // 메모리 캐시 → 첫 빌드부터 즉시 content (shimmer 없음)
+    final mem = ApiService.getGameDetailMem(widget.gameId);
+    if (mem != null) {
+      _gameData = mem;
+      _isLoading = false;
+    }
+
     _loadData();
   }
 
@@ -155,11 +164,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     if (!mounted) return;
     setState(() {
-      if (cachedDetail != null && cachedDetail['game']?['home_team_code'] != null) {
-        _gameData = Map<String, dynamic>.from(cachedDetail);
-        _isLoading = false;
-      } else {
-        _isLoading = true;
+      if (_gameData == null) {
+        // 메모리 캐시 없을 때만 LocalCache로 세팅
+        if (cachedDetail != null && cachedDetail['game']?['home_team_code'] != null) {
+          _gameData = Map<String, dynamic>.from(cachedDetail);
+          _isLoading = false;
+        } else {
+          _isLoading = true;
+        }
       }
       if (cachedRoster   != null) _rosterData      = Map<String, dynamic>.from(cachedRoster);
       if (cachedRelay    != null) _relayAllData     = Map<String, dynamic>.from(cachedRelay);
@@ -177,6 +189,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     // Phase 2: fetch from API
     try {
       final gameData = await ApiService.getGameDetail(widget.gameId);
+      ApiService.setGameDetailMem(widget.gameId, gameData);
       if (!mounted) return;
       setState(() { _gameData = gameData; _isLoading = false; });
 
@@ -260,7 +273,16 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         });
       }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (!mounted) return;
+      if (_loadAttempt < 2) {
+        _loadAttempt++;
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (mounted) _loadData();
+        });
+        // keep _isLoading = true → shimmer stays visible
+      } else {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -539,14 +561,20 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    if (_gameData == null) {
+    if (_isLoading || _gameData == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('경기 상세')),
-        body: const Center(child: Text('경기 정보를 불러오지 못했습니다')),
+        body: RefreshIndicator(
+          onRefresh: () async { _loadAttempt = 0; setState(() => _isLoading = true); await _loadData(); },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height - 120,
+              child: _buildRelayShimmer(),
+            ),
+          ),
+        ),
       );
     }
 

@@ -86,7 +86,6 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   List _todayRosterChanges = [];
   List _rankings = [];
   bool _isLoading = true;
-  bool _loadError = false;
   Set<int> _favoriteTeamIds = {};
   bool _myTeamOnly = false;
   Timer? _autoRefreshTimer;
@@ -284,13 +283,13 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       final games = data['games'] as List? ?? [];
       await LocalCache.set('games_$dateStr', games);
       if (!mounted || _loadGen != gen) return;
-      setState(() { _games = games; _isLoading = false; _loadError = false; });
+      setState(() { _games = games; _isLoading = false; });
       _prefetchAdjacentDates(dateStr);
       _prefetchGameDetails(games);
     } catch (e) {
       if (!mounted || _loadGen != gen) return;
       // Dio 인터셉터가 이미 1회 재시도함 — 캐시 데이터 유지, 로딩 해제
-      setState(() { _isLoading = false; _loadError = cached == null; });
+      setState(() { _isLoading = false; });
     }
   }
 
@@ -317,9 +316,11 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
         final id = game['id'] as int?;
         final status = game['status'] as String? ?? '';
         if (id == null || status == '진행') continue; // 진행중은 실시간 → 캐시 불필요
+        if (ApiService.getGameDetailMem(id) != null) continue;
         if (await LocalCache.get('game_${id}_detail', maxAgeSeconds: 86400) != null) continue;
         try {
           final detail = await ApiService.getGameDetail(id);
+          ApiService.setGameDetailMem(id, detail);
           await LocalCache.set('game_${id}_detail', detail);
           if (status == '종료' || status == '취소') {
             // 중계 탭도 미리 캐시

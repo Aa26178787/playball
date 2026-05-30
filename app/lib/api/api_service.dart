@@ -5,13 +5,18 @@ class ApiService {
   static const String baseUrl = 'https://playball.duckdns.org';
   static final Dio _dio = Dio(BaseOptions(
     baseUrl: baseUrl,
-    connectTimeout: const Duration(seconds: 6),
-    receiveTimeout: const Duration(seconds: 12),
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 15),
   ));
   static bool _interceptorAdded = false;
 
   static const _secure = FlutterSecureStorage();
   static String? _cachedToken;
+
+  // 세션 메모리 캐시 — async 없이 동기 읽기 (shimmer 제거용)
+  static final Map<int, Map<String, dynamic>> _gameDetailMem = {};
+  static Map<String, dynamic>? getGameDetailMem(int id) => _gameDetailMem[id];
+  static void setGameDetailMem(int id, Map<String, dynamic> data) => _gameDetailMem[id] = data;
 
   static void initInterceptor(Future<void> Function() onLogout) {
     if (_interceptorAdded) return;
