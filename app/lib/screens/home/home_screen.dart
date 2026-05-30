@@ -86,6 +86,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   List _todayRosterChanges = [];
   List _rankings = [];
   bool _isLoading = true;
+  bool _loadError = false;
   Set<int> _favoriteTeamIds = {};
   bool _myTeamOnly = false;
   Timer? _autoRefreshTimer;
@@ -154,17 +155,17 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 
   void _backgroundPrefetch() {
     Future(() async {
-      // 최근 7일 경기 목록 미리 캐시 (날짜 전환 즉시 표시, 미래는 _loadTomorrowGames가 처리)
+      // 최근 14일 경기 목록 병렬 캐시 (날짜 전환 즉시 표시, 미래는 _loadTomorrowGames가 처리)
       final now = DateTime.now();
-      for (int delta = -7; delta <= -1; delta++) {
-        final d = now.add(Duration(days: delta));
+      await Future.wait(List.generate(14, (i) async {
+        final d = now.add(Duration(days: -(i + 1))); // 어제부터 14일 전까지
         final ds = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-        if (await LocalCache.getStale('games_$ds') != null) continue; // 이미 캐시됨
+        if (await LocalCache.getStale('games_$ds') != null) return; // 이미 캐시됨
         try {
           final data = await ApiService.getGamesByDate(ds);
           await LocalCache.set('games_$ds', data['games'] ?? []);
         } catch (_) {}
-      }
+      }));
 
       // 선수 탭 데이터 미리 로드 (캐시 없을 때만)
       if (await LocalCache.get('hitters_list', maxAgeSeconds: 300) == null) {
@@ -256,12 +257,19 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
         return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
       }
 
-      // 캐시 먼저 확인 — 없는 날짜만 API 호출
+      // 캐시 먼저 확인 — 없는 날짜만 API 호출 + LocalCache에 저장
       final dates = List.generate(7, (i) => _ds(i + 1));
       final results = await Future.wait(dates.map((d) async {
-        final c = await LocalCache.get('games_$d', maxAgeSeconds: 86400) as List?;
+        final c = await LocalCache.getStale('games_$d') as List?;
         if (c != null) return <String, dynamic>{'games': c};
-        return ApiService.getGamesByDate(d).catchError((_) => <String, dynamic>{});
+        try {
+          final data = await ApiService.getGamesByDate(d);
+          final games = data['games'] as List? ?? [];
+          await LocalCache.set('games_$d', games);
+          return <String, dynamic>{'games': games};
+        } catch (_) {
+          return <String, dynamic>{};
+        }
       }));
 
       final combined = <dynamic>[];
@@ -289,7 +297,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     }
     if (!mounted || _loadGen != gen) return;
     if (cached != null) {
-      setState(() { _games = cached!; _isLoading = false; });
+      setState(() { _games = cached!; _isLoading = false; _loadError = false; });
     } else {
       setState(() => _isLoading = true);
     }
@@ -300,13 +308,14 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
       final games = data['games'] as List? ?? [];
       await LocalCache.set('games_$dateStr', games);
       if (!mounted || _loadGen != gen) return;
-      setState(() { _games = games; _isLoading = false; });
+      setState(() { _games = games; _isLoading = false; _loadError = false; });
       _prefetchAdjacentDates(dateStr);
       _prefetchGameDetails(games);
     } catch (e) {
       if (!mounted || _loadGen != gen) return;
       // Dio 인터셉터가 이미 1회 재시도함 — 캐시 데이터 유지, 로딩 해제
-      setState(() { _isLoading = false; });
+      // _games가 비어있으면 에러 상태, 캐시 있으면 에러 숨김
+      setState(() { _isLoading = false; if (_games.isEmpty) _loadError = true; });
     }
   }
 
@@ -879,38 +888,63 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
             SizedBox(height: MediaQuery.of(context).size.height * 0.15),
             Column(
               children: [
-                Icon(
-                  _myTeamOnly ? Icons.star_border : Icons.sports_baseball,
-                  size: 64, color: Colors.grey[300],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _myTeamOnly ? '마이팀 경기가 없습니다' : '경기가 없는 날입니다',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black54),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _myTeamOnly
-                      ? '마이팀 필터를 해제하면 전체 경기를 볼 수 있습니다'
-                      : isToday
-                          ? 'KBO 휴식일입니다'
-                          : isPast
-                              ? '이 날은 경기가 없었습니다'
-                              : '이 날은 경기가 예정되어 있지 않습니다',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
-                ),
-                if (_myTeamOnly) ...[
+                if (_loadError && !_myTeamOnly) ...[
+                  Icon(Icons.wifi_off, size: 64, color: Colors.grey[300]),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '불러오기 실패',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 8),
+                  Text('네트워크를 확인하고 다시 시도해주세요', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
                   const SizedBox(height: 20),
                   OutlinedButton.icon(
-                    onPressed: () => setState(() => _myTeamOnly = false),
-                    icon: const Icon(Icons.sports_baseball, size: 16),
-                    label: const Text('전체 경기 보기'),
+                    onPressed: () {
+                      setState(() { _isLoading = true; _loadError = false; _loadGen++; });
+                      _loadGames();
+                    },
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('다시 시도'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF1A237E),
                       side: const BorderSide(color: Color(0xFF1A237E)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     ),
                   ),
+                ] else ...[
+                  Icon(
+                    _myTeamOnly ? Icons.star_border : Icons.sports_baseball,
+                    size: 64, color: Colors.grey[300],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _myTeamOnly ? '마이팀 경기가 없습니다' : '경기가 없는 날입니다',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _myTeamOnly
+                        ? '마이팀 필터를 해제하면 전체 경기를 볼 수 있습니다'
+                        : isToday
+                            ? 'KBO 휴식일입니다'
+                            : isPast
+                                ? '이 날은 경기가 없었습니다'
+                                : '이 날은 경기가 예정되어 있지 않습니다',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                  ),
+                  if (_myTeamOnly) ...[
+                    const SizedBox(height: 20),
+                    OutlinedButton.icon(
+                      onPressed: () => setState(() => _myTeamOnly = false),
+                      icon: const Icon(Icons.sports_baseball, size: 16),
+                      label: const Text('전체 경기 보기'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF1A237E),
+                        side: const BorderSide(color: Color(0xFF1A237E)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                    ),
+                  ],
                 ],
               ],
             ),
