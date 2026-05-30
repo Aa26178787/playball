@@ -18,6 +18,10 @@ class ApiService {
   static Map<String, dynamic>? getGameDetailMem(int id) => _gameDetailMem[id];
   static void setGameDetailMem(int id, Map<String, dynamic> data) => _gameDetailMem[id] = data;
 
+  static final Map<int, Map<String, dynamic>> _playerDetailMem = {};
+  static Map<String, dynamic>? getPlayerDetailMem(int id) => _playerDetailMem[id];
+  static void setPlayerDetailMem(int id, Map<String, dynamic> data) => _playerDetailMem[id] = data;
+
   static void initInterceptor(Future<void> Function() onLogout) {
     if (_interceptorAdded) return;
     _interceptorAdded = true;

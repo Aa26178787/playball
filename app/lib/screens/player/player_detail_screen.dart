@@ -100,36 +100,43 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   String get _dailyCacheKey => 'player_daily_${widget.playerId}';
 
   Future<void> _loadPlayer() async {
-    // 캐시 즉시 표시 (만료돼도 stale 표시 → spinner 없음)
-    final cacheResults = await Future.wait([
-      LocalCache.getStale(_cacheKey),
-      LocalCache.getStale(_dailyCacheKey),
-    ]);
-    final cached = cacheResults[0] as Map?;
-    final cachedDaily = cacheResults[1] as Map?;
-    if (cached != null && mounted) {
-      setState(() {
-        _playerData = Map<String, dynamic>.from(cached);
-        if (cachedDaily != null) _dailyStats = cachedDaily['daily'] as List? ?? [];
-        _isLoading = false;
-      });
+    // 1순위: 세션 메모리 캐시 (동기, 즉시)
+    final memCached = ApiService.getPlayerDetailMem(widget.playerId);
+    if (memCached != null && mounted) {
+      setState(() { _playerData = memCached; _isLoading = false; });
     }
 
-    // 백그라운드 갱신
-    try {
-      final results = await Future.wait([
-        ApiService.getPlayerDetail(widget.playerId),
-        ApiService.getPlayerDaily(widget.playerId, season: 2026),
+    // 2순위: SharedPreferences stale 캐시 (비동기, 빠름)
+    if (_playerData == null) {
+      final cacheResults = await Future.wait([
+        LocalCache.getStale(_cacheKey),
+        LocalCache.getStale(_dailyCacheKey),
       ]);
-      final playerData = results[0] as Map<String, dynamic>;
-      final dailyData = results[1] as Map<String, dynamic>;
+      final cached = cacheResults[0] as Map?;
+      final cachedDaily = cacheResults[1] as Map?;
+      if (cached != null && mounted) {
+        setState(() {
+          _playerData = Map<String, dynamic>.from(cached);
+          if (cachedDaily != null) _dailyStats = cachedDaily['daily'] as List? ?? [];
+          _isLoading = false;
+        });
+      }
+    }
+
+    // 3순위: API — getPlayerDetail / getPlayerDaily 독립 처리 (한 쪽 실패해도 다른 쪽 표시)
+    try {
+      final playerData = await ApiService.getPlayerDetail(widget.playerId);
       await LocalCache.set(_cacheKey, playerData);
-      await LocalCache.set(_dailyCacheKey, dailyData);
-      if (mounted) setState(() {
-        _playerData = playerData;
-        _dailyStats = dailyData['daily'] ?? [];
-        _isLoading = false;
-      });
+      ApiService.setPlayerDetailMem(widget.playerId, playerData);
+      if (mounted) setState(() { _playerData = playerData; _isLoading = false; });
+
+      // daily stats 별도 처리 (실패 허용)
+      try {
+        final dailyData = await ApiService.getPlayerDaily(widget.playerId, season: 2026);
+        await LocalCache.set(_dailyCacheKey, dailyData);
+        if (mounted) setState(() => _dailyStats = dailyData['daily'] ?? []);
+      } catch (_) {}
+
       if (playerData['player_type'] == '투수') {
         try {
           final ps = await ApiService.getPlayerPitchStats(widget.playerId);
@@ -137,16 +144,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         } catch (_) {}
       }
     } catch (e) {
-      if (_playerData == null) {
-        // 캐시도 없고 API도 실패
-        try {
-          final data = await ApiService.getPlayerDetail(widget.playerId);
-          await LocalCache.set(_cacheKey, data);
-          if (mounted) setState(() { _playerData = data; _isLoading = false; });
-        } catch (_) {
-          if (mounted) setState(() => _isLoading = false);
-        }
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
