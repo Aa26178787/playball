@@ -130,6 +130,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     final target = DateTime(2026, month, 1);
     setState(() { _selectedDate = target; _isLoading = true; _games = []; _loadGen++; });
     _loadGames();
+    _loadTomorrowGames();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
   }
 
@@ -436,6 +437,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
               if (!isSelected) {
                 setState(() { _selectedDate = date; _isLoading = true; _games = []; _loadGen++; });
                 _loadGames();
+                _loadTomorrowGames();
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
               }
             },
@@ -966,6 +968,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
           final isMyTeam = _favoriteTeamIds.contains(homeId) ||
               _favoriteTeamIds.contains(awayId);
           return GameCard(
+            key: ValueKey(g['id']),
             game: Game.fromJson(g),
             isMyTeam: isMyTeam && !_myTeamOnly,
             homeRank: rankMap[homeId],
@@ -1453,6 +1456,7 @@ class GameCard extends StatelessWidget {
                   game.homeTeamId != null && game.awayTeamId != null) ...[
                 const SizedBox(height: 8),
                 _PredictionBar(
+                  key: ValueKey(game.id),
                   gameId: game.id,
                   homeTeamId: game.homeTeamId!,
                   awayTeamId: game.awayTeamId!,
@@ -1489,6 +1493,9 @@ class _PredictionBar extends StatefulWidget {
 }
 
 class _PredictionBarState extends State<_PredictionBar> {
+  // 세션 내 재생성 시 (스크롤 아웃→인) 즉시 표시용 static cache
+  static final Map<int, Map<String, dynamic>> _cache = {};
+
   int _homeVotes = 0;
   int _awayVotes = 0;
   int? _userVote;
@@ -1497,12 +1504,38 @@ class _PredictionBarState extends State<_PredictionBar> {
   @override
   void initState() {
     super.initState();
+    _applyCache();
     _load();
+  }
+
+  @override
+  void didUpdateWidget(_PredictionBar old) {
+    super.didUpdateWidget(old);
+    if (old.gameId != widget.gameId) {
+      // 게임 교체 (list 재정렬) — cache로 즉시 전환
+      _applyCache();
+      if (_loading) _load();
+    }
+  }
+
+  void _applyCache() {
+    final cached = _cache[widget.gameId];
+    if (cached != null) {
+      _homeVotes = cached['home_votes'] as int? ?? 0;
+      _awayVotes = cached['away_votes'] as int? ?? 0;
+      _userVote = cached['user_vote'] as int?;
+      _loading = false;
+    }
   }
 
   Future<void> _load() async {
     try {
       final data = await ApiService.getGamePredictions(widget.gameId);
+      _cache[widget.gameId] = {
+        'home_votes': data['home_votes'],
+        'away_votes': data['away_votes'],
+        'user_vote': data['user_vote'],
+      };
       if (mounted) setState(() {
         _homeVotes = data['home_votes'] as int? ?? 0;
         _awayVotes = data['away_votes'] as int? ?? 0;
@@ -1517,6 +1550,11 @@ class _PredictionBarState extends State<_PredictionBar> {
   Future<void> _vote(int teamId) async {
     try {
       final data = await ApiService.predictGame(widget.gameId, teamId);
+      _cache[widget.gameId] = {
+        'home_votes': data['home_votes'],
+        'away_votes': data['away_votes'],
+        'user_vote': data['user_vote'],
+      };
       if (mounted) setState(() {
         _homeVotes = data['home_votes'] as int? ?? 0;
         _awayVotes = data['away_votes'] as int? ?? 0;
