@@ -268,13 +268,19 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 
     final today = DateTime.now();
     final todayMidnight = DateTime(today.year, today.month, today.day);
-    final isPast   = _selectedDate.isBefore(todayMidnight);
-    final isFuture = _selectedDate.isAfter(todayMidnight);
-    final cacheSeconds = isPast ? 86400 : isFuture ? 3600 : 300;
-    final cached = await LocalCache.get('games_$dateStr', maxAgeSeconds: cacheSeconds) as List?;
+    final isToday  = !_selectedDate.isBefore(todayMidnight) && !_selectedDate.isAfter(todayMidnight);
+
+    List? cached;
+    if (isToday) {
+      // 오늘: 300초 TTL 엄격 적용
+      cached = await LocalCache.get('games_$dateStr', maxAgeSeconds: 300) as List?;
+    } else {
+      // 과거/미래: 만료돼도 stale 즉시 표시 → shimmer 없음
+      cached = await LocalCache.getStale('games_$dateStr') as List?;
+    }
     if (!mounted || _loadGen != gen) return;
     if (cached != null) {
-      setState(() { _games = cached; _isLoading = false; });
+      setState(() { _games = cached!; _isLoading = false; });
     } else {
       setState(() => _isLoading = true);
     }

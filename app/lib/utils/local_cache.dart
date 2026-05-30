@@ -33,6 +33,19 @@ class LocalCache {
     }
   }
 
+  // TTL 무시하고 있으면 무조건 반환 (stale-while-revalidate용)
+  static Future<dynamic> getStale(String key) async {
+    try {
+      final prefs = await _getPrefs();
+      final raw = prefs.getString('$_prefix$key');
+      if (raw == null) return null;
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      return map['d'];
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<void> remove(String key) async {
     final prefs = await _getPrefs();
     await prefs.remove('$_prefix$key');

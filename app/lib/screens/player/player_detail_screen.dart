@@ -100,10 +100,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   String get _dailyCacheKey => 'player_daily_${widget.playerId}';
 
   Future<void> _loadPlayer() async {
-    // 캐시 병렬 읽기
+    // 캐시 즉시 표시 (만료돼도 stale 표시 → spinner 없음)
     final cacheResults = await Future.wait([
-      LocalCache.get(_cacheKey, maxAgeSeconds: 300),
-      LocalCache.get(_dailyCacheKey, maxAgeSeconds: 300),
+      LocalCache.getStale(_cacheKey),
+      LocalCache.getStale(_dailyCacheKey),
     ]);
     final cached = cacheResults[0] as Map?;
     final cachedDaily = cacheResults[1] as Map?;

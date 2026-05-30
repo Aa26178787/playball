@@ -908,8 +908,13 @@ def get_game_detail(game_id: int):
 
 
 @router.get("/date/{date_str}")
-@cached(300)
 def get_games_by_date(date_str: str):
+    from datetime import date as _date_cls
+    from api.cache import cache_get, cache_set
+    _ck = f"games_date:{date_str}"
+    _hit, _val = cache_get(_ck)
+    if _hit:
+        return _val
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -1016,7 +1021,8 @@ def get_games_by_date(date_str: str):
 
     # 오늘 날짜 경기만 날씨 포함 (과거 날짜는 스킵)
     from datetime import date as _date
-    is_today = (date_str == str(_date.today()))
+    _today_str = str(_date.today())
+    is_today = (date_str == _today_str)
     weather_cache: dict = {}
 
     seen_ids = set()
@@ -1080,7 +1086,16 @@ def get_games_by_date(date_str: str):
             "away_recent_5":       recent5_map_date.get(away_team_id_map.get(r[0]), []),
         })
 
-    return {"games": games, "count": len(games)}
+    result = {"games": games, "count": len(games)}
+    # 날짜별 서버캐시 TTL: 과거=86400s, 오늘=30s, 미래=3600s
+    if date_str < _today_str:
+        _ttl = 86400
+    elif is_today:
+        _ttl = 30
+    else:
+        _ttl = 3600
+    cache_set(_ck, result, _ttl)
+    return result
 
 
 @router.get("/{game_id}/relay")
