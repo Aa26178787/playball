@@ -58,7 +58,7 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
         backgroundColor:
-            isDark ? AppColors.scaffoldDark : AppColors.surfaceLight,
+            isDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
         foregroundColor:
             isDark ? const Color(0xFFF5F5F5) : AppColors.textPrimary,
         elevation: 0,

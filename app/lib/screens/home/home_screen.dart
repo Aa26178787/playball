@@ -794,7 +794,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         children: [
           // 월/날짜 스트립 — AppBar와 동일한 배경색
           Container(
-            color: isDark ? AppColors.scaffoldDark : AppColors.surfaceLight,
+            color: isDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
             child: Column(
               children: [
                 _buildMonthStrip(),
