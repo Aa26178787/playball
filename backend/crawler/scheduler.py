@@ -29,6 +29,18 @@ from datetime import datetime, timezone
 import json
 
 _game_hr_cache: dict = {}  # {game_id: {player_id: hr_count}} — HR 중복 알림 방지
+_starter_ko_sent: set = set()  # (game_id, player_id) — 조기강판 중복 알림 방지
+
+
+def _parse_ip(ip_val) -> float:
+    """이닝수 파싱: "6.2" → 6.67 (6이닝 2아웃)"""
+    try:
+        parts = str(ip_val).strip().split('.')
+        inn = int(parts[0]) if parts[0] else 0
+        outs = int(parts[1]) if len(parts) > 1 and parts[1] else 0
+        return inn + outs / 3
+    except Exception:
+        return 0.0
 
 # ===== 헬스체크 =====
 _HEALTH_FILE = os.path.join(os.path.dirname(__file__), '../health.json')
@@ -325,6 +337,55 @@ def _check_game_milestones(game_id: int):
                     try: conn2.close()
                     except: pass
 
+        # ── 연속 안타 스트릭 (10/15/20/25/30경기) ──
+        if batter_ids:
+            conn3 = get_connection()
+            if conn3:
+                try:
+                    cur3 = conn3.cursor()
+                    cur3.execute("""
+                        WITH ordered AS (
+                            SELECT player_id, hits,
+                                   ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY game_date DESC) as rn
+                            FROM player_daily_stats
+                            WHERE stat_type = 'hitter'
+                              AND player_id = ANY(%s)
+                        ),
+                        recent AS (SELECT * FROM ordered WHERE rn <= 40),
+                        with_break AS (
+                            SELECT player_id,
+                                   MIN(CASE WHEN hits = 0 THEN rn ELSE NULL END) as first_break
+                            FROM recent GROUP BY player_id
+                        )
+                        SELECT o.player_id, COUNT(*) as streak
+                        FROM recent o
+                        JOIN with_break wb ON wb.player_id = o.player_id
+                        WHERE o.hits > 0
+                          AND (wb.first_break IS NULL OR o.rn < wb.first_break)
+                        GROUP BY o.player_id
+                        HAVING COUNT(*) >= 9
+                    """, (batter_ids,))
+                    streak_rows = cur3.fetchall()
+                    cur3.close()
+                    conn3.close()
+
+                    STREAK_THRESHOLDS = [10, 15, 20, 25, 30]
+                    for pid, streak_prev in streak_rows:
+                        info = batter_monthly_totals.get(pid)
+                        if not info:
+                            continue
+                        pname, tname = info[0], info[1]
+                        g_hits = info[2]
+                        actual_streak = streak_prev + (1 if g_hits > 0 else 0)
+                        for t in STREAK_THRESHOLDS:
+                            if actual_streak >= t:
+                                notify_milestone(pid, pname, tname, 'hitting_streak', t,
+                                                 season, month, game_id)
+                except Exception as streak_err:
+                    print(f"[마일스톤] 연속 안타 쿼리 오류: {streak_err}")
+                    try: conn3.close()
+                    except: pass
+
     except Exception as e:
         print(f"[FCM] 마일스톤 알림 오류: {e}")
 
@@ -342,10 +403,11 @@ def _check_post_game_milestones(game_id: int):
     try:
         cur = conn.cursor()
 
-        # 해당 경기 팀 소속 타자
+        # 해당 경기 팀 소속 타자 (볼넷/득점 포함)
         cur.execute("""
             SELECT bs.player_id, p.name, t.name,
-                   bs.home_runs, bs.rbis, bs.hits, bs.stolen_bases
+                   bs.home_runs, bs.rbis, bs.hits, bs.stolen_bases,
+                   COALESCE(bs.walks, 0), COALESCE(bs.runs, 0)
             FROM game_batters gb
             JOIN batter_stats bs ON bs.player_id = gb.player_id AND bs.season = %s
             JOIN players p ON p.id = gb.player_id
@@ -365,6 +427,17 @@ def _check_post_game_milestones(game_id: int):
             WHERE gp.game_id = %s
         """, (season, game_id))
         pitchers = cur.fetchall()
+
+        # 완봉/완봉승/노히터 체크용 선발투수
+        cur.execute("""
+            SELECT gp.player_id, p.name, t.name,
+                   gp.innings_pitched, gp.earned_runs, gp.hits_allowed, gp.team_side
+            FROM game_pitchers gp
+            JOIN players p ON p.id = gp.player_id
+            JOIN teams t ON t.id = p.team_id
+            WHERE gp.game_id = %s AND gp.pitching_order = 1
+        """, (game_id,))
+        starters_cg = cur.fetchall()
         cur.close()
     except Exception as e:
         print(f"[마일스톤] 시즌 쿼리 오류: {e}")
@@ -401,12 +474,25 @@ def _check_post_game_milestones(game_id: int):
                 return None
             return (today - bd).days // 365
 
+        # ── 완봉/완봉승/노히터 ──
+        for row in starters_cg:
+            pid, pname, tname = row[0], row[1], row[2]
+            ip_str, er, ha = row[3], row[4] or 0, row[5] or 0
+            if _parse_ip(ip_str) >= 9.0:
+                notify_milestone(pid, pname, tname, 'game_cg', 1, season, month, game_id)
+                if er == 0:
+                    notify_milestone(pid, pname, tname, 'game_shutout', 1, season, month, game_id)
+                if ha == 0:
+                    notify_milestone(pid, pname, tname, 'game_no_hitter', 1, season, month, game_id)
+
         # ── 타자 시즌 마일스톤 ──
         BATTER_SEASON = {
             'season_hr':   [10, 15, 20, 25, 30, 35, 40],
             'season_rbi':  [50, 60, 70, 80, 90, 100, 110],
             'season_hits': [50, 100, 150, 200],
             'season_sb':   [10, 20, 30, 40],
+            'season_bb':   [50, 80, 100],
+            'season_runs': [50, 80, 100],
         }
         YOUNG_BATTER_SEASON = {  # 25세 이하 특이 기록
             'season_hr':   20,
@@ -416,7 +502,8 @@ def _check_post_game_milestones(game_id: int):
         for row in batters:
             pid, pname, tname = row[0], row[1], row[2]
             vals = {'season_hr': row[3] or 0, 'season_rbi': row[4] or 0,
-                    'season_hits': row[5] or 0, 'season_sb': row[6] or 0}
+                    'season_hits': row[5] or 0, 'season_sb': row[6] or 0,
+                    'season_bb': row[7] or 0, 'season_runs': row[8] or 0}
             for mtype, thresholds in BATTER_SEASON.items():
                 for t in thresholds:
                     if vals[mtype] >= t:
@@ -566,14 +653,21 @@ def _is_walkoff(game_id: int) -> bool:
 
 
 def _check_starter_ko(game_id: int, game_info: dict):
-    """선발투수 5이닝 미만 강판 감지 → 알림"""
+    """선발투수 5이닝 미만 강판 감지 → 즉시 알림 (진행 중 실시간 체크, 중복 방지)"""
     conn = get_connection()
     if not conn:
         return
     try:
         cur = conn.cursor()
+        # has_relief: 같은 팀 구원투수가 이미 등판했는지 확인 (선발 강판 확정 조건)
         cur.execute("""
-            SELECT gp.player_id, p.name, gp.innings_pitched, gp.team_side
+            SELECT gp.player_id, p.name, gp.innings_pitched, gp.team_side,
+                   EXISTS(
+                       SELECT 1 FROM game_pitchers gp2
+                       WHERE gp2.game_id = gp.game_id
+                         AND gp2.team_side = gp.team_side
+                         AND gp2.pitching_order > 1
+                   ) as has_relief
             FROM game_pitchers gp
             JOIN players p ON p.id = gp.player_id
             WHERE gp.game_id = %s AND gp.pitching_order = 1
@@ -588,18 +682,13 @@ def _check_starter_ko(game_id: int, game_info: dict):
     if not starters:
         return
 
-    def _parse_ip(ip_val) -> float:
-        try:
-            parts = str(ip_val).strip().split('.')
-            inn = int(parts[0]) if parts[0] else 0
-            outs = int(parts[1]) if len(parts) > 1 and parts[1] else 0
-            return inn + outs / 3
-        except Exception:
-            return 0.0
-
     try:
         from api.fcm_service import notify_starter_ko
-        for player_id, name, ip, side in starters:
+        for player_id, name, ip, side, has_relief in starters:
+            if (game_id, player_id) in _starter_ko_sent:
+                continue  # 이미 알림 발송
+            if not has_relief:
+                continue  # 구원 등판 전 → 아직 선발이 마운드
             parsed = _parse_ip(ip)
             if 0 < parsed < 5.0:
                 team_name = game_info.get('home_team') if side == 'home' else game_info.get('away_team')
@@ -607,6 +696,8 @@ def _check_starter_ko(game_id: int, game_info: dict):
                                   str(ip) if ip else '0',
                                   game_info.get('home_team_id', 0),
                                   game_info.get('away_team_id', 0))
+                _starter_ko_sent.add((game_id, player_id))
+                print(f"[FCM] 선발 조기강판 알림: {name} {ip}이닝 (game_id={game_id})")
     except Exception as e:
         print(f"[FCM] 조기강판 알림 오류: {e}")
 
@@ -750,6 +841,13 @@ def smart_update():
                     notify_extra_innings(gid, curr['home_team'], curr['away_team'],
                                          curr_inn,
                                          curr['home_team_id'], curr['away_team_id'])
+
+                # 진행 중 선발 조기강판 실시간 체크 (구원 등판 즉시 감지)
+                if cs == '진행':
+                    try:
+                        _check_starter_ko(gid, curr)
+                    except Exception:
+                        pass
 
         except Exception as fcm_err:
             print(f"[FCM] 알림 처리 오류: {fcm_err}")
