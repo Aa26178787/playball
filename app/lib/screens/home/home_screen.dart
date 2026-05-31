@@ -1215,33 +1215,30 @@ class GameCard extends StatelessWidget {
         overflow: TextOverflow.ellipsis),
   );
 
-  Widget _buildNextSeriesWidget(Map<String, String> series) {
+  Widget _buildNextSeriesInline(Map<String, String> series) {
     final dateStr = series['date'] ?? '';
-    String dateLabel = '다음 시리즈';
+    String dateLabel = '';
     if (dateStr.length >= 10) {
       final parts = dateStr.split('-');
       if (parts.length == 3) {
         final m = int.tryParse(parts[1]) ?? 0;
         final d = int.tryParse(parts[2]) ?? 0;
-        if (m > 0 && d > 0) dateLabel = '$m/$d~';
+        if (m > 0 && d > 0) dateLabel = ' $m/$d~';
       }
     }
-    return Column(
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TeamLogo(teamCode: series['code'] ?? '', size: 18),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(series['name'] ?? '',
-                  style: const TextStyle(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.w600),
-                  overflow: TextOverflow.ellipsis, maxLines: 1),
-            ),
-          ],
+        Text('다음 ', style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.35))),
+        TeamLogo(teamCode: series['code'] ?? '', size: 15),
+        const SizedBox(width: 3),
+        Flexible(
+          child: Text(
+            '${series['name'] ?? ''}$dateLabel',
+            style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.7), fontWeight: FontWeight.w600),
+            overflow: TextOverflow.ellipsis, maxLines: 1,
+          ),
         ),
-        Text(dateLabel, style: const TextStyle(fontSize: 9, color: Colors.white38), overflow: TextOverflow.ellipsis),
       ],
     );
   }
@@ -1334,8 +1331,7 @@ class GameCard extends StatelessWidget {
     // 취소/종료 시 채도 낮춤
     final overlayOpacity = game.status == '취소' ? 0.58 : (isFinished ? 0.48 : 0.38);
 
-    Widget teamCol(String code, String name, int? rank, bool isHome, bool isWinner,
-        String? starter, List<String> recent, Map<String, String>? nextSeries) {
+    Widget teamCol(String code, String name, int? rank, bool isHome, bool isWinner) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -1349,36 +1345,28 @@ class GameCard extends StatelessWidget {
             rank != null ? '${rank}위 ${isHome ? "홈" : "원정"}' : (isHome ? '홈' : '원정'),
             style: const TextStyle(fontSize: 10, color: Colors.white54),
           ),
-          if (starter != null && showStarters) ...[
-            const SizedBox(height: 7),
-            _starterChip(starter),
-          ],
-          if (recent.isNotEmpty) ...[
-            const SizedBox(height: 7),
-            _buildRecentBar(recent, isHome),
-          ],
-          if (nextSeries != null) ...[
-            const SizedBox(height: 7),
-            _buildNextSeriesWidget(nextSeries),
-          ],
         ],
       );
     }
 
-    Widget pitcherWidget(String? name, String? imageUrl, String label, Color labelColor) {
+    Widget pitcherChip(String? name, String label, Color labelColor) {
       if (name == null) return const SizedBox.shrink();
-      return Column(
+      return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircleAvatar(
-            radius: 17,
-            backgroundColor: Colors.white.withOpacity(0.2),
-            backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl) : null,
-            child: imageUrl == null ? const Icon(Icons.person, size: 17, color: Colors.white70) : null,
+          Text(name,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white, shadows: _textShadow),
+              overflow: TextOverflow.ellipsis, maxLines: 1),
+          const SizedBox(width: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            decoration: BoxDecoration(
+              color: labelColor.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: labelColor.withOpacity(0.6), width: 0.7),
+            ),
+            child: Text(label, style: TextStyle(fontSize: 9, color: labelColor, fontWeight: FontWeight.w800)),
           ),
-          const SizedBox(height: 3),
-          Text(name, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white, shadows: _textShadow), overflow: TextOverflow.ellipsis, maxLines: 1),
-          Text(label, style: TextStyle(fontSize: 9, color: labelColor, fontWeight: FontWeight.w800)),
         ],
       );
     }
@@ -1420,7 +1408,7 @@ class GameCard extends StatelessWidget {
               InkWell(
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(14, 12, 14, showPrediction ? 8 : 14),
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
                   child: Column(
                     children: [
                       // 헤더 행
@@ -1479,7 +1467,6 @@ class GameCard extends StatelessWidget {
                         children: [
                           Expanded(child: teamCol(
                             game.homeTeamCode, game.homeTeam, homeRank, true, homeWon,
-                            game.homeStarter, game.homeRecent5, nextHomeSeries,
                           )),
                           SizedBox(
                             width: 80,
@@ -1520,35 +1507,11 @@ class GameCard extends StatelessWidget {
                                   const SizedBox(height: 4),
                                   const Text('무승부', style: TextStyle(fontSize: 10, color: Colors.white60), textAlign: TextAlign.center),
                                 ],
-                                if (isFinished && !isDraw && (game.winPitcher != null || game.losePitcher != null)) ...[
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      pitcherWidget(
-                                        homeWon ? game.winPitcher : game.losePitcher,
-                                        homeWon ? game.winPitcherImage : game.losePitcherImage,
-                                        homeWon ? '승투' : '패투',
-                                        homeWon ? _wColor : _lColor,
-                                      ),
-                                      if (game.winPitcher != null && game.losePitcher != null)
-                                        const SizedBox(width: 10),
-                                      pitcherWidget(
-                                        awayWon ? game.winPitcher : game.losePitcher,
-                                        awayWon ? game.winPitcherImage : game.losePitcherImage,
-                                        awayWon ? '승투' : '패투',
-                                        awayWon ? _wColor : _lColor,
-                                      ),
-                                    ],
-                                  ),
-                                ],
                               ],
                             ),
                           ),
                           Expanded(child: teamCol(
                             game.awayTeamCode, game.awayTeam, awayRank, false, awayWon,
-                            game.awayStarter, game.awayRecent5, nextAwaySeries,
                           )),
                         ],
                       ),
@@ -1556,6 +1519,85 @@ class GameCard extends StatelessWidget {
                   ),
                 ),
               ),
+              // === 정보 스트립 (선발/최근5/승투패투/다음시리즈) ===
+              Builder(builder: (_) {
+                final hasPitchers = isFinished && !isDraw && (game.winPitcher != null || game.losePitcher != null);
+                final hasStarters = showStarters && (game.homeStarter != null || game.awayStarter != null);
+                final hasRecent = game.homeRecent5.isNotEmpty || game.awayRecent5.isNotEmpty;
+                final hasNext = nextHomeSeries != null || nextAwaySeries != null;
+                if (!hasPitchers && !hasStarters && !hasRecent && !hasNext) return const SizedBox.shrink();
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.18),
+                    border: Border(top: BorderSide(color: Colors.white.withOpacity(0.12), width: 0.5)),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(14, 9, 14, 10),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // 승투/패투 칩 (이미지 없음)
+                      if (hasPitchers)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 7),
+                          child: Row(
+                            children: [
+                              pitcherChip(
+                                homeWon ? game.winPitcher : game.losePitcher,
+                                homeWon ? '승' : '패',
+                                homeWon ? _wColor : _lColor,
+                              ),
+                              const Spacer(),
+                              pitcherChip(
+                                awayWon ? game.winPitcher : game.losePitcher,
+                                awayWon ? '승' : '패',
+                                awayWon ? _wColor : _lColor,
+                              ),
+                            ],
+                          ),
+                        ),
+                      // 선발투수 칩
+                      if (hasStarters)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 7),
+                          child: Row(
+                            children: [
+                              if (game.homeStarter != null) _starterChip(game.homeStarter!),
+                              const Spacer(),
+                              if (game.awayStarter != null) _starterChip(game.awayStarter!),
+                            ],
+                          ),
+                        ),
+                      // 최근 5경기
+                      if (hasRecent)
+                        Padding(
+                          padding: EdgeInsets.only(bottom: hasNext ? 7 : 0),
+                          child: Row(
+                            children: [
+                              _buildRecentBar(game.homeRecent5, true),
+                              const Spacer(),
+                              _buildRecentBar(game.awayRecent5, false),
+                            ],
+                          ),
+                        ),
+                      // 다음 시리즈
+                      if (hasNext)
+                        Row(
+                          children: [
+                            if (nextHomeSeries != null)
+                              Expanded(child: _buildNextSeriesInline(nextHomeSeries!)),
+                            if (nextAwaySeries != null)
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: _buildNextSeriesInline(nextAwaySeries!),
+                                ),
+                              ),
+                          ],
+                        ),
+                    ],
+                  ),
+                );
+              }),
               if (showPrediction)
                 Container(
                   decoration: BoxDecoration(
