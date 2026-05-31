@@ -558,7 +558,9 @@ def parse_pitcher_stats(text, season=2026):
                 stats['wins'] =   int(row1[5])
                 stats['losses'] = int(row1[6])
                 stats['saves'] =  int(row1[7])
-                stats['holds'] =  int(row1[8])
+                holds_raw = int(row1[8])
+                # sanity check: holds can't exceed games
+                stats['holds'] = holds_raw if holds_raw <= stats.get('games', 0) else 0
 
                 ip_raw = row1[12]
                 if ip_raw in ['1/3', '2/3']:
