@@ -107,31 +107,41 @@ class _MyPageScreenState extends State<MyPageScreen> {
     ]);
     if (!mounted) return;
 
-    final me       = results[0] as Map;
-    final teams    = (results[1] as Map)['teams']    as List? ?? [];
-    final players  = (results[2] as Map)['players']  as List? ?? [];
-    final posts    = (results[3] as Map)['posts']    as List? ?? [];
-    final comments = (results[4] as Map)['comments'] as List? ?? [];
-    final settings = (results[5] as Map)['settings'] as Map?;
-    final likes    = (results[6] as Map)['posts']    as List? ?? [];
-    final visits   = (results[7] as Map)['visits']   as List? ?? [];
+    final me          = results[0] as Map;
+    final teamsRes    = results[1] as Map;
+    final playersRes  = results[2] as Map;
+    final postsRes    = results[3] as Map;
+    final commentsRes = results[4] as Map;
+    final settingsRes = results[5] as Map;
+    final likesRes    = results[6] as Map;
+    final visitsRes   = results[7] as Map;
 
-    if (me.isNotEmpty) await LocalCache.set('me', me);
-    await LocalCache.set('favorite_teams',   teams);
-    await LocalCache.set('favorite_players', players);
-    await LocalCache.set('my_posts',         posts);
-    await LocalCache.set('my_comments',      comments);
-    await LocalCache.set('my_likes',         likes);
-    if (settings != null) await LocalCache.set('user_settings', settings);
+    // API 실패 시 catchError → {} 반환 → isNotEmpty false → 캐시 덮어쓰기 방지
+    // (성공 응답은 항상 해당 키를 포함하므로 isNotEmpty = true)
+    final teams    = teamsRes.isNotEmpty    ? (teamsRes['teams']        as List? ?? []) : null;
+    final players  = playersRes.isNotEmpty  ? (playersRes['players']    as List? ?? []) : null;
+    final posts    = postsRes.isNotEmpty    ? (postsRes['posts']        as List? ?? []) : null;
+    final comments = commentsRes.isNotEmpty ? (commentsRes['comments']  as List? ?? []) : null;
+    final settings = settingsRes.isNotEmpty ? (settingsRes['settings']  as Map?)        : null;
+    final likes    = likesRes.isNotEmpty    ? (likesRes['posts']        as List? ?? []) : null;
+    final visits   = visitsRes.isNotEmpty   ? (visitsRes['visits']      as List? ?? []) : null;
+
+    if (me.isNotEmpty)   await LocalCache.set('me',              me);
+    if (teams != null)    await LocalCache.set('favorite_teams',   teams);
+    if (players != null)  await LocalCache.set('favorite_players', players);
+    if (posts != null)    await LocalCache.set('my_posts',         posts);
+    if (comments != null) await LocalCache.set('my_comments',      comments);
+    if (likes != null)    await LocalCache.set('my_likes',         likes);
+    if (settings != null) await LocalCache.set('user_settings',    settings);
 
     setState(() {
-      if (me.isNotEmpty) _user = me as Map<String, dynamic>;
-      _favoriteTeams  = teams;
-      _favoritePlayers = players;
-      _myPosts        = posts;
-      _myComments     = comments;
-      _myLikes        = likes;
-      _stadiumVisits  = visits;
+      if (me.isNotEmpty)   _user           = me as Map<String, dynamic>;
+      if (teams != null)    _favoriteTeams   = teams;
+      if (players != null)  _favoritePlayers  = players;
+      if (posts != null)    _myPosts         = posts;
+      if (comments != null) _myComments      = comments;
+      if (likes != null)    _myLikes         = likes;
+      if (visits != null)   _stadiumVisits   = visits;
       if (settings != null) { _applySettings(settings); _settingsLoaded = true; }
       _loading = false;
     });
