@@ -745,22 +745,6 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   color: isDark ? const Color(0xFFF5F5F5) : AppColors.primary,
                   letterSpacing: -0.3,
                 )),
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(isDark ? 0.18 : 0.07),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${_selectedDate.month}/${_selectedDate.day} $dayName',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? const Color(0xFF7B8FFF) : AppColors.primary,
-                ),
-              ),
-            ),
           ],
         ),
         actions: [
@@ -808,25 +792,19 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       ),
       body: Column(
         children: [
-          _buildMonthStrip(),
-          _buildDateStrip(),
+          // 월/날짜 스트립 — AppBar와 동일한 배경색
+          Container(
+            color: isDark ? AppColors.scaffoldDark : AppColors.surfaceLight,
+            child: Column(
+              children: [
+                _buildMonthStrip(),
+                _buildDateStrip(),
+              ],
+            ),
+          ),
           if (_todayRosterChanges.isNotEmpty && _isSameDay(_selectedDate, DateTime.now()))
             _buildTodayRosterBanner(),
           _buildMyTeamDashboard(),
-          if (_favoriteTeamIds.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-              child: Row(
-                children: [
-                  _buildFilterChip('전체', !_myTeamOnly,
-                      () => setState(() => _myTeamOnly = false)),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('마이팀', _myTeamOnly,
-                      () => setState(() => _myTeamOnly = true),
-                      icon: Icons.star),
-                ],
-              ),
-            ),
           Expanded(
             child: _isLoading || _gamesDateMismatch
                 ? _buildGameShimmer()
@@ -843,29 +821,40 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         .where((r) => _favoriteTeamIds.contains(r['id'] as int?))
         .toList();
     if (myRankings.isEmpty) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // 헤더 + 필터 칩 통합
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+          padding: const EdgeInsets.fromLTRB(16, 10, 12, 6),
           child: Row(
-            children: const [
-              Icon(Icons.star, size: 14, color: Color(0xFF1A237E)),
-              SizedBox(width: 5),
-              Text('마이팀',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+            children: [
+              const Icon(Icons.star, size: 13, color: AppColors.primary),
+              const SizedBox(width: 5),
+              const Text('마이팀',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary)),
+              const Spacer(),
+              _buildFilterChip('전체', !_myTeamOnly,
+                  () => setState(() => _myTeamOnly = false)),
+              const SizedBox(width: 6),
+              _buildFilterChip('마이팀', _myTeamOnly,
+                  () => setState(() => _myTeamOnly = true), icon: Icons.star),
             ],
           ),
         ),
         SizedBox(
-          height: 112,
+          height: 80,
           child: ListView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
             children: myRankings.map((r) => _buildMyTeamCard(r as Map)).toList(),
           ),
         ),
-        const Divider(height: 1, thickness: 1),
+        const SizedBox(height: 8),
+        Divider(height: 1, thickness: 0.5,
+            color: isDark ? AppColors.borderDark : AppColors.borderLight),
+        const SizedBox(height: 6),
       ],
     );
   }
@@ -940,76 +929,53 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(ranking))),
       ),
       child: Container(
-        width: 215,
+        width: 205,
         margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF1A237E).withOpacity(0.25), width: 1.5),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 4, offset: const Offset(0, 2)),
-          ],
+          border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 1.2),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            // 상단: 로고 + 팀명 + 순위
             Row(
               children: [
-                TeamLogo(teamCode: code, size: 28),
-                const SizedBox(width: 8),
+                TeamLogo(teamCode: code, size: 26),
+                const SizedBox(width: 7),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                      Text('$wins승 $losses패${draws > 0 ? ' $draws무' : ''}',
-                          style: TextStyle(fontSize: 10, color: Colors.grey[600])),
-                    ],
-                  ),
+                  child: Text(name,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                      overflow: TextOverflow.ellipsis),
                 ),
                 Container(
-                  width: 32, height: 26,
-                  decoration: BoxDecoration(color: rankBg, borderRadius: BorderRadius.circular(13)),
-                  alignment: Alignment.center,
-                  child: Text('${rank}위', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: rankBg, borderRadius: BorderRadius.circular(10)),
+                  child: Text('${rank}위',
+                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
-            const SizedBox(height: 7),
+            // 하단: 오늘 경기 + 연속
             Row(
               children: [
-                if (showWinIcon) const Icon(Icons.arrow_upward, size: 11, color: Colors.blue),
-                if (showLossIcon) const Icon(Icons.arrow_downward, size: 11, color: Colors.red),
+                if (showWinIcon) const Icon(Icons.arrow_upward, size: 10, color: Colors.blue),
+                if (showLossIcon) const Icon(Icons.arrow_downward, size: 10, color: Colors.red),
                 Expanded(
                   child: Text(gameStr,
                       style: TextStyle(fontSize: 11, color: gameColor, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis),
                 ),
-                if (streakText.isNotEmpty)
-                  Text(streakText, style: TextStyle(fontSize: 10, color: streakColor, fontWeight: FontWeight.bold)),
+                if (streakText.isNotEmpty) ...[
+                  const SizedBox(width: 4),
+                  Text(streakText,
+                      style: TextStyle(fontSize: 10, color: streakColor, fontWeight: FontWeight.w700)),
+                ],
               ],
             ),
-            if (recent5.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: recent5.reversed.map((r) {
-                  final c = r == 'W' ? Colors.blue : r == 'L' ? Colors.red : r == 'C' ? Colors.orange : Colors.grey;
-                  return Container(
-                    width: 16, height: 16,
-                    margin: const EdgeInsets.only(right: 3),
-                    decoration: BoxDecoration(
-                      color: c.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(3),
-                      border: Border.all(color: c.withOpacity(0.5), width: 0.8),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(r, style: TextStyle(fontSize: 8, color: c, fontWeight: FontWeight.bold)),
-                  );
-                }).toList(),
-              ),
-            ],
           ],
         ),
       ),
