@@ -51,6 +51,9 @@ NAVER_HEADERS = {
     "Referer": "https://sports.naver.com/"
 }
 
+# 이닝별 raw Naver JSON 캐시 — 완료 이닝 영구 보존, 현재 이닝만 매 주기 fetch
+_inning_raw_cache: dict = {}  # {naver_game_id: {inning: raw_json}}
+
 
 @router.get("/{game_id}/relay_all")
 def get_game_relay_all(game_id: int):
@@ -110,8 +113,11 @@ def get_game_relay_all(game_id: int):
             if not naver_id: return None
             return pitcher_cache.get(str(naver_id))
 
-        # Parallel fetch all innings
         max_inning_live = current_inning or 1
+
+        # 이닝별 raw JSON 캐시: 완료 이닝 재사용, 현재 이닝만 Naver fetch
+        game_inning_raw = _inning_raw_cache.setdefault(naver_game_id, {})
+
         def _fetch_inning(inning):
             url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/relay?inning={inning}"
             try:
@@ -122,8 +128,31 @@ def get_game_relay_all(game_id: int):
                 pass
             return inning, None
 
-        with ThreadPoolExecutor(max_workers=max_inning_live) as _ex:
-            _fetched = dict(_ex.map(_fetch_inning, range(1, max_inning_live + 1)))
+        # 완료 이닝 중 캐시 미보유 + 현재 이닝만 fetch
+        innings_to_fetch = [
+            i for i in range(1, max_inning_live + 1)
+            if i == max_inning_live or i not in game_inning_raw
+        ]
+
+        if innings_to_fetch:
+            workers = max(1, len(innings_to_fetch))
+            with ThreadPoolExecutor(max_workers=workers) as _ex:
+                freshly_fetched = dict(_ex.map(_fetch_inning, innings_to_fetch))
+        else:
+            freshly_fetched = {}
+
+        # 완료 이닝 캐시 저장 (현재 이닝 제외)
+        for i, data in freshly_fetched.items():
+            if i < max_inning_live and data is not None:
+                game_inning_raw[i] = data
+
+        # 완료 이닝: 캐시, 현재 이닝: 신규 fetch 조합
+        _fetched = {}
+        for i in range(1, max_inning_live + 1):
+            if i < max_inning_live and i in game_inning_raw:
+                _fetched[i] = game_inning_raw[i]
+            elif i in freshly_fetched:
+                _fetched[i] = freshly_fetched[i]
 
         all_relays = []
         current_batter = None
