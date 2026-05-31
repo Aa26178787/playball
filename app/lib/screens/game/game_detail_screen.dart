@@ -796,6 +796,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         fieldView: {'defense': defense, 'batter': null, 'pitcher': null, 'runners': null},
         isDark: isDark,
       );
+    } else {
+      // 로스터 로딩 중: 빈 필드뷰 플레이스홀더 (종료/예정 경기)
+      fieldWidget = _FullFieldView(
+        base1: false, base2: false, base3: false,
+        fieldView: null,
+        isDark: isDark,
+      );
     }
 
     // BSO dots helper (for live bottom bar)
