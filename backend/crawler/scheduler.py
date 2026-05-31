@@ -157,6 +157,186 @@ def _check_new_hrs(game_id: int, home_team_id: int, away_team_id: int):
         print(f"[FCM] HR 알림 오류: {e}")
 
 
+def _check_game_milestones(game_id: int):
+    """득점 변화 시: game_batters/game_pitchers + 이번달 daily_stats 합산 → 마일스톤 체크"""
+    from datetime import date as dt_date
+    today = dt_date.today()
+    season = today.year
+    month = today.month
+    month_start = today.replace(day=1).isoformat()
+
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+
+        # ── 타자: game_batters + 이번달 pre-game daily_stats ──
+        cur.execute("""
+            SELECT gb.player_id, p.name, t.name as team_name,
+                   gb.hits as g_hits, gb.home_runs as g_hr, gb.rbi as g_rbi,
+                   gb.stolen_bases as g_sb,
+                   COALESCE(SUM(CASE WHEN ds.stat_type='타자' THEN ds.hits   END),0) as m_hits,
+                   COALESCE(SUM(CASE WHEN ds.stat_type='타자' THEN ds.home_runs END),0) as m_hr,
+                   COALESCE(SUM(CASE WHEN ds.stat_type='타자' THEN ds.rbi    END),0) as m_rbi,
+                   COALESCE(SUM(CASE WHEN ds.stat_type='타자' THEN ds.sb     END),0) as m_sb
+            FROM game_batters gb
+            JOIN players p ON p.id = gb.player_id
+            JOIN teams t ON t.id = p.team_id
+            LEFT JOIN player_daily_stats ds
+                ON ds.player_id = gb.player_id
+               AND ds.game_date >= %s
+               AND ds.game_date < CURRENT_DATE
+               AND ds.stat_type = '타자'
+            WHERE gb.game_id = %s
+            GROUP BY gb.player_id, p.name, t.name, gb.hits, gb.home_runs, gb.rbi, gb.stolen_bases
+        """, (month_start, game_id))
+        batters = cur.fetchall()
+
+        # ── 투수: game_pitchers + 이번달 pre-game daily_stats ──
+        cur.execute("""
+            SELECT gp.player_id, p.name, t.name as team_name,
+                   gp.strikeouts as g_so,
+                   COALESCE(SUM(CASE WHEN ds.stat_type='투수' THEN ds.so END),0) as m_so,
+                   COALESCE(SUM(CASE WHEN ds.stat_type='투수' THEN ds.h  END),0) as m_h
+            FROM game_pitchers gp
+            JOIN players p ON p.id = gp.player_id
+            JOIN teams t ON t.id = p.team_id
+            LEFT JOIN player_daily_stats ds
+                ON ds.player_id = gp.player_id
+               AND ds.game_date >= %s
+               AND ds.game_date < CURRENT_DATE
+               AND ds.stat_type = '투수'
+            WHERE gp.game_id = %s
+            GROUP BY gp.player_id, p.name, t.name, gp.strikeouts
+        """, (month_start, game_id))
+        pitchers = cur.fetchall()
+        cur.close()
+    except Exception as e:
+        print(f"[마일스톤] 쿼리 오류: {e}")
+        return
+    finally:
+        conn.close()
+
+    try:
+        from api.fcm_service import notify_milestone
+
+        # 타자 월간 마일스톤
+        BATTER_MONTHLY = {
+            'monthly_hits': ([20, 25, 30, 35, 40], 0),   # (thresholds, idx in row)
+            'monthly_hr':   ([5, 7, 10, 12, 15], 1),
+            'monthly_rbi':  ([10, 15, 20, 25, 30], 2),
+            'monthly_sb':   ([5, 8, 10, 15], 3),
+        }
+        for row in batters:
+            pid, pname, tname = row[0], row[1], row[2]
+            g_hits, g_hr, g_rbi, g_sb = row[3] or 0, row[4] or 0, row[5] or 0, row[6] or 0
+            m_hits, m_hr, m_rbi, m_sb = row[7], row[8], row[9], row[10]
+            totals = {
+                'monthly_hits': m_hits + g_hits,
+                'monthly_hr':   m_hr + g_hr,
+                'monthly_rbi':  m_rbi + g_rbi,
+                'monthly_sb':   m_sb + g_sb,
+            }
+            for mtype, (thresholds, _) in BATTER_MONTHLY.items():
+                val = totals[mtype]
+                for t in thresholds:
+                    if val >= t:
+                        notify_milestone(pid, pname, tname, mtype, t, season, month, game_id)
+
+        # 투수 월간 마일스톤
+        PITCHER_MONTHLY_SO = [30, 40, 50, 60]
+        for row in pitchers:
+            pid, pname, tname = row[0], row[1], row[2]
+            total_so = (row[3] or 0) + row[4]
+            for t in PITCHER_MONTHLY_SO:
+                if total_so >= t:
+                    notify_milestone(pid, pname, tname, 'monthly_so', t, season, month, game_id)
+    except Exception as e:
+        print(f"[FCM] 마일스톤 알림 오류: {e}")
+
+
+def _check_post_game_milestones(game_id: int):
+    """경기 종료 후: batter_stats/pitcher_stats 시즌 누계 마일스톤 체크"""
+    from datetime import date as dt_date
+    today = dt_date.today()
+    season = today.year
+    month = 0  # 시즌 통산은 month=0
+
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+
+        # 해당 경기 팀 소속 타자
+        cur.execute("""
+            SELECT bs.player_id, p.name, t.name,
+                   bs.home_runs, bs.rbis, bs.hits, bs.stolen_bases
+            FROM game_batters gb
+            JOIN batter_stats bs ON bs.player_id = gb.player_id AND bs.season = %s
+            JOIN players p ON p.id = gb.player_id
+            JOIN teams t ON t.id = p.team_id
+            WHERE gb.game_id = %s
+        """, (season, game_id))
+        batters = cur.fetchall()
+
+        # 해당 경기 투수
+        cur.execute("""
+            SELECT ps.player_id, p.name, t.name,
+                   ps.wins, ps.strikeouts, ps.saves, ps.holds
+            FROM game_pitchers gp
+            JOIN pitcher_stats ps ON ps.player_id = gp.player_id AND ps.season = %s
+            JOIN players p ON p.id = gp.player_id
+            JOIN teams t ON t.id = p.team_id
+            WHERE gp.game_id = %s
+        """, (season, game_id))
+        pitchers = cur.fetchall()
+        cur.close()
+    except Exception as e:
+        print(f"[마일스톤] 시즌 쿼리 오류: {e}")
+        return
+    finally:
+        conn.close()
+
+    try:
+        from api.fcm_service import notify_milestone
+
+        # 타자 시즌 마일스톤
+        BATTER_SEASON = {
+            'season_hr':   ([10, 15, 20, 25, 30, 35, 40], 0),
+            'season_rbi':  ([50, 60, 70, 80, 90, 100, 110], 1),
+            'season_hits': ([50, 100, 150, 200], 2),
+            'season_sb':   ([10, 20, 30, 40], 3),
+        }
+        for row in batters:
+            pid, pname, tname = row[0], row[1], row[2]
+            vals = {'season_hr': row[3] or 0, 'season_rbi': row[4] or 0,
+                    'season_hits': row[5] or 0, 'season_sb': row[6] or 0}
+            for mtype, (thresholds, _) in BATTER_SEASON.items():
+                for t in thresholds:
+                    if vals[mtype] >= t:
+                        notify_milestone(pid, pname, tname, mtype, t, season, month, game_id)
+
+        # 투수 시즌 마일스톤
+        PITCHER_SEASON = {
+            'season_wins':  ([5, 10, 15, 20], 0),
+            'season_so':    ([50, 100, 150, 200], 1),
+            'season_saves': ([10, 20, 30, 40], 2),
+            'season_holds': ([10, 20, 30], 3),
+        }
+        for row in pitchers:
+            pid, pname, tname = row[0], row[1], row[2]
+            vals = {'season_wins': row[3] or 0, 'season_so': row[4] or 0,
+                    'season_saves': row[5] or 0, 'season_holds': row[6] or 0}
+            for mtype, (thresholds, _) in PITCHER_SEASON.items():
+                for t in thresholds:
+                    if vals[mtype] >= t:
+                        notify_milestone(pid, pname, tname, mtype, t, season, month, game_id)
+    except Exception as e:
+        print(f"[FCM] 시즌 마일스톤 알림 오류: {e}")
+
+
 def _is_walkoff(game_id: int) -> bool:
     """끝내기 판정: 마지막 이닝에 홈팀 득점이 있으면 True"""
     conn = get_connection()
@@ -346,6 +526,7 @@ def smart_update():
                                         batter=batter, pitcher=pitcher, play_text=play_text,
                                         stuff=stuff, speed=speed, homein=homein)
                     _check_new_hrs(gid, curr['home_team_id'], curr['away_team_id'])
+                    _check_game_milestones(gid)
 
                 # 경기 종료
                 elif cs == '종료' and ps == '진행':
@@ -445,6 +626,10 @@ def smart_update():
                 _check_starter_ko(gid, curr_details.get(gid, {}))
             except Exception as ko_err:
                 print(f"[FCM] 조기강판 알림 오류: {ko_err}")
+
+        # 경기 종료 후 시즌 마일스톤 (stats 업데이트 후 25분 지연 실행)
+        for gid in newly_finished:
+            schedule.every(27).minutes.do(_run_once, _check_post_game_milestones, gid)
 
     conn = get_connection()
     if conn:

@@ -487,3 +487,64 @@ def notify_starter_ko(game_id: int, pitcher_name: str, team_name: str,
           f"📢 선발 조기강판",
           f"{team_name} 선발 {pitcher_name} {ip_str}이닝 만에 강판",
           {"game_id": str(game_id), "type": "starter_ko"}, "starter_ko", game_id)
+
+
+# ── 대기록 알림 ───────────────────────────────────────────────────────────────
+
+def notify_milestone(player_id: int, player_name: str, team_name: str,
+                     milestone_type: str, milestone_value: int,
+                     season: int, month: int, game_id: int | None = None):
+    """즐겨찾기 선수 대기록 달성 알림"""
+    conn = get_connection()
+    if not conn:
+        return
+    # 중복 방지: 이미 발송된 마일스톤이면 스킵
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO player_milestone_alerts (player_id, milestone_type, milestone_value, season, month)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT DO NOTHING
+            RETURNING id
+        """, (player_id, milestone_type, milestone_value, season, month))
+        if cur.fetchone() is None:
+            cur.close()
+            conn.commit()
+            conn.close()
+            return  # 이미 발송됨
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print(f"[FCM] 마일스톤 저장 실패: {e}")
+        return
+    finally:
+        conn.close()
+
+    targets = _get_player_fan_targets(player_id, 'notify_score_change')
+    if not targets:
+        return
+
+    _LABELS = {
+        'monthly_rbi':   ('🏆', '월간 타점',   '타점'),
+        'monthly_hr':    ('💣', '월간 홈런',   '홈런'),
+        'monthly_hits':  ('🔥', '월간 안타',   '안타'),
+        'monthly_sb':    ('💨', '월간 도루',   '도루'),
+        'monthly_so':    ('🔥', '월간 탈삼진', '탈삼진'),
+        'season_hr':     ('💣', '시즌 홈런',   '홈런'),
+        'season_rbi':    ('🏆', '시즌 타점',   '타점'),
+        'season_hits':   ('🔥', '시즌 안타',   '안타'),
+        'season_sb':     ('💨', '시즌 도루',   '도루'),
+        'season_wins':   ('🏆', '시즌 승리',   '승'),
+        'season_so':     ('🔥', '시즌 탈삼진', '탈삼진'),
+        'season_saves':  ('💾', '시즌 세이브', '세이브'),
+        'season_holds':  ('✋', '시즌 홀드',   '홀드'),
+    }
+    emoji, label, unit = _LABELS.get(milestone_type, ('⭐', milestone_type, ''))
+    month_str = f"{month}월 " if 'monthly' in milestone_type else ''
+
+    _send(targets,
+          f"{emoji} {player_name} {month_str}{label} {milestone_value}{unit}!",
+          f"{team_name} {player_name} {month_str}{label} {milestone_value}{unit} 달성!",
+          {"player_id": str(player_id), "type": "milestone",
+           **({"game_id": str(game_id)} if game_id else {})},
+          "score_change", game_id)
