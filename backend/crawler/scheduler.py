@@ -509,10 +509,11 @@ def smart_update():
                     inning_now = curr.get('current_inning', 0)
                     batter = pitcher = play_text = stuff = ''
                     speed = 0
+                    pitch_num = 0
                     homein = []
                     if naver_gid and inning_now:
                         try:
-                            batter, pitcher, play_text, stuff, speed, homein = _get_scoring_play_detail(
+                            batter, pitcher, play_text, stuff, speed, homein, pitch_num = _get_scoring_play_detail(
                                 naver_gid, inning_now, ch, ca)
                         except Exception:
                             pass
@@ -525,7 +526,8 @@ def smart_update():
                                         scoring_team=scoring_team,
                                         runs=runs_scored,
                                         batter=batter, pitcher=pitcher, play_text=play_text,
-                                        stuff=stuff, speed=speed, homein=homein)
+                                        stuff=stuff, speed=speed, homein=homein,
+                                        pitch_num=pitch_num)
                     _check_new_hrs(gid, curr['home_team_id'], curr['away_team_id'])
                     _check_game_milestones(gid)
 
@@ -1195,7 +1197,7 @@ def _get_consecutive_record(team_id: int) -> int:
 
 
 def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_score):
-    """Naver 중계 API에서 득점 타자/투수/타구/투구내용 추출. 실패 시 ('','','','',0) 반환"""
+    """Naver 중계 API에서 득점 타자/투수/타구/투구내용 추출. 실패 시 ('','','','',0,[],0) 반환"""
     import requests, re as _re
     HEADERS = {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://sports.naver.com/'}
     try:
@@ -1211,8 +1213,16 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
         curr_batter = curr_pitcher = ''
         curr_stuff = ''
         curr_speed = 0
+        curr_pitch_num = 0  # 현재 타자의 투구 카운트
+
+        # 마지막 type=1 이벤트 저장 (score 업데이트는 후속 이벤트에서 일어남)
+        last_batter = last_pitcher = last_text = last_stuff = ''
+        last_speed = 0
+        last_pitch_num = 0
+
         result_batter = result_pitcher = result_text = result_stuff = ''
         result_speed = 0
+        result_pitch_num = 0
         result_homein = []
         found_scoring = False
 
@@ -1230,45 +1240,60 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
 
                 br = opt.get('batterRecord') or {}
                 if br.get('name'):
+                    if br['name'] != curr_batter:
+                        curr_pitch_num = 0  # 새 타자 → 투구 카운트 리셋
                     curr_batter = br['name']
                 elif opt.get('type') == 8:
                     m = _re.match(r'^(?:\d+번타자|대타)\s+(\S+)', opt.get('text', ''))
                     if m:
+                        if m.group(1) != curr_batter:
+                            curr_pitch_num = 0
                         curr_batter = m.group(1)
                     if found_scoring:
                         break  # 다음 타자 시작 → homeIn 수집 종료
 
-                # 투구 구종/구속 추적 (scoring pitch에 그대로 붙어 있음)
                 if opt.get('stuff'):
                     curr_stuff = opt.get('stuff', '')
                     curr_speed = int(opt.get('speed', 0) or 0)
 
-                # 득점 이후 홈인 선수 수집 (type 24)
-                if found_scoring and opt.get('type') == 24:
-                    txt = opt.get('text', '')
-                    m2 = _re.search(r'([가-힣A-Za-z]+)\s*홈인', txt)
-                    if m2 and m2.group(1) not in result_homein:
-                        result_homein.append(m2.group(1))
+                # 투구 이벤트(type=1) 저장 → 득점 감지 시 사용
+                # (Naver는 스코어를 type=1 직후 이벤트에서 업데이트하므로 last_* 보관)
+                if opt.get('type') == 1:
+                    curr_pitch_num += 1
+                    last_batter = curr_batter
+                    last_pitcher = curr_pitcher
+                    last_text = opt.get('text', '')
+                    last_stuff = opt.get('stuff', '') or curr_stuff
+                    last_speed = int(opt.get('speed', 0) or 0) or curr_speed
+                    last_pitch_num = curr_pitch_num
 
                 hs = state.get('homeScore')
                 aws = state.get('awayScore')
                 if hs is not None and aws is not None:
                     if int(hs) >= new_home_score and int(aws) >= new_away_score:
-                        if opt.get('type') == 1 and not found_scoring:
-                            result_batter = curr_batter
-                            result_pitcher = curr_pitcher
-                            result_text = opt.get('text', '')
-                            result_stuff = curr_stuff
-                            result_speed = curr_speed
+                        if not found_scoring and last_text:
+                            result_batter = last_batter
+                            result_pitcher = last_pitcher
+                            result_text = last_text
+                            result_stuff = last_stuff
+                            result_speed = last_speed
+                            result_pitch_num = last_pitch_num
                             found_scoring = True
+
+                # 홈인 수집 (type 14/24): 득점 감지 시점 포함 이후
+                if found_scoring and opt.get('type') in (14, 24):
+                    txt = opt.get('text', '')
+                    m2 = _re.search(r'([가-힣A-Za-z]+)\s*홈인', txt)
+                    if m2 and m2.group(1) not in result_homein:
+                        result_homein.append(m2.group(1))
 
         if cur:
             cur.close()
         if conn:
             conn.close()
-        return result_batter, result_pitcher, result_text, result_stuff, result_speed, result_homein
+        return result_batter, result_pitcher, result_text, result_stuff, result_speed, result_homein, result_pitch_num
     except Exception:
-        return '', '', '', '', 0, []
+        return '', '', '', '', 0, [], 0
 
 
 def _notify_roster_for_fans():
@@ -1304,8 +1329,8 @@ def _notify_roster_for_fans():
         print(f"[FCM] 로스터 알림 오류: {e}")
 
 
-def _run_once(func):
-    func()
+def _run_once(func, *args):
+    func(*args)
     return schedule.CancelJob
 
 

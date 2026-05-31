@@ -243,41 +243,59 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
                         scoring_team: str = '',
                         runs: int = 1,
                         batter: str = '', pitcher: str = '', play_text: str = '',
-                        stuff: str = '', speed: int = 0, homein: list = None):
+                        stuff: str = '', speed: int = 0, homein: list = None,
+                        pitch_num: int = 0):
+    import re as _re
     targets = _get_targets('notify_score_change', [home_team_id, away_team_id])
     half_str = (inning_half if inning_half in ('초', '말')
                 else '초' if inning_half == 'top'
                 else '말' if inning_half == 'bottom'
                 else '')
-    inning_str = f" [{inning}{half_str}]" if inning > 0 else ""
+    inning_str = f" [{inning}회 {half_str}]" if inning > 0 and half_str else f" [{inning}회]" if inning > 0 else ""
     team_prefix = f"{scoring_team} " if scoring_team else ""
 
     if is_comeback:
-        title = f"⚡ {team_prefix}역전!{inning_str}"
-    elif runs > 1:
-        title = f"⚾ {team_prefix}{runs}점 득점!{inning_str}"
+        title = f"⚡ {team_prefix}역전 {runs}득점{inning_str}"
     else:
-        title = f"⚾ {team_prefix}득점!{inning_str}"
+        title = f"⚾ {team_prefix}{runs}득점{inning_str}"
 
-    score_line = f"{home_team} {home_score} : {away_score} {away_team}"
-    # 리드 상황
-    if home_score > away_score:
-        lead_str = f"({home_team} {home_score - away_score}점 리드)"
-    elif away_score > home_score:
-        lead_str = f"({away_team} {away_score - home_score}점 리드)"
-    else:
-        lead_str = "(동점)"
+    # play_text에서 "N구 " 접두사 분리 → 투구 번호 + 순수 타구 결과
+    clean_text = play_text
+    embedded_num = 0
+    if play_text:
+        m = _re.match(r'^(\d+)구\s+(.+)', play_text)
+        if m:
+            embedded_num = int(m.group(1))
+            clean_text = m.group(2)
+
+    display_pitch_num = embedded_num or pitch_num
 
     lines = []
-    if batter and play_text:
-        pitch_info = f" {stuff}" if stuff else ""
-        if pitch_info and speed > 0:
-            pitch_info += f" {speed}km"
-        vs_pitcher = f" vs {pitcher}" if pitcher else ""
-        lines.append(f"{batter} {play_text}{pitch_info}{vs_pitcher}")
+
+    # 1줄: 타자 vs 투수 — 타구 결과 (n타점)
+    if batter:
+        line1 = f"{batter} vs {pitcher}" if pitcher else batter
+        if clean_text:
+            line1 += f" — {clean_text}"
+        if runs > 0:
+            line1 += f" ({runs}타점)"
+        lines.append(line1)
+    elif clean_text:
+        lines.append(clean_text)
+
+    # 2줄: 투구 번호 + 구종 + 구속
+    if stuff:
+        pitch_line = f"{display_pitch_num}번째 투구 {stuff}" if display_pitch_num > 0 else stuff
+        if speed > 0:
+            pitch_line += f" {speed}km/h"
+        lines.append(pitch_line)
+
+    # 홈인
     if homein:
         lines.append(f"홈인: {', '.join(homein)}")
-    lines.append(f"{score_line} {lead_str}")
+
+    # 3줄: 스코어
+    lines.append(f"{home_score}:{away_score}")
 
     body = "\n".join(lines)
     ntype = "comeback" if is_comeback else "score_change"
