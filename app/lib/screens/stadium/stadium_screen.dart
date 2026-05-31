@@ -6,7 +6,8 @@ import '../../utils/team_theme.dart';
 import '../../api/api_service.dart';
 
 class StadiumScreen extends StatefulWidget {
-  const StadiumScreen({super.key});
+  final int? initialIndex;
+  const StadiumScreen({super.key, this.initialIndex});
 
   @override
   State<StadiumScreen> createState() => _StadiumScreenState();
@@ -200,7 +201,15 @@ function resetView() {
                   _webController = controller;
                 },
                 onLoadStop: (controller, url) {
-                  if (mounted) setState(() => _mapReady = true);
+                  if (mounted) {
+                    setState(() => _mapReady = true);
+                    final idx = widget.initialIndex;
+                    if (idx != null && idx >= 0 && idx < _stadiums.length) {
+                      Future.delayed(const Duration(milliseconds: 300), () {
+                        if (mounted) _focusStadium(idx);
+                      });
+                    }
+                  }
                 },
               ),
               if (!_mapReady)

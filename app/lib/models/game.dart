@@ -24,6 +24,7 @@ class Game {
   final List<String> awayRecent5;
   final int? homeTeamId;
   final int? awayTeamId;
+  final int? stadiumId;
 
   Game({
     required this.id,
@@ -51,6 +52,7 @@ class Game {
     this.awayRecent5 = const [],
     this.homeTeamId,
     this.awayTeamId,
+    this.stadiumId,
   });
 
   factory Game.fromJson(Map<String, dynamic> json) {
@@ -82,6 +84,7 @@ class Game {
       awayRecent5:   List<String>.from(json['away_recent_5'] ?? []),
       homeTeamId:    json['home_team_id'],
       awayTeamId:    json['away_team_id'],
+      stadiumId:     json['stadium_id'],
     );
   }
 }

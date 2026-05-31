@@ -724,11 +724,45 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   Widget build(BuildContext context) {
     const dayNames = ['월', '화', '수', '목', '금', '토', '일'];
     final dayName = dayNames[_selectedDate.weekday - 1];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: Text('${_selectedDate.month}월 ${_selectedDate.day}일 $dayName요일'),
+        titleSpacing: 16,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.sports_baseball,
+                size: 18,
+                color: isDark ? const Color(0xFF7B8FFF) : AppColors.primary),
+            const SizedBox(width: 7),
+            Text('PlayBall',
+                style: TextStyle(
+                  fontFamily: 'Pretendard',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? const Color(0xFFF5F5F5) : AppColors.primary,
+                  letterSpacing: -0.3,
+                )),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(isDark ? 0.18 : 0.07),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${_selectedDate.month}/${_selectedDate.day} $dayName',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? const Color(0xFF7B8FFF) : AppColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: Stack(
@@ -741,11 +775,11 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                     child: Container(
                       padding: const EdgeInsets.all(3),
                       decoration: const BoxDecoration(
-                        color: Colors.red, shape: BoxShape.circle),
+                          color: Colors.red, shape: BoxShape.circle),
                       child: Text(
                         _unreadNotifCount > 9 ? '9+' : '$_unreadNotifCount',
-                        style: const TextStyle(color: Colors.white, fontSize: 9,
-                            fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -759,37 +793,40 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             },
           ),
           IconButton(
-            icon: const Icon(Icons.stadium_outlined),
-            tooltip: '구장',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const StadiumScreen()),
-            ),
-          ),
-          IconButton(
             icon: const Icon(Icons.search),
             tooltip: '검색',
             onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SearchScreen()),
-            ),
+              context, MaterialPageRoute(builder: (_) => const SearchScreen())),
           ),
           IconButton(
             icon: const Icon(Icons.person_outline),
             tooltip: '마이페이지',
             onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const MyPageScreen()),
-            ),
+              context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
           ),
         ],
       ),
       body: Column(
         children: [
-          _buildDateNavHeader(),
+          _buildMonthStrip(),
+          _buildDateStrip(),
           if (_todayRosterChanges.isNotEmpty && _isSameDay(_selectedDate, DateTime.now()))
             _buildTodayRosterBanner(),
           _buildMyTeamDashboard(),
+          if (_favoriteTeamIds.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+              child: Row(
+                children: [
+                  _buildFilterChip('전체', !_myTeamOnly,
+                      () => setState(() => _myTeamOnly = false)),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('마이팀', _myTeamOnly,
+                      () => setState(() => _myTeamOnly = true),
+                      icon: Icons.star),
+                ],
+              ),
+            ),
           Expanded(
             child: _isLoading || _gamesDateMismatch
                 ? _buildGameShimmer()
@@ -1551,7 +1588,23 @@ class GameCard extends StatelessWidget {
                           ),
                           const Spacer(),
                           if (_buildWeatherWidget() != null) ...[_buildWeatherWidget()!, const SizedBox(width: 6)],
-                          Text(game.stadium ?? '', style: const TextStyle(fontSize: 11, color: Colors.white54)),
+                          if (game.stadium != null)
+                            GestureDetector(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => StadiumScreen(
+                                  initialIndex: game.stadiumId != null ? game.stadiumId! - 1 : null,
+                                )),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(game.stadium!, style: const TextStyle(fontSize: 11, color: Colors.white54)),
+                                  const SizedBox(width: 2),
+                                  const Icon(Icons.location_on, size: 10, color: Colors.white38),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 14),
