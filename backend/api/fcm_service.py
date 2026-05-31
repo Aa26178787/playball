@@ -239,6 +239,7 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
                         home_score: int, away_score: int,
                         home_team_id: int, away_team_id: int,
                         is_comeback: bool = False,
+                        big_comeback: bool = False,
                         inning: int = 0, inning_half: str = '',
                         scoring_team: str = '',
                         runs: int = 1,
@@ -254,7 +255,9 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
     inning_str = f" [{inning}회 {half_str}]" if inning > 0 and half_str else f" [{inning}회]" if inning > 0 else ""
     team_prefix = f"{scoring_team} " if scoring_team else ""
 
-    if is_comeback:
+    if big_comeback:
+        title = f"🔥 {team_prefix}대역전 {runs}득점{inning_str}"
+    elif is_comeback:
         title = f"⚡ {team_prefix}역전 {runs}득점{inning_str}"
     else:
         title = f"⚾ {team_prefix}{runs}득점{inning_str}"
@@ -458,6 +461,72 @@ def notify_pennant_race(team_id: int, team_name: str, curr_gap: float, prev_gap:
           {"team_id": str(team_id), "type": "pennant_race"}, "pennant_race", None)
 
 
+# ── 경기 결과 요약 ────────────────────────────────────────────────────────────
+
+def notify_game_summary(game_id: int, home_team: str, away_team: str,
+                        home_score: int, away_score: int,
+                        home_team_id: int, away_team_id: int,
+                        win_pitcher: str = '', win_ip: str = '', win_er: int = 0,
+                        loss_pitcher: str = '',
+                        hold_pitcher: str = '', save_pitcher: str = '',
+                        mvp_name: str = '', mvp_hits: int = 0,
+                        mvp_hr: int = 0, mvp_rbi: int = 0):
+    """경기 종료 30분 후 결과 요약 — notify_game_end ON 유저에게"""
+    targets = _get_targets('notify_game_end', [home_team_id, away_team_id])
+    if home_score > away_score:
+        winner, loser, ws, ls = home_team, away_team, home_score, away_score
+    else:
+        winner, loser, ws, ls = away_team, home_team, away_score, home_score
+    title = f"📋 {winner} {ws}:{ls} {loser} 경기결과"
+    lines = []
+    if win_pitcher:
+        wp = f"승: {win_pitcher}"
+        if win_ip:
+            wp += f" ({win_ip}이닝 {win_er}자책)"
+        lines.append(wp)
+    lp_parts = []
+    if loss_pitcher:
+        lp_parts.append(f"패: {loss_pitcher}")
+    if hold_pitcher:
+        lp_parts.append(f"홀드: {hold_pitcher}")
+    if save_pitcher:
+        lp_parts.append(f"세이브: {save_pitcher}")
+    if lp_parts:
+        lines.append("  ".join(lp_parts))
+    if mvp_name:
+        mvp_stats = []
+        if mvp_hits:
+            mvp_stats.append(f"{mvp_hits}안타")
+        if mvp_hr:
+            mvp_stats.append(f"{mvp_hr}홈런")
+        if mvp_rbi:
+            mvp_stats.append(f"{mvp_rbi}타점")
+        lines.append(f"⭐ {mvp_name} {' '.join(mvp_stats)}")
+    _send(targets, title, "\n".join(lines),
+          {"game_id": str(game_id), "type": "game_summary"}, "game_end", game_id)
+
+
+# ── 즐겨찾기 선수 선발 출전 ────────────────────────────────────────────────────
+
+def notify_fav_player_lineup(player_id: int, player_name: str, team_name: str,
+                              game_id: int, opponent_team: str,
+                              batting_order: int = 0, position: str = ''):
+    """즐겨찾기 선수 선발 출전 알림 — notify_game_start ON 팬에게"""
+    targets = _get_player_fan_targets(player_id, 'notify_score_change')
+    if not targets:
+        return
+    order_str = f"{batting_order}번" if batting_order else ''
+    pos_str = position or ''
+    detail = f"{order_str} {pos_str}".strip() if (order_str or pos_str) else ''
+    body = (f"{team_name} vs {opponent_team} — {detail}"
+            if detail else f"{team_name} vs {opponent_team}")
+    _send(targets,
+          f"⚾ {player_name} 오늘 선발 출전!",
+          body,
+          {"player_id": str(player_id), "game_id": str(game_id), "type": "player_lineup"},
+          "game_start", game_id)
+
+
 # ── 커뮤니티 알림 (user_settings 무관, 직접 수신) ────────────────────────────
 
 def notify_new_comment(post_author_id: int, post_id: int,
@@ -541,6 +610,7 @@ _MILESTONE_LABELS: dict[str, tuple] = {
     'game_cg':         ('🎯', '완봉', ''),
     'game_shutout':    ('🔒', '완봉승', ''),
     'game_no_hitter':  ('🚫', '노히터', ''),
+    'game_qs':         ('✅', 'QS 달성', ''),
     # 연속 안타
     'hitting_streak':  ('🔥', '연속 경기 안타', '경기'),
     # 통산

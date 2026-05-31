@@ -30,6 +30,7 @@ import json
 
 _game_hr_cache: dict = {}  # {game_id: {player_id: hr_count}} — HR 중복 알림 방지
 _starter_ko_sent: set = set()  # (game_id, player_id) — 조기강판 중복 알림 방지
+_fav_lineup_sent: set = set()  # (game_id, player_id) — 선발출전 알림 중복 방지
 
 
 def _parse_ip(ip_val) -> float:
@@ -474,16 +475,19 @@ def _check_post_game_milestones(game_id: int):
                 return None
             return (today - bd).days // 365
 
-        # ── 완봉/완봉승/노히터 ──
+        # ── 완봉/완봉승/노히터/QS ──
         for row in starters_cg:
             pid, pname, tname = row[0], row[1], row[2]
             ip_str, er, ha = row[3], row[4] or 0, row[5] or 0
-            if _parse_ip(ip_str) >= 9.0:
+            ip_val = _parse_ip(ip_str)
+            if ip_val >= 9.0:
                 notify_milestone(pid, pname, tname, 'game_cg', 1, season, month, game_id)
                 if er == 0:
                     notify_milestone(pid, pname, tname, 'game_shutout', 1, season, month, game_id)
                 if ha == 0:
                     notify_milestone(pid, pname, tname, 'game_no_hitter', 1, season, month, game_id)
+            elif ip_val >= 6.0 and er <= 3:
+                notify_milestone(pid, pname, tname, 'game_qs', 1, season, month, game_id)
 
         # ── 타자 시즌 마일스톤 ──
         BATTER_SEASON = {
@@ -723,6 +727,116 @@ def _check_starter_ko(game_id: int, game_info: dict):
         print(f"[FCM] 조기강판 알림 오류: {e}")
 
 
+def _send_game_summary(game_id: int):
+    """경기 종료 30분 후 결과 요약 알림 (stats 업데이트 완료 후)"""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT g.home_team_id, g.away_team_id, g.home_score, g.away_score,
+                   t1.name, t2.name
+            FROM games g
+            JOIN teams t1 ON t1.id = g.home_team_id
+            JOIN teams t2 ON t2.id = g.away_team_id
+            WHERE g.id = %s AND g.status = '종료'
+        """, (game_id,))
+        game = cur.fetchone()
+        if not game:
+            return
+        home_team_id, away_team_id, home_score, away_score, home_team, away_team = game
+
+        cur.execute("""
+            SELECT p.name, gp.result, gp.innings_pitched, gp.earned_runs
+            FROM game_pitchers gp
+            JOIN players p ON p.id = gp.player_id
+            WHERE gp.game_id = %s AND gp.result IN ('승', '패', '홀드', '세이브')
+        """, (game_id,))
+        pitcher_rows = cur.fetchall()
+        win_pitcher = win_ip = ''; win_er = 0
+        loss_pitcher = hold_pitcher = save_pitcher = ''
+        for pname, result, ip, er in pitcher_rows:
+            if result == '승':
+                win_pitcher = pname; win_ip = str(ip) if ip else ''; win_er = er or 0
+            elif result == '패':
+                loss_pitcher = pname
+            elif result == '홀드':
+                hold_pitcher = pname
+            elif result == '세이브':
+                save_pitcher = pname
+
+        winner_side = 'home' if home_score > away_score else 'away'
+        cur.execute("""
+            SELECT p.name, COALESCE(gb.hits,0), COALESCE(gb.home_runs,0), COALESCE(gb.rbi,0)
+            FROM game_batters gb
+            JOIN players p ON p.id = gb.player_id
+            WHERE gb.game_id = %s AND gb.team_side = %s
+              AND (gb.rbi > 0 OR gb.home_runs > 0)
+            ORDER BY gb.rbi DESC, gb.home_runs DESC, gb.hits DESC
+            LIMIT 1
+        """, (game_id, winner_side))
+        mvp_row = cur.fetchone()
+        cur.close()
+    except Exception as e:
+        print(f"[FCM] 경기요약 쿼리 오류: {e}")
+        return
+    finally:
+        conn.close()
+
+    try:
+        from api.fcm_service import notify_game_summary
+        notify_game_summary(
+            game_id, home_team, away_team, home_score, away_score,
+            home_team_id, away_team_id,
+            win_pitcher=win_pitcher, win_ip=win_ip, win_er=win_er,
+            loss_pitcher=loss_pitcher,
+            hold_pitcher=hold_pitcher, save_pitcher=save_pitcher,
+            mvp_name=mvp_row[0] if mvp_row else '',
+            mvp_hits=mvp_row[1] if mvp_row else 0,
+            mvp_hr=mvp_row[2] if mvp_row else 0,
+            mvp_rbi=mvp_row[3] if mvp_row else 0,
+        )
+    except Exception as e:
+        print(f"[FCM] 경기요약 알림 오류: {e}")
+
+
+def _notify_fav_player_lineup(game_id: int, home_team: str, away_team: str):
+    """경기 시작 시 즐겨찾기 선수 선발 출전 알림"""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT gb.player_id, p.name, t.name,
+                   gb.batting_order, gb.position, gb.team_side
+            FROM game_batters gb
+            JOIN players p ON p.id = gb.player_id
+            JOIN teams t ON t.id = p.team_id
+            WHERE gb.game_id = %s AND gb.batting_order > 0
+              AND gb.position IS NOT NULL AND gb.position != ''
+        """, (game_id,))
+        starters = cur.fetchall()
+        cur.close()
+    except Exception:
+        return
+    finally:
+        conn.close()
+
+    try:
+        from api.fcm_service import notify_fav_player_lineup
+        for player_id, pname, tname, batting_order, position, side in starters:
+            if (game_id, player_id) in _fav_lineup_sent:
+                continue
+            opponent = away_team if side == 'home' else home_team
+            notify_fav_player_lineup(player_id, pname, tname, game_id,
+                                     opponent, batting_order or 0, position or '')
+            _fav_lineup_sent.add((game_id, player_id))
+    except Exception as e:
+        print(f"[FCM] 선발출전 알림 오류: {e}")
+
+
 def smart_update():
     """
     1분마다 실행
@@ -810,6 +924,11 @@ def smart_update():
                                       curr['home_team_id'], curr['away_team_id'],
                                       start_time=curr.get('start_time', ''),
                                       home_starter=_hs, away_starter=_ls)
+                    # 즐겨찾기 선수 선발 출전 알림
+                    try:
+                        _notify_fav_player_lineup(gid, curr['home_team'], curr['away_team'])
+                    except Exception:
+                        pass
 
                 # 득점 변화
                 elif (cs == '진행' and ps == '진행' and
@@ -819,6 +938,8 @@ def smart_update():
                     ch, ca = curr['home_score'], curr['away_score']
                     # 역전: 득점 전 앞서던 팀이 뒤처짐
                     is_comeback = ((ph > pa and ch < ca) or (pa > ph and ca < ch))
+                    # 대역전: 3점 이상 차이 뒤집기
+                    is_big_comeback = is_comeback and abs(ph - pa) >= 3
                     # 득점 팀 판별 + 득점 수
                     scoring_team = curr['home_team'] if ch > ph else curr['away_team'] if ca > pa else ''
                     runs_scored = (ch - ph) if ch > ph else (ca - pa) if ca > pa else 1
@@ -839,6 +960,7 @@ def smart_update():
                                         ch, ca,
                                         curr['home_team_id'], curr['away_team_id'],
                                         is_comeback=is_comeback,
+                                        big_comeback=is_big_comeback,
                                         inning=inning_now,
                                         inning_half=curr.get('inning_half', ''),
                                         scoring_team=scoring_team,
@@ -958,6 +1080,10 @@ def smart_update():
         # 경기 종료 후 시즌 마일스톤 (stats 업데이트 후 25분 지연 실행)
         for gid in newly_finished:
             schedule.every(27).minutes.do(_run_once, _check_post_game_milestones, gid)
+
+        # 경기 종료 30분 후 결과 요약 알림
+        for gid in newly_finished:
+            schedule.every(30).minutes.do(_run_once, _send_game_summary, gid)
 
     conn = get_connection()
     if conn:
