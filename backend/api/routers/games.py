@@ -639,11 +639,34 @@ def get_today_games():
             at.short_name AS away_team_code,
             s.name AS stadium,
             g.stadium_id, g.start_time,
-            g.home_team_id, g.away_team_id
+            g.home_team_id, g.away_team_id,
+            wp.name AS win_pitcher, wp.profile_image AS win_pitcher_image,
+            lp.name AS lose_pitcher, lp.profile_image AS lose_pitcher_image,
+            home_sp.name AS home_starter, away_sp.name AS away_starter
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
         LEFT JOIN stadiums s ON g.stadium_id = s.id
+        LEFT JOIN (
+            SELECT gp.game_id, p.name, p.profile_image
+            FROM game_pitchers gp JOIN players p ON gp.player_id = p.id
+            WHERE gp.result = '승'
+        ) wp ON wp.game_id = g.id
+        LEFT JOIN (
+            SELECT gp.game_id, p.name, p.profile_image
+            FROM game_pitchers gp JOIN players p ON gp.player_id = p.id
+            WHERE gp.result = '패'
+        ) lp ON lp.game_id = g.id
+        LEFT JOIN (
+            SELECT gp.game_id, p.name
+            FROM game_pitchers gp JOIN players p ON gp.player_id = p.id
+            WHERE gp.pitching_order = 1 AND gp.team_side = 'home'
+        ) home_sp ON home_sp.game_id = g.id
+        LEFT JOIN (
+            SELECT gp.game_id, p.name
+            FROM game_pitchers gp JOIN players p ON gp.player_id = p.id
+            WHERE gp.pitching_order = 1 AND gp.team_side = 'away'
+        ) away_sp ON away_sp.game_id = g.id
         WHERE g.game_date = CURRENT_DATE
         ORDER BY g.id
     """)
@@ -651,6 +674,7 @@ def get_today_games():
     rows = cur.fetchall()
 
     all_team_ids = list({tid for r in rows for tid in (r[14], r[15]) if tid})
+    # r 인덱스: 0-15 기존, 16=win_pitcher, 17=win_pitcher_image, 18=lose_pitcher, 19=lose_pitcher_image, 20=home_starter, 21=away_starter
     recent5_map = _batch_recent5(cur, all_team_ids)
 
     cur.close()
@@ -696,8 +720,15 @@ def get_today_games():
             "weather":        weather,
             "home_team_id":   r[14],
             "away_team_id":   r[15],
-            "home_recent_5":  recent5_map.get(r[14], []),
-            "away_recent_5":  recent5_map.get(r[15], []),
+            "home_recent_5":    recent5_map.get(r[14], []),
+            "away_recent_5":    recent5_map.get(r[15], []),
+            "win_pitcher":      r[16],
+            "win_pitcher_image": r[17],
+            "lose_pitcher":     r[18],
+            "lose_pitcher_image": r[19],
+            "home_starter":     r[20],
+            "away_starter":     r[21],
+            "is_draw":          r[2] == '종료' and r[3] == r[4],
         })
 
     return {"games": games, "count": len(games)}

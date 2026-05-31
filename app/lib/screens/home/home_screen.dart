@@ -1333,10 +1333,10 @@ class GameCard extends StatelessWidget {
             rank != null ? (isHome ? '${rank}위 · 홈' : '원정 · ${rank}위') : (isHome ? '홈' : '원정'),
             style: TextStyle(fontSize: 10, color: Colors.grey[500]),
           ),
-          const SizedBox(height: 5),
-          starter != null && showStarters
-              ? _starterChip(starter)
-              : const SizedBox(height: 20),
+          if (starter != null && showStarters) ...[
+            const SizedBox(height: 5),
+            _starterChip(starter),
+          ],
           if (recent.isNotEmpty) ...[
             const SizedBox(height: 5),
             _buildRecentBar(recent, isHome),
