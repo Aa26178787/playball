@@ -38,7 +38,7 @@ def _get_targets(notify_type: str, team_ids: list[int]) -> list[tuple[int, str]]
     user_settings 미설정 → 기본값(전부 ON, my_team_only=OFF).
     """
     allowed = ('notify_game_start', 'notify_score_change', 'notify_game_end',
-               'notify_walkoff', 'notify_starter_ko')
+               'notify_walkoff', 'notify_starter_ko')  # notify_starter_ko 컬럼 = 투수 교체 알림용으로 재사용
     if notify_type not in allowed:
         return []
     conn = get_connection()
@@ -253,14 +253,14 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
                 else '말' if inning_half == 'bottom'
                 else '')
     inning_str = f" [{inning}회 {half_str}]" if inning > 0 and half_str else f" [{inning}회]" if inning > 0 else ""
-    team_prefix = f"{scoring_team} " if scoring_team else ""
 
+    # 제목: 이모지 + 스코어 + 이닝 (스코어가 핵심 정보)
     if big_comeback:
-        title = f"🔥 {team_prefix}대역전 {runs}득점{inning_str}"
+        title = f"🔥 {home_team} {home_score}:{away_score} {away_team}{inning_str}"
     elif is_comeback:
-        title = f"⚡ {team_prefix}역전 {runs}득점{inning_str}"
+        title = f"⚡ {home_team} {home_score}:{away_score} {away_team}{inning_str}"
     else:
-        title = f"⚾ {team_prefix}{runs}득점{inning_str}"
+        title = f"⚾ {home_team} {home_score}:{away_score} {away_team}{inning_str}"
 
     # play_text에서 "N구 " 접두사 분리 → 투구 번호 + 순수 타구 결과
     clean_text = play_text
@@ -271,24 +271,32 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
             embedded_num = int(m.group(1))
             clean_text = m.group(2)
 
+    # "볼" 단독 → 볼넷 득점 상황
+    if clean_text and clean_text.strip() == '볼':
+        clean_text = '볼넷'
+
     display_pitch_num = embedded_num or pitch_num
 
     lines = []
 
-    # 폭투/보크/패스트볼은 타점 아님 → "득점" 표기
-    _NO_RBI_KW = ('폭투', '보크', '패스트볼', '낫아웃')
+    # 폭투/보크/패스트볼/볼넷은 타점 아님 → "득점" 표기
+    _NO_RBI_KW = ('폭투', '보크', '패스트볼', '낫아웃', '볼넷')
     is_no_rbi = clean_text and any(kw in clean_text for kw in _NO_RBI_KW)
 
-    # 1줄: 타자 vs 투수 — 타구 결과 (n타점/득점)
+    team_label = f"[{scoring_team}] " if scoring_team else ""
+
+    # 1줄: [득점팀] 타자 vs 투수 — 타구 결과 (n타점/득점)
     if batter:
-        line1 = f"{batter} vs {pitcher}" if pitcher else batter
+        line1 = f"{team_label}{batter} vs {pitcher}" if pitcher else f"{team_label}{batter}"
         if clean_text:
             line1 += f" — {clean_text}"
         if runs > 0:
             line1 += f" ({runs}{'득점' if is_no_rbi else '타점'})"
         lines.append(line1)
     elif clean_text:
-        lines.append(clean_text)
+        lines.append(f"{team_label}{clean_text}")
+    elif team_label:
+        lines.append(f"{team_label}{runs}득점")
 
     # 2줄: 투구 번호 + 구종 + 구속
     if stuff:
@@ -301,10 +309,7 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
     if homein:
         lines.append(f"홈인: {', '.join(homein)}")
 
-    # 3줄: 팀명 포함 스코어
-    lines.append(f"{home_team} {home_score}:{away_score} {away_team}")
-
-    body = "\n".join(lines)
+    body = "\n".join(lines) if lines else f"{scoring_team or home_team} {runs}득점"
     ntype = "comeback" if is_comeback else "score_change"
     _send(targets, title, body,
           {"game_id": str(game_id), "type": ntype}, ntype, game_id)
@@ -568,16 +573,34 @@ def notify_walkoff(game_id: int, home_team: str, away_team: str,
           {"game_id": str(game_id), "type": "walkoff"}, "walkoff", game_id)
 
 
-# ── 선발투수 조기강판 알림 ─────────────────────────────────────────────────────
+# ── 선발투수 발표 / 투수 교체 알림 ───────────────────────────────────────────
 
-def notify_starter_ko(game_id: int, pitcher_name: str, team_name: str,
-                      ip_str: str, home_team_id: int, away_team_id: int):
-    """선발투수 5이닝 미만 강판 — notify_starter_ko ON 유저에게"""
+def notify_starter_announced(game_id: int, home_team: str, away_team: str,
+                             home_team_id: int, away_team_id: int,
+                             home_starter: str = '', away_starter: str = ''):
+    """라인업 발표 시 선발투수 알림 — notify_game_start ON 유저에게"""
+    targets = _get_targets('notify_game_start', [home_team_id, away_team_id])
+    title = f"📋 선발투수 발표 — {home_team} vs {away_team}"
+    parts = []
+    if home_starter:
+        parts.append(f"홈 {home_team}: {home_starter}")
+    if away_starter:
+        parts.append(f"원정 {away_team}: {away_starter}")
+    body = "\n".join(parts) if parts else f"{home_team} vs {away_team}"
+    _send(targets, title, body,
+          {"game_id": str(game_id), "type": "starter_announced"}, "game_start", game_id)
+
+
+def notify_pitcher_change(game_id: int, home_team: str, away_team: str,
+                          new_pitcher: str, team_name: str, prev_pitcher: str = '',
+                          home_team_id: int = 0, away_team_id: int = 0):
+    """투수 교체 알림 — notify_starter_ko(재사용) ON 유저에게"""
     targets = _get_targets('notify_starter_ko', [home_team_id, away_team_id])
-    _send(targets,
-          f"📢 선발 조기강판",
-          f"{team_name} 선발 {pitcher_name} {ip_str}이닝 만에 강판",
-          {"game_id": str(game_id), "type": "starter_ko"}, "starter_ko", game_id)
+    title = f"🔄 [{team_name}] 투수 교체"
+    body = f"{prev_pitcher} → {new_pitcher}" if prev_pitcher else f"신규 등판: {new_pitcher}"
+    body += f"\n{home_team} vs {away_team}"
+    _send(targets, title, body,
+          {"game_id": str(game_id), "type": "pitcher_change"}, "game_start", game_id)
 
 
 # ── 대기록 알림 ───────────────────────────────────────────────────────────────

@@ -28,9 +28,10 @@ from database.connection import get_connection
 from datetime import datetime, timezone
 import json
 
-_game_hr_cache: dict = {}  # {game_id: {player_id: hr_count}} — HR 중복 알림 방지
-_starter_ko_sent: set = set()  # (game_id, player_id) — 조기강판 중복 알림 방지
-_fav_lineup_sent: set = set()  # (game_id, player_id) — 선발출전 알림 중복 방지
+_game_hr_cache: dict = {}       # {game_id: {player_id: hr_count}} — HR 중복 알림 방지
+_fav_lineup_sent: set = set()   # (game_id, player_id) — 선발출전 알림 중복 방지
+_lineup_announced: set = set()  # game_id — 선발투수 발표 알림 중복 방지
+_pitcher_seen: dict = {}        # {game_id: set(player_id)} — 투수 교체 알림 추적
 
 
 def _parse_ip(ip_val) -> float:
@@ -656,8 +657,8 @@ def _is_walkoff(game_id: int) -> bool:
         conn.close()
 
 
-def _check_starter_ko(game_id: int, game_info: dict):
-    """선발투수 5이닝 미만 강판 감지 → 즉시 알림 (진행 중 실시간 체크, DB 기반 중복 방지)"""
+def _check_pitcher_change(game_id: int, game_info: dict):
+    """진행 중 새 투수 등판 감지 → 투수 교체 알림. 선발(pitching_order=1)은 라인업 발표 알림에서 처리."""
     conn = get_connection()
     if not conn:
         return
@@ -665,66 +666,47 @@ def _check_starter_ko(game_id: int, game_info: dict):
         cur = conn.cursor()
         cur.execute("""
             SELECT gp.player_id, p.name, gp.innings_pitched, gp.team_side,
-                   EXISTS(
-                       SELECT 1 FROM game_pitchers gp2
-                       WHERE gp2.game_id = gp.game_id
-                         AND gp2.team_side = gp.team_side
-                         AND gp2.pitching_order > 1
-                   ) as has_relief
+                   gp.pitching_order,
+                   LAG(p.name) OVER (PARTITION BY gp.game_id, gp.team_side ORDER BY gp.pitching_order) AS prev_name
             FROM game_pitchers gp
             JOIN players p ON p.id = gp.player_id
-            WHERE gp.game_id = %s AND gp.pitching_order = 1
+            WHERE gp.game_id = %s
+            ORDER BY gp.team_side, gp.pitching_order
         """, (game_id,))
-        starters = cur.fetchall()
+        rows = cur.fetchall()
         cur.close()
     except Exception:
         return
     finally:
         conn.close()
 
-    if not starters:
+    if not rows:
+        return
+
+    seen = _pitcher_seen.setdefault(game_id, set())
+
+    # 첫 실행: 기존 선발 모두 seen에 등록 (알림 없이)
+    if not seen:
+        for player_id, name, ip, side, order, prev in rows:
+            seen.add(player_id)
         return
 
     try:
-        from api.fcm_service import notify_starter_ko
-        from datetime import date as _dt
-        season = _dt.today().year
-        for player_id, name, ip, side, has_relief in starters:
-            if (game_id, player_id) in _starter_ko_sent:
-                continue  # 메모리 캐시 (재시작 전 체크)
-            if not has_relief:
-                continue  # 구원 등판 전 → 아직 선발이 마운드
-            parsed = _parse_ip(ip)
-            if 0 < parsed < 5.0:
-                # DB 기반 중복 방지 — 재시작 후에도 중복 발송 방지
-                dedup_conn = get_connection()
-                if dedup_conn:
-                    try:
-                        dc = dedup_conn.cursor()
-                        dc.execute("""
-                            INSERT INTO player_milestone_alerts
-                                (player_id, milestone_type, milestone_value, season, month)
-                            VALUES (%s, 'starter_ko', %s, %s, 0)
-                            ON CONFLICT DO NOTHING
-                            RETURNING id
-                        """, (player_id, game_id, season))
-                        inserted = dc.fetchone()
-                        dedup_conn.commit()
-                        dc.close()
-                    finally:
-                        dedup_conn.close()
-                    if not inserted:
-                        _starter_ko_sent.add((game_id, player_id))
-                        continue  # 이미 발송됨
-                team_name = game_info.get('home_team') if side == 'home' else game_info.get('away_team')
-                notify_starter_ko(game_id, name, team_name or '',
-                                  str(ip) if ip else '0',
-                                  game_info.get('home_team_id', 0),
-                                  game_info.get('away_team_id', 0))
-                _starter_ko_sent.add((game_id, player_id))
-                print(f"[FCM] 선발 조기강판 알림: {name} {ip}이닝 (game_id={game_id})")
+        from api.fcm_service import notify_pitcher_change
+        for player_id, name, ip, side, order, prev_name in rows:
+            if player_id in seen:
+                continue
+            if order == 1:
+                seen.add(player_id)
+                continue  # 선발은 라인업 발표 알림에서 처리
+            seen.add(player_id)
+            team_name = game_info.get('home_team') if side == 'home' else game_info.get('away_team')
+            notify_pitcher_change(game_id, game_info.get('home_team', ''), game_info.get('away_team', ''),
+                                  name, team_name or '', prev_name or '',
+                                  game_info.get('home_team_id', 0), game_info.get('away_team_id', 0))
+            print(f"[FCM] 투수 교체 알림: {prev_name} → {name} ({team_name}, game_id={game_id})")
     except Exception as e:
-        print(f"[FCM] 조기강판 알림 오류: {e}")
+        print(f"[FCM] 투수 교체 알림 오류: {e}")
 
 
 def _send_game_summary(game_id: int):
@@ -900,8 +882,35 @@ def smart_update():
                                           curr['home_team_id'], curr['away_team_id'])
                     continue
 
+                # 라인업 발표 → 선발투수 발표 알림
+                if cs == '라인업' and ps in ('예정', ''):
+                    if gid not in _lineup_announced:
+                        _lineup_announced.add(gid)
+                        try:
+                            _la_c = get_connection()
+                            if _la_c:
+                                _la_cur = _la_c.cursor()
+                                _la_cur.execute("""
+                                    SELECT p.name, gp.team_side FROM game_pitchers gp
+                                    JOIN players p ON p.id = gp.player_id
+                                    WHERE gp.game_id = %s AND gp.pitching_order = 1
+                                """, (gid,))
+                                _la_rows = _la_cur.fetchall()
+                                _la_cur.close(); _la_c.close()
+                                _la_hs = _la_ls = ''
+                                for _n, _s in _la_rows:
+                                    if _s == 'home': _la_hs = _n
+                                    else: _la_ls = _n
+                                if _la_hs or _la_ls:
+                                    from api.fcm_service import notify_starter_announced
+                                    notify_starter_announced(gid, curr['home_team'], curr['away_team'],
+                                                             curr['home_team_id'], curr['away_team_id'],
+                                                             _la_hs, _la_ls)
+                        except Exception:
+                            pass
+
                 # 경기 시작
-                if cs == '진행' and ps in ('예정', '라인업', ''):
+                elif cs == '진행' and ps in ('예정', '라인업', ''):
                     # 선발 투수 조회
                     _hs = _ls = ''
                     try:
@@ -909,9 +918,9 @@ def smart_update():
                         if _c2:
                             _cur2 = _c2.cursor()
                             _cur2.execute("""
-                                SELECT p.name, gp.side FROM game_pitchers gp
+                                SELECT p.name, gp.team_side FROM game_pitchers gp
                                 JOIN players p ON p.id = gp.player_id
-                                WHERE gp.game_id = %s AND gp.pitch_order = 1
+                                WHERE gp.game_id = %s AND gp.pitching_order = 1
                             """, (gid,))
                             for _name, _side in _cur2.fetchall():
                                 if _side == 'home': _hs = _name
@@ -985,10 +994,10 @@ def smart_update():
                                          curr_inn,
                                          curr['home_team_id'], curr['away_team_id'])
 
-                # 진행 중 선발 조기강판 실시간 체크 (구원 등판 즉시 감지)
+                # 진행 중 투수 교체 감지
                 if cs == '진행':
                     try:
-                        _check_starter_ko(gid, curr)
+                        _check_pitcher_change(gid, curr)
                     except Exception:
                         pass
 
@@ -1069,13 +1078,6 @@ def smart_update():
                                    curr['home_team_id'], curr['away_team_id'])
             except Exception as wo_err:
                 print(f"[FCM] 끝내기 알림 오류: {wo_err}")
-
-        # 선발 조기강판 알림
-        for gid in newly_finished:
-            try:
-                _check_starter_ko(gid, curr_details.get(gid, {}))
-            except Exception as ko_err:
-                print(f"[FCM] 조기강판 알림 오류: {ko_err}")
 
         # 경기 종료 후 시즌 마일스톤 (stats 업데이트 후 25분 지연 실행)
         for gid in newly_finished:

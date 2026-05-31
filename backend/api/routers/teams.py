@@ -780,7 +780,8 @@ def get_all_team_stats(season: int = 2026):
         obp = round((h + bb) / (ab + bb), 3) if (ab + bb) > 0 else 0.0
         slg = round(tb / ab, 3) if ab > 0 else 0.0
         batting[tid] = {"avg": avg, "obp": obp, "slg": slg, "ops": round(obp + slg, 3),
-                        "hr": hr, "rbi": rbi, "sb": sb, "runs": runs, "so": so, "bb": bb}
+                        "home_runs": hr, "rbis": rbi, "stolen_bases": sb,
+                        "hits": h, "runs": runs, "strikeouts": so, "walks": bb}
 
     # 팀 투구 (pitcher_stats)
     cur.execute("""
@@ -788,22 +789,25 @@ def get_all_team_stats(season: int = 2026):
                SUM(ps.innings_pitched) AS ip, SUM(ps.earned_runs) AS er,
                SUM(ps.hits_allowed) AS ha, SUM(ps.walks) AS bb,
                SUM(ps.strikeouts) AS so, SUM(ps.home_runs_allowed) AS hra,
-               SUM(ps.wins) AS wins, SUM(ps.saves) AS saves, SUM(ps.holds) AS holds
+               SUM(ps.wins) AS wins, SUM(ps.losses) AS losses,
+               SUM(ps.saves) AS saves, SUM(ps.holds) AS holds
         FROM pitcher_stats ps JOIN players p ON p.id = ps.player_id
         WHERE ps.season = %s AND p.team_id IS NOT NULL
         GROUP BY p.team_id
     """, (season,))
     pitching = {}
     for r in cur.fetchall():
-        tid, ip, er, ha, bb, so, hra, wins, saves, holds = r
+        tid, ip, er, ha, bb, so, hra, wins, losses, saves, holds = r
         ip = float(ip or 0); er = int(er or 0); ha = int(ha or 0)
         bb = int(bb or 0); so = int(so or 0); hra = int(hra or 0)
-        wins = int(wins or 0); saves = int(saves or 0); holds = int(holds or 0)
+        wins = int(wins or 0); losses = int(losses or 0)
+        saves = int(saves or 0); holds = int(holds or 0)
         era = round(er / ip * 9, 2) if ip > 0 else 0.0
         whip = round((ha + bb) / ip, 2) if ip > 0 else 0.0
-        k9 = round(so / ip * 9, 2) if ip > 0 else 0.0
-        pitching[tid] = {"era": era, "whip": whip, "k9": k9, "hra": hra,
-                         "wins": wins, "saves": saves, "holds": holds}
+        ip_disp = round(ip, 1)
+        pitching[tid] = {"era": era, "whip": whip, "strikeouts": so, "hra": hra,
+                         "wins": wins, "losses": losses, "saves": saves, "holds": holds,
+                         "innings_pitched": ip_disp}
 
     cur.close(); conn.close()
     result = []

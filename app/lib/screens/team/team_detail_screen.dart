@@ -40,6 +40,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   bool _battingOrderLoading = false;
   bool _isFav = false;
   bool _favLoading = false;
+  num? _gamesBehind;   // rankings 캐시에서 보완
 
   @override
   void initState() {
@@ -71,6 +72,37 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     _loadPlayers();
     _loadFavStatus();
     _loadSeasonStats();
+    _loadGamesBehind();
+  }
+
+  Future<void> _loadGamesBehind() async {
+    // widget.team에 games_behind 있으면 그대로 사용
+    final existing = widget.team['games_behind'];
+    if (existing != null) {
+      if (mounted) setState(() => _gamesBehind = existing as num);
+      return;
+    }
+    // 없으면 team_rankings 캐시에서 보완
+    final cached = await LocalCache.getStale('team_rankings') as List?;
+    if (cached != null) {
+      final teamId = widget.team['id'];
+      try {
+        final found = cached.firstWhere((t) => t['id'] == teamId, orElse: () => null);
+        if (found != null && found['games_behind'] != null && mounted) {
+          setState(() => _gamesBehind = found['games_behind'] as num);
+          return;
+        }
+      } catch (_) {}
+    }
+    // 캐시도 없으면 API 호출
+    try {
+      final data = await ApiService.getTeamRankings();
+      final rankings = data['rankings'] as List? ?? [];
+      await LocalCache.set('team_rankings', rankings);
+      final teamId = widget.team['id'];
+      final found = rankings.firstWhere((t) => t['id'] == teamId, orElse: () => null);
+      if (found != null && mounted) setState(() => _gamesBehind = found['games_behind'] as num?);
+    } catch (_) {}
   }
 
   Future<void> _loadFavStatus() async {
@@ -346,8 +378,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   Widget _buildHeader(Map team, String code, Color color,
       int wins, int losses, int draws,
       Map<String, dynamic> hr, Map<String, dynamic> ar) {
-    final gb = team['games_behind'];
-    final gbText = gb == null ? '-' : (gb as num) == 0 ? '-' : gb.toStringAsFixed(1);
+    final gb = _gamesBehind ?? team['games_behind'] as num?;
+    final gbText = gb == null ? '-' : gb == 0 ? '-' : gb.toStringAsFixed(1);
 
     return Container(
       color: color.withOpacity(0.06),

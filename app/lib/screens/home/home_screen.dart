@@ -327,7 +327,10 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     }
 
     try {
-      final data = await ApiService.getGamesByDate(dateStr);
+      // 오늘 날짜: /games/today (서버 30초 캐시) 사용 — /games/date/{date}는 5분 캐시라 스코어 갱신 지연
+      final data = isToday
+          ? await ApiService.getTodayGames()
+          : await ApiService.getGamesByDate(dateStr);
       if (!mounted || _loadGen != gen) return;
       final games = data['games'] as List? ?? [];
       await LocalCache.set('games_$dateStr', games);
