@@ -12,6 +12,7 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List _notifications = [];
   bool _loading = true;
+  bool _error = false;
 
   @override
   void initState() {
@@ -20,11 +21,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _load() async {
+    if (mounted) setState(() { _loading = true; _error = false; });
     try {
       final data = await ApiService.getNotifications();
-      if (mounted) setState(() { _notifications = data['notifications'] ?? []; _loading = false; });
+      if (mounted) setState(() { _notifications = data['notifications'] ?? []; _loading = false; _error = false; });
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() { _loading = false; _error = true; });
     }
   }
 
@@ -96,14 +98,41 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _notifications.isEmpty
+          : _error
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.notifications_none, size: 56, color: Colors.grey),
+                      Icon(Icons.wifi_off, size: 56, color: Colors.grey[400]),
                       const SizedBox(height: 12),
-                      Text('알림이 없습니다', style: TextStyle(color: Colors.grey[500])),
+                      Text('알림을 불러오지 못했습니다', style: TextStyle(color: Colors.grey[500])),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: _load,
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('다시 시도'),
+                      ),
+                    ],
+                  ),
+                )
+              : _notifications.isEmpty
+              ? RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView(
+                    children: [
+                      SizedBox(
+                        height: 400,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.notifications_none, size: 56, color: Colors.grey),
+                              const SizedBox(height: 12),
+                              Text('알림이 없습니다', style: TextStyle(color: Colors.grey[500])),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 )

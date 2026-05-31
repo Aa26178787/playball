@@ -452,6 +452,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
   late TabController _tabController;
   List<Map<String, dynamic>> _teams = [];
   bool _loading = true;
+  bool _error = false;
 
   static const _battingCategories = [
     {'value': 'avg',           'label': '타율',    'isLow': false},
@@ -493,8 +494,9 @@ class _TeamStatsTabState extends State<TeamStatsTab>
   }
 
   Future<void> _load() async {
-    // Phase 1: 캐시 즉시 표시
-    final cached = await LocalCache.get('team_all_stats', maxAgeSeconds: 3600) as Map?;
+    if (mounted) setState(() { _error = false; });
+    // Phase 1: 캐시 즉시 표시 (TTL 600초로 단축 — 필드명 캐시 문제 방지)
+    final cached = await LocalCache.get('team_all_stats', maxAgeSeconds: 600) as Map?;
     if (cached != null && mounted) {
       setState(() {
         _teams = List<Map<String, dynamic>>.from(cached['teams'] ?? []);
@@ -511,9 +513,10 @@ class _TeamStatsTabState extends State<TeamStatsTab>
       setState(() {
         _teams = List<Map<String, dynamic>>.from(data['teams'] ?? []);
         _loading = false;
+        _error = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() { _loading = false; if (_teams.isEmpty) _error = true; });
     }
   }
 
@@ -701,6 +704,24 @@ class _TeamStatsTabState extends State<TeamStatsTab>
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
+    if (_error) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.wifi_off, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 12),
+            Text('데이터를 불러오지 못했습니다', style: TextStyle(color: Colors.grey[500])),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _load,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('다시 시도'),
+            ),
+          ],
+        ),
+      );
+    }
     return Column(
       children: [
         TabBar(
@@ -792,6 +813,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   final Map<String, List> _hitterCache = {};
   final Map<String, List> _pitcherCache = {};
   bool _loading = true;
+  bool _error = false;
 
   @override
   void initState() {
@@ -807,6 +829,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   }
 
   Future<void> _loadAll() async {
+    if (mounted) setState(() => _error = false);
     // Phase 1: 캐시에서 즉시 표시
     final cached = await LocalCache.get('player_rankings') as Map?;
     if (cached != null && mounted) {
@@ -839,9 +862,14 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
           _pitcherCache[c['value']!] = (p[c['value']!] as List?) ?? [];
         }
         _loading = false;
+        _error = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() {
+        _loading = false;
+        final allEmpty = _hitterCache.values.every((l) => l.isEmpty);
+        if (allEmpty) _error = true;
+      });
     }
   }
 
@@ -1037,6 +1065,25 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     );
   }
 
+  Widget _buildErrorRetry() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.wifi_off, size: 48, color: Colors.grey[400]),
+          const SizedBox(height: 12),
+          Text('데이터를 불러오지 못했습니다', style: TextStyle(color: Colors.grey[500])),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _loadAll,
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('다시 시도'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRankingsContent(List players, String Function(Map) statValue, String label) {
     final top3 = players.take(3).toList();
     final rest = players.skip(3).toList();
@@ -1086,9 +1133,11 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
         Expanded(
           child: _loading
               ? _buildRankShimmer()
-              : rankings.isEmpty
-                  ? const Center(child: Text('데이터가 없습니다'))
-                  : _buildRankingsContent(rankings, _hitterStatValue, label),
+              : _error
+                  ? _buildErrorRetry()
+                  : rankings.isEmpty
+                      ? const Center(child: Text('데이터가 없습니다'))
+                      : _buildRankingsContent(rankings, _hitterStatValue, label),
         ),
       ],
     );
@@ -1105,9 +1154,11 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
         Expanded(
           child: _loading
               ? _buildRankShimmer()
-              : rankings.isEmpty
-                  ? const Center(child: Text('데이터가 없습니다'))
-                  : _buildRankingsContent(rankings, _pitcherStatValue, label),
+              : _error
+                  ? _buildErrorRetry()
+                  : rankings.isEmpty
+                      ? const Center(child: Text('데이터가 없습니다'))
+                      : _buildRankingsContent(rankings, _pitcherStatValue, label),
         ),
       ],
     );
