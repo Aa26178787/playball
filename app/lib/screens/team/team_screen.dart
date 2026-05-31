@@ -176,7 +176,7 @@ class _TeamScreenState extends State<TeamScreen>
         const SizedBox(height: 20),
         Row(
           children: [
-            const Text('포스트시즌 진출 확률', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const Text('가을야구 진출 확률', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -184,18 +184,18 @@ class _TeamScreenState extends State<TeamScreen>
               child: const Text('BETA', style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold)),
             ),
             const Spacer(),
-            Text('Monte Carlo 10,000회', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+            Text('Monte Carlo 100,000회', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
           ],
         ),
         const SizedBox(height: 10),
         ..._odds.map((o) {
           final code = o['short_name'] as String? ?? '';
           final psPct = ((o['ps_prob'] as num? ?? 0) * 100);
-          final champPct = ((o['champ_prob'] as num? ?? 0) * 100);
+          final ksPct = ((o['ks_prob'] as num? ?? 0) * 100);
           final color = teamColor(code);
           final isPS = psPct >= 50;
           return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: 12),
             child: Row(
               children: [
                 TeamLogo(teamCode: code, size: 28),
@@ -209,16 +209,22 @@ class _TeamScreenState extends State<TeamScreen>
                           Text(o['name'] as String? ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                           const Spacer(),
                           Text(
-                            '${psPct.toStringAsFixed(1)}%',
+                            '가을야구 ${psPct.toStringAsFixed(1)}%',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: psPct >= 95 ? Colors.blue : psPct >= 50 ? color : Colors.grey,
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Text('우승 ${champPct.toStringAsFixed(1)}%',
-                              style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                          const SizedBox(width: 8),
+                          Text(
+                            'KS직행 ${ksPct.toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: ksPct >= 50 ? Colors.amber[700] : Colors.grey[500],
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -226,10 +232,22 @@ class _TeamScreenState extends State<TeamScreen>
                         borderRadius: BorderRadius.circular(3),
                         child: LinearProgressIndicator(
                           value: (psPct / 100).clamp(0.0, 1.0),
-                          minHeight: 6,
+                          minHeight: 5,
                           backgroundColor: Colors.grey.withOpacity(0.15),
                           valueColor: AlwaysStoppedAnimation<Color>(
                             isPS ? color.withOpacity(0.8) : Colors.grey.withOpacity(0.4),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(
+                          value: (ksPct / 100).clamp(0.0, 1.0),
+                          minHeight: 3,
+                          backgroundColor: Colors.grey.withOpacity(0.1),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            ksPct >= 10 ? Colors.amber.withOpacity(0.7) : Colors.grey.withOpacity(0.25),
                           ),
                         ),
                       ),
