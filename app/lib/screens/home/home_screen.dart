@@ -1350,12 +1350,12 @@ class GameCard extends StatelessWidget {
                         end: Alignment.centerRight,
                         colors: homeWon
                             ? [
-                                Colors.black.withOpacity(overlayOpacity - 0.2),
-                                Colors.black.withOpacity(overlayOpacity + 0.1),
+                                Colors.black.withOpacity(overlayOpacity - 0.30),
+                                Colors.black.withOpacity(overlayOpacity + 0.12),
                               ]
                             : [
-                                Colors.black.withOpacity(overlayOpacity + 0.1),
-                                Colors.black.withOpacity(overlayOpacity - 0.2),
+                                Colors.black.withOpacity(overlayOpacity + 0.12),
+                                Colors.black.withOpacity(overlayOpacity - 0.30),
                               ],
                       ),
                     ),
