@@ -107,7 +107,6 @@ class _StadiumScreenState extends State<StadiumScreen> {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body, #map { width: 100%; height: 100%; }
@@ -115,13 +114,13 @@ html, body, #map { width: 100%; height: 100%; }
 </head>
 <body>
 <div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=28893522eb71ed933caf1bb2e080bbf6"></script>
 <script>
-var map = L.map('map', {zoomControl: false}).setView([36.5, 127.7], 7);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap contributors',
-  maxZoom: 19
-}).addTo(map);
+var container = document.getElementById('map');
+var map = new kakao.maps.Map(container, {
+  center: new kakao.maps.LatLng(36.5, 127.7),
+  level: 12
+});
 
 var stadiums = [
   {lat:37.5121, lng:127.0719, name:'잠실야구장'},
@@ -135,22 +134,32 @@ var stadiums = [
   {lat:35.1940, lng:129.0613, name:'사직야구장'}
 ];
 
-var icon = L.divIcon({
-  html: '<div style="width:12px;height:12px;background:#1A237E;border:2px solid white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>',
-  className: '',
-  iconSize: [12, 12],
-  iconAnchor: [6, 6]
-});
+var markerImg = new kakao.maps.MarkerImage(
+  'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png',
+  new kakao.maps.Size(24, 35)
+);
 
 stadiums.forEach(function(s) {
-  L.marker([s.lat, s.lng], {icon: icon}).bindTooltip(s.name, {permanent: false, direction: 'top'}).addTo(map);
+  var marker = new kakao.maps.Marker({
+    map: map,
+    position: new kakao.maps.LatLng(s.lat, s.lng),
+    title: s.name
+  });
+  var overlay = new kakao.maps.CustomOverlay({
+    position: new kakao.maps.LatLng(s.lat, s.lng),
+    content: '<div style="background:rgba(26,35,126,0.85);color:#fff;padding:3px 7px;border-radius:10px;font-size:11px;white-space:nowrap;margin-bottom:4px">' + s.name + '</div>',
+    yAnchor: 2.8
+  });
+  overlay.setMap(map);
 });
 
 function moveTo(lat, lng) {
-  map.setView([lat, lng], 14);
+  map.setCenter(new kakao.maps.LatLng(lat, lng));
+  map.setLevel(4);
 }
 function resetView() {
-  map.setView([36.5, 127.7], 7);
+  map.setCenter(new kakao.maps.LatLng(36.5, 127.7));
+  map.setLevel(12);
 }
 </script>
 </body>
@@ -181,6 +190,7 @@ function resetView() {
                   data: _mapHtml,
                   mimeType: 'text/html',
                   encoding: 'utf-8',
+                  baseUrl: WebUri('https://playball.duckdns.org'),
                 ),
                 initialSettings: InAppWebViewSettings(
                   javaScriptEnabled: true,
