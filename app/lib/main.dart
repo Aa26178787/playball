@@ -13,6 +13,7 @@ import 'providers/theme_provider.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'api/api_service.dart';
+import 'utils/app_theme.dart';
 
 final FlutterLocalNotificationsPlugin _localNotif = FlutterLocalNotificationsPlugin();
 
@@ -87,8 +88,8 @@ Future<void> _initFirebase() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Color(0xFF1A237E),
-    statusBarIconBrightness: Brightness.light,
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
   ));
   await _initFirebase();
   runApp(const PlayBallApp());
@@ -119,30 +120,8 @@ class PlayBallApp extends StatelessWidget {
             Locale('ko', 'KR'),
           ],
           themeMode: themeProvider.themeMode,
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF1A237E),
-              brightness: Brightness.light,
-            ),
-            useMaterial3: true,
-            fontFamily: 'Pretendard',
-            appBarTheme: const AppBarTheme(
-              surfaceTintColor: Colors.transparent,
-              scrolledUnderElevation: 0,
-            ),
-          ),
-          darkTheme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF1A237E),
-              brightness: Brightness.dark,
-            ),
-            useMaterial3: true,
-            fontFamily: 'Pretendard',
-            appBarTheme: const AppBarTheme(
-              surfaceTintColor: Colors.transparent,
-              scrolledUnderElevation: 0,
-            ),
-          ),
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
           home: const AppEntryPoint(),
         ),
       ),
