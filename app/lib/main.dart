@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/game_provider.dart';
@@ -13,18 +14,41 @@ import 'screens/home/home_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'api/api_service.dart';
 
+final FlutterLocalNotificationsPlugin _localNotif = FlutterLocalNotificationsPlugin();
+
+const AndroidNotificationChannel _channel = AndroidNotificationChannel(
+  'playball_default',
+  'PlayBall 알림',
+  description: '경기 득점, 시작/종료, 등록말소 알림',
+  importance: Importance.high,
+);
+
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // 백그라운드 알림 수신 (별도 처리 불필요 — OS가 알림 표시)
+  // 백그라운드 알림 수신 — OS가 자동 표시
 }
 
 Future<void> _initFirebase() async {
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+    // 로컬 알림 초기화 (포그라운드용)
+    await _localNotif.initialize(
+      const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      ),
+    );
+    await _localNotif
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(_channel);
+
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     final messaging = FirebaseMessaging.instance;
     await messaging.requestPermission(alert: true, badge: true, sound: true);
+    await messaging.setForegroundNotificationPresentationOptions(
+      alert: true, badge: true, sound: true,
+    );
 
     final token = await messaging.getToken();
     if (token != null) {
@@ -35,11 +59,28 @@ Future<void> _initFirebase() async {
       await ApiService.registerFcmToken(newToken);
     });
 
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      // 포그라운드 알림 — 필요시 in-app 토스트 추가
+    // 포그라운드 수신 → 로컬 알림으로 표시
+    FirebaseMessaging.onMessage.listen((RemoteMessage msg) {
+      final n = msg.notification;
+      if (n == null) return;
+      _localNotif.show(
+        msg.hashCode,
+        n.title,
+        n.body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channel.id,
+            _channel.name,
+            channelDescription: _channel.description,
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+          ),
+        ),
+      );
     });
   } catch (_) {
-    // Firebase 미설정 시 무시 (google-services.json + flutterfire configure 필요)
+    // Firebase 미설정 시 무시
   }
 }
 

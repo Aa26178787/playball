@@ -67,6 +67,14 @@
             </intent-filter>
         </service>
 
+        <!-- FCM 기본 알림 채널 -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="playball_default" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+
         <!-- Kakao Map SDK -->
         <meta-data
             android:name="com.kakao.sdk.AppKey"
