@@ -1194,20 +1194,26 @@ class GameCard extends StatelessWidget {
   final Map<String, String>? nextHomeSeries;
   final Map<String, String>? nextAwaySeries;
 
+  // 그라디언트 카드에서 공통으로 쓸 white text shadow
+  static const _textShadow = [Shadow(color: Colors.black38, blurRadius: 4)];
+  // 최근5경기 색상 (어두운 배경 위)
+  static const _wColor = Color(0xFF86EFAC);   // 연초록
+  static const _lColor = Color(0xFFFCA5A5);   // 연빨강
+  static const _cColor = Color(0xFFFDE68A);   // 연노랑 (취소)
+
   const GameCard({super.key, required this.game, this.isMyTeam = false, this.homeRank, this.awayRank, this.nextHomeSeries, this.nextAwaySeries});
 
-  Widget _starterChip(String name, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(name,
-          style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600),
-          overflow: TextOverflow.ellipsis),
-    );
-  }
+  Widget _starterChip(String name) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(0.18),
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(color: Colors.white.withOpacity(0.35), width: 0.7),
+    ),
+    child: Text(name,
+        style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600, shadows: _textShadow),
+        overflow: TextOverflow.ellipsis),
+  );
 
   Widget _buildNextSeriesWidget(Map<String, String> series) {
     final dateStr = series['date'] ?? '';
@@ -1227,29 +1233,24 @@ class GameCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TeamLogo(teamCode: series['code'] ?? '', size: 18),
-            const SizedBox(width: 3),
+            const SizedBox(width: 4),
             Flexible(
               child: Text(series['name'] ?? '',
-                  style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1),
+                  style: const TextStyle(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis, maxLines: 1),
             ),
           ],
         ),
-        const SizedBox(height: 1),
-        Text(dateLabel,
-            style: const TextStyle(fontSize: 9, color: AppColors.textTertiary),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1),
+        Text(dateLabel, style: const TextStyle(fontSize: 9, color: Colors.white38), overflow: TextOverflow.ellipsis),
       ],
     );
   }
 
-  Widget? _buildWeatherChip() {
+  Widget? _buildWeatherWidget() {
     final w = game.weather;
     if (w == null) return null;
     if (w['indoor'] == true) {
-      return const Text('실내', style: TextStyle(fontSize: 11, color: AppColors.textTertiary));
+      return const Text('실내', style: TextStyle(fontSize: 11, color: Colors.white54));
     }
     final emoji = w['emoji'] ?? '';
     final temp = w['temp'];
@@ -1260,7 +1261,7 @@ class GameCard extends StatelessWidget {
       if (pop != null && (pop as int) > 0) '$pop%',
     ];
     if (parts.isEmpty) return null;
-    return Text(parts.join(' '), style: const TextStyle(fontSize: 11, color: AppColors.textSecondary));
+    return Text(parts.join(' '), style: const TextStyle(fontSize: 11, color: Colors.white70));
   }
 
   Widget _buildRecentBar(List<String> recent, bool isHome) {
@@ -1272,27 +1273,35 @@ class GameCard extends StatelessWidget {
         final idx = e.key;
         final r = e.value;
         final isLatest = isHome ? idx == displayed.length - 1 : idx == 0;
-        final c = r == 'W' ? AppColors.win : r == 'L' ? AppColors.lose : r == 'C' ? Colors.orange : Colors.grey;
+        Color textC;
+        Color bgC;
+        if (r == 'W')      { textC = _wColor; bgC = _wColor.withOpacity(0.2); }
+        else if (r == 'L') { textC = _lColor; bgC = _lColor.withOpacity(0.15); }
+        else if (r == 'C') { textC = _cColor; bgC = _cColor.withOpacity(0.15); }
+        else               { textC = Colors.white54; bgC = Colors.white12; }
+
         return Padding(
           padding: const EdgeInsets.only(right: 2),
           child: Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
-                width: 16,
-                height: 16,
+                width: 18, height: 18,
                 decoration: BoxDecoration(
-                  color: c.withOpacity(0.12),
+                  color: bgC,
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: c.withOpacity(0.45), width: 0.8),
+                  border: Border.all(color: textC.withOpacity(0.55), width: 0.8),
                 ),
                 alignment: Alignment.center,
-                child: Text(r, style: TextStyle(fontSize: 9, color: c, fontWeight: FontWeight.w700)),
+                child: Text(r, style: TextStyle(fontSize: 9, color: textC, fontWeight: FontWeight.w800)),
               ),
               if (isLatest)
-                const Positioned(
+                Positioned(
                   top: -3, right: -1,
-                  child: CircleAvatar(radius: 2.5, backgroundColor: Colors.red),
+                  child: Container(
+                    width: 5, height: 5,
+                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                  ),
                 ),
             ],
           ),
@@ -1301,26 +1310,16 @@ class GameCard extends StatelessWidget {
     );
   }
 
-  Color _statusColor() {
-    switch (game.status) {
-      case '진행': return AppColors.live;
-      case '종료': return AppColors.textSecondary;
-      case '취소': return AppColors.lose;
-      case '라인업': return Colors.orange;
-      default:    return Colors.blue;
-    }
-  }
-
   Widget _winnerGlowLogo(String teamCode, bool isWinner) {
-    final logo = TeamLogo(teamCode: teamCode, size: 44);
-    if (!isWinner) return logo;
+    const size = 52.0;
+    final logo = TeamLogo(teamCode: teamCode, size: size);
+    if (!isWinner) return Opacity(opacity: 0.85, child: logo);
     final c = teamColor(teamCode);
-    return _NeonGlowLogo(teamCode: teamCode, color: c, size: 44, logo: logo);
+    return _NeonGlowLogo(teamCode: teamCode, color: c, size: size, logo: logo);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isFinished = game.status == '종료';
     final isDraw = game.isDraw ?? false;
     final homeWon = isFinished && !isDraw && game.homeScore > game.awayScore;
@@ -1330,224 +1329,251 @@ class GameCard extends StatelessWidget {
     final showPrediction = (game.status == '예정' || game.status == '라인업') &&
         game.homeTeamId != null && game.awayTeamId != null;
 
-    final borderColor = isMyTeam
-        ? AppColors.primary.withOpacity(0.7)
-        : (isDark ? AppColors.borderDark : AppColors.borderLight);
-    final headerBg = isDark
-        ? Colors.white.withOpacity(0.03)
-        : Colors.black.withOpacity(0.025);
-    final statusColor = _statusColor();
+    final homeColor = teamColor(game.homeTeamCode);
+    final awayColor = teamColor(game.awayTeamCode);
+    // 취소/종료 시 채도 낮춤
+    final overlayOpacity = game.status == '취소' ? 0.58 : (isFinished ? 0.48 : 0.38);
 
     Widget teamCol(String code, String name, int? rank, bool isHome, bool isWinner,
         String? starter, List<String> recent, Map<String, String>? nextSeries) {
-      final tColor = teamColor(code);
       return Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _winnerGlowLogo(code, isWinner),
-          const SizedBox(height: 5),
+          const SizedBox(height: 6),
           Text(name,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white, shadows: _textShadow),
+              textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 2),
           Text(
             rank != null ? '${rank}위 ${isHome ? "홈" : "원정"}' : (isHome ? '홈' : '원정'),
-            style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
+            style: const TextStyle(fontSize: 10, color: Colors.white54),
           ),
           if (starter != null && showStarters) ...[
-            const SizedBox(height: 6),
-            _starterChip(starter, tColor),
+            const SizedBox(height: 7),
+            _starterChip(starter),
           ],
           if (recent.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 7),
             _buildRecentBar(recent, isHome),
           ],
           if (nextSeries != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 7),
             _buildNextSeriesWidget(nextSeries),
           ],
         ],
       );
     }
 
-    Widget pitcherWidget(String? name, String? imageUrl, String label, Color color) {
+    Widget pitcherWidget(String? name, String? imageUrl, String label, Color labelColor) {
       if (name == null) return const SizedBox.shrink();
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           CircleAvatar(
-            radius: 16,
-            backgroundColor: color.withValues(alpha: 0.12),
+            radius: 17,
+            backgroundColor: Colors.white.withOpacity(0.2),
             backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl) : null,
-            child: imageUrl == null ? Icon(Icons.person, size: 16, color: color) : null,
+            child: imageUrl == null ? const Icon(Icons.person, size: 17, color: Colors.white70) : null,
           ),
           const SizedBox(height: 3),
-          Text(name, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis, maxLines: 1),
-          Text(label, style: TextStyle(fontSize: 9, color: color, fontWeight: FontWeight.w700)),
+          Text(name, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white, shadows: _textShadow), overflow: TextOverflow.ellipsis, maxLines: 1),
+          Text(label, style: TextStyle(fontSize: 9, color: labelColor, fontWeight: FontWeight.w800)),
         ],
       );
     }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
-      elevation: 0,
+      elevation: 4,
+      shadowColor: homeColor.withOpacity(0.35),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: borderColor, width: isMyTeam ? 1.5 : 0.8),
+        side: isMyTeam
+            ? BorderSide(color: Colors.amber.withOpacity(0.8), width: 2)
+            : BorderSide.none,
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
         children: [
-          InkWell(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
-            child: Column(
-              children: [
-                // 헤더: 상태 배지 + 날씨/구장
-                Container(
-                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
-                  color: headerBg,
-                  child: Row(
-                    children: [
-                      if (isMyTeam) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text('MY', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                        ),
-                        const SizedBox(width: 6),
-                      ],
-                      if (isLive) ...[
-                        Container(
-                          width: 6, height: 6,
-                          decoration: const BoxDecoration(color: AppColors.live, shape: BoxShape.circle),
-                        ),
-                        const SizedBox(width: 5),
-                      ],
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: statusColor.withOpacity(0.25), width: 0.5),
-                        ),
-                        child: Text(
-                          isLive ? '${game.currentInning ?? 0}회 ${game.inningHalf ?? ''}' :
-                          game.status == '취소' ? '취소' :
-                          game.status == '라인업' ? '라인업' : game.status,
-                          style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 11),
-                        ),
-                      ),
-                      const Spacer(),
-                      if (_buildWeatherChip() != null) ...[_buildWeatherChip()!, const SizedBox(width: 6)],
-                      Text(game.stadium ?? '', style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
-                    ],
-                  ),
+          // === 그라디언트 배경 ===
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [homeColor, awayColor],
+                  stops: const [0.0, 1.0],
                 ),
-                // 스코어 영역
-                Padding(
-                  padding: EdgeInsets.fromLTRB(14, 10, 14, showPrediction ? 6 : 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(child: teamCol(
-                        game.homeTeamCode, game.homeTeam, homeRank, true, homeWon,
-                        game.homeStarter, game.homeRecent5, nextHomeSeries,
-                      )),
-                      SizedBox(
-                        width: 76,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            game.status == '예정' || game.status == '취소' || game.status == '라인업'
-                                ? Text(
-                                    game.status == '취소' ? '취소' : (game.startTime ?? 'VS'),
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -0.5,
-                                      color: game.status == '취소' ? AppColors.lose : null,
-                                    ),
-                                  )
-                                : Text(
-                                    '${game.homeScore} : ${game.awayScore}',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -0.5,
-                                    ),
-                                  ),
-                            if (game.status == '라인업')
-                              Container(
-                                margin: const EdgeInsets.only(top: 3),
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text('라인업', style: TextStyle(fontSize: 9, color: Colors.orange)),
-                              ),
-                            if (isFinished && isDraw) ...[
-                              const SizedBox(height: 3),
-                              const Text('무승부',
-                                  style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
-                                  textAlign: TextAlign.center),
-                            ],
-                            if (isFinished && !isDraw && (game.winPitcher != null || game.losePitcher != null)) ...[
-                              const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  pitcherWidget(
-                                    homeWon ? game.winPitcher : game.losePitcher,
-                                    homeWon ? game.winPitcherImage : game.losePitcherImage,
-                                    homeWon ? '승투' : '패투',
-                                    homeWon ? AppColors.win : AppColors.lose,
-                                  ),
-                                  if (game.winPitcher != null && game.losePitcher != null)
-                                    const SizedBox(width: 10),
-                                  pitcherWidget(
-                                    awayWon ? game.winPitcher : game.losePitcher,
-                                    awayWon ? game.winPitcherImage : game.losePitcherImage,
-                                    awayWon ? '승투' : '패투',
-                                    awayWon ? AppColors.win : AppColors.lose,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      Expanded(child: teamCol(
-                        game.awayTeamCode, game.awayTeam, awayRank, false, awayWon,
-                        game.awayStarter, game.awayRecent5, nextAwaySeries,
-                      )),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (showPrediction)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-              child: _PredictionBar(
-                key: ValueKey(game.id),
-                gameId: game.id,
-                homeTeamId: game.homeTeamId!,
-                awayTeamId: game.awayTeamId!,
-                homeCode: game.homeTeamCode,
-                awayCode: game.awayTeamCode,
               ),
             ),
+          ),
+          // === 어두운 오버레이 (가독성) ===
+          Positioned.fill(
+            child: Container(color: Colors.black.withOpacity(overlayOpacity)),
+          ),
+          // === 콘텐츠 ===
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InkWell(
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(14, 12, 14, showPrediction ? 8 : 14),
+                  child: Column(
+                    children: [
+                      // 헤더 행
+                      Row(
+                        children: [
+                          if (isMyTeam) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text('MY', style: TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.w900)),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          if (isLive) ...[
+                            Container(
+                              width: 7, height: 7,
+                              decoration: const BoxDecoration(color: AppColors.live, shape: BoxShape.circle),
+                            ),
+                            const SizedBox(width: 5),
+                          ],
+                          // 상태 배지
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isLive
+                                  ? AppColors.live.withOpacity(0.2)
+                                  : Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isLive ? AppColors.live.withOpacity(0.6) : Colors.white.withOpacity(0.35),
+                                width: 0.7,
+                              ),
+                            ),
+                            child: Text(
+                              isLive ? '${game.currentInning ?? 0}회 ${game.inningHalf ?? ''}' :
+                              game.status == '취소' ? '취소' :
+                              game.status == '라인업' ? '라인업' : game.status,
+                              style: TextStyle(
+                                color: isLive ? AppColors.live : Colors.white,
+                                fontWeight: FontWeight.w700, fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          if (_buildWeatherWidget() != null) ...[_buildWeatherWidget()!, const SizedBox(width: 6)],
+                          Text(game.stadium ?? '', style: const TextStyle(fontSize: 11, color: Colors.white54)),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      // 스코어 행
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(child: teamCol(
+                            game.homeTeamCode, game.homeTeam, homeRank, true, homeWon,
+                            game.homeStarter, game.homeRecent5, nextHomeSeries,
+                          )),
+                          SizedBox(
+                            width: 80,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                game.status == '예정' || game.status == '취소' || game.status == '라인업'
+                                    ? Text(
+                                        game.status == '취소' ? '취소' : (game.startTime ?? 'VS'),
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 22, fontWeight: FontWeight.w900,
+                                          letterSpacing: -0.5, color: Colors.white,
+                                          shadows: game.status == '취소' ? null : _textShadow,
+                                        ),
+                                      )
+                                    : Text(
+                                        '${game.homeScore} : ${game.awayScore}',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 30, fontWeight: FontWeight.w900,
+                                          letterSpacing: -1, color: Colors.white,
+                                          shadows: _textShadow,
+                                        ),
+                                      ),
+                                if (game.status == '라인업')
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 3),
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withOpacity(0.25),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: Colors.orange.withOpacity(0.5), width: 0.7),
+                                    ),
+                                    child: const Text('라인업', style: TextStyle(fontSize: 9, color: Colors.orange)),
+                                  ),
+                                if (isFinished && isDraw) ...[
+                                  const SizedBox(height: 4),
+                                  const Text('무승부', style: TextStyle(fontSize: 10, color: Colors.white60), textAlign: TextAlign.center),
+                                ],
+                                if (isFinished && !isDraw && (game.winPitcher != null || game.losePitcher != null)) ...[
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      pitcherWidget(
+                                        homeWon ? game.winPitcher : game.losePitcher,
+                                        homeWon ? game.winPitcherImage : game.losePitcherImage,
+                                        homeWon ? '승투' : '패투',
+                                        homeWon ? _wColor : _lColor,
+                                      ),
+                                      if (game.winPitcher != null && game.losePitcher != null)
+                                        const SizedBox(width: 10),
+                                      pitcherWidget(
+                                        awayWon ? game.winPitcher : game.losePitcher,
+                                        awayWon ? game.winPitcherImage : game.losePitcherImage,
+                                        awayWon ? '승투' : '패투',
+                                        awayWon ? _wColor : _lColor,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          Expanded(child: teamCol(
+                            game.awayTeamCode, game.awayTeam, awayRank, false, awayWon,
+                            game.awayStarter, game.awayRecent5, nextAwaySeries,
+                          )),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (showPrediction)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.2),
+                    border: Border(top: BorderSide(color: Colors.white.withOpacity(0.15), width: 0.5)),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+                  child: _PredictionBar(
+                    key: ValueKey(game.id),
+                    gameId: game.id,
+                    homeTeamId: game.homeTeamId!,
+                    awayTeamId: game.awayTeamId!,
+                    homeCode: game.homeTeamCode,
+                    awayCode: game.awayTeamCode,
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -1654,7 +1680,6 @@ class _PredictionBarState extends State<_PredictionBar> {
 
   Widget _voteButton({
     required bool isSelected,
-    required Color color,
     required String name,
     required String pct,
     required VoidCallback? onTap,
@@ -1666,11 +1691,15 @@ class _PredictionBarState extends State<_PredictionBar> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 7),
           decoration: BoxDecoration(
-            color: isSelected ? color.withOpacity(0.12) : Colors.transparent,
+            color: isSelected
+                ? Colors.white.withOpacity(0.28)
+                : Colors.white.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isSelected ? color : Colors.grey[300]!,
-              width: isSelected ? 1.5 : 1,
+              color: isSelected
+                  ? Colors.white.withOpacity(0.8)
+                  : Colors.white.withOpacity(0.25),
+              width: isSelected ? 1.5 : 0.8,
             ),
           ),
           child: Column(
@@ -1680,7 +1709,8 @@ class _PredictionBarState extends State<_PredictionBar> {
                 name,
                 style: TextStyle(
                   fontSize: 11, fontWeight: FontWeight.bold,
-                  color: isSelected ? color : Colors.grey[600],
+                  color: Colors.white.withOpacity(isSelected ? 1.0 : 0.7),
+                  shadows: GameCard._textShadow,
                 ),
               ),
               const SizedBox(height: 2),
@@ -1688,7 +1718,8 @@ class _PredictionBarState extends State<_PredictionBar> {
                 pct,
                 style: TextStyle(
                   fontSize: 12, fontWeight: FontWeight.w800,
-                  color: isSelected ? color : Colors.grey[400],
+                  color: Colors.white.withOpacity(isSelected ? 1.0 : 0.55),
+                  shadows: GameCard._textShadow,
                 ),
               ),
             ],
@@ -1703,8 +1734,6 @@ class _PredictionBarState extends State<_PredictionBar> {
     final total = _homeVotes + _awayVotes;
     final homePct = total > 0 ? _homeVotes / total : 0.5;
     final awayPct = 1.0 - homePct;
-    final homeColor = teamColor(widget.homeCode);
-    final awayColor = teamColor(widget.awayCode);
     final homeSelected = _userVote == widget.homeTeamId;
     final awaySelected = _userVote == widget.awayTeamId;
     final homePctStr = _loading ? '-' : '${(homePct * 100).round()}%';
@@ -1713,17 +1742,22 @@ class _PredictionBarState extends State<_PredictionBar> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Divider(height: 8, thickness: 0.5),
         Padding(
-          padding: const EdgeInsets.only(bottom: 4),
+          padding: const EdgeInsets.only(bottom: 5),
           child: Row(
             children: [
               Text('승리 예측',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[500])),
+                  style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.bold,
+                    color: Colors.white.withOpacity(0.6),
+                  )),
               const Spacer(),
               if (total > 0)
                 Text('$total명 참여',
-                    style: TextStyle(fontSize: 10, color: Colors.grey[400])),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.white.withOpacity(0.45),
+                    )),
             ],
           ),
         ),
@@ -1731,7 +1765,6 @@ class _PredictionBarState extends State<_PredictionBar> {
           children: [
             _voteButton(
               isSelected: homeSelected,
-              color: homeColor,
               name: teamDisplayName(widget.homeCode),
               pct: homePctStr,
               onTap: () => _vote(widget.homeTeamId),
@@ -1739,7 +1772,6 @@ class _PredictionBarState extends State<_PredictionBar> {
             const SizedBox(width: 8),
             _voteButton(
               isSelected: awaySelected,
-              color: awayColor,
               name: teamDisplayName(widget.awayCode),
               pct: awayPctStr,
               onTap: () => _vote(widget.awayTeamId),
