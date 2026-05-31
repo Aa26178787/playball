@@ -201,10 +201,15 @@ def _send(targets: list[tuple[int, str]], title: str, body: str,
         )
         resp = messaging.send_each_for_multicast(msg)
         print(f"[FCM] {title}: {resp.success_count}성공/{resp.failure_count}실패")
+        _INVALID_TOKEN_MSGS = (
+            'registration-token-not-registered',
+            'Requested entity was not found',
+            'invalid-registration-token',
+        )
         failed = [
             tokens[i] for i, r in enumerate(resp.responses)
             if not r.success and r.exception and
-            'registration-token-not-registered' in str(r.exception)
+            any(m in str(r.exception) for m in _INVALID_TOKEN_MSGS)
         ]
         _remove_invalid_tokens(failed)
     except Exception as e:
