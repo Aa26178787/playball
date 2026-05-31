@@ -272,13 +272,17 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
 
     lines = []
 
-    # 1줄: 타자 vs 투수 — 타구 결과 (n타점)
+    # 폭투/보크/패스트볼은 타점 아님 → "득점" 표기
+    _NO_RBI_KW = ('폭투', '보크', '패스트볼', '낫아웃')
+    is_no_rbi = clean_text and any(kw in clean_text for kw in _NO_RBI_KW)
+
+    # 1줄: 타자 vs 투수 — 타구 결과 (n타점/득점)
     if batter:
         line1 = f"{batter} vs {pitcher}" if pitcher else batter
         if clean_text:
             line1 += f" — {clean_text}"
         if runs > 0:
-            line1 += f" ({runs}타점)"
+            line1 += f" ({runs}{'득점' if is_no_rbi else '타점'})"
         lines.append(line1)
     elif clean_text:
         lines.append(clean_text)

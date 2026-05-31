@@ -653,13 +653,12 @@ def _is_walkoff(game_id: int) -> bool:
 
 
 def _check_starter_ko(game_id: int, game_info: dict):
-    """선발투수 5이닝 미만 강판 감지 → 즉시 알림 (진행 중 실시간 체크, 중복 방지)"""
+    """선발투수 5이닝 미만 강판 감지 → 즉시 알림 (진행 중 실시간 체크, DB 기반 중복 방지)"""
     conn = get_connection()
     if not conn:
         return
     try:
         cur = conn.cursor()
-        # has_relief: 같은 팀 구원투수가 이미 등판했는지 확인 (선발 강판 확정 조건)
         cur.execute("""
             SELECT gp.player_id, p.name, gp.innings_pitched, gp.team_side,
                    EXISTS(
@@ -684,13 +683,35 @@ def _check_starter_ko(game_id: int, game_info: dict):
 
     try:
         from api.fcm_service import notify_starter_ko
+        from datetime import date as _dt
+        season = _dt.today().year
         for player_id, name, ip, side, has_relief in starters:
             if (game_id, player_id) in _starter_ko_sent:
-                continue  # 이미 알림 발송
+                continue  # 메모리 캐시 (재시작 전 체크)
             if not has_relief:
                 continue  # 구원 등판 전 → 아직 선발이 마운드
             parsed = _parse_ip(ip)
             if 0 < parsed < 5.0:
+                # DB 기반 중복 방지 — 재시작 후에도 중복 발송 방지
+                dedup_conn = get_connection()
+                if dedup_conn:
+                    try:
+                        dc = dedup_conn.cursor()
+                        dc.execute("""
+                            INSERT INTO player_milestone_alerts
+                                (player_id, milestone_type, milestone_value, season, month)
+                            VALUES (%s, 'starter_ko', %s, %s, 0)
+                            ON CONFLICT DO NOTHING
+                            RETURNING id
+                        """, (player_id, game_id, season))
+                        inserted = dc.fetchone()
+                        dedup_conn.commit()
+                        dc.close()
+                    finally:
+                        dedup_conn.close()
+                    if not inserted:
+                        _starter_ko_sent.add((game_id, player_id))
+                        continue  # 이미 발송됨
                 team_name = game_info.get('home_team') if side == 'home' else game_info.get('away_team')
                 notify_starter_ko(game_id, name, team_name or '',
                                   str(ip) if ip else '0',
@@ -1501,9 +1522,12 @@ def _get_consecutive_record(team_id: int) -> int:
 
 
 def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_score):
-    """Naver 중계 API에서 득점 타자/투수/타구/투구내용 추출. 실패 시 ('','','','',0,[],0) 반환"""
+    """Naver 중계 API에서 득점 타자/투수/타구/투구내용 추출. 실패 시 ('','','','',0,[],0) 반환
+    우선순위: type=13(타석결과) > 특수키워드(폭투/보크/패스트볼) > type=1(마지막 투구)
+    """
     import requests, re as _re
     HEADERS = {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://sports.naver.com/'}
+    _SPECIAL_KW = ('폭투', '보크', '패스트볼', '보크')
     conn = None
     cur = None
     try:
@@ -1519,12 +1543,27 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
         curr_batter = curr_pitcher = ''
         curr_stuff = ''
         curr_speed = 0
-        curr_pitch_num = 0  # 현재 타자의 투구 카운트
+        curr_pitch_num = 0
 
-        # 마지막 type=1 이벤트 저장 (score 업데이트는 후속 이벤트에서 일어남)
-        last_batter = last_pitcher = last_text = last_stuff = ''
-        last_speed = 0
-        last_pitch_num = 0
+        # type=1 (투구 이벤트) 마지막 값
+        last1_batter = last1_pitcher = last1_text = last1_stuff = ''
+        last1_speed = last1_pitch_num = 0
+
+        # type=13 (타석 결과: 희생플라이/안타/볼넷/삼진/번트 등) 마지막 값
+        last13_text = last13_batter = last13_pitcher = ''
+
+        # 특수 키워드 이벤트 (폭투/보크/패스트볼)
+        last_sp_text = last_sp_batter = last_sp_pitcher = ''
+
+        def _reset_at_bat():
+            nonlocal last1_batter, last1_pitcher, last1_text, last1_stuff
+            nonlocal last1_speed, last1_pitch_num
+            nonlocal last13_text, last13_batter, last13_pitcher
+            nonlocal last_sp_text, last_sp_batter, last_sp_pitcher
+            last1_batter = last1_pitcher = last1_text = last1_stuff = ''
+            last1_speed = last1_pitch_num = 0
+            last13_text = last13_batter = last13_pitcher = ''
+            last_sp_text = last_sp_batter = last_sp_pitcher = ''
 
         result_batter = result_pitcher = result_text = result_stuff = ''
         result_speed = 0
@@ -1538,7 +1577,10 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
                 break
             for opt in item.get('textOptions', []):
                 state = opt.get('currentGameState', {}) or {}
+                otype = opt.get('type')
+                text_now = opt.get('text', '')
 
+                # 투수 이름 (state에서 실시간 추적)
                 pid = str(state.get('pitcher') or '')
                 if pid and cur:
                     if pid not in pitcher_cache:
@@ -1547,58 +1589,88 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
                         pitcher_cache[pid] = row[0] if row else ''
                     curr_pitcher = pitcher_cache.get(pid, '')
 
+                # 타자 교체 감지 (batterRecord or type=8 선수교체 공지)
                 br = opt.get('batterRecord') or {}
                 if br.get('name'):
                     if br['name'] != curr_batter:
                         curr_pitch_num = 0
-                        # 새 타자 → 이전 타석 last_* 무효화 (이전 타석 투구 결과 오캡처 방지)
-                        last_batter = last_pitcher = last_text = last_stuff = ''
-                        last_speed = last_pitch_num = 0
+                        _reset_at_bat()
                     curr_batter = br['name']
-                elif opt.get('type') == 8:
-                    m = _re.match(r'^(?:\d+번타자|대타)\s+(\S+)', opt.get('text', ''))
+                elif otype == 8:
+                    m = _re.match(r'^(?:\d+번타자|대타)\s+(\S+)', text_now)
                     if m:
                         if m.group(1) != curr_batter:
                             curr_pitch_num = 0
-                            last_batter = last_pitcher = last_text = last_stuff = ''
-                            last_speed = last_pitch_num = 0
+                            _reset_at_bat()
                         curr_batter = m.group(1)
                     if found_scoring:
                         done = True
-                        break  # 다음 타자 시작 → homeIn 수집 종료
+                        break
 
+                # 구종/구속 갱신 (어떤 이벤트든)
                 if opt.get('stuff'):
-                    curr_stuff = opt.get('stuff', '')
+                    curr_stuff = opt['stuff']
                     curr_speed = int(opt.get('speed', 0) or 0)
 
-                # 투구 이벤트(type=1) 저장 → 득점 감지 시 사용
-                # (Naver는 스코어를 type=1 직후 이벤트에서 업데이트하므로 last_* 보관)
-                if opt.get('type') == 1:
+                # type=1: 투구 이벤트
+                if otype == 1:
                     curr_pitch_num += 1
-                    last_batter = curr_batter
-                    last_pitcher = curr_pitcher
-                    last_text = opt.get('text', '')
-                    last_stuff = opt.get('stuff', '') or curr_stuff
-                    last_speed = int(opt.get('speed', 0) or 0) or curr_speed
-                    last_pitch_num = curr_pitch_num
+                    last1_batter = curr_batter
+                    last1_pitcher = curr_pitcher
+                    last1_text = text_now
+                    last1_stuff = opt.get('stuff', '') or curr_stuff
+                    last1_speed = int(opt.get('speed', 0) or 0) or curr_speed
+                    last1_pitch_num = curr_pitch_num
 
+                # type=13: 타석 최종 결과 (희생플라이/안타/번트/볼넷/삼진 등)
+                elif otype == 13:
+                    last13_text = text_now
+                    last13_batter = curr_batter
+                    last13_pitcher = curr_pitcher
+
+                # 특수 키워드: 폭투/보크/패스트볼 (type 무관)
+                if text_now and any(kw in text_now for kw in _SPECIAL_KW):
+                    last_sp_text = text_now
+                    last_sp_batter = curr_batter
+                    last_sp_pitcher = curr_pitcher
+
+                # 득점 상태 감지
                 hs = state.get('homeScore')
                 aws = state.get('awayScore')
                 if hs is not None and aws is not None:
                     if int(hs) >= new_home_score and int(aws) >= new_away_score:
-                        if not found_scoring and last_text:
-                            result_batter = last_batter
-                            result_pitcher = last_pitcher
-                            result_text = last_text
-                            result_stuff = last_stuff
-                            result_speed = last_speed
-                            result_pitch_num = last_pitch_num
+                        if not found_scoring:
+                            # 우선순위: type13 > 특수키워드 > type1
+                            if last13_text:
+                                result_text = last13_text
+                                result_batter = last13_batter or curr_batter
+                                result_pitcher = last13_pitcher or curr_pitcher
+                                result_stuff = last1_stuff
+                                result_speed = last1_speed
+                                result_pitch_num = last1_pitch_num
+                            elif last_sp_text:
+                                result_text = last_sp_text
+                                result_batter = last_sp_batter or curr_batter
+                                result_pitcher = last_sp_pitcher or curr_pitcher
+                                result_stuff = last1_stuff
+                                result_speed = last1_speed
+                                result_pitch_num = last1_pitch_num
+                            elif last1_text:
+                                result_text = last1_text
+                                result_batter = last1_batter or curr_batter
+                                result_pitcher = last1_pitcher or curr_pitcher
+                                result_stuff = last1_stuff
+                                result_speed = last1_speed
+                                result_pitch_num = last1_pitch_num
+                            else:
+                                # 타석 이벤트 없는 득점 (다른 이닝 주자 등)
+                                result_batter = curr_batter
+                                result_pitcher = curr_pitcher
                             found_scoring = True
 
-                # 홈인 수집 (type 14/24): 득점 감지 시점 포함 이후
-                if found_scoring and opt.get('type') in (14, 24):
-                    txt = opt.get('text', '')
-                    m2 = _re.search(r'([가-힣A-Za-z]+)\s*홈인', txt)
+                # 홈인 수집 (type 14/24/31)
+                if found_scoring and otype in (14, 24, 31):
+                    m2 = _re.search(r'([가-힣A-Za-z]+)\s*홈인', text_now)
                     if m2 and m2.group(1) not in result_homein:
                         result_homein.append(m2.group(1))
 
