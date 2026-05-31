@@ -139,6 +139,39 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
   }
 
+  void _prevDay() {
+    if (_selectedDate.isAfter(_seasonStart)) {
+      final prev = _selectedDate.subtract(const Duration(days: 1));
+      setState(() { _selectedDate = prev; _isLoading = true; _games = []; _loadGen++; });
+      _loadGames();
+      _loadTomorrowGames();
+    }
+  }
+
+  void _nextDay() {
+    if (_selectedDate.isBefore(_seasonEnd)) {
+      final next = _selectedDate.add(const Duration(days: 1));
+      setState(() { _selectedDate = next; _isLoading = true; _games = []; _loadGen++; });
+      _loadGames();
+      _loadTomorrowGames();
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: _seasonStart,
+      lastDate: _seasonEnd,
+      locale: const Locale('ko', 'KR'),
+    );
+    if (picked != null && mounted) {
+      setState(() { _selectedDate = picked; _isLoading = true; _games = []; _loadGen++; });
+      _loadGames();
+      _loadTomorrowGames();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -542,13 +575,160 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     );
   }
 
+  Widget _buildFilterChip(String label, bool isActive, VoidCallback onTap, {IconData? icon}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isActive ? AppColors.primary : (isDark ? AppColors.borderDark : AppColors.borderLight),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 12, color: isActive ? Colors.amber : (isDark ? Colors.white38 : Colors.grey[500])),
+              const SizedBox(width: 4),
+            ],
+            Text(label, style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w600,
+              color: isActive ? Colors.white : (isDark ? Colors.white54 : Colors.grey[600]),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateNavHeader() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final today = DateTime.now();
+    final isToday = _isSameDay(_selectedDate, today);
+    final prev = _selectedDate.subtract(const Duration(days: 1));
+    final next = _selectedDate.add(const Duration(days: 1));
+    final canPrev = _selectedDate.isAfter(_seasonStart);
+    final canNext = _selectedDate.isBefore(_seasonEnd);
+    String fmtShort(DateTime d) => '${d.month}/${d.day}';
+
+    final dim = isDark ? Colors.white38 : Colors.black38;
+    final arrowC = isDark ? Colors.white60 : Colors.black45;
+
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        final v = details.primaryVelocity ?? 0;
+        if (v < -250 && canNext) _nextDay();
+        else if (v > 250 && canPrev) _prevDay();
+      },
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.scaffoldDark : AppColors.surfaceLight,
+          border: Border(bottom: BorderSide(
+            color: isDark ? AppColors.borderDark : AppColors.borderLight,
+            width: 0.5,
+          )),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                // 이전날
+                Expanded(
+                  child: GestureDetector(
+                    onTap: canPrev ? _prevDay : null,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      child: Row(
+                        children: [
+                          Icon(Icons.chevron_left, size: 20, color: canPrev ? arrowC : Colors.transparent),
+                          const SizedBox(width: 2),
+                          Text(fmtShort(prev), style: TextStyle(fontSize: 13, color: canPrev ? dim : Colors.transparent)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // 오늘 바로가기
+                GestureDetector(
+                  onTap: isToday ? null : () {
+                    setState(() { _selectedDate = today; _isLoading = true; _games = []; _loadGen++; });
+                    _loadGames();
+                    _loadTomorrowGames();
+                  },
+                  onLongPress: _pickDate,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isToday ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isToday ? AppColors.primary.withOpacity(0.3) : Colors.transparent,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      isToday ? '오늘' : '오늘로',
+                      style: TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w600,
+                        color: isToday ? AppColors.primary : dim,
+                      ),
+                    ),
+                  ),
+                ),
+                // 다음날
+                Expanded(
+                  child: GestureDetector(
+                    onTap: canNext ? _nextDay : null,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(fmtShort(next), style: TextStyle(fontSize: 13, color: canNext ? dim : Colors.transparent)),
+                          const SizedBox(width: 2),
+                          Icon(Icons.chevron_right, size: 20, color: canNext ? arrowC : Colors.transparent),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (_favoriteTeamIds.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    _buildFilterChip('전체', !_myTeamOnly, () => setState(() => _myTeamOnly = false)),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('마이팀', _myTeamOnly, () => setState(() => _myTeamOnly = true), icon: Icons.star),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    const dayNames = ['월', '화', '수', '목', '금', '토', '일'];
+    final dayName = dayNames[_selectedDate.weekday - 1];
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: const Text('PlayBall'),
+        title: Text('${_selectedDate.month}월 ${_selectedDate.day}일 $dayName요일'),
         actions: [
           IconButton(
             icon: Stack(
@@ -606,57 +786,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       ),
       body: Column(
         children: [
-          // 월 선택 스트립
-          _buildMonthStrip(),
-          // 날짜 스크롤 스트립
-          _buildDateStrip(),
-
-          // 당일 등록말소 배너 (오늘 날짜일 때만)
+          _buildDateNavHeader(),
           if (_todayRosterChanges.isNotEmpty && _isSameDay(_selectedDate, DateTime.now()))
             _buildTodayRosterBanner(),
-
-          // 마이팀 대시보드
           _buildMyTeamDashboard(),
-
-          // 마이팀 필터
-          if (_favoriteTeamIds.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => setState(() => _myTeamOnly = !_myTeamOnly),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _myTeamOnly ? const Color(0xFF1A237E) : Colors.grey[200],
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.star,
-                              size: 14,
-                              color: _myTeamOnly ? Colors.amber : Colors.grey[500]),
-                          const SizedBox(width: 4),
-                          Text(
-                            '마이팀',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: _myTeamOnly ? Colors.white : Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // 경기 목록
           Expanded(
             child: _isLoading || _gamesDateMismatch
                 ? _buildGameShimmer()
