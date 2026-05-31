@@ -1,3 +1,4 @@
+import os
 import psycopg2
 from psycopg2 import pool
 
@@ -21,7 +22,9 @@ _pool: pool.ThreadedConnectionPool | None = None
 def _get_pool() -> pool.ThreadedConnectionPool:
     global _pool
     if _pool is None:
-        _pool = pool.ThreadedConnectionPool(minconn=5, maxconn=20, **DB_CONFIG)
+        maxconn = int(os.environ.get('DB_POOL_MAX', '20'))
+        minconn = min(3, maxconn)
+        _pool = pool.ThreadedConnectionPool(minconn=minconn, maxconn=maxconn, **DB_CONFIG)
     return _pool
 
 

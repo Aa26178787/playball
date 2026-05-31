@@ -3,6 +3,7 @@ import time
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.environ.setdefault('DB_POOL_MAX', '10')  # 스케줄러는 10개로 제한 (API 서버에 나머지 할당)
 
 from crawler.naver_crawler import (
     get_season_schedule,
