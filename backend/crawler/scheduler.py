@@ -189,10 +189,10 @@ def _check_game_milestones(game_id: int):
             SELECT gb.player_id, p.name, t.name as team_name,
                    gb.hits as g_hits, gb.home_runs as g_hr, gb.rbi as g_rbi,
                    gb.stolen_bases as g_sb,
-                   COALESCE(SUM(CASE WHEN ds.stat_type='타자' THEN ds.hits   END),0) as m_hits,
-                   COALESCE(SUM(CASE WHEN ds.stat_type='타자' THEN ds.home_runs END),0) as m_hr,
-                   COALESCE(SUM(CASE WHEN ds.stat_type='타자' THEN ds.rbi    END),0) as m_rbi,
-                   COALESCE(SUM(CASE WHEN ds.stat_type='타자' THEN ds.sb     END),0) as m_sb
+                   COALESCE(SUM(CASE WHEN ds.stat_type='hitter' THEN ds.hits   END),0) as m_hits,
+                   COALESCE(SUM(CASE WHEN ds.stat_type='hitter' THEN ds.home_runs END),0) as m_hr,
+                   COALESCE(SUM(CASE WHEN ds.stat_type='hitter' THEN ds.rbi    END),0) as m_rbi,
+                   COALESCE(SUM(CASE WHEN ds.stat_type='hitter' THEN ds.sb     END),0) as m_sb
             FROM game_batters gb
             JOIN players p ON p.id = gb.player_id
             JOIN teams t ON t.id = p.team_id
@@ -200,7 +200,7 @@ def _check_game_milestones(game_id: int):
                 ON ds.player_id = gb.player_id
                AND ds.game_date >= %s
                AND ds.game_date < CURRENT_DATE
-               AND ds.stat_type = '타자'
+               AND ds.stat_type = 'hitter'
             WHERE gb.game_id = %s
             GROUP BY gb.player_id, p.name, t.name, gb.hits, gb.home_runs, gb.rbi, gb.stolen_bases
         """, (month_start, game_id))
@@ -210,8 +210,8 @@ def _check_game_milestones(game_id: int):
         cur.execute("""
             SELECT gp.player_id, p.name, t.name as team_name,
                    gp.strikeouts as g_so,
-                   COALESCE(SUM(CASE WHEN ds.stat_type='투수' THEN ds.so END),0) as m_so,
-                   COALESCE(SUM(CASE WHEN ds.stat_type='투수' THEN ds.h  END),0) as m_h
+                   COALESCE(SUM(CASE WHEN ds.stat_type='pitcher' THEN ds.so END),0) as m_so,
+                   COALESCE(SUM(CASE WHEN ds.stat_type='pitcher' THEN ds.h  END),0) as m_h
             FROM game_pitchers gp
             JOIN players p ON p.id = gp.player_id
             JOIN teams t ON t.id = p.team_id
@@ -219,7 +219,7 @@ def _check_game_milestones(game_id: int):
                 ON ds.player_id = gp.player_id
                AND ds.game_date >= %s
                AND ds.game_date < CURRENT_DATE
-               AND ds.stat_type = '투수'
+               AND ds.stat_type = 'pitcher'
             WHERE gp.game_id = %s
             GROUP BY gp.player_id, p.name, t.name, gp.strikeouts
         """, (month_start, game_id))
@@ -1504,6 +1504,8 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
     """Naver 중계 API에서 득점 타자/투수/타구/투구내용 추출. 실패 시 ('','','','',0,[],0) 반환"""
     import requests, re as _re
     HEADERS = {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://sports.naver.com/'}
+    conn = None
+    cur = None
     try:
         url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/relay?inning={inning}"
         res = requests.get(url, headers=HEADERS, timeout=5)
@@ -1529,8 +1531,11 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
         result_pitch_num = 0
         result_homein = []
         found_scoring = False
+        done = False
 
         for item in text_relays:
+            if done:
+                break
             for opt in item.get('textOptions', []):
                 state = opt.get('currentGameState', {}) or {}
 
@@ -1554,6 +1559,7 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
                             curr_pitch_num = 0
                         curr_batter = m.group(1)
                     if found_scoring:
+                        done = True
                         break  # 다음 타자 시작 → homeIn 수집 종료
 
                 if opt.get('stuff'):
@@ -1591,13 +1597,16 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
                     if m2 and m2.group(1) not in result_homein:
                         result_homein.append(m2.group(1))
 
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
         return result_batter, result_pitcher, result_text, result_stuff, result_speed, result_homein, result_pitch_num
     except Exception:
         return '', '', '', '', 0, [], 0
+    finally:
+        if cur:
+            try: cur.close()
+            except: pass
+        if conn:
+            try: conn.close()
+            except: pass
 
 
 def _notify_roster_for_fans():
