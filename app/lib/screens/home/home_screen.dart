@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shimmer/shimmer.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/game.dart';
 import '../../utils/local_cache.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
+import '../../providers/auth_provider.dart';
 import '../game/game_detail_screen.dart';
 import '../team/team_screen.dart';
 import '../team/team_detail_screen.dart';
@@ -93,6 +95,8 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   int _unreadNotifCount = 0;
   int _loadGen = 0;
   int _seriesGen = 0;
+  AuthProvider? _authProvider;
+  bool _wasLoggedIn = false;
 
   final ScrollController _dateScrollController = ScrollController();
   static final _seasonStart = DateTime(2026, 3, 1);
@@ -144,6 +148,9 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     _startAutoRefresh();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToSelected();
+      _authProvider = Provider.of<AuthProvider>(context, listen: false);
+      _wasLoggedIn = _authProvider!.isLoggedIn;
+      _authProvider!.addListener(_onAuthChanged);
       // 핵심 로드 후 비우선 작업 지연
       Future.delayed(const Duration(seconds: 2), () {
         if (!mounted) return;
@@ -185,8 +192,19 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
     });
   }
 
+  void _onAuthChanged() {
+    if (!mounted) return;
+    final isNow = _authProvider?.isLoggedIn ?? false;
+    if (isNow && !_wasLoggedIn) {
+      _loadFavoriteTeams();
+      _loadUnreadCount();
+    }
+    _wasLoggedIn = isNow;
+  }
+
   @override
   void dispose() {
+    _authProvider?.removeListener(_onAuthChanged);
     _autoRefreshTimer?.cancel();
     _dateScrollController.dispose();
     super.dispose();
