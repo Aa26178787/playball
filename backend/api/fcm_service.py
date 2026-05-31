@@ -285,7 +285,7 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
 
     # 2줄: 투구 번호 + 구종 + 구속
     if stuff:
-        pitch_line = f"{display_pitch_num}번째 투구 {stuff}" if display_pitch_num > 0 else stuff
+        pitch_line = f"{display_pitch_num}구 {stuff}" if display_pitch_num > 0 else stuff
         if speed > 0:
             pitch_line += f" {speed}km/h"
         lines.append(pitch_line)
@@ -294,8 +294,8 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
     if homein:
         lines.append(f"홈인: {', '.join(homein)}")
 
-    # 3줄: 스코어
-    lines.append(f"{home_score}:{away_score}")
+    # 3줄: 팀명 포함 스코어
+    lines.append(f"{home_team} {home_score}:{away_score} {away_team}")
 
     body = "\n".join(lines)
     ntype = "comeback" if is_comeback else "score_change"
@@ -509,14 +509,67 @@ def notify_starter_ko(game_id: int, pitcher_name: str, team_name: str,
 
 # ── 대기록 알림 ───────────────────────────────────────────────────────────────
 
+_MILESTONE_LABELS: dict[str, tuple] = {
+    # (emoji, 카테고리, 단위)  →  "{emoji} {이름} {월}카테고리 {값}단위!"
+    # 월간
+    'monthly_hits':  ('🔥', '월간', '안타'),
+    'monthly_hr':    ('💣', '월간', '홈런'),
+    'monthly_rbi':   ('🏆', '월간', '타점'),
+    'monthly_sb':    ('💨', '월간', '도루'),
+    'monthly_so':    ('🔥', '월간', '탈삼진'),
+    # 시즌
+    'season_hr':     ('💣', '시즌', '홈런'),
+    'season_rbi':    ('🏆', '시즌', '타점'),
+    'season_hits':   ('🔥', '시즌', '안타'),
+    'season_sb':     ('💨', '시즌', '도루'),
+    'season_bb':     ('👁️', '시즌', '볼넷'),
+    'season_runs':   ('🏃', '시즌', '득점'),
+    'season_wins':   ('🏆', '시즌', '승리'),
+    'season_so':     ('🔥', '시즌', '탈삼진'),
+    'season_saves':  ('💾', '시즌', '세이브'),
+    'season_holds':  ('✋', '시즌', '홀드'),
+    # 단일경기
+    'game_hits':     ('💥', '단일경기', '안타'),
+    'game_hr':       ('💣', '단일경기', '홈런'),
+    'game_rbi':      ('🏆', '단일경기', '타점'),
+    'game_sb':       ('💨', '단일경기', '도루'),
+    'game_so':       ('🔥', '단일경기', '탈삼진'),
+    # 통산
+    'career_hits':   ('✨', '통산', '안타'),
+    'career_hr':     ('💣', '통산', '홈런'),
+    'career_rbi':    ('🏆', '통산', '타점'),
+    'career_sb':     ('💨', '통산', '도루'),
+    'career_bb':     ('👁️', '통산', '볼넷'),
+    'career_wins':   ('🏆', '통산', '승리'),
+    'career_so':     ('🔥', '통산', '탈삼진'),
+    'career_saves':  ('💾', '통산', '세이브'),
+    'career_holds':  ('✋', '통산', '홀드'),
+    # 개인 월간 최다 경신
+    'personal_monthly_hits': ('📈', '개인 최다', '안타'),
+    'personal_monthly_hr':   ('📈', '개인 최다', '홈런'),
+    'personal_monthly_rbi':  ('📈', '개인 최다', '타점'),
+    'personal_monthly_sb':   ('📈', '개인 최다', '도루'),
+    'personal_monthly_so':   ('📈', '개인 최다', '탈삼진'),
+    # 최연소 (extra_label에 나이 포함)
+    'young_season_hr':    ('🌟', '시즌', '홈런'),
+    'young_season_rbi':   ('🌟', '시즌', '타점'),
+    'young_season_hits':  ('🌟', '시즌', '안타'),
+    'young_season_wins':  ('🌟', '시즌', '승리'),
+    'young_season_so':    ('🌟', '시즌', '탈삼진'),
+    'young_season_saves': ('🌟', '시즌', '세이브'),
+    'young_career_hr':    ('🌟', '통산', '홈런'),
+    'young_career_hits':  ('🌟', '통산', '안타'),
+}
+
+
 def notify_milestone(player_id: int, player_name: str, team_name: str,
                      milestone_type: str, milestone_value: int,
-                     season: int, month: int, game_id: int | None = None):
-    """즐겨찾기 선수 대기록 달성 알림"""
+                     season: int, month: int, game_id: int | None = None,
+                     extra_label: str = ''):
+    """즐겨찾기 선수 대기록 달성 알림. extra_label: '22세' 등 부가 정보."""
     conn = get_connection()
     if not conn:
         return
-    # 중복 방지: 이미 발송된 마일스톤이면 스킵
     try:
         cur = conn.cursor()
         cur.execute("""
@@ -542,27 +595,14 @@ def notify_milestone(player_id: int, player_name: str, team_name: str,
     if not targets:
         return
 
-    _LABELS = {
-        'monthly_rbi':   ('🏆', '월간 타점',   '타점'),
-        'monthly_hr':    ('💣', '월간 홈런',   '홈런'),
-        'monthly_hits':  ('🔥', '월간 안타',   '안타'),
-        'monthly_sb':    ('💨', '월간 도루',   '도루'),
-        'monthly_so':    ('🔥', '월간 탈삼진', '탈삼진'),
-        'season_hr':     ('💣', '시즌 홈런',   '홈런'),
-        'season_rbi':    ('🏆', '시즌 타점',   '타점'),
-        'season_hits':   ('🔥', '시즌 안타',   '안타'),
-        'season_sb':     ('💨', '시즌 도루',   '도루'),
-        'season_wins':   ('🏆', '시즌 승리',   '승'),
-        'season_so':     ('🔥', '시즌 탈삼진', '탈삼진'),
-        'season_saves':  ('💾', '시즌 세이브', '세이브'),
-        'season_holds':  ('✋', '시즌 홀드',   '홀드'),
-    }
-    emoji, label, unit = _LABELS.get(milestone_type, ('⭐', milestone_type, ''))
-    month_str = f"{month}월 " if 'monthly' in milestone_type else ''
+    emoji, cat, unit = _MILESTONE_LABELS.get(milestone_type, ('⭐', milestone_type, ''))
+    month_str = f"{month}월 " if month > 0 and 'monthly' in milestone_type else ''
+    extra_str = f" ({extra_label})" if extra_label else ''
 
-    _send(targets,
-          f"{emoji} {player_name} {month_str}{label} {milestone_value}{unit}!",
-          f"{team_name} {player_name} {month_str}{label} {milestone_value}{unit} 달성!",
+    title = f"{emoji} {player_name} {month_str}{cat} {milestone_value}{unit}!{extra_str}"
+    body = f"{team_name} {player_name} {month_str}{cat} {milestone_value}{unit} 달성!{extra_str}"
+
+    _send(targets, title, body,
           {"player_id": str(player_id), "type": "milestone",
            **({"game_id": str(game_id)} if game_id else {})},
           "score_change", game_id)

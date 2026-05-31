@@ -222,13 +222,24 @@ def _check_game_milestones(game_id: int):
     try:
         from api.fcm_service import notify_milestone
 
-        # 타자 월간 마일스톤
+        # ── 타자 월간 마일스톤 ──
         BATTER_MONTHLY = {
-            'monthly_hits': ([20, 25, 30, 35, 40], 0),   # (thresholds, idx in row)
-            'monthly_hr':   ([5, 7, 10, 12, 15], 1),
-            'monthly_rbi':  ([10, 15, 20, 25, 30], 2),
-            'monthly_sb':   ([5, 8, 10, 15], 3),
+            'monthly_hits': [20, 25, 30, 35, 40],
+            'monthly_hr':   [5, 7, 10, 12, 15],
+            'monthly_rbi':  [10, 15, 20, 25, 30],
+            'monthly_sb':   [5, 8, 10, 15],
         }
+        # ── 단일경기 최다 ──
+        BATTER_GAME = {
+            'game_hits': [4, 5, 6],
+            'game_hr':   [3, 4],
+            'game_rbi':  [5, 6, 7, 8],
+            'game_sb':   [3, 4],
+        }
+
+        batter_ids = []
+        batter_monthly_totals = {}  # pid → {stat: val}
+
         for row in batters:
             pid, pname, tname = row[0], row[1], row[2]
             g_hits, g_hr, g_rbi, g_sb = row[3] or 0, row[4] or 0, row[5] or 0, row[6] or 0
@@ -239,20 +250,81 @@ def _check_game_milestones(game_id: int):
                 'monthly_rbi':  m_rbi + g_rbi,
                 'monthly_sb':   m_sb + g_sb,
             }
-            for mtype, (thresholds, _) in BATTER_MONTHLY.items():
-                val = totals[mtype]
+            batter_monthly_totals[pid] = (pname, tname, g_hits, g_hr, g_rbi, g_sb, totals)
+            batter_ids.append(pid)
+
+            for mtype, thresholds in BATTER_MONTHLY.items():
                 for t in thresholds:
-                    if val >= t:
+                    if totals[mtype] >= t:
                         notify_milestone(pid, pname, tname, mtype, t, season, month, game_id)
 
-        # 투수 월간 마일스톤
+            game_vals = {'game_hits': g_hits, 'game_hr': g_hr, 'game_rbi': g_rbi, 'game_sb': g_sb}
+            for mtype, thresholds in BATTER_GAME.items():
+                for t in thresholds:
+                    if game_vals[mtype] >= t:
+                        notify_milestone(pid, pname, tname, mtype, t, season, month, game_id)
+
+        # ── 투수 월간 마일스톤 + 단일경기 탈삼진 ──
+        pitcher_monthly_so = {}  # pid → (pname, tname, total_so)
         PITCHER_MONTHLY_SO = [30, 40, 50, 60]
+        PITCHER_GAME_SO = [10, 12, 14]
+
         for row in pitchers:
             pid, pname, tname = row[0], row[1], row[2]
-            total_so = (row[3] or 0) + row[4]
+            g_so = row[3] or 0
+            total_so = g_so + row[4]
+            pitcher_monthly_so[pid] = (pname, tname, g_so)
             for t in PITCHER_MONTHLY_SO:
                 if total_so >= t:
                     notify_milestone(pid, pname, tname, 'monthly_so', t, season, month, game_id)
+            for t in PITCHER_GAME_SO:
+                if g_so >= t:
+                    notify_milestone(pid, pname, tname, 'game_so', t, season, month, game_id)
+
+        # ── 개인 월간 최다 경신 (역대 월간 최고치 대비) ──
+        if batter_ids:
+            conn2 = get_connection()
+            if conn2:
+                try:
+                    cur2 = conn2.cursor()
+                    cur2.execute("""
+                        SELECT player_id,
+                               MAX(mh) as best_hits, MAX(mhr) as best_hr,
+                               MAX(mrbi) as best_rbi, MAX(msb) as best_sb
+                        FROM (
+                            SELECT player_id,
+                                   SUM(hits) as mh, SUM(home_runs) as mhr,
+                                   SUM(rbi) as mrbi, SUM(sb) as msb
+                            FROM player_daily_stats
+                            WHERE stat_type = 'hitter'
+                              AND player_id = ANY(%s)
+                              AND game_date < date_trunc('month', CURRENT_DATE)
+                              AND game_date >= '2015-01-01'
+                            GROUP BY player_id, date_trunc('month', game_date)
+                        ) sub
+                        GROUP BY player_id
+                    """, (batter_ids,))
+                    personal_bests = {r[0]: (r[1] or 0, r[2] or 0, r[3] or 0, r[4] or 0)
+                                      for r in cur2.fetchall()}
+                    cur2.close()
+                    conn2.close()
+
+                    for pid, (pname, tname, _gh, _ghr, _grbi, _gsb, totals) in batter_monthly_totals.items():
+                        pb = personal_bests.get(pid, (0, 0, 0, 0))
+                        checks = [
+                            ('personal_monthly_hits', totals['monthly_hits'], pb[0]),
+                            ('personal_monthly_hr',   totals['monthly_hr'],   pb[1]),
+                            ('personal_monthly_rbi',  totals['monthly_rbi'],  pb[2]),
+                            ('personal_monthly_sb',   totals['monthly_sb'],   pb[3]),
+                        ]
+                        for mtype, curr_val, prev_best in checks:
+                            if curr_val > 0 and curr_val > prev_best:
+                                notify_milestone(pid, pname, tname, mtype, curr_val, season, month, game_id)
+                except Exception as pb_err:
+                    print(f"[마일스톤] 개인 최다 쿼리 오류: {pb_err}")
+                    try: conn2.close()
+                    except: pass
+
     except Exception as e:
         print(f"[FCM] 마일스톤 알림 오류: {e}")
 
@@ -302,38 +374,172 @@ def _check_post_game_milestones(game_id: int):
 
     try:
         from api.fcm_service import notify_milestone
+        from datetime import date as _dt
 
-        # 타자 시즌 마일스톤
+        # ── 나이 조회 (최연소 체크용) ──
+        all_pids = [r[0] for r in batters] + [r[0] for r in pitchers]
+        birth_map = {}
+        if all_pids:
+            conn_b = get_connection()
+            if conn_b:
+                try:
+                    cur_b = conn_b.cursor()
+                    cur_b.execute(
+                        "SELECT id, birth_date FROM players WHERE id = ANY(%s) AND birth_date IS NOT NULL",
+                        (all_pids,))
+                    for pid_b, bd in cur_b.fetchall():
+                        birth_map[pid_b] = bd
+                    cur_b.close()
+                finally:
+                    conn_b.close()
+
+        today = _dt.today()
+
+        def _age(pid):
+            bd = birth_map.get(pid)
+            if not bd:
+                return None
+            return (today - bd).days // 365
+
+        # ── 타자 시즌 마일스톤 ──
         BATTER_SEASON = {
-            'season_hr':   ([10, 15, 20, 25, 30, 35, 40], 0),
-            'season_rbi':  ([50, 60, 70, 80, 90, 100, 110], 1),
-            'season_hits': ([50, 100, 150, 200], 2),
-            'season_sb':   ([10, 20, 30, 40], 3),
+            'season_hr':   [10, 15, 20, 25, 30, 35, 40],
+            'season_rbi':  [50, 60, 70, 80, 90, 100, 110],
+            'season_hits': [50, 100, 150, 200],
+            'season_sb':   [10, 20, 30, 40],
+        }
+        YOUNG_BATTER_SEASON = {  # 25세 이하 특이 기록
+            'season_hr':   20,
+            'season_rbi':  70,
+            'season_hits': 100,
         }
         for row in batters:
             pid, pname, tname = row[0], row[1], row[2]
             vals = {'season_hr': row[3] or 0, 'season_rbi': row[4] or 0,
                     'season_hits': row[5] or 0, 'season_sb': row[6] or 0}
-            for mtype, (thresholds, _) in BATTER_SEASON.items():
+            for mtype, thresholds in BATTER_SEASON.items():
                 for t in thresholds:
                     if vals[mtype] >= t:
                         notify_milestone(pid, pname, tname, mtype, t, season, month, game_id)
+            # 최연소 체크
+            age = _age(pid)
+            if age and age <= 25:
+                for mtype, min_val in YOUNG_BATTER_SEASON.items():
+                    if vals[mtype] >= min_val:
+                        ytype = mtype.replace('season_', 'young_season_')
+                        notify_milestone(pid, pname, tname, ytype, vals[mtype],
+                                         season, month, game_id, extra_label=f"{age}세")
 
-        # 투수 시즌 마일스톤
+        # ── 투수 시즌 마일스톤 ──
         PITCHER_SEASON = {
-            'season_wins':  ([5, 10, 15, 20], 0),
-            'season_so':    ([50, 100, 150, 200], 1),
-            'season_saves': ([10, 20, 30, 40], 2),
-            'season_holds': ([10, 20, 30], 3),
+            'season_wins':  [5, 10, 15, 20],
+            'season_so':    [50, 100, 150, 200],
+            'season_saves': [10, 20, 30, 40],
+            'season_holds': [10, 20, 30],
+        }
+        YOUNG_PITCHER_SEASON = {  # 25세 이하 특이 기록
+            'season_wins': 10,
+            'season_so': 100,
         }
         for row in pitchers:
             pid, pname, tname = row[0], row[1], row[2]
             vals = {'season_wins': row[3] or 0, 'season_so': row[4] or 0,
                     'season_saves': row[5] or 0, 'season_holds': row[6] or 0}
-            for mtype, (thresholds, _) in PITCHER_SEASON.items():
+            for mtype, thresholds in PITCHER_SEASON.items():
                 for t in thresholds:
                     if vals[mtype] >= t:
                         notify_milestone(pid, pname, tname, mtype, t, season, month, game_id)
+            age = _age(pid)
+            if age and age <= 25:
+                for mtype, min_val in YOUNG_PITCHER_SEASON.items():
+                    if vals[mtype] >= min_val:
+                        ytype = mtype.replace('season_', 'young_season_')
+                        notify_milestone(pid, pname, tname, ytype, vals[mtype],
+                                         season, month, game_id, extra_label=f"{age}세")
+
+        # ── 통산 타자 마일스톤 ──
+        conn2 = get_connection()
+        if conn2:
+            try:
+                cur2 = conn2.cursor()
+                cur2.execute("""
+                    SELECT bs.player_id, p.name, t.name,
+                           SUM(COALESCE(bs.hits, 0)),
+                           SUM(COALESCE(bs.home_runs, 0)),
+                           SUM(COALESCE(bs.rbis, 0)),
+                           SUM(COALESCE(bs.stolen_bases, 0)),
+                           SUM(COALESCE(bs.walks, 0))
+                    FROM game_batters gb
+                    JOIN batter_stats bs ON bs.player_id = gb.player_id
+                    JOIN players p ON p.id = gb.player_id
+                    JOIN teams t ON t.id = p.team_id
+                    WHERE gb.game_id = %s
+                    GROUP BY bs.player_id, p.name, t.name
+                """, (game_id,))
+                career_batters = cur2.fetchall()
+
+                CAREER_BATTER = {
+                    'career_hits':  [500, 1000, 1500, 2000, 2500],
+                    'career_hr':    [100, 200, 300, 400, 500],
+                    'career_rbi':   [500, 1000, 1500],
+                    'career_sb':    [100, 200, 300],
+                    'career_bb':    [500, 1000],
+                }
+                for row in career_batters:
+                    pid, pname, tname = row[0], row[1], row[2]
+                    cvals = {'career_hits': row[3], 'career_hr': row[4],
+                             'career_rbi': row[5], 'career_sb': row[6], 'career_bb': row[7]}
+                    for mtype, thresholds in CAREER_BATTER.items():
+                        for t in thresholds:
+                            if cvals[mtype] >= t:
+                                notify_milestone(pid, pname, tname, mtype, t, season, 0, game_id)
+                    # 25세 이하 통산 100홈런/1000안타
+                    age = _age(pid)
+                    if age and age <= 25:
+                        if cvals['career_hr'] >= 100:
+                            notify_milestone(pid, pname, tname, 'young_career_hr', 100,
+                                             season, 0, game_id, extra_label=f"{age}세")
+                        if cvals['career_hits'] >= 1000:
+                            notify_milestone(pid, pname, tname, 'young_career_hits', 1000,
+                                             season, 0, game_id, extra_label=f"{age}세")
+
+                # ── 통산 투수 마일스톤 ──
+                cur2.execute("""
+                    SELECT ps.player_id, p.name, t.name,
+                           SUM(COALESCE(ps.wins, 0)),
+                           SUM(COALESCE(ps.strikeouts, 0)),
+                           SUM(COALESCE(ps.saves, 0)),
+                           SUM(COALESCE(ps.holds, 0))
+                    FROM game_pitchers gp
+                    JOIN pitcher_stats ps ON ps.player_id = gp.player_id
+                    JOIN players p ON p.id = gp.player_id
+                    JOIN teams t ON t.id = p.team_id
+                    WHERE gp.game_id = %s
+                    GROUP BY ps.player_id, p.name, t.name
+                """, (game_id,))
+                career_pitchers = cur2.fetchall()
+
+                CAREER_PITCHER = {
+                    'career_wins':  [50, 100, 150, 200],
+                    'career_so':    [500, 1000, 1500, 2000, 2500],
+                    'career_saves': [100, 200, 300],
+                    'career_holds': [100, 200],
+                }
+                for row in career_pitchers:
+                    pid, pname, tname = row[0], row[1], row[2]
+                    cvals = {'career_wins': row[3], 'career_so': row[4],
+                             'career_saves': row[5], 'career_holds': row[6]}
+                    for mtype, thresholds in CAREER_PITCHER.items():
+                        for t in thresholds:
+                            if cvals[mtype] >= t:
+                                notify_milestone(pid, pname, tname, mtype, t, season, 0, game_id)
+
+                cur2.close()
+            except Exception as career_err:
+                print(f"[마일스톤] 통산 쿼리 오류: {career_err}")
+            finally:
+                conn2.close()
+
     except Exception as e:
         print(f"[FCM] 시즌 마일스톤 알림 오류: {e}")
 
