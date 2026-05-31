@@ -1364,17 +1364,28 @@ class GameCard extends StatelessWidget {
       );
     }
 
+    final showPrediction = (game.status == '예정' || game.status == '라인업') &&
+        game.homeTeamId != null && game.awayTeamId != null;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: isMyTeam ? const BorderSide(color: Color(0xFF1A237E), width: 1.5) : BorderSide.none,
       ),
-      child: InkWell(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+      InkWell(
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(12),
+          topRight: const Radius.circular(12),
+          bottomLeft: Radius.circular(showPrediction ? 0 : 12),
+          bottomRight: Radius.circular(showPrediction ? 0 : 12),
+        ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+          padding: EdgeInsets.fromLTRB(14, 10, 14, showPrediction ? 6 : 12),
           child: Column(
             children: [
               // 상태 + 날씨/구장
@@ -1475,21 +1486,23 @@ class GameCard extends StatelessWidget {
                   )),
                 ],
               ),
-              if ((game.status == '예정' || game.status == '라인업') &&
-                  game.homeTeamId != null && game.awayTeamId != null) ...[
-                const SizedBox(height: 8),
-                _PredictionBar(
-                  key: ValueKey(game.id),
-                  gameId: game.id,
-                  homeTeamId: game.homeTeamId!,
-                  awayTeamId: game.awayTeamId!,
-                  homeCode: game.homeTeamCode,
-                  awayCode: game.awayTeamCode,
-                ),
-              ],
             ],
           ),
         ),
+      ),
+      if (showPrediction)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+          child: _PredictionBar(
+            key: ValueKey(game.id),
+            gameId: game.id,
+            homeTeamId: game.homeTeamId!,
+            awayTeamId: game.awayTeamId!,
+            homeCode: game.homeTeamCode,
+            awayCode: game.awayTeamCode,
+          ),
+        ),
+        ],
       ),
     );
   }
@@ -1602,7 +1615,6 @@ class _PredictionBarState extends State<_PredictionBar> {
   }) {
     return Expanded(
       child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -1647,79 +1659,48 @@ class _PredictionBarState extends State<_PredictionBar> {
     final awayPct = 1.0 - homePct;
     final homeColor = teamColor(widget.homeCode);
     final awayColor = teamColor(widget.awayCode);
-    final homeFlex = (homePct * 100).round().clamp(1, 99);
-    final awayFlex = 100 - homeFlex;
     final homeSelected = _userVote == widget.homeTeamId;
     final awaySelected = _userVote == widget.awayTeamId;
     final homePctStr = _loading ? '-' : '${(homePct * 100).round()}%';
     final awayPctStr = _loading ? '-' : '${(awayPct * 100).round()}%';
 
-    // GestureDetector(opaque) — 부모 Card InkWell로 탭 전파 차단
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () {},
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Divider(height: 8, thickness: 0.5),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(
-              children: [
-                Text('승리 예측',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[500])),
-                const Spacer(),
-                if (total > 0)
-                  Text('$total명 참여',
-                      style: TextStyle(fontSize: 10, color: Colors.grey[400])),
-              ],
-            ),
-          ),
-          Row(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Divider(height: 8, thickness: 0.5),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
             children: [
-              _voteButton(
-                isSelected: homeSelected,
-                color: homeColor,
-                name: teamDisplayName(widget.homeCode),
-                pct: homePctStr,
-                onTap: _loading ? null : () => _vote(widget.homeTeamId),
-              ),
-              const SizedBox(width: 8),
-              _voteButton(
-                isSelected: awaySelected,
-                color: awayColor,
-                name: teamDisplayName(widget.awayCode),
-                pct: awayPctStr,
-                onTap: _loading ? null : () => _vote(widget.awayTeamId),
-              ),
+              Text('승리 예측',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[500])),
+              const Spacer(),
+              if (total > 0)
+                Text('$total명 참여',
+                    style: TextStyle(fontSize: 10, color: Colors.grey[400])),
             ],
           ),
-          const SizedBox(height: 6),
-          // 비율 바
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: homeFlex,
-                  child: Container(
-                    height: 3,
-                    color: homeColor.withOpacity(homeSelected ? 0.8 : 0.25),
-                  ),
-                ),
-                Expanded(
-                  flex: awayFlex,
-                  child: Container(
-                    height: 3,
-                    color: awayColor.withOpacity(awaySelected ? 0.8 : 0.25),
-                  ),
-                ),
-              ],
+        ),
+        Row(
+          children: [
+            _voteButton(
+              isSelected: homeSelected,
+              color: homeColor,
+              name: teamDisplayName(widget.homeCode),
+              pct: homePctStr,
+              onTap: () => _vote(widget.homeTeamId),
             ),
-          ),
-          const SizedBox(height: 4),
-        ],
-      ),
+            const SizedBox(width: 8),
+            _voteButton(
+              isSelected: awaySelected,
+              color: awayColor,
+              name: teamDisplayName(widget.awayCode),
+              pct: awayPctStr,
+              onTap: () => _vote(widget.awayTeamId),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
