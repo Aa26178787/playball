@@ -1550,13 +1550,18 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
                 br = opt.get('batterRecord') or {}
                 if br.get('name'):
                     if br['name'] != curr_batter:
-                        curr_pitch_num = 0  # 새 타자 → 투구 카운트 리셋
+                        curr_pitch_num = 0
+                        # 새 타자 → 이전 타석 last_* 무효화 (이전 타석 투구 결과 오캡처 방지)
+                        last_batter = last_pitcher = last_text = last_stuff = ''
+                        last_speed = last_pitch_num = 0
                     curr_batter = br['name']
                 elif opt.get('type') == 8:
                     m = _re.match(r'^(?:\d+번타자|대타)\s+(\S+)', opt.get('text', ''))
                     if m:
                         if m.group(1) != curr_batter:
                             curr_pitch_num = 0
+                            last_batter = last_pitcher = last_text = last_stuff = ''
+                            last_speed = last_pitch_num = 0
                         curr_batter = m.group(1)
                     if found_scoring:
                         done = True
