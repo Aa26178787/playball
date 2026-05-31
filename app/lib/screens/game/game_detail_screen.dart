@@ -3821,12 +3821,11 @@ class _FullFieldView extends StatelessWidget {
       Widget runnerWidget(Map<String, dynamic>? p, String baseKey, bool isOccupied) {
         final coord = _baseCoords[baseKey]!;
         final runnerName = p?['name'] as String? ?? '';
-        final baseLabel = baseKey == 'base1' ? '1루' : baseKey == 'base2' ? '2루' : '3루';
         return placed(coord,
           _PlayerDot(
-            name: '',
+            name: runnerName,
             imageUrl: p?['image'] as String?,
-            label: runnerName.isNotEmpty ? runnerName : baseLabel,
+            label: '',
             isOffense: true,
             isDark: isDark,
             size: 26,
