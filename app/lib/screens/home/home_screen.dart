@@ -81,7 +81,8 @@ class TodayGamesTab extends StatefulWidget {
   State<TodayGamesTab> createState() => _TodayGamesTabState();
 }
 
-class _TodayGamesTabState extends State<TodayGamesTab> {
+class _TodayGamesTabState extends State<TodayGamesTab>
+    with WidgetsBindingObserver {
   DateTime _selectedDate = DateTime.now();
   List _games = [];
   List _seriesGames = [];
@@ -142,6 +143,7 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadGames();        // 최우선
     _loadFavoriteTeams();
     _loadRankings();
@@ -204,20 +206,30 @@ class _TodayGamesTabState extends State<TodayGamesTab> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _authProvider?.removeListener(_onAuthChanged);
     _autoRefreshTimer?.cancel();
     _dateScrollController.dispose();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      _loadGames();
+      _loadUnreadCount();
+    }
+  }
+
   void _startAutoRefresh() {
     _autoRefreshTimer?.cancel();
-    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (!mounted) return;
-      if (_hasLiveGames) {
+      final isToday = _isSameDay(_selectedDate, DateTime.now());
+      if (isToday || _hasLiveGames) {
         _loadGames();
       } else {
-        // 라이브 경기 없어도 빌드 트리거: 자정 지나면 배너 조건 재평가
+        // 자정 지나면 배너 조건 재평가
         setState(() {});
       }
     });

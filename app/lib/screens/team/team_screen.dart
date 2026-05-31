@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
@@ -16,26 +17,47 @@ class TeamScreen extends StatefulWidget {
 }
 
 class _TeamScreenState extends State<TeamScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
   List _teams = [];
   bool _isLoading = true;
   Set<int> _favoriteTeamIds = {};
   List _odds = [];
+  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: 3, vsync: this);
     _loadTeams();
     _loadFavoriteTeams();
     _loadOdds();
+    _startAutoRefresh();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _autoRefreshTimer?.cancel();
     _tabController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      _loadTeams();
+      _loadOdds();
+    }
+  }
+
+  void _startAutoRefresh() {
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 120), (_) {
+      if (!mounted) return;
+      _loadTeams();
+    });
   }
 
   Future<void> _loadTeams() async {
