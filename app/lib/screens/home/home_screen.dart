@@ -1130,61 +1130,6 @@ class _TodayGamesTabState extends State<TodayGamesTab>
 
 // ===== Winner Glow Logo =====
 
-class _NeonGlowLogo extends StatefulWidget {
-  final String teamCode;
-  final Color color;
-  final double size;
-  final Widget logo;
-  const _NeonGlowLogo({required this.teamCode, required this.color, required this.size, required this.logo});
-
-  @override
-  State<_NeonGlowLogo> createState() => _NeonGlowLogoState();
-}
-
-class _NeonGlowLogoState extends State<_NeonGlowLogo> with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))
-      ..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = widget.color;
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, child) {
-        final v = _anim.value;
-        return Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(color: c.withValues(alpha: 0.9 * v), blurRadius: 6, spreadRadius: 1),
-              BoxShadow(color: c.withValues(alpha: 0.55 * v), blurRadius: 14, spreadRadius: 4),
-              BoxShadow(color: c.withValues(alpha: 0.25 * v), blurRadius: 28, spreadRadius: 8),
-              BoxShadow(color: Colors.white.withValues(alpha: 0.35 * v), blurRadius: 4, spreadRadius: 0),
-            ],
-          ),
-          child: child,
-        );
-      },
-      child: widget.logo,
-    );
-  }
-}
 
 class GameCard extends StatelessWidget {
   final Game game;
@@ -1308,11 +1253,9 @@ class GameCard extends StatelessWidget {
   }
 
   Widget _winnerGlowLogo(String teamCode, bool isWinner) {
-    const size = 52.0;
-    final logo = TeamLogo(teamCode: teamCode, size: size);
-    if (!isWinner) return Opacity(opacity: 0.85, child: logo);
-    final c = teamColor(teamCode);
-    return _NeonGlowLogo(teamCode: teamCode, color: c, size: size, logo: logo);
+    final logo = TeamLogo(teamCode: teamCode, size: 52);
+    if (!isWinner) return Opacity(opacity: 0.72, child: logo);
+    return logo;
   }
 
   @override
@@ -1397,9 +1340,27 @@ class GameCard extends StatelessWidget {
               ),
             ),
           ),
-          // === 어두운 오버레이 (가독성) ===
+          // === 어두운 오버레이 (가독성 / 승리팀 방향 밝게) ===
           Positioned.fill(
-            child: Container(color: Colors.black.withOpacity(overlayOpacity)),
+            child: isFinished && !isDraw
+                ? Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: homeWon
+                            ? [
+                                Colors.black.withOpacity(overlayOpacity - 0.2),
+                                Colors.black.withOpacity(overlayOpacity + 0.1),
+                              ]
+                            : [
+                                Colors.black.withOpacity(overlayOpacity + 0.1),
+                                Colors.black.withOpacity(overlayOpacity - 0.2),
+                              ],
+                      ),
+                    ),
+                  )
+                : Container(color: Colors.black.withOpacity(overlayOpacity)),
           ),
           // === 콘텐츠 ===
           Column(
