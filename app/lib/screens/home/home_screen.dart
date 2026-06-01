@@ -1174,7 +1174,6 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             ),
           ),
         ),
-      ),
     );
   }
 
