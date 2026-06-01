@@ -888,9 +888,31 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             _buildTodayRosterBanner(),
           _buildMyTeamDashboard(),
           Expanded(
-            child: _isLoading
-                ? _buildGameShimmer()
-                : _buildGameList(),
+            child: Stack(
+              children: [
+                _isLoading ? _buildGameShimmer() : _buildGameList(),
+                Positioned(
+                  top: 0, left: 0, right: 0,
+                  height: 52,
+                  child: IgnorePointer(
+                    child: Builder(builder: (ctx) {
+                      final scaffoldBg = Theme.of(ctx).brightness == Brightness.dark
+                          ? AppColors.scaffoldDark
+                          : AppColors.scaffoldLight;
+                      return Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [scaffoldBg, scaffoldBg.withOpacity(0)],
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -943,13 +965,15 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             ),
           ),
           SizedBox(
-            height: 80,
+            height: 66,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              clipBehavior: Clip.none,
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
               children: myRankings.map((r) => _buildMyTeamCard(r as Map)).toList(),
             ),
           ),
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -1025,9 +1049,9 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(ranking))),
       ),
       child: Container(
-        width: 205,
-        margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        width: 175,
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
@@ -1040,16 +1064,16 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             // 상단: 로고 + 팀명 + 순위
             Row(
               children: [
-                TeamLogo(teamCode: code, size: 26),
-                const SizedBox(width: 7),
+                TeamLogo(teamCode: code, size: 22),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(name,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                       overflow: TextOverflow.ellipsis),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: rankBg, borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(color: rankBg, borderRadius: BorderRadius.circular(8)),
                   child: Text('${rank}위',
                       style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                 ),
@@ -1058,11 +1082,11 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             // 하단: 오늘 경기 + 연속
             Row(
               children: [
-                if (showWinIcon) const Icon(Icons.arrow_upward, size: 10, color: Colors.blue),
-                if (showLossIcon) const Icon(Icons.arrow_downward, size: 10, color: Colors.red),
+                if (showWinIcon) const Icon(Icons.arrow_upward, size: 9, color: Colors.blue),
+                if (showLossIcon) const Icon(Icons.arrow_downward, size: 9, color: Colors.red),
                 Expanded(
                   child: Text(gameStr,
-                      style: TextStyle(fontSize: 11, color: gameColor, fontWeight: FontWeight.w600),
+                      style: TextStyle(fontSize: 10, color: gameColor, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis),
                 ),
                 if (streakText.isNotEmpty) ...[
