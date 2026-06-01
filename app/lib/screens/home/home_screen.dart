@@ -171,6 +171,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   bool _wasLoggedIn = false;
 
   final ScrollController _dateScrollController = ScrollController();
+  final ScrollController _gameScrollController = ScrollController();
   static final _seasonStart = DateTime(2026, 3, 1);
   static final _seasonEnd   = DateTime(2026, 10, 31);
   static const _itemW = 50.0;
@@ -207,9 +208,16 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
   }
 
+  void _resetGameScroll() {
+    if (_gameScrollController.hasClients) {
+      _gameScrollController.jumpTo(0);
+    }
+  }
+
   void _prevDay() {
     if (_selectedDate.isAfter(_seasonStart)) {
       setState(() => _selectedDate = _selectedDate.subtract(const Duration(days: 1)));
+      _resetGameScroll();
       _loadGames();
       Future.delayed(const Duration(seconds: 3), () { if (mounted) _loadTomorrowGames(); });
     }
@@ -218,6 +226,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   void _nextDay() {
     if (_selectedDate.isBefore(_seasonEnd)) {
       setState(() => _selectedDate = _selectedDate.add(const Duration(days: 1)));
+      _resetGameScroll();
       _loadGames();
       Future.delayed(const Duration(seconds: 3), () { if (mounted) _loadTomorrowGames(); });
     }
@@ -310,6 +319,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     _authProvider?.removeListener(_onAuthChanged);
     _autoRefreshTimer?.cancel();
     _dateScrollController.dispose();
+    _gameScrollController.dispose();
     super.dispose();
   }
 
@@ -894,25 +904,36 @@ class _TodayGamesTabState extends State<TodayGamesTab>
               clipBehavior: Clip.none,
               children: [
                 _isLoading ? _buildGameShimmer() : _buildGameList(),
-                Positioned(
-                  top: 0, left: 0, right: 0,
-                  height: 52,
-                  child: IgnorePointer(
-                    child: Builder(builder: (ctx) {
-                      final scaffoldBg = Theme.of(ctx).brightness == Brightness.dark
-                          ? AppColors.scaffoldDark
-                          : AppColors.scaffoldLight;
-                      return Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [scaffoldBg, scaffoldBg.withOpacity(0)],
+                AnimatedBuilder(
+                  animation: _gameScrollController,
+                  builder: (ctx, _) {
+                    final offset = _gameScrollController.hasClients
+                        ? _gameScrollController.offset
+                        : 0.0;
+                    final opacity = (offset / 48.0).clamp(0.0, 1.0);
+                    if (opacity == 0) return const SizedBox.shrink();
+                    final scaffoldBg = Theme.of(ctx).brightness == Brightness.dark
+                        ? AppColors.scaffoldDark
+                        : AppColors.scaffoldLight;
+                    return Positioned(
+                      top: 0, left: 0, right: 0,
+                      height: 52,
+                      child: IgnorePointer(
+                        child: Opacity(
+                          opacity: opacity,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [scaffoldBg, scaffoldBg.withOpacity(0)],
+                              ),
+                            ),
                           ),
                         ),
-                      );
-                    }),
-                  ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -1278,6 +1299,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     return RefreshIndicator(
       onRefresh: _loadGames,
       child: ListView.builder(
+        controller: _gameScrollController,
         padding: EdgeInsets.fromLTRB(16, 8, 16, 96 + MediaQuery.of(context).padding.bottom),
         itemCount: filtered.length,
         itemBuilder: (context, index) {
