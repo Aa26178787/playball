@@ -540,6 +540,9 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 decoration: BoxDecoration(
                   color: isActive ? const Color(0xFF1A237E) : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
+                  boxShadow: isActive
+                      ? [BoxShadow(color: const Color(0xFF1A237E).withOpacity(0.40), blurRadius: 8, offset: const Offset(0, 3))]
+                      : null,
                 ),
                 child: Center(
                   child: Text(
@@ -612,6 +615,9 @@ class _TodayGamesTabState extends State<TodayGamesTab>
               decoration: BoxDecoration(
                 color: isSelected ? const Color(0xFF1A237E) : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
+                boxShadow: isSelected
+                    ? [BoxShadow(color: const Color(0xFF1A237E).withOpacity(0.45), blurRadius: 10, offset: const Offset(0, 4))]
+                    : null,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

@@ -29,6 +29,7 @@ class _TeamScreenState extends State<TeamScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    ApiService.favoriteTeamsChanged.addListener(_loadFavoriteTeams);
     _tabController = TabController(length: 3, vsync: this);
     _loadTeams();
     _loadFavoriteTeams();
@@ -39,6 +40,7 @@ class _TeamScreenState extends State<TeamScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    ApiService.favoriteTeamsChanged.removeListener(_loadFavoriteTeams);
     _autoRefreshTimer?.cancel();
     _tabController.dispose();
     super.dispose();
