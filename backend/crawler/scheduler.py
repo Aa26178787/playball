@@ -985,6 +985,25 @@ def smart_update():
                     notify_game_end(gid, curr['home_team'], curr['away_team'],
                                     curr['home_score'], curr['away_score'],
                                     curr['home_team_id'], curr['away_team_id'])
+                    # 종료 시점 날씨 DB 저장
+                    try:
+                        from api.weather_service import get_weather
+                        import json as _json
+                        _sid = curr.get('stadium_id')
+                        if _sid:
+                            _wdata = get_weather(_sid)
+                            if _wdata:
+                                _wc = get_connection()
+                                if _wc:
+                                    _wcur = _wc.cursor()
+                                    _wcur.execute(
+                                        "UPDATE games SET weather = %s WHERE id = %s",
+                                        (_json.dumps(_wdata), gid)
+                                    )
+                                    _wc.commit()
+                                    _wcur.close(); _wc.close()
+                    except Exception as _we:
+                        print(f'[Weather] 종료 날씨 저장 실패 game={gid}: {_we}')
 
                 # 연장전 돌입 (별도 체크)
                 prev_inn = prev.get('current_inning', 0) or 0
@@ -1565,11 +1584,11 @@ def _get_game_details():
         SELECT g.id, g.status, g.home_score, g.away_score,
                ht.name, at2.name, g.home_team_id, g.away_team_id,
                COALESCE(g.current_inning, 0), g.inning_half,
-               TO_CHAR(g.start_time, 'HH24:MI'), g.naver_game_id
+               TO_CHAR(g.start_time, 'HH24:MI'), g.naver_game_id, g.stadium_id
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at2 ON g.away_team_id = at2.id
-        WHERE g.game_date = CURRENT_DATE
+        WHERE g.game_date = (NOW() AT TIME ZONE 'Asia/Seoul')::date
     """)
     rows = cur.fetchall()
     cur.close()
@@ -1587,6 +1606,7 @@ def _get_game_details():
             'inning_half':    r[9] or '',
             'start_time':     r[10] or '',
             'naver_game_id':  r[11] or '',
+            'stadium_id':     r[12],
         }
         for r in rows
     }

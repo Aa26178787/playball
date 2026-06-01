@@ -101,7 +101,7 @@ def get_forecast_at(stadium_id: int, target_hour_kst: int) -> dict | None:
                 'appid': API_KEY,
                 'units': 'metric',
                 'lang': 'kr',
-                'cnt': 8,  # 24시간치
+                'cnt': 40,  # 5일치 (3시간 간격 × 40 = 120h)
             }, timeout=5)
             resp.raise_for_status()
             fc_list = resp.json().get('list', [])

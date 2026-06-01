@@ -1011,6 +1011,7 @@ def get_games_by_date(date_str: str):
             s.name AS stadium,
             wp.name AS win_pitcher,
             lp.name AS lose_pitcher,
+            g.weather AS db_weather,
             EXISTS (
                 SELECT 1 FROM game_rosters gr
                 WHERE gr.game_id = g.id
@@ -1111,16 +1112,22 @@ def get_games_by_date(date_str: str):
         seen_ids.add(r[0])
 
         status = r[2]
-        has_lineup = r[15]
+        db_weather = r[15]   # games.weather DB 컬럼 (종료 시 저장)
+        has_lineup = r[16]
         win_pitcher = r[13]
         lose_pitcher = r[14]
 
         if status == '예정' and has_lineup:
             status = '라인업'
 
+        # 날씨: 과거=DB, 오늘=실시간, 미래=예보
         weather = None
-        if is_today:
-            stadium_id = stadium_map.get(r[0])
+        stadium_id = stadium_map.get(r[0])
+        if date_str < _today_str:
+            # 과거: DB에 저장된 값 사용
+            weather = db_weather
+        elif is_today:
+            # 오늘: 실시간 날씨
             if stadium_id and stadium_id not in weather_cache:
                 start_time = r[7]
                 start_hour = None
@@ -1134,7 +1141,23 @@ def get_games_by_date(date_str: str):
                     get_forecast_at(stadium_id, start_hour) if start_hour is not None
                     else get_weather(stadium_id)
                 )
-            weather = weather_cache.get(stadium_map.get(r[0]))
+            weather = weather_cache.get(stadium_id)
+        else:
+            # 미래: 예보 날씨
+            if stadium_id and stadium_id not in weather_cache:
+                start_time = r[7]
+                start_hour = None
+                if start_time:
+                    try:
+                        total_sec = int(start_time.total_seconds())
+                        start_hour = (total_sec // 3600 + 9) % 24
+                    except Exception:
+                        pass
+                weather_cache[stadium_id] = (
+                    get_forecast_at(stadium_id, start_hour) if start_hour is not None
+                    else get_weather(stadium_id)
+                )
+            weather = weather_cache.get(stadium_id)
 
         games.append({
             "id":                  r[0],
@@ -1152,11 +1175,11 @@ def get_games_by_date(date_str: str):
             "stadium":             r[12],
             "win_pitcher":         win_pitcher,
             "lose_pitcher":        lose_pitcher,
-            "win_pitcher_image":   r[18],
-            "lose_pitcher_image":  r[19],
+            "win_pitcher_image":   r[19],
+            "lose_pitcher_image":  r[20],
             "is_draw":             r[2] == '종료' and r[3] == r[4],
-            "home_starter":        r[16],
-            "away_starter":        r[17],
+            "home_starter":        r[17],
+            "away_starter":        r[18],
             "weather":             weather,
             "home_team_id":        home_team_id_map.get(r[0]),
             "away_team_id":        away_team_id_map.get(r[0]),
