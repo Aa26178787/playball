@@ -39,35 +39,110 @@ class _HomeScreenState extends State<HomeScreen> {
     const CommunityScreen(),
   ];
 
+  static const _navItems = [
+    (icon: Icons.sports_baseball_outlined, activeIcon: Icons.sports_baseball, label: '경기'),
+    (icon: Icons.leaderboard_outlined,     activeIcon: Icons.leaderboard,     label: '순위'),
+    (icon: Icons.person_outline,           activeIcon: Icons.person,          label: '선수'),
+    (icon: Icons.calendar_month_outlined,  activeIcon: Icons.calendar_month,  label: '캘린더'),
+    (icon: Icons.forum_outlined,           activeIcon: Icons.forum,           label: '커뮤니티'),
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _screens),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.sports_baseball),
-            label: '경기',
+      body: Stack(
+        children: [
+          // 하단 floating nav 높이만큼 padding 확보
+          Padding(
+            padding: const EdgeInsets.only(bottom: 80),
+            child: IndexedStack(index: _currentIndex, children: _screens),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.leaderboard),
-            label: '순위',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: '선수',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_month),
-            label: '캘린더',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.forum),
-            label: '커뮤니티',
+          // Floating NavBar
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 16,
+            child: _FloatingNavBar(
+              currentIndex: _currentIndex,
+              isDark: isDark,
+              onTap: (i) => setState(() => _currentIndex = i),
+              items: _navItems,
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FloatingNavBar extends StatelessWidget {
+  const _FloatingNavBar({
+    required this.currentIndex,
+    required this.isDark,
+    required this.onTap,
+    required this.items,
+  });
+
+  final int currentIndex;
+  final bool isDark;
+  final ValueChanged<int> onTap;
+  final List<({IconData icon, IconData activeIcon, String label})> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final activeColor = isDark ? const Color(0xFF7B8FFF) : AppColors.primary;
+    final inactiveColor = isDark ? Colors.white38 : AppColors.textTertiary;
+
+    return Container(
+      height: 62,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black45 : Colors.black.withOpacity(0.12),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        children: List.generate(items.length, (i) {
+          final item = items[i];
+          final selected = i == currentIndex;
+          return Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onTap(i),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    selected ? item.activeIcon : item.icon,
+                    size: 22,
+                    color: selected ? activeColor : inactiveColor,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    item.label,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                      color: selected ? activeColor : inactiveColor,
+                      fontFamily: 'Pretendard',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
       ),
     );
   }
