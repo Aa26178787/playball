@@ -30,6 +30,23 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  List<Map<String, dynamic>> _myTeamChips = [];
+
+  @override
+  void initState() {
+    super.initState();
+    ApiService.myTeamData.addListener(_onMyTeamDataChanged);
+  }
+
+  void _onMyTeamDataChanged() {
+    if (mounted) setState(() => _myTeamChips = List.of(ApiService.myTeamData.value));
+  }
+
+  @override
+  void dispose() {
+    ApiService.myTeamData.removeListener(_onMyTeamDataChanged);
+    super.dispose();
+  }
 
   final List<Widget> _screens = [
     const TodayGamesTab(),
@@ -65,6 +82,10 @@ class _HomeScreenState extends State<HomeScreen> {
               isDark: isDark,
               onTap: (i) => setState(() => _currentIndex = i),
               items: _navItems,
+              myTeamItems: _myTeamChips,
+              onMyTeamTap: (item) => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => TeamDetailScreen(team: item['ranking'] as Map<String, dynamic>)),
+              ),
             ),
           ),
         ],
@@ -79,28 +100,24 @@ class _FloatingNavBar extends StatelessWidget {
     required this.isDark,
     required this.onTap,
     required this.items,
+    this.myTeamItems = const [],
+    this.onMyTeamTap,
   });
 
   final int currentIndex;
   final bool isDark;
   final ValueChanged<int> onTap;
   final List<({IconData icon, IconData activeIcon, String label})> items;
+  final List<Map<String, dynamic>> myTeamItems;
+  final void Function(Map<String, dynamic>)? onMyTeamTap;
 
-  @override
-  Widget build(BuildContext context) {
-    final bg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
-    final activeColor = isDark ? const Color(0xFF7B8FFF) : AppColors.primary;
-    final inactiveColor = isDark ? Colors.white38 : AppColors.textTertiary;
-
-    return Container(
-      height: 62,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(32),
+  BoxDecoration _pillDecoration() => BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
             color: isDark ? Colors.black45 : Colors.black.withOpacity(0.12),
-            blurRadius: 20,
+            blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
@@ -108,38 +125,152 @@ class _FloatingNavBar extends StatelessWidget {
           color: isDark ? AppColors.borderDark : AppColors.borderLight,
           width: 0.8,
         ),
-      ),
-      child: Row(
-        children: List.generate(items.length, (i) {
-          final item = items[i];
-          final selected = i == currentIndex;
-          return Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => onTap(i),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor = isDark ? const Color(0xFF7B8FFF) : AppColors.primary;
+    final inactiveColor = isDark ? Colors.white38 : AppColors.textTertiary;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── 마이팀 pill (즐겨찾기 있을 때만) ──
+        if (myTeamItems.isNotEmpty) ...[
+          Container(
+            height: 44,
+            decoration: _pillDecoration(),
+            clipBehavior: Clip.hardEdge,
+            child: Builder(builder: (context) {
+              final pillBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+              return Stack(
                 children: [
-                  Icon(
-                    selected ? item.activeIcon : item.icon,
-                    size: 22,
-                    color: selected ? activeColor : inactiveColor,
+                  ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                    itemCount: myTeamItems.length,
+                    itemBuilder: (_, i) => _buildChip(myTeamItems[i]),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    item.label,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                      color: selected ? activeColor : inactiveColor,
-                      fontFamily: 'Pretendard',
+                  Positioned(
+                    left: 0, top: 0, bottom: 0,
+                    child: IgnorePointer(
+                      child: Container(
+                        width: 24,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [pillBg, pillBg.withOpacity(0)]),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 0, top: 0, bottom: 0,
+                    child: IgnorePointer(
+                      child: Container(
+                        width: 24,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [pillBg.withOpacity(0), pillBg]),
+                        ),
+                      ),
                     ),
                   ),
                 ],
-              ),
-            ),
-          );
-        }),
+              );
+            }),
+          ),
+          const SizedBox(height: 8),
+        ],
+        // ── 탭 pill ──
+        Container(
+          height: 58,
+          decoration: _pillDecoration(),
+          child: Row(
+            children: List.generate(items.length, (i) {
+              final item = items[i];
+              final selected = i == currentIndex;
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onTap(i),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        selected ? item.activeIcon : item.icon,
+                        size: 22,
+                        color: selected ? activeColor : inactiveColor,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        item.label,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                          color: selected ? activeColor : inactiveColor,
+                          fontFamily: 'Pretendard',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChip(Map<String, dynamic> item) {
+    final code = item['code'] as String? ?? '';
+    final name = item['name'] as String? ?? '';
+    final gameStr = item['gameStr'] as String? ?? '';
+    final gameStatus = item['gameStatus'] as String? ?? '';
+    final won = item['won'] as bool? ?? false;
+    final lost = item['lost'] as bool? ?? false;
+
+    Color gameColor;
+    if (gameStatus == '진행') {
+      gameColor = Colors.green;
+    } else if (gameStatus == '종료') {
+      gameColor = won ? const Color(0xFF3B82F6) : (lost ? const Color(0xFFEF4444) : Colors.grey);
+    } else if (gameStatus == '없음') {
+      gameColor = isDark ? Colors.white30 : Colors.black26;
+    } else {
+      gameColor = isDark ? Colors.white54 : Colors.black45;
+    }
+
+    final textColor = isDark ? Colors.white.withOpacity(0.88) : Colors.black87;
+
+    return GestureDetector(
+      onTap: () => onMyTeamTap?.call(item),
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            TeamLogo(teamCode: code, size: 18),
+            const SizedBox(width: 5),
+            Text(name,
+                style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w700, color: textColor)),
+            if (gameStr.isNotEmpty) ...[
+              const SizedBox(width: 5),
+              Text(gameStr,
+                  style: TextStyle(
+                      fontSize: 10, color: gameColor, fontWeight: FontWeight.w600)),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -351,6 +482,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       setState(() {
         _favoriteTeamIds = Set.from(cached.map((t) => (t as Map)['id'] as int));
       });
+      _updateMyTeamData();
     }
     try {
       final data = await ApiService.getFavoriteTeams();
@@ -360,18 +492,25 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         setState(() {
           _favoriteTeamIds = Set.from(teams.map((t) => (t as Map)['id'] as int));
         });
+        _updateMyTeamData();
       }
     } catch (_) {}
   }
 
   Future<void> _loadRankings() async {
     final cached = await LocalCache.get('team_rankings') as List?;
-    if (cached != null && mounted) setState(() => _rankings = cached);
+    if (cached != null && mounted) {
+      setState(() => _rankings = cached);
+      _updateMyTeamData();
+    }
     try {
       final data = await ApiService.getTeamRankings();
       final rankings = data['rankings'] as List? ?? [];
       await LocalCache.set('team_rankings', rankings);
-      if (mounted) setState(() => _rankings = rankings);
+      if (mounted) {
+        setState(() => _rankings = rankings);
+        _updateMyTeamData();
+      }
     } catch (_) {}
   }
 
@@ -453,6 +592,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     }
     if (cached != null) {
       setState(() { _games = cached!; _isLoading = false; _loadError = false; });
+      _updateMyTeamData();
     } else {
       setState(() => _isLoading = true);
     }
@@ -472,6 +612,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       await LocalCache.set('games_$dateStr', games);
       if (!mounted || _loadGen != gen) return;
       setState(() { _games = games; _isLoading = false; _loadError = false; });
+      _updateMyTeamData();
       _prefetchAdjacentDates(dateStr);
       _prefetchGameDetails(games);
     } catch (e) {
@@ -523,6 +664,84 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     });
   }
 
+  void _updateMyTeamData() {
+    if (!mounted) return;
+    if (_favoriteTeamIds.isEmpty || _rankings.isEmpty) {
+      ApiService.myTeamData.value = [];
+      return;
+    }
+    final myRankings = _rankings.where((r) => _favoriteTeamIds.contains(r['id'] as int?)).toList();
+    if (myRankings.isEmpty) {
+      ApiService.myTeamData.value = [];
+      return;
+    }
+    final chips = myRankings.map((r) {
+      final Map ranking = r as Map;
+      final teamId = ranking['id'] as int? ?? 0;
+      final code = ranking['short_name'] as String? ?? '';
+      final name = ranking['name'] as String? ?? '';
+      final rank = ranking['rank'] as int? ?? 0;
+
+      Map? todayGame;
+      for (final g in _games) {
+        final gm = g as Map;
+        if (gm['home_team_id'] == teamId || gm['away_team_id'] == teamId) {
+          todayGame = gm;
+          break;
+        }
+      }
+
+      final bool isHome = todayGame != null && todayGame['home_team_id'] == teamId;
+      final oppName = todayGame != null
+          ? (isHome ? todayGame['away_team'] as String? ?? '' : todayGame['home_team'] as String? ?? '')
+          : '';
+
+      String gameStr;
+      String gameStatus;
+      bool won = false;
+      bool lost = false;
+
+      if (todayGame == null) {
+        gameStr = '경기 없음';
+        gameStatus = '없음';
+      } else {
+        final status = todayGame['status'] as String? ?? '';
+        gameStatus = status;
+        final hs = todayGame['home_score'] as int? ?? 0;
+        final as_ = todayGame['away_score'] as int? ?? 0;
+        final myScore = isHome ? hs : as_;
+        final oppScore = isHome ? as_ : hs;
+        if (status == '예정' || status == '라인업') {
+          gameStr = 'vs $oppName';
+        } else if (status == '진행') {
+          gameStr = '$myScore : $oppScore  vs $oppName';
+        } else if (status == '종료') {
+          gameStr = '$myScore : $oppScore  vs $oppName';
+          won = myScore > oppScore;
+          lost = myScore < oppScore;
+        } else if (status == '취소') {
+          gameStr = '취소';
+        } else {
+          gameStr = 'vs $oppName';
+        }
+      }
+
+      return <String, dynamic>{
+        'id': teamId,
+        'code': code,
+        'name': name,
+        'rank': rank,
+        'gameStr': gameStr,
+        'gameStatus': gameStatus,
+        'won': won,
+        'lost': lost,
+        'ranking': Map<String, dynamic>.from(ranking),
+      };
+    }).toList();
+
+    ApiService.myTeamData.value = chips;
+  }
+
   Widget _buildMonthStrip() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
@@ -571,14 +790,16 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Stack(
+      clipBehavior: Clip.none,
       alignment: Alignment.centerRight,
       children: [
         SizedBox(
-          height: 68,
+          height: 76,
           child: ListView.builder(
         controller: _dateScrollController,
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        clipBehavior: Clip.none,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
         itemCount: _totalDays,
         itemBuilder: (_, i) {
           final date = _seasonStart.add(Duration(days: i));
@@ -904,7 +1125,17 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           ),
           if (_todayRosterChanges.isNotEmpty && _isSameDay(_selectedDate, DateTime.now()))
             _buildTodayRosterBanner(),
-          _buildMyTeamDashboard(),
+          if (_favoriteTeamIds.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 2),
+              child: Row(
+                children: [
+                  _buildFilterChip('전체', !_myTeamOnly, () => setState(() => _myTeamOnly = false)),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('마이팀', _myTeamOnly, () => setState(() => _myTeamOnly = true), icon: Icons.star),
+                ],
+              ),
+            ),
           Expanded(
             child: Stack(
               clipBehavior: Clip.none,
@@ -1159,13 +1390,18 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     );
   }
 
+  double _listBottomPad(BuildContext context) {
+    // tab pill 58 + optional myTeam pill (44 + 8 gap) + 16 margin + 18 clearance
+    final navBarH = ApiService.myTeamData.value.isNotEmpty ? 110.0 : 58.0;
+    return navBarH + 34 + MediaQuery.of(context).padding.bottom;
+  }
+
   Widget _buildGameShimmer() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final base = isDark ? Colors.grey[800]! : Colors.grey[300]!;
     final highlight = isDark ? Colors.grey[700]! : Colors.grey[100]!;
-    final bottomPad = MediaQuery.of(context).padding.bottom;
     return ListView.builder(
-      padding: EdgeInsets.fromLTRB(0, 8, 0, 96 + bottomPad),
+      padding: EdgeInsets.fromLTRB(0, 8, 0, _listBottomPad(context)),
       itemCount: 4,
       itemBuilder: (_, i) => Shimmer.fromColors(
           baseColor: base,
@@ -1231,7 +1467,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       return RefreshIndicator(
         onRefresh: _loadGames,
         child: ListView(
-          padding: EdgeInsets.only(bottom: 96 + MediaQuery.of(context).padding.bottom),
+          padding: EdgeInsets.only(bottom: _listBottomPad(context)),
           children: [
             SizedBox(height: MediaQuery.of(context).size.height * 0.15),
             Column(
@@ -1306,7 +1542,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       onRefresh: _loadGames,
       child: ListView.builder(
         controller: _gameScrollController,
-        padding: EdgeInsets.fromLTRB(16, 8, 16, 96 + MediaQuery.of(context).padding.bottom),
+        padding: EdgeInsets.fromLTRB(16, 8, 16, _listBottomPad(context)),
         itemCount: filtered.length,
         itemBuilder: (context, index) {
           final g = filtered[index];

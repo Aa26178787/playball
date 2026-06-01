@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
+import '../../utils/app_theme.dart';
 import 'pitch_location_chart.dart';
 import '../player/player_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -47,6 +48,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   bool _isRelayRefreshing = false;
   bool _scoringExpanded = true;
   List _sameDayGames = [];
+  int _lineupSubIndex = 0;
+  int _statsSubIndex = 0;
   Timer? _refreshTimer;
   final ScrollController _inningScrollController = ScrollController();
 
@@ -85,6 +88,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
+      if (!_tabController.indexIsChanging && mounted) setState(() {});
       if (_tabController.index == 0 && _relayAllData == null) {
         ApiService.getGameRelayAll(widget.gameId)
             .then((d) { if (mounted) setState(() => _relayAllData = d); })
@@ -602,48 +606,32 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           ),
         ],
       ),
-      body: NestedScrollView(
-        headerSliverBuilder: (context, _) => [
-          SliverToBoxAdapter(child: _buildGameHeader(game)),
-          if (_sameDayGames.isNotEmpty)
-            SliverToBoxAdapter(child: _buildSameDayStrip()),
+      body: Stack(
+        children: [
+          NestedScrollView(
+            headerSliverBuilder: (context, _) => [
+              SliverToBoxAdapter(child: _buildGameHeader(game)),
+              if (_sameDayGames.isNotEmpty)
+                SliverToBoxAdapter(child: _buildSameDayStrip()),
+            ],
+            body: TabBarView(
+              controller: _tabController,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _buildInningsTab(innings),
+                _buildLineupTab(),
+                _buildStatsTab(pitchers, batters),
+                _buildHighlightsTab(),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16 + MediaQuery.of(context).viewPadding.bottom,
+            child: _buildGameFloatingNav(),
+          ),
         ],
-        body: Column(
-          children: [
-            Material(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              elevation: 1,
-              child: TabBar(
-                controller: _tabController,
-                indicatorColor: const Color(0xFF1A237E),
-                indicatorWeight: 2.5,
-                labelColor: const Color(0xFF1A237E),
-                unselectedLabelColor: Colors.grey,
-                labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
-                dividerColor: Colors.transparent,
-                tabs: const [
-                  Tab(text: '중계'),
-                  Tab(text: '라인업'),
-                  Tab(text: '기록'),
-                  Tab(text: '하이라이트'),
-                ],
-              ),
-            ),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _buildInningsTab(innings),
-                  _buildLineupTab(),
-                  _buildStatsTab(pitchers, batters),
-                  _buildHighlightsTab(),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1520,7 +1508,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 return h == '1';
               }).toList();
 
-              return Card(
+              return Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ExpansionTile(
                   initiallyExpanded: false,
@@ -1556,6 +1546,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     ],
                   ],
                 ),
+              ),
               );
             }).toList(),
           ],
@@ -2119,69 +2110,141 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildLineupTab() {
-    final homeTeam = _gameData!['game']['home_team'] as String? ?? '홈';
-    final awayTeam = _gameData!['game']['away_team'] as String? ?? '원정';
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return DefaultTabController(
-      length: 2,
-      child: Column(
-        children: [
-          TabBar(
-            indicator: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: const Color(0xFF1A237E),
-            ),
-            indicatorSize: TabBarIndicatorSize.tab,
-            dividerColor: Colors.transparent,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.grey,
-            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'Pretendard'),
-            unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, fontFamily: 'Pretendard'),
-            tabs: const [Tab(text: '키플레이어'), Tab(text: '로스터')],
-          ),
-          Expanded(
-            child: TabBarView(
-              children: [
-                _buildPreviewTab(),
-                _buildRosterTab(),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return IndexedStack(
+      index: _lineupSubIndex,
+      children: [
+        _buildPreviewTab(),
+        _buildRosterTab(),
+      ],
     );
   }
 
   Widget _buildStatsTab(List pitchers, List batters) {
+    return IndexedStack(
+      index: _statsSubIndex,
+      children: [
+        _buildPitchersTab(pitchers),
+        _buildBattersTab(batters),
+        _buildRecordDetailTab(),
+      ],
+    );
+  }
+
+  Widget _buildGameFloatingNav() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return DefaultTabController(
-      length: 3,
-      child: Column(
-        children: [
-          TabBar(
-            indicator: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: const Color(0xFF1A237E),
+    final idx = _tabController.index;
+    final activeColor = isDark ? const Color(0xFF7B8FFF) : AppColors.primary;
+    final inactiveColor = isDark ? Colors.white38 : AppColors.textTertiary;
+    final pillBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
+
+    BoxDecoration pillDeco() => BoxDecoration(
+      color: pillBg,
+      borderRadius: BorderRadius.circular(28),
+      boxShadow: [BoxShadow(
+        color: isDark ? Colors.black45 : Colors.black.withOpacity(0.12),
+        blurRadius: 16, offset: const Offset(0, 4),
+      )],
+      border: Border.all(color: borderColor, width: 0.8),
+    );
+
+    List<String>? subLabels;
+    int subIdx = 0;
+    void Function(int) onSubTap = (_) {};
+    if (idx == 1) {
+      subLabels = ['키플레이어', '로스터'];
+      subIdx = _lineupSubIndex;
+      onSubTap = (i) => setState(() => _lineupSubIndex = i);
+    } else if (idx == 2) {
+      subLabels = ['투수', '타자', '상대'];
+      subIdx = _statsSubIndex;
+      onSubTap = (i) => setState(() => _statsSubIndex = i);
+    }
+
+    const mainLabels = ['중계', '라인업', '기록', '하이라이트'];
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (subLabels != null) ...[
+          Container(
+            height: 36,
+            decoration: pillDeco(),
+            child: Row(
+              children: List.generate(subLabels!.length, (i) {
+                final sel = i == subIdx;
+                return Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => onSubTap(i),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: sel ? activeColor : Colors.transparent,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Center(
+                        child: Text(
+                          subLabels![i],
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
+                            color: sel ? Colors.white : inactiveColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
             ),
-            indicatorSize: TabBarIndicatorSize.tab,
-            dividerColor: Colors.transparent,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.grey,
-            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'Pretendard'),
-            unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, fontFamily: 'Pretendard'),
-            tabs: const [Tab(text: '투수'), Tab(text: '타자'), Tab(text: '상세')],
           ),
-          Expanded(
-            child: TabBarView(
-              children: [
-                _buildPitchersTab(pitchers),
-                _buildBattersTab(batters),
-                _buildRecordDetailTab(),
-              ],
-            ),
-          ),
+          const SizedBox(height: 8),
         ],
-      ),
+        Container(
+          height: 52,
+          decoration: pillDeco(),
+          child: Row(
+            children: List.generate(mainLabels.length, (i) {
+              final sel = i == idx;
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    _tabController.animateTo(i);
+                    setState(() {});
+                  },
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        mainLabels[i],
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
+                          color: sel ? activeColor : inactiveColor,
+                          fontFamily: 'Pretendard',
+                        ),
+                      ),
+                      if (sel) ...[
+                        const SizedBox(height: 3),
+                        Container(
+                          height: 2, width: 14,
+                          decoration: BoxDecoration(
+                            color: activeColor,
+                            borderRadius: BorderRadius.circular(1),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
     );
   }
 
@@ -2492,12 +2555,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         children: [
           TabBar(
-            indicator: BoxDecoration(
-              color: const Color(0xFF1A237E),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.black54,
+            indicatorColor: const Color(0xFF1A237E),
+            indicatorWeight: 2.5,
+            labelColor: const Color(0xFF1A237E),
+            unselectedLabelColor: Colors.grey,
             labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
             dividerColor: Colors.transparent,
@@ -2820,12 +2881,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             ),
           TabBar(
-            indicator: BoxDecoration(
-              color: const Color(0xFF1A237E),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.black54,
+            indicatorColor: const Color(0xFF1A237E),
+            indicatorWeight: 2.5,
+            labelColor: const Color(0xFF1A237E),
+            unselectedLabelColor: Colors.grey,
             labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
             dividerColor: Colors.transparent,
@@ -3097,12 +3156,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         children: [
           TabBar(
-            indicator: BoxDecoration(
-              color: const Color(0xFF1A237E),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.black54,
+            indicatorColor: const Color(0xFF1A237E),
+            indicatorWeight: 2.5,
+            labelColor: const Color(0xFF1A237E),
+            unselectedLabelColor: Colors.grey,
             labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
             dividerColor: Colors.transparent,

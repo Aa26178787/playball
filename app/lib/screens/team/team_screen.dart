@@ -80,11 +80,16 @@ class _TeamScreenState extends State<TeamScreen>
   }
 
   Future<void> _loadOdds() async {
-    try {
-      final data = await ApiService.getPostseasonOdds();
-      final odds = (data['odds'] as List? ?? []).cast<Map>();
-      if (mounted) setState(() => _odds = odds);
-    } catch (_) {}
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        final data = await ApiService.getPostseasonOdds();
+        final odds = (data['odds'] as List? ?? []).cast<Map>();
+        if (mounted) setState(() => _odds = odds);
+        return;
+      } catch (_) {
+        if (attempt < 2) await Future.delayed(const Duration(seconds: 2));
+      }
+    }
   }
 
   Future<void> _loadFavoriteTeams() async {
@@ -776,13 +781,10 @@ class _TeamStatsTabState extends State<TeamStatsTab>
       children: [
         TabBar(
           controller: _tabController,
-          indicator: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: const Color(0xFF1A237E),
-          ),
-          indicatorSize: TabBarIndicatorSize.tab,
+          indicatorColor: const Color(0xFF1A237E),
+          indicatorWeight: 2.5,
           dividerColor: Colors.transparent,
-          labelColor: Colors.white,
+          labelColor: const Color(0xFF1A237E),
           unselectedLabelColor: Colors.grey,
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'Pretendard'),
           unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, fontFamily: 'Pretendard'),
@@ -983,13 +985,10 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
       children: [
         TabBar(
           controller: _tabController,
-          indicator: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: const Color(0xFF1A237E),
-          ),
-          indicatorSize: TabBarIndicatorSize.tab,
+          indicatorColor: const Color(0xFF1A237E),
+          indicatorWeight: 2.5,
           dividerColor: Colors.transparent,
-          labelColor: Colors.white,
+          labelColor: const Color(0xFF1A237E),
           unselectedLabelColor: Colors.grey,
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'Pretendard'),
           unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, fontFamily: 'Pretendard'),

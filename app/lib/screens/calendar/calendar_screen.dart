@@ -480,7 +480,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       floatingActionButton: selected != null
           ? Padding(
-              padding: EdgeInsets.only(bottom: 80 + MediaQuery.of(context).padding.bottom),
+              padding: EdgeInsets.only(
+                bottom: (ApiService.myTeamData.value.isNotEmpty ? 142.0 : 90.0) + MediaQuery.of(context).viewPadding.bottom,
+              ),
               child: FloatingActionButton(
                 backgroundColor: const Color(0xFF1A237E),
                 onPressed: () => _showAddMenu(selected),
@@ -545,7 +547,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ),
                       )
                     : ListView(
-                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
+                        padding: EdgeInsets.fromLTRB(12, 8, 12, ApiService.myTeamData.value.isNotEmpty ? 130.0 : 80.0),
                         children: [
                           if (selectedGames.isNotEmpty) ...[
                             Padding(
