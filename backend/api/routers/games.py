@@ -696,7 +696,7 @@ def get_today_games():
             FROM game_pitchers gp JOIN players p ON gp.player_id = p.id
             WHERE gp.pitching_order = 1 AND gp.team_side = 'away'
         ) away_sp ON away_sp.game_id = g.id
-        WHERE g.game_date = CURRENT_DATE
+        WHERE g.game_date = (NOW() AT TIME ZONE 'Asia/Seoul')::date
         ORDER BY g.id
     """)
 

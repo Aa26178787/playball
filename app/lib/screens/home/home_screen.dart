@@ -364,6 +364,11 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       cached = await LocalCache.getStale('games_$dateStr') as List?;
     }
     if (!mounted || _loadGen != gen) return;
+    // 캐시 날짜 불일치 시 (UTC/KST 불일치 등) 캐시 무효화 → 신선 fetch 강제
+    if (cached != null && cached.isNotEmpty) {
+      final cachedDate = (cached.first as Map)['game_date'];
+      if (cachedDate != null && cachedDate != dateStr) cached = null;
+    }
     if (cached != null) {
       setState(() { _games = cached!; _isLoading = false; _loadError = false; });
     } else {
