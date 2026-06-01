@@ -30,20 +30,14 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  final _todayTabKey = GlobalKey<_TodayGamesTabState>();
-  late final List<Widget> _screens;
 
-  @override
-  void initState() {
-    super.initState();
-    _screens = [
-      TodayGamesTab(key: _todayTabKey),
-      const TeamScreen(),
-      const PlayerScreen(),
-      const CalendarScreen(),
-      const CommunityScreen(),
-    ];
-  }
+  final List<Widget> _screens = [
+    const TodayGamesTab(),
+    const TeamScreen(),
+    const PlayerScreen(),
+    const CalendarScreen(),
+    const CommunityScreen(),
+  ];
 
   static const _navItems = [
     (icon: Icons.sports_baseball_outlined, activeIcon: Icons.sports_baseball, label: '경기'),
@@ -248,6 +242,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    ApiService.favoriteTeamsChanged.addListener(_loadFavoriteTeams);
     _loadGames();        // 최우선
     _loadFavoriteTeams();
     _loadRankings();
@@ -311,6 +306,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    ApiService.favoriteTeamsChanged.removeListener(_loadFavoriteTeams);
     _authProvider?.removeListener(_onAuthChanged);
     _autoRefreshTimer?.cancel();
     _dateScrollController.dispose();
@@ -874,8 +870,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             icon: const Icon(Icons.person_outline),
             tooltip: '마이페이지',
             onPressed: () => Navigator.push(
-              context, MaterialPageRoute(builder: (_) => const MyPageScreen()))
-              .then((_) { _todayTabKey.currentState?._loadFavoriteTeams(); }),
+              context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
           ),
         ],
       ),

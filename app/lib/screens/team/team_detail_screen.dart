@@ -145,6 +145,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
         if (currentWidgetTeam == null) await WidgetService.setTeamId(id);
       }
       if (mounted) setState(() => _isFav = !_isFav);
+      ApiService.favoriteTeamsChanged.value++;
     } catch (_) {}
     if (mounted) setState(() => _favLoading = false);
   }

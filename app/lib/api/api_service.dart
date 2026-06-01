@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
+  static final favoriteTeamsChanged = ValueNotifier<int>(0);
   static const String baseUrl = 'https://playball.duckdns.org';
   static final Dio _dio = Dio(BaseOptions(
     baseUrl: baseUrl,
