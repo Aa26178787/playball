@@ -904,40 +904,54 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         .toList();
     if (myRankings.isEmpty) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 헤더 + 필터 칩 통합
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 12, 6),
-          child: Row(
-            children: [
-              const Icon(Icons.star, size: 13, color: AppColors.primary),
-              const SizedBox(width: 5),
-              const Text('마이팀',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary)),
-              const Spacer(),
-              _buildFilterChip('전체', !_myTeamOnly,
-                  () => setState(() => _myTeamOnly = false)),
-              const SizedBox(width: 6),
-              _buildFilterChip('마이팀', _myTeamOnly,
-                  () => setState(() => _myTeamOnly = true), icon: Icons.star),
-            ],
-          ),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+          width: 0.8,
         ),
-        SizedBox(
-          height: 80,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-            children: myRankings.map((r) => _buildMyTeamCard(r as Map)).toList(),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.07),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-        ),
-        const SizedBox(height: 8),
-        Divider(height: 1, thickness: 0.5,
-            color: isDark ? AppColors.borderDark : AppColors.borderLight),
-        const SizedBox(height: 6),
-      ],
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 헤더 + 필터 칩 통합
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 12, 6),
+            child: Row(
+              children: [
+                const Icon(Icons.star, size: 13, color: AppColors.primary),
+                const SizedBox(width: 5),
+                const Text('마이팀',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                const Spacer(),
+                _buildFilterChip('전체', !_myTeamOnly,
+                    () => setState(() => _myTeamOnly = false)),
+                const SizedBox(width: 6),
+                _buildFilterChip('마이팀', _myTeamOnly,
+                    () => setState(() => _myTeamOnly = true), icon: Icons.star),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 80,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              children: myRankings.map((r) => _buildMyTeamCard(r as Map)).toList(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1068,8 +1082,9 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final base = isDark ? Colors.grey[800]! : Colors.grey[300]!;
     final highlight = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+    final bottomPad = MediaQuery.of(context).padding.bottom;
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 96),
+      padding: EdgeInsets.fromLTRB(0, 8, 0, 96 + bottomPad),
       itemCount: 4,
       itemBuilder: (_, __) => Shimmer.fromColors(
         baseColor: base,
@@ -1135,7 +1150,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       return RefreshIndicator(
         onRefresh: _loadGames,
         child: ListView(
-          padding: const EdgeInsets.only(bottom: 96),
+          padding: EdgeInsets.only(bottom: 96 + MediaQuery.of(context).padding.bottom),
           children: [
             SizedBox(height: MediaQuery.of(context).size.height * 0.15),
             Column(
@@ -1209,7 +1224,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     return RefreshIndicator(
       onRefresh: _loadGames,
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 96 + MediaQuery.of(context).padding.bottom),
         itemCount: filtered.length,
         itemBuilder: (context, index) {
           final g = filtered[index];
@@ -1514,25 +1529,25 @@ class GameCard extends StatelessWidget {
       );
     }
 
-    Widget pitcherChip(String? name, String label, Color labelColor) {
+    Widget pitcherChip(String? name, String label, Color labelColor, {bool isHome = true}) {
       if (name == null) return const SizedBox.shrink();
+      final badge = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+        decoration: BoxDecoration(
+          color: labelColor.withOpacity(0.25),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: labelColor.withOpacity(0.6), width: 0.7),
+        ),
+        child: Text(label, style: TextStyle(fontSize: 9, color: labelColor, fontWeight: FontWeight.w800)),
+      );
+      final nameText = Text(name,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white, shadows: _textShadow),
+          overflow: TextOverflow.ellipsis, maxLines: 1);
       return Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-            decoration: BoxDecoration(
-              color: labelColor.withOpacity(0.25),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: labelColor.withOpacity(0.6), width: 0.7),
-            ),
-            child: Text(label, style: TextStyle(fontSize: 9, color: labelColor, fontWeight: FontWeight.w800)),
-          ),
-          const SizedBox(width: 4),
-          Text(name,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white, shadows: _textShadow),
-              overflow: TextOverflow.ellipsis, maxLines: 1),
-        ],
+        children: isHome
+            ? [badge, const SizedBox(width: 4), nameText]   // 홈: [승/패] 이름
+            : [nameText, const SizedBox(width: 4), badge],  // 어웨이: 이름 [승/패]
       );
     }
 
@@ -1757,6 +1772,7 @@ class GameCard extends StatelessWidget {
                                 awayWon ? game.winPitcher : game.losePitcher,
                                 awayWon ? '승' : '패',
                                 awayWon ? _wColor : _lColor,
+                                isHome: false,
                               ),
                             ],
                           ),

@@ -479,10 +479,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ],
       ),
       floatingActionButton: selected != null
-          ? FloatingActionButton(
-              backgroundColor: const Color(0xFF1A237E),
-              onPressed: () => _showAddMenu(selected),
-              child: const Icon(Icons.add, color: Colors.white),
+          ? Padding(
+              padding: EdgeInsets.only(bottom: 80 + MediaQuery.of(context).padding.bottom),
+              child: FloatingActionButton(
+                backgroundColor: const Color(0xFF1A237E),
+                onPressed: () => _showAddMenu(selected),
+                child: const Icon(Icons.add, color: Colors.white),
+              ),
             )
           : null,
       body: Column(

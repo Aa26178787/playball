@@ -58,14 +58,17 @@ class _CommunityScreenState extends State<CommunityScreen>
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final created = await Navigator.push<bool>(context,
-              MaterialPageRoute(builder: (_) => const CreatePostScreen()));
-          if (created == true) _latestKey.currentState?._load();
-        },
-        backgroundColor: const Color(0xFF1A237E),
-        child: const Icon(Icons.edit, color: Colors.white),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: 80 + MediaQuery.of(context).padding.bottom),
+        child: FloatingActionButton(
+          onPressed: () async {
+            final created = await Navigator.push<bool>(context,
+                MaterialPageRoute(builder: (_) => const CreatePostScreen()));
+            if (created == true) _latestKey.currentState?._load();
+          },
+          backgroundColor: const Color(0xFF1A237E),
+          child: const Icon(Icons.edit, color: Colors.white),
+        ),
       ),
       body: TabBarView(
         controller: _tabCtrl,
