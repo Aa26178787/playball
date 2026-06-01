@@ -888,6 +888,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           ),
           if (_todayRosterChanges.isNotEmpty && _isSameDay(_selectedDate, DateTime.now()))
             _buildTodayRosterBanner(),
+          _buildMyTeamDashboard(),
           Expanded(
             child: Stack(
               clipBehavior: Clip.none,
@@ -1138,10 +1139,8 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     final bottomPad = MediaQuery.of(context).padding.bottom;
     return ListView.builder(
       padding: EdgeInsets.fromLTRB(0, 8, 0, 96 + bottomPad),
-      itemCount: 5,
-      itemBuilder: (_, i) {
-        if (i == 0) return _buildMyTeamDashboard();
-        return Shimmer.fromColors(
+      itemCount: 4,
+      itemBuilder: (_, i) => Shimmer.fromColors(
           baseColor: base,
           highlightColor: highlight,
           child: Container(
@@ -1174,8 +1173,8 @@ class _TodayGamesTabState extends State<TodayGamesTab>
               ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -1277,16 +1276,13 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     }
     final rankMap = {for (final r in _rankings) (r['id'] as int): r['rank'] as int?};
 
-    final hasMyTeam = _favoriteTeamIds.isNotEmpty && _rankings.isNotEmpty;
     return RefreshIndicator(
       onRefresh: _loadGames,
       child: ListView.builder(
         padding: EdgeInsets.fromLTRB(16, 8, 16, 96 + MediaQuery.of(context).padding.bottom),
-        itemCount: filtered.length + (hasMyTeam ? 1 : 0),
+        itemCount: filtered.length,
         itemBuilder: (context, index) {
-          if (hasMyTeam && index == 0) return _buildMyTeamDashboard();
-          final gameIndex = hasMyTeam ? index - 1 : index;
-          final g = filtered[gameIndex];
+          final g = filtered[index];
           final homeId = g['home_team_id'] as int? ?? 0;
           final awayId = g['away_team_id'] as int? ?? 0;
           final isMyTeam = _favoriteTeamIds.contains(homeId) ||
@@ -1646,13 +1642,16 @@ class GameCard extends StatelessWidget {
                         end: Alignment.centerRight,
                         colors: homeWon
                             ? [
-                                Colors.black.withOpacity(overlayOpacity - 0.42),
-                                Colors.black.withOpacity(overlayOpacity + 0.22),
+                                Colors.black.withOpacity(0.04),
+                                Colors.black.withOpacity(0.22),
+                                Colors.black.withOpacity(0.72),
                               ]
                             : [
-                                Colors.black.withOpacity(overlayOpacity + 0.22),
-                                Colors.black.withOpacity(overlayOpacity - 0.42),
+                                Colors.black.withOpacity(0.72),
+                                Colors.black.withOpacity(0.22),
+                                Colors.black.withOpacity(0.04),
                               ],
+                        stops: const [0.0, 0.48, 1.0],
                       ),
                     ),
                   )
