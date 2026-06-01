@@ -930,7 +930,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      clipBehavior: Clip.none,
+      clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
         borderRadius: BorderRadius.circular(20),
