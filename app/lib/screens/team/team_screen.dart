@@ -112,8 +112,16 @@ class _TeamScreenState extends State<TeamScreen>
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
           ),
         ],
+        surfaceTintColor: Colors.transparent,
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: const Color(0xFF1A237E),
+          indicatorWeight: 2.5,
+          labelColor: const Color(0xFF1A237E),
+          unselectedLabelColor: Colors.grey,
+          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
+          dividerColor: Colors.transparent,
           tabs: const [
             Tab(text: '팀 순위'),
             Tab(text: '부문별 순위'),
@@ -137,7 +145,7 @@ class _TeamScreenState extends State<TeamScreen>
     final base = isDark ? Colors.grey[800]! : Colors.grey[300]!;
     final highlight = isDark ? Colors.grey[700]! : Colors.grey[100]!;
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+      padding: EdgeInsets.fromLTRB(12, 12, 12, (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
       itemCount: 10,
       itemBuilder: (_, __) => Shimmer.fromColors(
         baseColor: base,
@@ -147,7 +155,7 @@ class _TeamScreenState extends State<TeamScreen>
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
@@ -181,7 +189,7 @@ class _TeamScreenState extends State<TeamScreen>
     return RefreshIndicator(
       onRefresh: () async { await _loadTeams(); await _loadOdds(); },
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+        padding: EdgeInsets.fromLTRB(12, 12, 12, (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
         children: [
           ..._teams.map((team) {
             final r = team['rank'] as int? ?? 0;
@@ -342,7 +350,7 @@ class _TeamScreenState extends State<TeamScreen>
       margin: const EdgeInsets.only(bottom: 8),
       elevation: isFav ? 2 : 1,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         side: isFav
             ? const BorderSide(color: Color(0xFF1A237E), width: 1.5)
             : BorderSide.none,
@@ -352,7 +360,7 @@ class _TeamScreenState extends State<TeamScreen>
           context,
           MaterialPageRoute(builder: (_) => TeamDetailScreen(team: team)),
         ),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -631,7 +639,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
     final bestVal = ((isBatting ? best['batting'] : best['pitching']) ?? {})[selected];
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+      padding: EdgeInsets.fromLTRB(12, 8, 12, (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
       itemCount: sorted.length,
       itemBuilder: (_, i) {
         final t = sorted[i];
@@ -659,7 +667,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
             color: isBest
                 ? const Color(0xFF1A237E).withOpacity(0.06)
                 : Colors.grey.withOpacity(0.04),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
             border: isBest
                 ? Border.all(color: const Color(0xFF1A237E).withOpacity(0.2))
                 : null,
@@ -744,7 +752,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
     }
     if (_error) {
       return Center(
@@ -768,8 +776,16 @@ class _TeamStatsTabState extends State<TeamStatsTab>
       children: [
         TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFF1A237E),
-          indicatorColor: const Color(0xFF1A237E),
+          indicator: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: const Color(0xFF1A237E),
+          ),
+          indicatorSize: TabBarIndicatorSize.tab,
+          dividerColor: Colors.transparent,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.grey,
+          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'Pretendard'),
+          unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, fontFamily: 'Pretendard'),
           tabs: const [Tab(text: '타격'), Tab(text: '투수')],
         ),
         Expanded(
@@ -967,8 +983,16 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
       children: [
         TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFF1A237E),
-          indicatorColor: const Color(0xFF1A237E),
+          indicator: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: const Color(0xFF1A237E),
+          ),
+          indicatorSize: TabBarIndicatorSize.tab,
+          dividerColor: Colors.transparent,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.grey,
+          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'Pretendard'),
+          unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, fontFamily: 'Pretendard'),
           tabs: const [Tab(text: '타자'), Tab(text: '투수')],
         ),
         Expanded(
@@ -1130,7 +1154,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     final top3 = players.take(3).toList();
     final rest = players.skip(3).toList();
     return ListView(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
       children: [
         if (top3.length >= 3) ...[
           _buildPodium(top3, statValue),
@@ -1211,7 +1235,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     final base = isDark ? Colors.grey[800]! : Colors.grey[300]!;
     final highlight = isDark ? Colors.grey[700]! : Colors.grey[100]!;
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+      padding: EdgeInsets.fromLTRB(12, 8, 12, (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
       itemCount: 10,
       itemBuilder: (_, __) => Shimmer.fromColors(
         baseColor: base,

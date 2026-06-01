@@ -196,6 +196,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(player['name'] ?? ''),
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         // initialData로 헤더 표시 중, 바디 로딩 진행 표시
         bottom: _bodyLoading
             ? const PreferredSize(
@@ -204,7 +206,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             : null,
         actions: [
           _favLoading
-              ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+              ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1A237E))))
               : IconButton(
                   icon: Icon(_isFav ? Icons.star : Icons.star_border, color: Colors.amber),
                   onPressed: _toggleFav,
@@ -340,7 +342,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   ),
                   const SizedBox(height: 8),
                   if (searching)
-                    const Expanded(child: Center(child: CircularProgressIndicator()))
+                    const Expanded(child: Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5)))
                   else if (matchupData != null)
                     _buildMatchupResult(matchupData!, player['name'] as String)
                   else

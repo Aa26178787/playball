@@ -301,6 +301,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
         title: Text(team['name'] ?? ''),
         backgroundColor: color,
         foregroundColor: Colors.white,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         actions: [
           _favLoading
               ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
@@ -311,9 +313,13 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: Colors.white,
+          indicatorWeight: 2.5,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
+          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
+          dividerColor: Colors.transparent,
           isScrollable: true,
           tabAlignment: TabAlignment.start,
           tabs: const [Tab(text: '선수'), Tab(text: '최근경기'), Tab(text: '등록말소'), Tab(text: '뉴스'), Tab(text: '커뮤니티'), Tab(text: '월별성적'), Tab(text: '상대전적'), Tab(text: '타순별')],
@@ -477,7 +483,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Widget _buildPlayers() {
-    if (_playersLoading) return const Center(child: CircularProgressIndicator());
+    if (_playersLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
     if (_players.isEmpty) {
       return RefreshIndicator(
         onRefresh: _loadPlayers,
@@ -609,7 +615,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Widget _buildGames() {
-    if (_gamesLoading) return const Center(child: CircularProgressIndicator());
+    if (_gamesLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
     if (_games.isEmpty) return const Center(child: Text('경기 정보가 없습니다'));
 
     final teamName = widget.team['name'] as String? ?? '';
@@ -638,7 +644,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.withOpacity(0.2)),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -647,7 +653,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.grey.withOpacity(0.07),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 ),
                 child: Row(
                   children: [
@@ -732,7 +738,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Widget _buildRosterChanges() {
-    if (_rosterLoading) return const Center(child: CircularProgressIndicator());
+    if (_rosterLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
     if (_rosterChanges.isEmpty) {
       return const Center(
         child: Padding(
@@ -840,7 +846,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Widget _buildNews() {
-    if (_newsLoading) return const Center(child: CircularProgressIndicator());
+    if (_newsLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
     if (_news.isEmpty) {
       return const Center(child: Text('뉴스가 없습니다', style: TextStyle(color: Colors.grey)));
     }
@@ -917,7 +923,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Widget _buildCommunity() {
-    if (_communityLoading) return const Center(child: CircularProgressIndicator());
+    if (_communityLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
     if (_communityPosts.isEmpty) {
       return Center(
         child: Column(
@@ -1032,7 +1038,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Widget _buildMonthlyStats() {
-    if (_monthlyLoading) return const Center(child: CircularProgressIndicator());
+    if (_monthlyLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
     if (_monthlyStats.isEmpty) {
       return Center(
         child: Column(
@@ -1220,7 +1226,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Widget _buildHeadToHead() {
-    if (_h2hLoading) return const Center(child: CircularProgressIndicator());
+    if (_h2hLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
     if (_h2hRecords.isEmpty) {
       return Center(
         child: Column(
@@ -1296,7 +1302,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         child: Column(
@@ -1367,7 +1373,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Widget _buildBattingOrder() {
-    if (_battingOrderLoading) return const Center(child: CircularProgressIndicator());
+    if (_battingOrderLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
     if (_battingOrderStats.isEmpty) {
       return Center(
         child: Column(
@@ -1441,7 +1447,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: bgColor,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.grey.shade200),
             ),
             child: GestureDetector(

@@ -615,6 +615,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               elevation: 1,
               child: TabBar(
                 controller: _tabController,
+                indicatorColor: const Color(0xFF1A237E),
+                indicatorWeight: 2.5,
+                labelColor: const Color(0xFF1A237E),
+                unselectedLabelColor: Colors.grey,
+                labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
+                dividerColor: Colors.transparent,
                 tabs: const [
                   Tab(text: '중계'),
                   Tab(text: '라인업'),
@@ -692,7 +699,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   color: isCurrent
                       ? const Color(0xFF1A237E).withValues(alpha: 0.08)
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isCurrent
                         ? const Color(0xFF1A237E).withValues(alpha: 0.5)
@@ -1963,7 +1970,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: halfColor.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: halfColor.withValues(alpha: 0.18)),
         ),
         child: Column(
@@ -2120,9 +2127,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         children: [
           TabBar(
+            indicator: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: const Color(0xFF1A237E),
+            ),
+            indicatorSize: TabBarIndicatorSize.tab,
+            dividerColor: Colors.transparent,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.grey,
+            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'Pretendard'),
+            unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, fontFamily: 'Pretendard'),
             tabs: const [Tab(text: '키플레이어'), Tab(text: '로스터')],
-            labelColor: isDark ? Colors.white : const Color(0xFF1A237E),
-            indicatorColor: const Color(0xFF1A237E),
           ),
           Expanded(
             child: TabBarView(
@@ -2144,9 +2159,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         children: [
           TabBar(
+            indicator: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: const Color(0xFF1A237E),
+            ),
+            indicatorSize: TabBarIndicatorSize.tab,
+            dividerColor: Colors.transparent,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.grey,
+            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'Pretendard'),
+            unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, fontFamily: 'Pretendard'),
             tabs: const [Tab(text: '투수'), Tab(text: '타자'), Tab(text: '상세')],
-            labelColor: isDark ? Colors.white : const Color(0xFF1A237E),
-            indicatorColor: const Color(0xFF1A237E),
           ),
           Expanded(
             child: TabBarView(
@@ -2167,7 +2190,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       return const Center(child: Text('경기 시작 후 확인할 수 있습니다'));
     }
     if (_previewData == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
     }
 
     final homeTeam = _gameData!['game']['home_team'];
@@ -2458,7 +2481,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildRosterTab() {
     if (_rosterData == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
     }
 
     final homeTeam = _gameData!['game']['home_team'];
@@ -2468,7 +2491,18 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       length: 2,
       child: Column(
         children: [
-          TabBar(tabs: [Tab(text: homeTeam), Tab(text: awayTeam)]),
+          TabBar(
+            indicator: BoxDecoration(
+              color: const Color(0xFF1A237E),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.black54,
+            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
+            dividerColor: Colors.transparent,
+            tabs: [Tab(text: homeTeam), Tab(text: awayTeam)],
+          ),
           Expanded(
             child: TabBarView(
               children: [
@@ -2785,7 +2819,18 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 ],
               ),
             ),
-          TabBar(tabs: [Tab(text: homeTeam), Tab(text: awayTeam)]),
+          TabBar(
+            indicator: BoxDecoration(
+              color: const Color(0xFF1A237E),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.black54,
+            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
+            dividerColor: Colors.transparent,
+            tabs: [Tab(text: homeTeam), Tab(text: awayTeam)],
+          ),
           Expanded(
             child: TabBarView(
               children: [
@@ -3051,7 +3096,18 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       length: 2,
       child: Column(
         children: [
-          TabBar(tabs: [Tab(text: homeTeam), Tab(text: awayTeam)]),
+          TabBar(
+            indicator: BoxDecoration(
+              color: const Color(0xFF1A237E),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.black54,
+            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
+            dividerColor: Colors.transparent,
+            tabs: [Tab(text: homeTeam), Tab(text: awayTeam)],
+          ),
           Expanded(
             child: TabBarView(
               children: [
@@ -3195,7 +3251,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildRecordDetailTab() {
     if (_recordDetailData == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
     }
 
     final keyStats = _recordDetailData!['key_stats'] as Map<String, dynamic>? ?? {};
@@ -3327,7 +3383,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildHighlightsTab() {
     if (_highlightsLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
     }
     if (_highlights.isEmpty) {
       return const Center(
@@ -3362,7 +3418,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             margin: const EdgeInsets.only(bottom: 10),
             decoration: BoxDecoration(
               color: isDark ? Colors.grey[850] : Colors.white,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: const Offset(0, 2))],
             ),
             child: Column(
