@@ -929,16 +929,22 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         .toList();
     if (myRankings.isEmpty) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+    return ShaderMask(
+      shaderCallback: (bounds) => const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Colors.white, Colors.white, Colors.transparent],
+        stops: [0.0, 0.78, 1.0],
+      ).createShader(bounds),
+      blendMode: BlendMode.dstIn,
+      child: Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 18),
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
         borderRadius: BorderRadius.circular(20),
         border: Border(
           top: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 0.8),
-          left: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 0.8),
-          right: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 0.8),
         ),
       ),
       child: Column(
@@ -1014,7 +1020,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           const SizedBox(height: 10),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildMyTeamCard(Map ranking) {
