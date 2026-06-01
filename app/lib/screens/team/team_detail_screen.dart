@@ -18,9 +18,9 @@ class TeamDetailScreen extends StatefulWidget {
   State<TeamDetailScreen> createState() => _TeamDetailScreenState();
 }
 
-class _TeamDetailScreenState extends State<TeamDetailScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _TeamDetailScreenState extends State<TeamDetailScreen> {
+  int _mainTabIndex = 0;
+  int _gameSubIndex = 0;
   List _players = [];
   List _games = [];
   List _rosterChanges = [];
@@ -40,39 +40,30 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   bool _battingOrderLoading = false;
   bool _isFav = false;
   bool _favLoading = false;
-  num? _gamesBehind;   // rankings 캐시에서 보완
+  num? _gamesBehind;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 8, vsync: this);
-    _tabController.addListener(() {
-      if (_tabController.index == 1 && _games.isEmpty && !_gamesLoading) {
-        _loadGames();
-      }
-      if (_tabController.index == 2 && _rosterChanges.isEmpty && !_rosterLoading) {
-        _loadRosterChanges();
-      }
-      if (_tabController.index == 3 && _news.isEmpty && !_newsLoading) {
-        _loadNews();
-      }
-      if (_tabController.index == 4 && _communityPosts.isEmpty && !_communityLoading) {
-        _loadCommunityPosts();
-      }
-      if (_tabController.index == 5 && _monthlyStats.isEmpty && !_monthlyLoading) {
-        _loadMonthlyStats();
-      }
-      if (_tabController.index == 6 && _h2hRecords.isEmpty && !_h2hLoading) {
-        _loadH2H();
-      }
-      if (_tabController.index == 7 && _battingOrderStats.isEmpty && !_battingOrderLoading) {
-        _loadBattingOrder();
-      }
-    });
     _loadPlayers();
     _loadFavStatus();
     _loadSeasonStats();
     _loadGamesBehind();
+    _loadRosterChanges();
+    _loadNews();
+  }
+
+  void _onMainTabChange(int idx) {
+    setState(() => _mainTabIndex = idx);
+    if (idx == 2 && _games.isEmpty && !_gamesLoading) _loadGames();
+    if (idx == 3 && _communityPosts.isEmpty && !_communityLoading) _loadCommunityPosts();
+  }
+
+  void _onGameSubChange(int idx) {
+    setState(() => _gameSubIndex = idx);
+    if (idx == 1 && _monthlyStats.isEmpty && !_monthlyLoading) _loadMonthlyStats();
+    if (idx == 2 && _h2hRecords.isEmpty && !_h2hLoading) _loadH2H();
+    if (idx == 3 && _battingOrderStats.isEmpty && !_battingOrderLoading) _loadBattingOrder();
   }
 
   Future<void> _loadGamesBehind() async {
@@ -152,7 +143,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
 
   @override
   void dispose() {
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -295,6 +285,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     final draws = team['draws'] as int? ?? 0;
     final hr = (team['home_record'] as Map?)?.cast<String, dynamic>() ?? {};
     final ar = (team['away_record'] as Map?)?.cast<String, dynamic>() ?? {};
+    final vp = MediaQuery.of(context).viewPadding.bottom;
 
     return Scaffold(
       appBar: AppBar(
@@ -311,32 +302,218 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                   onPressed: _toggleFav,
                 ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          indicatorWeight: 2.5,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-          unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
-          dividerColor: Colors.transparent,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          tabs: const [Tab(text: '선수'), Tab(text: '최근경기'), Tab(text: '등록말소'), Tab(text: '뉴스'), Tab(text: '커뮤니티'), Tab(text: '월별성적'), Tab(text: '상대전적'), Tab(text: '타순별')],
-        ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          _buildHeader(team, code, color, wins, losses, draws, hr, ar),
-          if (_seasonStats != null) _buildSeasonStatsBar(),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [_buildPlayers(), _buildGames(), _buildRosterChanges(), _buildNews(), _buildCommunity(), _buildMonthlyStats(), _buildHeadToHead(), _buildBattingOrder()],
+          Padding(
+            padding: EdgeInsets.only(bottom: 64 + vp),
+            child: IndexedStack(
+              index: _mainTabIndex,
+              children: [
+                _buildOverviewTab(team, code, color, wins, losses, draws, hr, ar),
+                _buildPlayers(),
+                _buildGamesTab(),
+                _buildCommunity(),
+              ],
             ),
+          ),
+          Positioned(
+            left: 16, right: 16,
+            bottom: 12 + vp,
+            child: _buildMainFloatingNav(color),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMainFloatingNav(Color color) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const labels = ['개요', '선수', '경기', '커뮤'];
+    const icons = [Icons.home_outlined, Icons.people_outlined, Icons.sports_baseball_outlined, Icons.forum_outlined];
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 16, offset: const Offset(0, 4))],
+      ),
+      child: Row(
+        children: List.generate(labels.length, (i) {
+          final selected = _mainTabIndex == i;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => _onMainTabChange(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: selected ? color.withOpacity(0.12) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icons[i], size: 18, color: selected ? color : Colors.grey),
+                    const SizedBox(height: 1),
+                    Text(labels[i], style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                      color: selected ? color : Colors.grey,
+                    )),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildOverviewTab(Map team, String code, Color color, int wins, int losses, int draws, Map<String, dynamic> hr, Map<String, dynamic> ar) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(team, code, color, wins, losses, draws, hr, ar),
+          if (_seasonStats != null) _buildSeasonStatsBar(),
+          const SizedBox(height: 4),
+          // 등록말소 섹션
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: const Text('최근 등록말소', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          ),
+          if (_rosterLoading)
+            const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1A237E))))
+          else if (_rosterChanges.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: Text('최근 30일 등록말소 내역이 없습니다', style: TextStyle(color: Colors.grey, fontSize: 13)),
+            )
+          else
+            ..._rosterChanges.take(5).map((c) => _buildChangeItem(Map<String, dynamic>.from(c as Map))),
+          const Divider(height: 1),
+          // 뉴스 섹션
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: const Text('최근 뉴스', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          ),
+          if (_newsLoading)
+            const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1A237E))))
+          else if (_news.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 4, 16, 16),
+              child: Text('뉴스가 없습니다', style: TextStyle(color: Colors.grey, fontSize: 13)),
+            )
+          else
+            ..._news.take(5).map((n) => _buildNewsItem(n as Map)),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNewsItem(Map n) {
+    final title = n['title'] as String? ?? '';
+    final media = n['media'] as String? ?? '';
+    final pub = n['published_at'] as String?;
+    final url = n['url'] as String? ?? '';
+    final thumbnail = n['thumbnail'] as String? ?? '';
+    String dateStr = '';
+    if (pub != null) {
+      try {
+        final dt = DateTime.parse(pub).toLocal();
+        dateStr = '${dt.month}/${dt.day} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      } catch (_) {}
+    }
+    return InkWell(
+      onTap: () => _openUrl(url),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (thumbnail.isNotEmpty) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: CachedNetworkImage(
+                  imageUrl: thumbnail,
+                  width: 72, height: 54, fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(width: 72, height: 54, color: Colors.grey[200]),
+                  errorWidget: (_, __, ___) => Container(width: 72, height: 54, color: Colors.grey[100],
+                      child: const Icon(Icons.article_outlined, color: Colors.grey, size: 20)),
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, height: 1.4),
+                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 3),
+                  Row(children: [
+                    if (media.isNotEmpty) ...[
+                      Text(media, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                      const SizedBox(width: 6),
+                    ],
+                    if (dateStr.isNotEmpty)
+                      Text(dateStr, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                  ]),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGamesTab() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const subLabels = ['최근경기', '월별성적', '상대전적', '타순별'];
+    return Column(
+      children: [
+        Container(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          child: SizedBox(
+            height: 40,
+            child: Row(
+              children: List.generate(subLabels.length, (i) {
+                final selected = _gameSubIndex == i;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => _onGameSubChange(i),
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        border: Border(bottom: BorderSide(
+                          color: selected ? const Color(0xFF1A237E) : Colors.transparent,
+                          width: 2.5,
+                        )),
+                      ),
+                      child: Text(subLabels[i], style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                        color: selected ? const Color(0xFF1A237E) : Colors.grey,
+                      )),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ),
+        Expanded(
+          child: IndexedStack(
+            index: _gameSubIndex,
+            children: [_buildGames(), _buildMonthlyStats(), _buildHeadToHead(), _buildBattingOrder()],
+          ),
+        ),
+      ],
     );
   }
 

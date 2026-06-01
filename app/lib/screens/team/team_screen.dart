@@ -493,6 +493,50 @@ class _TeamScreenState extends State<TeamScreen>
 }
 
 
+Widget _buildSegmentControl(bool isDark, List<String> labels, TabController ctrl) {
+  return Container(
+    margin: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+    height: 36,
+    decoration: BoxDecoration(
+      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Row(
+      children: List.generate(labels.length, (i) {
+        final selected = ctrl.index == i;
+        return Expanded(
+          child: GestureDetector(
+            onTap: () => ctrl.animateTo(i),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              margin: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: selected
+                    ? (isDark ? const Color(0xFF3A3A3C) : Colors.white)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: selected
+                    ? [const BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))]
+                    : [],
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                labels[i],
+                style: TextStyle(
+                  fontSize: 13,
+                  fontFamily: 'Pretendard',
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                  color: selected ? const Color(0xFF1A237E) : Colors.grey,
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    ),
+  );
+}
+
 // ===== 팀 기록 탭 =====
 
 class TeamStatsTab extends StatefulWidget {
@@ -539,6 +583,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() { if (mounted) setState(() {}); });
     _load();
   }
 
@@ -777,19 +822,10 @@ class _TeamStatsTabState extends State<TeamStatsTab>
         ),
       );
     }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
-        TabBar(
-          controller: _tabController,
-          indicatorColor: const Color(0xFF1A237E),
-          indicatorWeight: 2.5,
-          dividerColor: Colors.transparent,
-          labelColor: const Color(0xFF1A237E),
-          unselectedLabelColor: Colors.grey,
-          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'Pretendard'),
-          unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, fontFamily: 'Pretendard'),
-          tabs: const [Tab(text: '타격'), Tab(text: '투수')],
-        ),
+        _buildSegmentControl(isDark, ['타격', '투수'], _tabController),
         Expanded(
           child: TabBarView(
             controller: _tabController,
@@ -879,6 +915,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() { if (mounted) setState(() {}); });
     _loadAll();
   }
 
@@ -981,19 +1018,10 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
-        TabBar(
-          controller: _tabController,
-          indicatorColor: const Color(0xFF1A237E),
-          indicatorWeight: 2.5,
-          dividerColor: Colors.transparent,
-          labelColor: const Color(0xFF1A237E),
-          unselectedLabelColor: Colors.grey,
-          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'Pretendard'),
-          unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, fontFamily: 'Pretendard'),
-          tabs: const [Tab(text: '타자'), Tab(text: '투수')],
-        ),
+        _buildSegmentControl(isDark, ['타자', '투수'], _tabController),
         Expanded(
           child: TabBarView(
             controller: _tabController,
