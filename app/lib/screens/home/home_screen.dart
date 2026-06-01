@@ -928,18 +928,21 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      clipBehavior: Clip.none,
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? AppColors.borderDark : AppColors.borderLight,
-          width: 0.8,
+        border: Border(
+          top: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 0.8),
+          left: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 0.8),
+          right: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 0.8),
+          bottom: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 0.8),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.07),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(isDark ? 0.18 : 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -1049,9 +1052,9 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(ranking))),
       ),
       child: Container(
-        width: 175,
+        width: 158,
         margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
