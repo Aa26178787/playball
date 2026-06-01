@@ -888,15 +888,14 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           ),
           if (_todayRosterChanges.isNotEmpty && _isSameDay(_selectedDate, DateTime.now()))
             _buildTodayRosterBanner(),
-          _buildMyTeamDashboard(),
           Expanded(
             child: Stack(
               clipBehavior: Clip.none,
               children: [
                 _isLoading ? _buildGameShimmer() : _buildGameList(),
                 Positioned(
-                  top: -14, left: 0, right: 0,
-                  height: 66,
+                  top: 0, left: 0, right: 0,
+                  height: 52,
                   child: IgnorePointer(
                     child: Builder(builder: (ctx) {
                       final scaffoldBg = Theme.of(ctx).brightness == Brightness.dark
@@ -929,24 +928,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         .toList();
     if (myRankings.isEmpty) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return ShaderMask(
-      shaderCallback: (bounds) => const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Colors.white, Colors.white, Colors.transparent],
-        stops: [0.0, 0.78, 1.0],
-      ).createShader(bounds),
-      blendMode: BlendMode.dstIn,
-      child: Container(
-      margin: const EdgeInsets.fromLTRB(16, 10, 16, 18),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(0, 8, 0, 4),
       clipBehavior: Clip.hardEdge,
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(20),
-        border: Border(
-          top: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 0.8),
-        ),
-      ),
+      decoration: const BoxDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1017,10 +1002,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
         ],
       ),
-    ));
+    );
   }
 
   Widget _buildMyTeamCard(Map ranking) {
@@ -1153,41 +1138,44 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     final bottomPad = MediaQuery.of(context).padding.bottom;
     return ListView.builder(
       padding: EdgeInsets.fromLTRB(0, 8, 0, 96 + bottomPad),
-      itemCount: 4,
-      itemBuilder: (_, __) => Shimmer.fromColors(
-        baseColor: base,
-        highlightColor: highlight,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+      itemCount: 5,
+      itemBuilder: (_, i) {
+        if (i == 0) return _buildMyTeamDashboard();
+        return Shimmer.fromColors(
+          baseColor: base,
+          highlightColor: highlight,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(children: [
+                      Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+                      const SizedBox(width: 8),
+                      Container(width: 60, height: 14, color: Colors.white),
+                    ]),
+                    Container(width: 40, height: 20, color: Colors.white),
+                    Row(children: [
+                      Container(width: 60, height: 14, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+                    ]),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Container(width: double.infinity, height: 10, color: Colors.white),
+              ],
+            ),
           ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(children: [
-                    Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
-                    const SizedBox(width: 8),
-                    Container(width: 60, height: 14, color: Colors.white),
-                  ]),
-                  Container(width: 40, height: 20, color: Colors.white),
-                  Row(children: [
-                    Container(width: 60, height: 14, color: Colors.white),
-                    const SizedBox(width: 8),
-                    Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
-                  ]),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Container(width: double.infinity, height: 10, color: Colors.white),
-            ],
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -1289,13 +1277,16 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     }
     final rankMap = {for (final r in _rankings) (r['id'] as int): r['rank'] as int?};
 
+    final hasMyTeam = _favoriteTeamIds.isNotEmpty && _rankings.isNotEmpty;
     return RefreshIndicator(
       onRefresh: _loadGames,
       child: ListView.builder(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, 96 + MediaQuery.of(context).padding.bottom),
-        itemCount: filtered.length,
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 96 + MediaQuery.of(context).padding.bottom),
+        itemCount: filtered.length + (hasMyTeam ? 1 : 0),
         itemBuilder: (context, index) {
-          final g = filtered[index];
+          if (hasMyTeam && index == 0) return _buildMyTeamDashboard();
+          final gameIndex = hasMyTeam ? index - 1 : index;
+          final g = filtered[gameIndex];
           final homeId = g['home_team_id'] as int? ?? 0;
           final awayId = g['away_team_id'] as int? ?? 0;
           final isMyTeam = _favoriteTeamIds.contains(homeId) ||
