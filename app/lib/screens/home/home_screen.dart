@@ -891,11 +891,12 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           _buildMyTeamDashboard(),
           Expanded(
             child: Stack(
+              clipBehavior: Clip.none,
               children: [
                 _isLoading ? _buildGameShimmer() : _buildGameList(),
                 Positioned(
-                  top: 0, left: 0, right: 0,
-                  height: 52,
+                  top: -14, left: 0, right: 0,
+                  height: 66,
                   child: IgnorePointer(
                     child: Builder(builder: (ctx) {
                       final scaffoldBg = Theme.of(ctx).brightness == Brightness.dark
