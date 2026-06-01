@@ -140,42 +140,13 @@ class _FloatingNavBar extends StatelessWidget {
           Container(
             height: 44,
             decoration: _pillDecoration(),
-            clipBehavior: Clip.hardEdge,
-            child: Builder(builder: (context) {
-              final pillBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
-              return Stack(
-                children: [
-                  ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                    itemCount: myTeamItems.length,
-                    itemBuilder: (_, i) => _buildChip(myTeamItems[i]),
-                  ),
-                  Positioned(
-                    left: 0, top: 0, bottom: 0,
-                    child: IgnorePointer(
-                      child: Container(
-                        width: 24,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [pillBg, pillBg.withOpacity(0)]),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 0, top: 0, bottom: 0,
-                    child: IgnorePointer(
-                      child: Container(
-                        width: 24,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [pillBg.withOpacity(0), pillBg]),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }),
+            clipBehavior: Clip.antiAlias,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              itemCount: myTeamItems.length,
+              itemBuilder: (_, i) => _buildChip(myTeamItems[i]),
+            ),
           ),
           const SizedBox(height: 8),
         ],
@@ -191,25 +162,33 @@ class _FloatingNavBar extends StatelessWidget {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => onTap(i),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        selected ? item.activeIcon : item.icon,
-                        size: 22,
-                        color: selected ? activeColor : inactiveColor,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        item.label,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: selected ? activeColor.withOpacity(0.12) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          selected ? item.activeIcon : item.icon,
+                          size: 22,
                           color: selected ? activeColor : inactiveColor,
-                          fontFamily: 'Pretendard',
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 2),
+                        Text(
+                          item.label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                            color: selected ? activeColor : inactiveColor,
+                            fontFamily: 'Pretendard',
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );

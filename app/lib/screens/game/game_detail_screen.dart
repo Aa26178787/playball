@@ -1473,10 +1473,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     final winRate = _getWinRate();
 
+    final navBottom = 120.0 + MediaQuery.of(context).viewPadding.bottom;
     return SingleChildScrollView(
       controller: _inningScrollController,
       physics: const ClampingScrollPhysics(),
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, navBottom),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2173,6 +2174,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
 
     const mainLabels = ['중계', '라인업', '기록', '하이라이트'];
+    const mainIcons = [
+      Icons.live_tv_outlined,
+      Icons.people_outline,
+      Icons.bar_chart,
+      Icons.video_library_outlined,
+    ];
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -2192,7 +2199,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       duration: const Duration(milliseconds: 180),
                       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                       decoration: BoxDecoration(
-                        color: sel ? activeColor : Colors.transparent,
+                        color: sel ? activeColor.withOpacity(0.12) : Colors.transparent,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Center(
@@ -2201,7 +2208,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
-                            color: sel ? Colors.white : inactiveColor,
+                            color: sel ? activeColor : inactiveColor,
                           ),
                         ),
                       ),
@@ -2226,29 +2233,29 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     _tabController.animateTo(i);
                     setState(() {});
                   },
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        mainLabels[i],
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
-                          color: sel ? activeColor : inactiveColor,
-                          fontFamily: 'Pretendard',
-                        ),
-                      ),
-                      if (sel) ...[
-                        const SizedBox(height: 3),
-                        Container(
-                          height: 2, width: 14,
-                          decoration: BoxDecoration(
-                            color: activeColor,
-                            borderRadius: BorderRadius.circular(1),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: sel ? activeColor.withOpacity(0.12) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(mainIcons[i], size: 18, color: sel ? activeColor : inactiveColor),
+                        const SizedBox(height: 1),
+                        Text(
+                          mainLabels[i],
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
+                            color: sel ? activeColor : inactiveColor,
+                            fontFamily: 'Pretendard',
                           ),
                         ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
               );
@@ -2910,7 +2917,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 12 + MediaQuery.of(context).viewPadding.bottom + 116),
             child: OutlinedButton.icon(
               onPressed: () => showModalBottomSheet(
                 context: context,
@@ -2932,8 +2939,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildPitcherList(List pitchers) {
+    final navBottom = 16.0 + MediaQuery.of(context).viewPadding.bottom;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, navBottom),
       children: pitchers.map((p) {
         final pm = p as Map<String, dynamic>;
         final playerId = pm['player_id'] as int?;
@@ -3208,8 +3216,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       }
     }
 
+    final bNavBottom = 120.0 + MediaQuery.of(context).viewPadding.bottom;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, bNavBottom),
       children: sortedKeys.expand((order) {
         final players = grouped[order]!;
         return players.asMap().entries.map((entry) {
@@ -3328,8 +3337,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final homeTeam = _gameData!['game']['home_team'];
     final awayTeam = _gameData!['game']['away_team'];
 
+    final rdNavBottom = 120.0 + MediaQuery.of(context).viewPadding.bottom;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, rdNavBottom),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -3467,7 +3477,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
     return ListView.builder(
       physics: const ClampingScrollPhysics(),
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.fromLTRB(12, 12, 12, 80 + MediaQuery.of(context).viewPadding.bottom),
       itemCount: _highlights.length,
       itemBuilder: (context2, idx) {
         final h = _highlights[idx] as Map<String, dynamic>;
