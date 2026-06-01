@@ -964,11 +964,51 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           ),
           SizedBox(
             height: 66,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              clipBehavior: Clip.none,
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
-              children: myRankings.map((r) => _buildMyTeamCard(r as Map)).toList(),
+            child: Stack(
+              children: [
+                ListView(
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
+                  children: myRankings.map((r) => _buildMyTeamCard(r as Map)).toList(),
+                ),
+                // 좌측 fade
+                Positioned(
+                  left: 0, top: 0, bottom: 0, width: 24,
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                            (isDark ? AppColors.surfaceDark : AppColors.surfaceLight).withOpacity(0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // 우측 fade
+                Positioned(
+                  right: 0, top: 0, bottom: 0, width: 24,
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerRight,
+                          end: Alignment.centerLeft,
+                          colors: [
+                            isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                            (isDark ? AppColors.surfaceDark : AppColors.surfaceLight).withOpacity(0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 10),
