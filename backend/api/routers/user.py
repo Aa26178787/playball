@@ -29,6 +29,8 @@ class NotificationSettings(BaseModel):
     notify_walkoff: bool = True
     notify_starter_ko: bool = True
     notify_before_minutes: int = 60  # 30 / 60 / 120
+    notify_milestone: bool = True
+    notify_fav_lineup: bool = True
 
 
 class PushToken(BaseModel):
@@ -273,7 +275,7 @@ def get_settings(current_user: dict = Depends(get_current_user)):
                notify_game_end, notify_my_team_only,
                notify_streak, notify_rank_change, notify_roster, notify_comment,
                notify_pennant_race, notify_fav_hr, notify_walkoff, notify_starter_ko,
-               notify_before_minutes
+               notify_before_minutes, notify_milestone, notify_fav_lineup
         FROM user_settings
         WHERE user_id = %s
     """, (current_user["user_id"],))
@@ -300,6 +302,8 @@ def get_settings(current_user: dict = Depends(get_current_user)):
             "notify_walkoff":         row[10] if row[10] is not None else True,
             "notify_starter_ko":      row[11] if row[11] is not None else True,
             "notify_before_minutes":  row[12] if row[12] is not None else 60,
+            "notify_milestone":       row[13] if row[13] is not None else True,
+            "notify_fav_lineup":      row[14] if row[14] is not None else True,
         }
     }
 
@@ -328,6 +332,8 @@ def update_settings(body: NotificationSettings, current_user: dict = Depends(get
             notify_walkoff = %s,
             notify_starter_ko = %s,
             notify_before_minutes = %s,
+            notify_milestone = %s,
+            notify_fav_lineup = %s,
             updated_at = NOW()
         WHERE user_id = %s
     """, (
@@ -344,6 +350,8 @@ def update_settings(body: NotificationSettings, current_user: dict = Depends(get
         body.notify_walkoff,
         body.notify_starter_ko,
         before_min,
+        body.notify_milestone,
+        body.notify_fav_lineup,
         current_user["user_id"]
     ))
 

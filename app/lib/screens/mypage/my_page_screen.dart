@@ -45,12 +45,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
   bool _notifyWalkoff       = true;
   bool _notifyStarterKo     = true;
   int  _notifyBeforeMinutes = 60;
+  bool _notifyMilestone     = true;
+  bool _notifyFavLineup     = true;
   bool _settingsLoaded      = false;
 
   @override
   void initState() {
     super.initState();
-    _loadFromCache().then((_) => _refreshFromApi());
+    // 캐시 즉시 표시 + API 병렬 갱신 — 캐시 완료를 기다리지 않아도 됨
+    // (SharedPreferences 읽기 ~5ms, API ~200ms → 캐시가 항상 먼저 완료)
+    _loadFromCache();
+    _refreshFromApi();
   }
 
   void _applySettings(Map settings) {
@@ -67,6 +72,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
     _notifyWalkoff       = settings['notify_walkoff']        as bool? ?? true;
     _notifyStarterKo     = settings['notify_starter_ko']     as bool? ?? true;
     _notifyBeforeMinutes = (settings['notify_before_minutes'] as num?)?.toInt() ?? 60;
+    _notifyMilestone     = settings['notify_milestone']      as bool? ?? true;
+    _notifyFavLineup     = settings['notify_fav_lineup']     as bool? ?? true;
   }
 
   Future<void> _loadFromCache() async {
@@ -79,18 +86,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
     final settings    = await LocalCache.get('user_settings')    as Map?;
 
     if (!mounted) return;
-    if (me != null || favTeams != null) {
-      setState(() {
-        if (me != null)         _user          = Map<String, dynamic>.from(me);
-        if (favTeams != null)   _favoriteTeams  = favTeams;
-        if (favPlayers != null) _favoritePlayers = favPlayers;
-        if (myPosts != null)    _myPosts        = myPosts;
-        if (myComments != null) _myComments     = myComments;
-        if (myLikes != null)    _myLikes        = myLikes;
-        if (settings != null)   { _applySettings(settings); _settingsLoaded = true; }
-        _loading = false;
-      });
-    }
+    setState(() {
+      if (me != null)         _user           = Map<String, dynamic>.from(me);
+      if (favTeams != null)   _favoriteTeams   = favTeams;
+      if (favPlayers != null) _favoritePlayers  = favPlayers;
+      if (myPosts != null)    _myPosts         = myPosts;
+      if (myComments != null) _myComments      = myComments;
+      if (myLikes != null)    _myLikes         = myLikes;
+      if (settings != null)   { _applySettings(settings); _settingsLoaded = true; }
+      _loading = false; // 캐시 비어도 false — API 갱신은 백그라운드에서 처리
+    });
   }
 
   Future<void> _refreshFromApi() async {
@@ -165,6 +170,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
         'notify_walkoff':         _notifyWalkoff,
         'notify_starter_ko':      _notifyStarterKo,
         'notify_before_minutes':  _notifyBeforeMinutes,
+        'notify_milestone':       _notifyMilestone,
+        'notify_fav_lineup':      _notifyFavLineup,
       });
     } catch (_) {}
   }
@@ -273,6 +280,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('마이페이지'),
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -282,7 +291,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
@@ -778,16 +787,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
           _notifCategory(Icons.sports_baseball, '경기 알림', [
-            _notifTile('경기 시작', null, _notifyGameStart,
+            _notifTile('경기 시작', '선발 발표·경기 취소 알림 포함', _notifyGameStart,
                 (v) { setState(() => _notifyGameStart = v); _saveSettings(); }),
             _buildBeforeMinutesTile(),
-            _notifTile('득점', null, _notifyScoreChange,
+            _notifTile('득점 변경', '역전·연장전 포함', _notifyScoreChange,
                 (v) { setState(() => _notifyScoreChange = v); _saveSettings(); }),
-            _notifTile('경기 종료', null, _notifyGameEnd,
+            _notifTile('경기 종료', '경기 결과 요약 포함', _notifyGameEnd,
                 (v) { setState(() => _notifyGameEnd = v); _saveSettings(); }),
-            _notifTile('끝내기 승리', '홈팀 끝내기 승리 시', _notifyWalkoff,
+            _notifTile('끝내기 승리', '끝내기 득점으로 승리 시', _notifyWalkoff,
                 (v) { setState(() => _notifyWalkoff = v); _saveSettings(); }),
-            _notifTile('선발 조기강판', '선발투수 5이닝 미만 강판 시', _notifyStarterKo,
+            _notifTile('투수 교체', '선발 조기강판·투수 교체 시', _notifyStarterKo,
                 (v) { setState(() => _notifyStarterKo = v); _saveSettings(); }),
             _notifTile(
               '마이팀 경기만',
@@ -797,17 +806,21 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ),
           ]),
           _notifCategory(Icons.leaderboard, '팀 알림', [
-            _notifTile('연승/연패', '마이팀 5연승/연패 이상', _notifyStreak,
+            _notifTile('연승/연패', '마이팀 5연승·연패 이상 시', _notifyStreak,
                 (v) { setState(() => _notifyStreak = v); _saveSettings(); }),
-            _notifTile('순위 변동', '마이팀 순위 변동 시', _notifyRankChange,
+            _notifTile('순위 변동', '마이팀 순위 변동·동률 1위 달성 시', _notifyRankChange,
                 (v) { setState(() => _notifyRankChange = v); _saveSettings(); }),
-            _notifTile('선두 추격', '마이팀이 1위일 때 2위와 게임차 좁혀질 때', _notifyPennantRace,
+            _notifTile('선두 추격', '마이팀 1위일 때 2위와 격차 좁혀질 때', _notifyPennantRace,
                 (v) { setState(() => _notifyPennantRace = v); _saveSettings(); }),
           ]),
           _notifCategory(Icons.person_outline, '선수 알림', [
-            _notifTile('즐겨찾기 선수 홈런', '즐겨찾기 선수가 홈런 칠 때', _notifyFavHr,
+            _notifTile('홈런', '즐겨찾기 선수 홈런 시', _notifyFavHr,
                 (v) { setState(() => _notifyFavHr = v); _saveSettings(); }),
-            _notifTile('등록말소', '즐겨찾기 선수 1군 등록/말소 시', _notifyRoster,
+            _notifTile('선발 출전', '즐겨찾기 선수 선발 출전 시', _notifyFavLineup,
+                (v) { setState(() => _notifyFavLineup = v); _saveSettings(); }),
+            _notifTile('대기록 달성', '연속안타·시즌/통산 기록·노히터·완봉 등', _notifyMilestone,
+                (v) { setState(() => _notifyMilestone = v); _saveSettings(); }),
+            _notifTile('1군 등록/말소', '즐겨찾기 선수·마이팀 선수 등록 변경 시', _notifyRoster,
                 (v) { setState(() => _notifyRoster = v); _saveSettings(); }),
           ]),
           _notifCategory(Icons.forum, '커뮤니티 알림', [

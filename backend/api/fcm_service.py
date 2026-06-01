@@ -517,7 +517,7 @@ def notify_fav_player_lineup(player_id: int, player_name: str, team_name: str,
                               game_id: int, opponent_team: str,
                               batting_order: int = 0, position: str = ''):
     """즐겨찾기 선수 선발 출전 알림 — notify_game_start ON 팬에게"""
-    targets = _get_player_fan_targets(player_id, 'notify_score_change')
+    targets = _get_player_fan_targets(player_id, 'notify_fav_lineup')
     if not targets:
         return
     order_str = f"{batting_order}번" if batting_order else ''
@@ -693,7 +693,7 @@ def notify_milestone(player_id: int, player_name: str, team_name: str,
     finally:
         conn.close()
 
-    targets = _get_player_fan_targets(player_id, 'notify_score_change')
+    targets = _get_player_fan_targets(player_id, 'notify_milestone')
     if not targets:
         return
 
