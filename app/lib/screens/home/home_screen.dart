@@ -30,14 +30,20 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  final _todayTabKey = GlobalKey<_TodayGamesTabState>();
+  late final List<Widget> _screens;
 
-  final List<Widget> _screens = [
-    const TodayGamesTab(),
-    const TeamScreen(),
-    const PlayerScreen(),
-    const CalendarScreen(),
-    const CommunityScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      TodayGamesTab(key: _todayTabKey),
+      const TeamScreen(),
+      const PlayerScreen(),
+      const CalendarScreen(),
+      const CommunityScreen(),
+    ];
+  }
 
   static const _navItems = [
     (icon: Icons.sports_baseball_outlined, activeIcon: Icons.sports_baseball, label: '경기'),
@@ -868,7 +874,8 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             icon: const Icon(Icons.person_outline),
             tooltip: '마이페이지',
             onPressed: () => Navigator.push(
-              context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
+              context, MaterialPageRoute(builder: (_) => const MyPageScreen()))
+              .then((_) { _todayTabKey.currentState?._loadFavoriteTeams(); }),
           ),
         ],
       ),
@@ -936,15 +943,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           top: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 0.8),
           left: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 0.8),
           right: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 0.8),
-          bottom: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 0.8),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.18 : 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1071,7 +1070,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(name,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                       overflow: TextOverflow.ellipsis),
                 ),
                 Container(
@@ -1089,7 +1088,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 if (showLossIcon) const Icon(Icons.arrow_downward, size: 9, color: Colors.red),
                 Expanded(
                   child: Text(gameStr,
-                      style: TextStyle(fontSize: 10, color: gameColor, fontWeight: FontWeight.w600),
+                      style: TextStyle(fontSize: 11, color: gameColor, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis),
                 ),
                 if (streakText.isNotEmpty) ...[
