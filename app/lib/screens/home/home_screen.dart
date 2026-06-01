@@ -183,10 +183,6 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   String get _selectedDateStr =>
       '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
 
-  bool get _gamesDateMismatch =>
-      _games.isNotEmpty &&
-      (_games.first as Map)['game_date'] != _selectedDateStr;
-
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
@@ -440,9 +436,13 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     }
     if (!mounted || _loadGen != gen) return;
     // 캐시 날짜 불일치 시 (UTC/KST 불일치 등) 캐시 무효화 → 신선 fetch 강제
-    if (cached != null && cached.isNotEmpty) {
-      final cachedDate = (cached.first as Map)['game_date'];
-      if (cachedDate != null && cachedDate != dateStr) cached = null;
+    try {
+      if (cached != null && cached.isNotEmpty) {
+        final cachedDate = (cached.first as Map)['game_date'];
+        if (cachedDate != null && cachedDate != dateStr) cached = null;
+      }
+    } catch (_) {
+      cached = null;
     }
     if (cached != null) {
       setState(() { _games = cached!; _isLoading = false; _loadError = false; });
@@ -455,7 +455,12 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       final data = isToday
           ? await ApiService.getTodayGames()
           : await ApiService.getGamesByDate(dateStr);
-      if (!mounted || _loadGen != gen) return;
+      if (!mounted) return;
+      if (_loadGen != gen) {
+        // 더 최신 요청이 있음 — _isLoading이 이 요청이 set한 상태라면 reset
+        if (_isLoading) setState(() => _isLoading = false);
+        return;
+      }
       final games = data['games'] as List? ?? [];
       await LocalCache.set('games_$dateStr', games);
       if (!mounted || _loadGen != gen) return;
@@ -463,9 +468,11 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       _prefetchAdjacentDates(dateStr);
       _prefetchGameDetails(games);
     } catch (e) {
-      if (!mounted || _loadGen != gen) return;
-      // Dio 인터셉터가 이미 1회 재시도함 — 캐시 데이터 유지, 로딩 해제
-      // _games가 비어있으면 에러 상태, 캐시 있으면 에러 숨김
+      if (!mounted) return;
+      if (_loadGen != gen) {
+        if (_isLoading) setState(() => _isLoading = false);
+        return;
+      }
       setState(() { _isLoading = false; if (_games.isEmpty) _loadError = true; });
     }
   }
@@ -886,7 +893,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             _buildTodayRosterBanner(),
           _buildMyTeamDashboard(),
           Expanded(
-            child: _isLoading || _gamesDateMismatch
+            child: _isLoading
                 ? _buildGameShimmer()
                 : _buildGameList(),
           ),
@@ -1231,6 +1238,9 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   Map<String, String>? _nextSeries(int teamId, int currentOpponentId) {
     for (final sg in _seriesGames) {
       final gm = sg as Map;
+      final gameDate = gm['game_date'] as String? ?? '';
+      // 현재 날짜 이하 게임 무시 (stale 캐시 방어)
+      if (gameDate.isEmpty || gameDate.compareTo(_selectedDateStr) <= 0) continue;
       final homeId = gm['home_team_id'] as int? ?? 0;
       final awayId = gm['away_team_id'] as int? ?? 0;
       if (homeId != teamId && awayId != teamId) continue;
@@ -1238,7 +1248,6 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       if (oppId == currentOpponentId) continue;
       final oppName = homeId == teamId ? gm['away_team'] as String? ?? '' : gm['home_team'] as String? ?? '';
       final oppCode = homeId == teamId ? gm['away_team_code'] as String? ?? '' : gm['home_team_code'] as String? ?? '';
-      final gameDate = gm['game_date'] as String? ?? '';
       return {'code': oppCode, 'name': oppName, 'date': gameDate};
     }
     return null;
@@ -1413,10 +1422,11 @@ class GameCard extends StatelessWidget {
     final emoji = w['emoji'] ?? '';
     final temp = w['temp'];
     final pop = w['pop'];
+    final popVal = pop is num ? pop.toInt() : null;
     final parts = <String>[
       if (emoji.isNotEmpty) emoji,
       if (temp != null) '${temp}°',
-      if (pop != null && (pop as int) > 0) '$pop%',
+      if (popVal != null && popVal > 0) '$popVal%',
     ];
     if (parts.isEmpty) return null;
     return Text(parts.join(' '), style: const TextStyle(fontSize: 11, color: Colors.white70));
@@ -1633,7 +1643,7 @@ class GameCard extends StatelessWidget {
                             ),
                           ),
                           const Spacer(),
-                          if (_buildWeatherWidget() != null) ...[_buildWeatherWidget()!, const SizedBox(width: 6)],
+                          if (_buildWeatherWidget() case final ww?) ...[ww, const SizedBox(width: 6)],
                           if (game.stadium != null)
                             GestureDetector(
                               onTap: () => Navigator.push(
