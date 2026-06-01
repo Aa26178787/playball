@@ -50,19 +50,16 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
     return Scaffold(
       body: Stack(
         children: [
-          // 하단 floating nav 높이만큼 padding 확보
-          Padding(
-            padding: const EdgeInsets.only(bottom: 80),
-            child: IndexedStack(index: _currentIndex, children: _screens),
-          ),
-          // Floating NavBar
+          IndexedStack(index: _currentIndex, children: _screens),
+          // Floating NavBar — 시스템 내비게이션 바 위로 올림
           Positioned(
             left: 20,
             right: 20,
-            bottom: 16,
+            bottom: 16 + bottomInset,
             child: _FloatingNavBar(
               currentIndex: _currentIndex,
               isDark: isDark,
@@ -212,19 +209,17 @@ class _TodayGamesTabState extends State<TodayGamesTab>
 
   void _prevDay() {
     if (_selectedDate.isAfter(_seasonStart)) {
-      final prev = _selectedDate.subtract(const Duration(days: 1));
-      setState(() { _selectedDate = prev; _isLoading = true; _games = []; _loadGen++; });
+      setState(() => _selectedDate = _selectedDate.subtract(const Duration(days: 1)));
       _loadGames();
-      _loadTomorrowGames();
+      Future.delayed(const Duration(seconds: 3), () { if (mounted) _loadTomorrowGames(); });
     }
   }
 
   void _nextDay() {
     if (_selectedDate.isBefore(_seasonEnd)) {
-      final next = _selectedDate.add(const Duration(days: 1));
-      setState(() { _selectedDate = next; _isLoading = true; _games = []; _loadGen++; });
+      setState(() => _selectedDate = _selectedDate.add(const Duration(days: 1)));
       _loadGames();
-      _loadTomorrowGames();
+      Future.delayed(const Duration(seconds: 3), () { if (mounted) _loadTomorrowGames(); });
     }
   }
 
@@ -237,9 +232,9 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       locale: const Locale('ko', 'KR'),
     );
     if (picked != null && mounted) {
-      setState(() { _selectedDate = picked; _isLoading = true; _games = []; _loadGen++; });
+      setState(() => _selectedDate = picked);
       _loadGames();
-      _loadTomorrowGames();
+      Future.delayed(const Duration(seconds: 3), () { if (mounted) _loadTomorrowGames(); });
     }
   }
 
@@ -592,9 +587,9 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           return GestureDetector(
             onTap: () {
               if (!isSelected) {
-                setState(() { _selectedDate = date; _isLoading = true; _games = []; _loadGen++; });
+                setState(() => _selectedDate = date);
                 _loadGames();
-                _loadTomorrowGames();
+                Future.delayed(const Duration(seconds: 3), () { if (mounted) _loadTomorrowGames(); });
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
               }
             },
@@ -1074,7 +1069,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     final base = isDark ? Colors.grey[800]! : Colors.grey[300]!;
     final highlight = isDark ? Colors.grey[700]! : Colors.grey[100]!;
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 96),
       itemCount: 4,
       itemBuilder: (_, __) => Shimmer.fromColors(
         baseColor: base,
@@ -1140,6 +1135,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       return RefreshIndicator(
         onRefresh: _loadGames,
         child: ListView(
+          padding: const EdgeInsets.only(bottom: 96),
           children: [
             SizedBox(height: MediaQuery.of(context).size.height * 0.15),
             Column(
@@ -1213,7 +1209,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     return RefreshIndicator(
       onRefresh: _loadGames,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
         itemCount: filtered.length,
         itemBuilder: (context, index) {
           final g = filtered[index];
@@ -1399,7 +1395,7 @@ class GameCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('다음 ', style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.35))),
+        Text('다음 ', style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.65))),
         TeamLogo(teamCode: series['code'] ?? '', size: 15),
         const SizedBox(width: 3),
         Flexible(
@@ -1523,10 +1519,6 @@ class GameCard extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(name,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white, shadows: _textShadow),
-              overflow: TextOverflow.ellipsis, maxLines: 1),
-          const SizedBox(width: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
             decoration: BoxDecoration(
@@ -1536,6 +1528,10 @@ class GameCard extends StatelessWidget {
             ),
             child: Text(label, style: TextStyle(fontSize: 9, color: labelColor, fontWeight: FontWeight.w800)),
           ),
+          const SizedBox(width: 4),
+          Text(name,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white, shadows: _textShadow),
+              overflow: TextOverflow.ellipsis, maxLines: 1),
         ],
       );
     }
@@ -1576,12 +1572,12 @@ class GameCard extends StatelessWidget {
                         end: Alignment.centerRight,
                         colors: homeWon
                             ? [
-                                Colors.black.withOpacity(overlayOpacity - 0.30),
-                                Colors.black.withOpacity(overlayOpacity + 0.12),
+                                Colors.black.withOpacity(overlayOpacity - 0.42),
+                                Colors.black.withOpacity(overlayOpacity + 0.22),
                               ]
                             : [
-                                Colors.black.withOpacity(overlayOpacity + 0.12),
-                                Colors.black.withOpacity(overlayOpacity - 0.30),
+                                Colors.black.withOpacity(overlayOpacity + 0.22),
+                                Colors.black.withOpacity(overlayOpacity - 0.42),
                               ],
                       ),
                     ),
@@ -1643,7 +1639,14 @@ class GameCard extends StatelessWidget {
                             ),
                           ),
                           const Spacer(),
-                          if (_buildWeatherWidget() case final ww?) ...[ww, const SizedBox(width: 6)],
+                          Builder(builder: (_) {
+                            final ww = _buildWeatherWidget();
+                            if (ww == null) return const SizedBox.shrink();
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: ww,
+                            );
+                          }),
                           if (game.stadium != null)
                             GestureDetector(
                               onTap: () => Navigator.push(
