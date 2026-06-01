@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import '../mypage/my_page_screen.dart';
@@ -27,7 +28,8 @@ class _CommunityScreenState extends State<CommunityScreen>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 3, vsync: this);
+    _tabCtrl = TabController(length: 4, vsync: this);
+    _tabCtrl.addListener(() { if (mounted) setState(() {}); });
   }
 
   @override
@@ -55,11 +57,14 @@ class _CommunityScreenState extends State<CommunityScreen>
             Tab(text: '전체'),
             Tab(text: '팀별'),
             Tab(text: '인기'),
+            Tab(text: '맛집'),
           ],
         ),
       ),
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: 80 + MediaQuery.of(context).padding.bottom),
+      floatingActionButton: _tabCtrl.index == 3 ? null : Padding(
+        padding: EdgeInsets.only(
+          bottom: (ApiService.myTeamData.value.isNotEmpty ? 142.0 : 90.0) + MediaQuery.of(context).viewPadding.bottom,
+        ),
         child: FloatingActionButton(
           onPressed: () async {
             final created = await Navigator.push<bool>(context,
@@ -76,6 +81,7 @@ class _CommunityScreenState extends State<CommunityScreen>
           _PostListTab(key: _latestKey, sort: 'latest'),
           const _TeamTab(),
           const _PostListTab(sort: 'hot'),
+          const _FoodTab(),
         ],
       ),
     );
@@ -491,6 +497,446 @@ class _PostCard extends StatelessWidget {
                   ],
                 ),
               ),
+      ),
+    );
+  }
+}
+
+// ===== 맛집 탭 =====
+
+const _stadiums = [
+  (id: 1, name: '서울'),
+  (id: 2, name: '고척'),
+  (id: 3, name: '수원'),
+  (id: 4, name: '인천'),
+  (id: 5, name: '대전'),
+  (id: 6, name: '광주'),
+  (id: 7, name: '대구'),
+  (id: 8, name: '창원'),
+  (id: 9, name: '사직'),
+];
+
+class _FoodTab extends StatefulWidget {
+  const _FoodTab();
+
+  @override
+  State<_FoodTab> createState() => _FoodTabState();
+}
+
+class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
+  int _stadiumId = 1;
+  List _places = [];
+  bool _loading = true;
+  final Set<int> _myVotes = {};
+
+  @override
+  bool get wantKeepAlive => false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (mounted) setState(() => _loading = true);
+    try {
+      final data = await ApiService.getCommunityFood(_stadiumId);
+      if (mounted) setState(() { _places = data['places'] ?? []; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _vote(int placeId) async {
+    try {
+      final res = await ApiService.voteFoodPlace(placeId);
+      final voted = res['voted'] as bool;
+      setState(() {
+        if (voted) { _myVotes.add(placeId); } else { _myVotes.remove(placeId); }
+        final idx = _places.indexWhere((p) => p['id'] == placeId);
+        if (idx >= 0) {
+          final cur = (_places[idx]['upvote_count'] as int? ?? 0);
+          _places[idx] = Map.from(_places[idx])..['upvote_count'] = voted ? cur + 1 : cur - 1;
+        }
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그인이 필요합니다')),
+        );
+      }
+    }
+  }
+
+  Future<void> _openUrl(String url) async {
+    if (url.isEmpty) return;
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  void _showSubmit() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => _FoodSubmitSheet(
+        stadiumId: _stadiumId,
+        onSubmitted: _load,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = const Color(0xFF1A237E);
+    final navBottom = (ApiService.myTeamData.value.isNotEmpty ? 142.0 : 90.0)
+        + MediaQuery.of(context).viewPadding.bottom + 56; // FAB 없으므로 nav only
+
+    return Column(
+      children: [
+        // 구장 선택 칩
+        SizedBox(
+          height: 48,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            itemCount: _stadiums.length,
+            itemBuilder: (_, i) {
+              final s = _stadiums[i];
+              final sel = s.id == _stadiumId;
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: ChoiceChip(
+                  label: Text(s.name),
+                  selected: sel,
+                  onSelected: (_) {
+                    setState(() { _stadiumId = s.id; _places = []; });
+                    _load();
+                  },
+                  selectedColor: activeColor,
+                  labelStyle: TextStyle(
+                    fontSize: 12,
+                    fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                    color: sel ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                  ),
+                  backgroundColor: isDark ? Colors.white10 : Colors.grey[100],
+                  side: BorderSide.none,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+              );
+            },
+          ),
+        ),
+        Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
+        // 목록
+        Expanded(
+          child: Stack(
+            children: [
+              if (_loading)
+                const Center(child: CircularProgressIndicator())
+              else if (_places.isEmpty)
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.restaurant_menu, size: 48, color: Colors.grey[300]),
+                      const SizedBox(height: 12),
+                      Text('아직 팬 추천 맛집이 없습니다\n첫 번째로 추천해보세요!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                    ],
+                  ),
+                )
+              else
+                ListView.separated(
+                  padding: EdgeInsets.only(bottom: navBottom),
+                  itemCount: _places.length,
+                  separatorBuilder: (_, _x) => Divider(height: 1, color: Colors.grey.withValues(alpha: 0.12)),
+                  itemBuilder: (_, i) {
+                    final p = _places[i];
+                    final isApproved = p['status'] == 'approved';
+                    final votes = p['upvote_count'] as int? ?? 0;
+                    final voted = _myVotes.contains(p['id'] as int);
+                    return ListTile(
+                      leading: Container(
+                        width: 38, height: 38,
+                        decoration: BoxDecoration(
+                          color: isApproved
+                              ? activeColor.withValues(alpha: 0.12)
+                              : Colors.grey.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          isApproved ? Icons.verified : Icons.restaurant,
+                          color: isApproved ? activeColor : Colors.grey,
+                          size: 18,
+                        ),
+                      ),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(p['name'] as String? ?? '',
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          ),
+                          if (isApproved)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: activeColor.withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text('인증',
+                                  style: TextStyle(fontSize: 10, color: activeColor, fontWeight: FontWeight.bold)),
+                            ),
+                        ],
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${p['category'] ?? ''} · ${p['submitted_by'] ?? ''} 추천',
+                              style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                          if ((p['memo'] as String? ?? '').isNotEmpty)
+                            Text('"${p['memo']}"',
+                                style: TextStyle(fontSize: 11, color: Colors.grey[500],
+                                    fontStyle: FontStyle.italic)),
+                        ],
+                      ),
+                      isThreeLine: (p['memo'] as String? ?? '').isNotEmpty,
+                      trailing: GestureDetector(
+                        onTap: () => _vote(p['id'] as int),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(voted ? Icons.thumb_up : Icons.thumb_up_outlined,
+                                size: 18, color: voted ? activeColor : Colors.grey),
+                            Text('$votes',
+                                style: TextStyle(fontSize: 11, color: voted ? activeColor : Colors.grey)),
+                          ],
+                        ),
+                      ),
+                      onTap: () => _openUrl(p['url'] as String? ?? ''),
+                    );
+                  },
+                ),
+              // 맛집 제안 FAB
+              Positioned(
+                bottom: 16 + MediaQuery.of(context).viewPadding.bottom,
+                right: 16,
+                child: FloatingActionButton.extended(
+                  heroTag: 'food_fab',
+                  onPressed: _showSubmit,
+                  backgroundColor: activeColor,
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('맛집 제안', style: TextStyle(fontSize: 13)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ===== 맛집 제안 시트 =====
+
+class _FoodSubmitSheet extends StatefulWidget {
+  final int stadiumId;
+  final VoidCallback onSubmitted;
+
+  const _FoodSubmitSheet({required this.stadiumId, required this.onSubmitted});
+
+  @override
+  State<_FoodSubmitSheet> createState() => _FoodSubmitSheetState();
+}
+
+class _FoodSubmitSheetState extends State<_FoodSubmitSheet> {
+  final _searchCtrl = TextEditingController();
+  final _memoCtrl = TextEditingController();
+  List _results = [];
+  bool _searching = false;
+  Map? _selected;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _memoCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search() async {
+    final q = _searchCtrl.text.trim();
+    if (q.isEmpty) return;
+    setState(() { _searching = true; _results = []; _selected = null; });
+    try {
+      final data = await ApiService.searchFoodPlace(widget.stadiumId, q);
+      if (mounted) setState(() { _results = data['places'] ?? []; _searching = false; });
+    } catch (_) {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  Future<void> _submit() async {
+    if (_selected == null) return;
+    setState(() => _submitting = true);
+    try {
+      await ApiService.submitFoodPlace(widget.stadiumId, {
+        'kakao_place_id': _selected!['id'],
+        'name': _selected!['name'],
+        'category': _selected!['category'],
+        'address': _selected!['address'],
+        'phone': _selected!['phone'],
+        'url': _selected!['url'],
+        'memo': _memoCtrl.text.trim(),
+      });
+      widget.onSubmitted();
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('제안이 등록되었습니다. 팬 5명의 추천을 받으면 목록에 표시됩니다.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _submitting = false);
+        final msg = e.toString().contains('409') ? '이미 등록된 장소입니다' : '제안 실패. 로그인 상태를 확인해주세요';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const color = Color(0xFF1A237E);
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.7,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text('맛집 제안', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text('구장 2km 이내 음식점만 등록 가능합니다',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchCtrl,
+                      decoration: InputDecoration(
+                        hintText: '가게 이름 검색',
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        isDense: true,
+                      ),
+                      onSubmitted: (_) => _search(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _searching ? null : _search,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: color,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    child: _searching
+                        ? const SizedBox(width: 16, height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('검색'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (_selected != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: color, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(_selected!['name'] as String,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _memoCtrl,
+                  decoration: InputDecoration(
+                    hintText: '한줄 추천 이유 (선택)',
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    isDense: true,
+                  ),
+                  maxLength: 60,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _submitting ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: color,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: _submitting
+                        ? const SizedBox(width: 18, height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('제안 등록'),
+                  ),
+                ),
+              ] else if (_results.isNotEmpty) ...[
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: _results.length,
+                    separatorBuilder: (_, _x) => Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
+                    itemBuilder: (_, i) {
+                      final p = _results[i];
+                      return ListTile(
+                        dense: true,
+                        title: Text(p['name'] as String,
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        subtitle: Text(p['category'] as String? ?? '',
+                            style: const TextStyle(fontSize: 11)),
+                        trailing: const Icon(Icons.add, size: 18, color: color),
+                        onTap: () => setState(() => _selected = p),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

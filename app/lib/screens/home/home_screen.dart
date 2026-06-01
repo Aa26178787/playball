@@ -141,11 +141,35 @@ class _FloatingNavBar extends StatelessWidget {
             height: 44,
             decoration: _pillDecoration(),
             clipBehavior: Clip.antiAlias,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              itemCount: myTeamItems.length,
-              itemBuilder: (_, i) => _buildChip(myTeamItems[i]),
+            child: Stack(
+              children: [
+                ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  itemCount: myTeamItems.length,
+                  itemBuilder: (_, i) => _buildChip(myTeamItems[i]),
+                ),
+                // 좌측 solid overlay
+                IgnorePointer(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      width: 16,
+                      color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                    ),
+                  ),
+                ),
+                // 우측 solid overlay
+                IgnorePointer(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Container(
+                      width: 16,
+                      color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),

@@ -380,7 +380,7 @@ class _TeamScreenState extends State<TeamScreen>
                     decoration: BoxDecoration(color: rankBg, borderRadius: BorderRadius.circular(15)),
                     alignment: Alignment.center,
                     child: Text(
-                      '${rank}위',
+                      '$rank위',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
@@ -423,11 +423,49 @@ class _TeamScreenState extends State<TeamScreen>
                 ],
               ),
               const SizedBox(height: 8),
+              // ─── 승패 분할 바 ───
+              if (totalGames > 0) ...[
+                Row(
+                  children: [
+                    Text('$wins승', style: const TextStyle(fontSize: 11, color: Color(0xFF1565C0), fontWeight: FontWeight.w600)),
+                    const Spacer(),
+                    if (draws > 0)
+                      Text('$draws무', style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600)),
+                    if (draws > 0) const Spacer(),
+                    Text('$losses패', style: const TextStyle(fontSize: 11, color: Color(0xFFC62828), fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: SizedBox(
+                    height: 8,
+                    child: Row(
+                      children: [
+                        Flexible(
+                          flex: wins > 0 ? wins : 0,
+                          child: Container(color: const Color(0xFF1565C0)),
+                        ),
+                        if (draws > 0)
+                          Flexible(
+                            flex: draws,
+                            child: Container(color: const Color(0xFF90A4AE)),
+                          ),
+                        Flexible(
+                          flex: losses > 0 ? losses : 0,
+                          child: Container(color: const Color(0xFFC62828)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               // ─── 최근 5경기 + 연승 ───
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.07),
+                  color: Colors.grey.withValues(alpha: 0.07),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Row(

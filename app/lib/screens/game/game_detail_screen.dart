@@ -610,7 +610,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         children: [
           NestedScrollView(
             headerSliverBuilder: (context, _) => [
-              SliverToBoxAdapter(child: _buildGameHeader(game)),
+              SliverToBoxAdapter(child: _buildGameHeader(game, roundedBottom: _sameDayGames.isEmpty)),
               if (_sameDayGames.isNotEmpty)
                 SliverToBoxAdapter(child: _buildSameDayStrip()),
             ],
@@ -637,105 +637,116 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildSameDayStrip() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final gradientColors = isDark
+        ? [const Color(0xFF0D2818), const Color(0xFF1B3A22)]
+        : [const Color(0xFF1B4332), const Color(0xFF2D6A4F)];
+
     return LayoutBuilder(builder: (context, constraints) {
       final screenW = constraints.maxWidth > 0
           ? constraints.maxWidth
           : MediaQuery.of(context).size.width;
       final cardW = screenW / 4;
 
-      return Container(
-        height: 88,
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
-        ),
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-          itemCount: _sameDayGames.length,
-          itemBuilder: (_, i) {
-            final g = _sameDayGames[i] as Map;
-            final homeCode = g['home_team_code'] as String? ?? '';
-            final awayCode = g['away_team_code'] as String? ?? '';
-            final homeScore = g['home_score'];
-            final awayScore = g['away_score'];
-            final status = g['status'] as String? ?? '';
-            final isLive = status == '진행';
-            final isDone = status == '종료';
-            final isCurrent = g['id'] == widget.gameId;
+      return ClipRRect(
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+        child: Container(
+          height: 88,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter, end: Alignment.bottomCenter,
+              colors: gradientColors,
+            ),
+          ),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            itemCount: _sameDayGames.length,
+            itemBuilder: (_, i) {
+              final g = _sameDayGames[i] as Map;
+              final homeCode = g['home_team_code'] as String? ?? '';
+              final awayCode = g['away_team_code'] as String? ?? '';
+              final homeScore = g['home_score'];
+              final awayScore = g['away_score'];
+              final status = g['status'] as String? ?? '';
+              final isLive = status == '진행';
+              final isDone = status == '종료';
+              final isCurrent = g['id'] == widget.gameId;
 
-            String scoreText;
-            if (isDone || isLive) {
-              scoreText = '${awayScore ?? 0}:${homeScore ?? 0}';
-            } else {
-              scoreText = g['start_time'] as String? ?? '-';
-            }
+              String scoreText;
+              if (isDone || isLive) {
+                scoreText = '${awayScore ?? 0}:${homeScore ?? 0}';
+              } else {
+                scoreText = g['start_time'] as String? ?? '-';
+              }
 
-            return GestureDetector(
-              onTap: isCurrent
-                  ? null
-                  : () => Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => GameDetailScreen(gameId: g['id'] as int),
+              return GestureDetector(
+                onTap: isCurrent
+                    ? null
+                    : () => Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => GameDetailScreen(gameId: g['id'] as int),
+                          ),
                         ),
-                      ),
-              child: Container(
-                width: cardW - 8,
-                margin: const EdgeInsets.only(right: 6),
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(
-                  color: isCurrent
-                      ? const Color(0xFF1A237E).withValues(alpha: 0.08)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
+                child: Container(
+                  width: cardW - 8,
+                  margin: const EdgeInsets.only(right: 6),
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
                     color: isCurrent
-                        ? const Color(0xFF1A237E).withValues(alpha: 0.5)
-                        : Colors.grey.withValues(alpha: 0.2),
-                    width: isCurrent ? 2 : 1,
+                        ? Colors.white.withValues(alpha: 0.15)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isCurrent
+                          ? Colors.white.withValues(alpha: 0.7)
+                          : Colors.white.withValues(alpha: 0.2),
+                      width: isCurrent ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          TeamLogo(teamCode: awayCode, size: 22),
+                          const SizedBox(width: 6),
+                          TeamLogo(teamCode: homeCode, size: 22),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(scoreText,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isLive ? const Color(0xFFFF6B6B) : Colors.white,
+                              )),
+                          if (isLive) ...[
+                            const SizedBox(width: 2),
+                            Container(
+                              width: 5, height: 5,
+                              decoration: const BoxDecoration(color: Color(0xFFFF6B6B), shape: BoxShape.circle),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        TeamLogo(teamCode: awayCode, size: 22),
-                        const SizedBox(width: 6),
-                        TeamLogo(teamCode: homeCode, size: 22),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(scoreText,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isLive ? Colors.red : Colors.black87,
-                            )),
-                        if (isLive) ...[
-                          const SizedBox(width: 2),
-                          Container(
-                            width: 5, height: 5,
-                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       );
     });
   }
 
-  Widget _buildGameHeader(Map<String, dynamic> game) {
+  Widget _buildGameHeader(Map<String, dynamic> game, {bool roundedBottom = true}) {
     final status = game['status'] as String? ?? '';
     final isLive = status == '진행';
     final isDone = status == '종료';
@@ -826,7 +837,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     String shortName(String n) => n.length > 3 ? n.substring(0, 3) : n;
 
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+      borderRadius: BorderRadius.vertical(bottom: Radius.circular(roundedBottom ? 16 : 0)),
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -2648,8 +2659,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       }
     }
 
+    final vp = MediaQuery.of(context).viewPadding.bottom;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 120 + vp),
       children: [
         _rosterSectionHeader('선발'),
         const SizedBox(height: 8),
