@@ -231,18 +231,6 @@ class _TeamScreenState extends State<TeamScreen>
             Text('50,000회 시뮬', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
           ],
         ),
-        const SizedBox(height: 6),
-        // 범례
-        Wrap(
-          spacing: 8, runSpacing: 4,
-          children: [
-            _legendChip(cKs, '한국시리즈'),
-            _legendChip(cPo, '플레이오프'),
-            _legendChip(cSpo, '준플레이오프'),
-            _legendChip(cWc4, '와카4'),
-            _legendChip(cWc5, '와카5'),
-          ],
-        ),
         const SizedBox(height: 10),
         ..._odds.map((o) {
           final code = o['short_name'] as String? ?? '';
@@ -305,11 +293,11 @@ class _TeamScreenState extends State<TeamScreen>
                       Wrap(
                         spacing: 6, runSpacing: 2,
                         children: [
-                          if (ks >= 0.5) _stagePct('KS', ks, cKs),
-                          if (po >= 0.5) _stagePct('PO', po, cPo),
-                          if (spo >= 0.5) _stagePct('준PO', spo, cSpo),
-                          if (wc4 >= 0.5) _stagePct('와카4', wc4, cWc4),
-                          if (wc5 >= 0.5) _stagePct('와카5', wc5, cWc5),
+                          if (ks >= 0.5) _stagePct('한국시리즈', ks, cKs),
+                          if (po >= 0.5) _stagePct('플레이오프', po, cPo),
+                          if (spo >= 0.5) _stagePct('준플레이오프', spo, cSpo),
+                          if (wc4 >= 0.5) _stagePct('와일드카드 홈', wc4, cWc4),
+                          if (wc5 >= 0.5) _stagePct('와일드카드 원정', wc5, cWc5),
                         ],
                       ),
                     ],
