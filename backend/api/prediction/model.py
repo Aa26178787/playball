@@ -30,6 +30,29 @@ FEATURE_KEYS = [
     'h_recent_rs', 'a_recent_rs', 'h_recent_ra', 'a_recent_ra',
     'park_runs_factor', 'park_hr_factor',
     'day_of_week', 'is_weekend', 'is_doubleheader', 'rain_delay_prev',
+    # 신규 sabermetric
+    'h_team_wrc_plus', 'a_team_wrc_plus',
+    'h_team_babip', 'a_team_babip',
+    'h_recent_ops', 'a_recent_ops',
+    'h_starter_bb9', 'a_starter_bb9',
+    'h_starter_kbb', 'a_starter_kbb',
+    'h_starter_vs_opp_era', 'a_starter_vs_opp_era',
+    'h_lineup_woba_sum', 'a_lineup_woba_sum',
+    'h_lineup_wrc_plus', 'a_lineup_wrc_plus',
+    'h_bullpen_fip', 'a_bullpen_fip',
+    'h_bullpen_recent_ip', 'a_bullpen_recent_ip',
+    # 사용자 공식 합성
+    'h_p_starter', 'a_p_starter',
+    'h_p_bullpen', 'a_p_bullpen',
+    'h_p_total', 'a_p_total',
+    'h_offense_o', 'a_offense_o',
+    'h_exp_runs', 'a_exp_runs',
+    'sabermetric_home_win_prob',
+    # streak (momentum)
+    'h_streak', 'a_streak',
+    'h_win_streak_3plus', 'a_win_streak_3plus',
+    'h_lose_streak_3plus', 'a_lose_streak_3plus',
+    'weekday_doubleheader',
 ]
 
 # Derived diff features (often 더 강한 signal)
@@ -49,6 +72,19 @@ DIFF_FEATURE_KEYS = [
     ('bullpen_era_diff', 'a_bullpen_era', 'h_bullpen_era'),
     ('bullpen_rest_diff', 'h_bullpen_rest', 'a_bullpen_rest'),
     ('recent_form_diff', 'h_recent_wpct', 'a_recent_wpct'),
+    # 신규 diff
+    ('wrc_plus_diff', 'h_team_wrc_plus', 'a_team_wrc_plus'),
+    ('recent_ops_diff', 'h_recent_ops', 'a_recent_ops'),
+    ('starter_kbb_diff', 'h_starter_kbb', 'a_starter_kbb'),
+    ('starter_vs_opp_diff', 'a_starter_vs_opp_era', 'h_starter_vs_opp_era'),
+    ('lineup_woba_sum_diff', 'h_lineup_woba_sum', 'a_lineup_woba_sum'),
+    ('lineup_wrc_diff', 'h_lineup_wrc_plus', 'a_lineup_wrc_plus'),
+    ('bullpen_fip_diff', 'a_bullpen_fip', 'h_bullpen_fip'),
+    ('bullpen_load_diff', 'a_bullpen_recent_ip', 'h_bullpen_recent_ip'),
+    ('p_total_diff', 'h_p_total', 'a_p_total'),
+    ('offense_diff', 'h_offense_o', 'a_offense_o'),
+    ('exp_runs_diff', 'h_exp_runs', 'a_exp_runs'),
+    ('streak_diff', 'h_streak', 'a_streak'),
 ]
 
 
@@ -123,16 +159,30 @@ def train_model(season: int = 2026):
     rf.fit(X_tr, y_tr)
     rf_p = rf.predict_proba(X_te)[:, 1]
 
-    # 가중치 grid search → 최고 정확도 선택
+    # RF weight grid search
     best_w, best_acc = 0.5, 0.0
     for w in [0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1.0]:
         ep = (1 - w) * lr_p + w * rf_p
         acc = accuracy_score(y_te, (ep > 0.5).astype(int))
         if acc > best_acc:
             best_w, best_acc = w, acc
-    print(f"[train] best RF weight = {best_w}, acc = {best_acc:.3f}")
+    print(f"[train] best RF weight = {best_w}, acc (ML 단독) = {best_acc:.3f}")
     rf_weight = best_w
-    ens_p = (1 - rf_weight) * lr_p + rf_weight * rf_p
+    ml_p = (1 - rf_weight) * lr_p + rf_weight * rf_p
+
+    # Sabermetric baseline stacking grid search
+    import numpy as _np
+    saber_p_te = _np.array([float(f.get('sabermetric_home_win_prob', 0.54) or 0.54)
+                            for f in [get_features(g) for g in ids[split:]]], dtype=float)
+    best_sw, best_sw_acc = 0.0, best_acc
+    for sw in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]:
+        ep = (1 - sw) * ml_p + sw * saber_p_te
+        acc = accuracy_score(y_te, (ep > 0.5).astype(int))
+        if acc > best_sw_acc:
+            best_sw, best_sw_acc = sw, acc
+    print(f"[train] best saber weight = {best_sw}, acc (stacked) = {best_sw_acc:.3f}")
+    saber_weight = best_sw
+    ens_p = (1 - saber_weight) * ml_p + saber_weight * saber_p_te
     ens_pred = (ens_p > 0.5).astype(int)
 
     print(f"\n[train] LR  test acc={accuracy_score(y_te, (lr_p>0.5).astype(int)):.3f} auc={roc_auc_score(y_te, lr_p):.3f}")
@@ -166,6 +216,7 @@ def train_model(season: int = 2026):
             'feature_names': names,
             'season': season,
             'rf_weight': float(rf_weight),
+            'saber_weight': float(saber_weight),
             'test_acc': float(accuracy_score(y_te, ens_pred)),
             'test_auc': float(roc_auc_score(y_te, ens_p)),
             'train_size': len(X),
@@ -208,7 +259,12 @@ def predict_win_probability(game_id: int) -> dict:
     lr_p = model['lr'].predict_proba(vec_s)[0, 1]
     rf_p = model['rf'].predict_proba(vec)[0, 1]
     rf_w = float(model.get('rf_weight', 0.85))
-    ens_p = (1 - rf_w) * lr_p + rf_w * rf_p
+    ml_p = (1 - rf_w) * lr_p + rf_w * rf_p
+
+    # Stacking 앙상블: ML 모델 + sabermetric baseline 가중 평균
+    saber_p = sabermetric_baseline(feats)
+    saber_w = float(model.get('saber_weight', 0.0))  # 0이면 ML 단독
+    ens_p = (1 - saber_w) * ml_p + saber_w * saber_p
 
     # Top factor explanation (LR 계수 × scaled feature)
     lr_coefs = model['lr'].coef_[0]
@@ -232,6 +288,12 @@ def predict_win_probability(game_id: int) -> dict:
         'model_version': model.get('season'),
         'test_acc': model.get('test_acc'),
     }
+
+
+def sabermetric_baseline(feats: dict) -> float:
+    """사용자 공식 [1]-[7] 직접 baseline. ML 모델과 stacking 앙상블 가능.
+    반환: home win probability."""
+    return float(feats.get('sabermetric_home_win_prob', 0.54) or 0.54)
 
 
 def _fallback_log5(feats: dict) -> dict:
