@@ -207,35 +207,60 @@ class _TeamScreenState extends State<TeamScreen>
   }
 
   Widget _buildPostseasonOdds() {
+    // 단계별 색상 (상위 → 하위)
+    const Color cKs = Color(0xFFFFB300);    // KS 직행 (1위) — 금색
+    const Color cPo = Color(0xFF1565C0);    // PO 직행 (2위) — 진파랑
+    const Color cSpo = Color(0xFF1976D2);   // 준PO 직행 (3위) — 파랑
+    const Color cWc4 = Color(0xFF26A69A);   // WC 4위 — 청록
+    const Color cWc5 = Color(0xFF66BB6A);   // WC 5위 — 연두
+    const Color cOut = Color(0xFFBDBDBD);   // 탈락 — 회색
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 20),
         Row(
           children: [
-            const Text('가을야구 진출 확률', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const Text('포스트시즌 진출 확률', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
-              child: const Text('BETA', style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold)),
+              decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
+              child: const Text('Elo MC', style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold)),
             ),
             const Spacer(),
-            Text('Monte Carlo 100,000회', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+            Text('50,000회 시뮬', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+          ],
+        ),
+        const SizedBox(height: 6),
+        // 범례
+        Wrap(
+          spacing: 8, runSpacing: 4,
+          children: [
+            _legendChip(cKs, '한국시리즈'),
+            _legendChip(cPo, '플레이오프'),
+            _legendChip(cSpo, '준플레이오프'),
+            _legendChip(cWc4, '와카4'),
+            _legendChip(cWc5, '와카5'),
           ],
         ),
         const SizedBox(height: 10),
         ..._odds.map((o) {
           final code = o['short_name'] as String? ?? '';
-          final psPct = ((o['ps_prob'] as num? ?? 0) * 100);
-          final ksPct = ((o['ks_prob'] as num? ?? 0) * 100);
           final color = teamColor(code);
-          final isPS = psPct >= 50;
+          final ks = ((o['ks_direct_prob'] as num? ?? o['ks_prob'] as num? ?? 0) * 100).toDouble();
+          final po = ((o['po_direct_prob'] as num? ?? 0) * 100).toDouble();
+          final spo = ((o['spo_direct_prob'] as num? ?? 0) * 100).toDouble();
+          final wc4 = ((o['wc_seed4_prob'] as num? ?? 0) * 100).toDouble();
+          final wc5 = ((o['wc_seed5_prob'] as num? ?? 0) * 100).toDouble();
+          final ps = ks + po + spo + wc4 + wc5;
+          final out = (100.0 - ps).clamp(0.0, 100.0);
+          final elo = (o['elo'] as num? ?? 1500).toDouble();
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TeamLogo(teamCode: code, size: 28),
+                TeamLogo(teamCode: code, size: 30),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -243,50 +268,49 @@ class _TeamScreenState extends State<TeamScreen>
                     children: [
                       Row(
                         children: [
-                          Text(o['name'] as String? ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          Text(o['name'] as String? ?? '',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                          const SizedBox(width: 6),
+                          Text('Elo ${elo.toStringAsFixed(0)}',
+                              style: TextStyle(fontSize: 10, color: Colors.grey[600])),
                           const Spacer(),
-                          Text(
-                            '가을야구 ${psPct.toStringAsFixed(1)}%',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: psPct >= 95 ? Colors.blue : psPct >= 50 ? color : Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'KS직행 ${ksPct.toStringAsFixed(1)}%',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: ksPct >= 50 ? Colors.amber[700] : Colors.grey[500],
-                            ),
-                          ),
+                          Text('PS ${ps.toStringAsFixed(1)}%',
+                              style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.bold,
+                                color: ps >= 90 ? color : (ps >= 50 ? color.withValues(alpha: 0.7) : Colors.grey),
+                              )),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 5),
+                      // 단계별 누적 horizontal stacked bar
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(3),
-                        child: LinearProgressIndicator(
-                          value: (psPct / 100).clamp(0.0, 1.0),
-                          minHeight: 5,
-                          backgroundColor: Colors.grey.withOpacity(0.15),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            isPS ? color.withOpacity(0.8) : Colors.grey.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(4),
+                        child: SizedBox(
+                          height: 12,
+                          child: Row(
+                            children: [
+                              if (ks > 0) Flexible(flex: (ks * 100).round(), child: Container(color: cKs)),
+                              if (po > 0) Flexible(flex: (po * 100).round(), child: Container(color: cPo)),
+                              if (spo > 0) Flexible(flex: (spo * 100).round(), child: Container(color: cSpo)),
+                              if (wc4 > 0) Flexible(flex: (wc4 * 100).round(), child: Container(color: cWc4)),
+                              if (wc5 > 0) Flexible(flex: (wc5 * 100).round(), child: Container(color: cWc5)),
+                              if (out > 0) Flexible(flex: (out * 100).round(),
+                                  child: Container(color: cOut.withValues(alpha: 0.3))),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 3),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(3),
-                        child: LinearProgressIndicator(
-                          value: (ksPct / 100).clamp(0.0, 1.0),
-                          minHeight: 3,
-                          backgroundColor: Colors.grey.withOpacity(0.1),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            ksPct >= 10 ? Colors.amber.withOpacity(0.7) : Colors.grey.withOpacity(0.25),
-                          ),
-                        ),
+                      const SizedBox(height: 4),
+                      // 단계별 % 텍스트
+                      Wrap(
+                        spacing: 6, runSpacing: 2,
+                        children: [
+                          if (ks >= 0.5) _stagePct('KS', ks, cKs),
+                          if (po >= 0.5) _stagePct('PO', po, cPo),
+                          if (spo >= 0.5) _stagePct('준PO', spo, cSpo),
+                          if (wc4 >= 0.5) _stagePct('와카4', wc4, cWc4),
+                          if (wc5 >= 0.5) _stagePct('와카5', wc5, cWc5),
+                        ],
                       ),
                     ],
                   ),
@@ -297,10 +321,32 @@ class _TeamScreenState extends State<TeamScreen>
         }),
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Text('* 잔여경기 win rate 기반 시뮬레이션. 일정/상대 미반영.',
-              style: TextStyle(fontSize: 10, color: Colors.grey[400])),
+          child: Text('* Elo 레이팅 + 남은 schedule(홈/원정/상대 강도 반영) Monte Carlo 50,000회',
+              style: TextStyle(fontSize: 10, color: Colors.grey[500])),
         ),
       ],
+    );
+  }
+
+  Widget _legendChip(Color c, String label) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Container(width: 10, height: 10,
+          decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(2))),
+      const SizedBox(width: 4),
+      Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[700])),
+    ]);
+  }
+
+  Widget _stagePct(String label, double pct, Color c) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(3),
+        border: Border.all(color: c.withValues(alpha: 0.4), width: 0.6),
+      ),
+      child: Text('$label ${pct.toStringAsFixed(1)}%',
+          style: TextStyle(fontSize: 10, color: c, fontWeight: FontWeight.w700)),
     );
   }
 
