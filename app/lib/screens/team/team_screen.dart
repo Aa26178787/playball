@@ -221,14 +221,8 @@ class _TeamScreenState extends State<TeamScreen>
         Row(
           children: [
             const Text('포스트시즌 진출 확률', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
-              child: const Text('Elo MC', style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold)),
-            ),
             const Spacer(),
-            Text('100,000회 시뮬', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+            Text('Monte Carlo 100,000회', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
           ],
         ),
         const SizedBox(height: 10),
@@ -309,7 +303,7 @@ class _TeamScreenState extends State<TeamScreen>
         }),
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Text('* Elo 레이팅 + 남은 schedule(홈/원정/상대 강도 반영) Monte Carlo 100,000회',
+          child: Text('* Elo 레이팅 + 남은 schedule(홈/원정/상대 강도 반영). 진출확률 10% 미만은 제거.',
               style: TextStyle(fontSize: 10, color: Colors.grey[500])),
         ),
       ],
