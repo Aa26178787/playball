@@ -422,29 +422,39 @@ class _TeamScreenState extends State<TeamScreen>
       );
 
     if (isFav) {
-      // 즐겨찾기: floating card + 좌→우 팀색 그라데이션
+      // 즐겨찾기: floating card + 좌→우 팀색 그라데이션 (외곽선 X, 그림자로 floating)
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(team)))),
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
+                color: Theme.of(context).cardColor,
                 gradient: LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                   colors: [
-                    color.withValues(alpha: isDark ? 0.45 : 0.32),
-                    color.withValues(alpha: isDark ? 0.20 : 0.12),
+                    color.withValues(alpha: isDark ? 0.42 : 0.28),
+                    color.withValues(alpha: isDark ? 0.16 : 0.10),
                     Colors.transparent,
                   ],
                   stops: const [0.0, 0.45, 1.0],
                 ),
-                border: Border.all(color: color.withValues(alpha: 0.55), width: 1.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.10),
+                    blurRadius: 14, spreadRadius: 0, offset: const Offset(0, 6),
+                  ),
+                  BoxShadow(
+                    color: color.withValues(alpha: isDark ? 0.20 : 0.12),
+                    blurRadius: 22, spreadRadius: -2, offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: rowContent,
             ),
@@ -470,49 +480,62 @@ class _TeamScreenState extends State<TeamScreen>
     );
   }
 
-  // 게임카드와 완전 동일한 최근경기 표시 (색상/border/isLatest 마커 동일)
-  // 게임카드 _buildRecentBar 색상: W=연초록 L=연빨강 C=연노랑
-  static const Color _recW = Color(0xFF86EFAC);
-  static const Color _recL = Color(0xFFFCA5A5);
-  static const Color _recC = Color(0xFFFDE68A);
+  // Solid fill + 흰 텍스트 (흰 배경 가독성)
+  static const Color _recW = Color(0xFF1976D2);
+  static const Color _recL = Color(0xFFC62828);
+  static const Color _recC = Color(0xFFF57C00);
 
   Widget _buildRecentBar5(List<String> recent) {
     if (recent.isEmpty) return const SizedBox.shrink();
-    // 게임카드 home 방식: 그대로 사용, 마지막 인덱스가 최신
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: recent.asMap().entries.map((e) {
         final idx = e.key;
         final r = e.value;
         final isLatest = idx == recent.length - 1;
-        Color textC;
-        Color bgC;
-        if (r == 'W')      { textC = _recW; bgC = _recW.withValues(alpha: 0.22); }
-        else if (r == 'L') { textC = _recL; bgC = _recL.withValues(alpha: 0.18); }
-        else if (r == 'C') { textC = _recC; bgC = _recC.withValues(alpha: 0.18); }
-        else               { textC = Colors.grey; bgC = Colors.grey.withValues(alpha: 0.12); }
+        Color fillC;
+        if (r == 'W')      fillC = _recW;
+        else if (r == 'L') fillC = _recL;
+        else if (r == 'C') fillC = _recC;
+        else               fillC = Colors.grey[500]!;
         return Padding(
-          padding: const EdgeInsets.only(right: 2),
+          padding: const EdgeInsets.only(right: 3),
           child: Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
                 width: 18, height: 18,
                 decoration: BoxDecoration(
-                  color: bgC,
+                  color: fillC,
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: textC.withValues(alpha: 0.55), width: 0.8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: fillC.withValues(alpha: 0.35),
+                      blurRadius: 3, offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
                 alignment: Alignment.center,
                 child: Text(r,
-                    style: TextStyle(fontSize: 9, color: textC, fontWeight: FontWeight.w800)),
+                    style: const TextStyle(
+                        fontSize: 10, color: Colors.white, fontWeight: FontWeight.w900)),
               ),
               if (isLatest)
                 Positioned(
-                  top: -3, right: -1,
+                  top: -3, right: -2,
                   child: Container(
-                    width: 5, height: 5,
-                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                    width: 6, height: 6,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFD54F),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 2,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
             ],
