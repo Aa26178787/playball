@@ -1720,7 +1720,9 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
         found_scoring = False
         done = False
 
-        for item in text_relays:
+        # Naver textRelays는 최신순(역순) 반환 → reversed로 chronological 순회
+        # 안 하면 첫 이벤트(득점 후 상태)에서 즉시 score 감지 → last_*_text 빈값
+        for item in reversed(text_relays):
             if done:
                 break
             for opt in item.get('textOptions', []):
