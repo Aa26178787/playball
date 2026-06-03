@@ -108,6 +108,92 @@ def _parse_ip(ip_val) -> float:
     except Exception:
         return 0.0
 
+# ===== 동명이인 후처리 =====
+
+def _fix_dupe_name_player_ids(game_id: int, naver_game_id: str):
+    """Naver record API pcode 기준으로 game_pitchers/game_batters의
+    동명이인 player_id 매칭 정정. naver_crawler는 name+team_id+type LIMIT 1로
+    매칭하기 때문에 동명이인 데이터 손실 발생."""
+    import requests as _req
+    HEADERS = {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://sports.naver.com/'}
+    try:
+        url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/record"
+        res = _req.get(url, headers=HEADERS, timeout=5)
+        rd = res.json().get('result', {}).get('recordData', {})
+    except Exception as e:
+        print(f"[dupe-fix] Naver record fetch 실패 game={game_id}: {e}")
+        return
+
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+
+        # 동명이인 캐시: name → {pcode: player_id}
+        # 동명이인이 있는 name만 매핑 (정상 매칭은 그대로 둠)
+        cur.execute("""
+            SELECT name FROM players
+            WHERE name IS NOT NULL
+            GROUP BY name HAVING COUNT(*) > 1
+        """)
+        dupe_names = {r[0] for r in cur.fetchall()}
+        if not dupe_names:
+            return
+
+        cur.execute("""
+            SELECT name, naver_player_id, id FROM players
+            WHERE name = ANY(%s) AND naver_player_id IS NOT NULL
+        """, (list(dupe_names),))
+        pcode_to_id = {(r[0], r[1]): r[2] for r in cur.fetchall()}
+
+        def _fix_table(naver_rows, key_pcode, db_table, side):
+            """naver_rows: list of dict with name + pcode/playerCode.
+            db_table: 'game_pitchers' or 'game_batters'.
+            side: 'home' or 'away'."""
+            for nr in naver_rows:
+                name = nr.get('name', '')
+                pcode = str(nr.get(key_pcode) or '')
+                if not name or not pcode or name not in dupe_names:
+                    continue
+                correct_pid = pcode_to_id.get((name, pcode))
+                if not correct_pid:
+                    continue
+                # 현재 DB에서 (game_id, team_side, name) 일치 row 확인
+                cur.execute(f"""
+                    SELECT gp.player_id FROM {db_table} gp
+                    JOIN players p ON p.id = gp.player_id
+                    WHERE gp.game_id = %s AND gp.team_side = %s AND p.name = %s
+                """, (game_id, side, name))
+                existing = [r[0] for r in cur.fetchall()]
+                if correct_pid in existing:
+                    continue  # 이미 정확
+                # 잘못 매칭된 player_id를 correct_pid로 UPDATE (해당 game_id 안에서)
+                wrong_ids = [pid for pid in existing if pid != correct_pid]
+                for wid in wrong_ids:
+                    cur.execute(f"""
+                        UPDATE {db_table}
+                        SET player_id = %s
+                        WHERE game_id = %s AND team_side = %s AND player_id = %s
+                    """, (correct_pid, game_id, side, wid))
+                    print(f"[dupe-fix] {db_table} {name} pcode={pcode} {wid}→{correct_pid} (game={game_id})")
+
+        pitchers_box = rd.get('pitchersBoxscore', {})
+        for side in ('home', 'away'):
+            _fix_table(pitchers_box.get(side, []), 'pcode', 'game_pitchers', side)
+
+        batters_box = rd.get('battersBoxscore', {})
+        for side in ('home', 'away'):
+            _fix_table(batters_box.get(side, []), 'playerCode', 'game_batters', side)
+
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print(f"[dupe-fix] DB 처리 오류 game={game_id}: {e}")
+    finally:
+        conn.close()
+
+
 # ===== 헬스체크 =====
 _HEALTH_FILE = os.path.join(os.path.dirname(__file__), '../health.json')
 _ALERT_COOLDOWN = 3600  # 같은 오류 1시간 내 재알림 금지
@@ -1138,51 +1224,87 @@ def smart_update():
         except Exception as fcm_err:
             print(f"[FCM] 알림 처리 오류: {fcm_err}")
 
-        if newly_finished:
-            print(f"[{datetime.now()}] 경기 {len(newly_finished)}개 종료 감지 → 팀순위 업데이트")
-            finished_team_ids = set()
-            for gid in newly_finished:
-                conn_tmp = get_connection()
-                if conn_tmp:
-                    cur_tmp = conn_tmp.cursor()
-                    cur_tmp.execute(
-                        "SELECT naver_game_id, current_inning, home_team_id, away_team_id FROM games WHERE id = %s", (gid,)
-                    )
-                    row_tmp = cur_tmp.fetchone()
-                    cur_tmp.close()
-                    conn_tmp.close()
-                    if row_tmp and row_tmp[1]:
-                        save_game_pitches(gid, row_tmp[0], row_tmp[1])
-                        # 투구 위치 데이터 저장 (즉시 + 5/30분 후 재크롤 — Naver 마지막 이닝 incomplete 대응)
+        # 종료 게임 즉시 처리 (newly_finished 의존 제거 — 재시작 안전, dedup)
+        # 매 사이클 종료 게임 중 'post_finished_done' 미마킹 → 한 번씩 처리
+        try:
+            post_targets = [
+                (gid, c) for gid, c in curr_details.items()
+                if c.get('status') == '종료' and not _already_notified(gid, 'post_finished_done')
+            ]
+            if post_targets:
+                print(f"[{datetime.now()}] 종료 후처리 대상 {len(post_targets)}개")
+                update_team_rankings()
+                finished_team_ids = set()
+                for gid, curr in post_targets:
+                    conn_tmp = get_connection()
+                    if not conn_tmp:
+                        continue
+                    try:
+                        cur_tmp = conn_tmp.cursor()
+                        cur_tmp.execute(
+                            "SELECT naver_game_id, current_inning, home_team_id, away_team_id FROM games WHERE id = %s", (gid,)
+                        )
+                        row_tmp = cur_tmp.fetchone()
+                        cur_tmp.close()
+                    finally:
+                        conn_tmp.close()
+                    if not (row_tmp and row_tmp[1]):
+                        continue
+                    naver_gid = row_tmp[0]
+                    max_inn = int(row_tmp[1])
+                    # 투구 데이터
+                    try:
+                        save_game_pitches(gid, naver_gid, max_inn)
+                    except Exception as sgp_err:
+                        print(f"[{datetime.now()}] save_game_pitches 오류: {sgp_err}")
+                    # 동명이인 자동 정정 (game_pitchers + game_batters)
+                    try:
+                        _fix_dupe_name_player_ids(gid, naver_gid)
+                    except Exception as df_err:
+                        print(f"[dupe-fix] 오류 game={gid}: {df_err}")
+                    # pitch_locations 저장 + 5/30분 retry
+                    try:
+                        from crawler.crawl_pitch_locations import save_pitch_locations_for_game
+                        n = save_pitch_locations_for_game(gid, naver_gid, max_inn)
+                        print(f"[{datetime.now()}] pitch_locations 저장: game_id={gid} {n}구")
+                    except Exception as pl_err:
+                        print(f"[{datetime.now()}] pitch_locations 오류: {pl_err}")
+                    def _retry_pitch_loc(g=gid, ng=naver_gid, mi=max_inn):
                         try:
-                            from crawler.crawl_pitch_locations import save_pitch_locations_for_game
-                            max_inn = int(row_tmp[1])
-                            n = save_pitch_locations_for_game(gid, row_tmp[0], max_inn)
-                            print(f"[{datetime.now()}] pitch_locations 저장: game_id={gid} {n}구")
-                        except Exception as pl_err:
-                            print(f"[{datetime.now()}] pitch_locations 오류: {pl_err}")
-                        # 5분 + 30분 후 재크롤 (마지막 이닝 데이터 안정화)
-                        naver_gid_for_retry = row_tmp[0]
-                        max_inn_for_retry = int(row_tmp[1])
-                        def _retry_pitch_loc(g=gid, ng=naver_gid_for_retry, mi=max_inn_for_retry):
-                            try:
-                                from crawler.crawl_pitch_locations import save_pitch_locations_for_game as _s
-                                n = _s(g, ng, mi)
-                                print(f"[{datetime.now()}] pitch_locations 재크롤: game_id={g} {n}구")
-                            except Exception as e:
-                                print(f"[{datetime.now()}] pitch_locations 재크롤 오류: {e}")
-                        schedule.every(5).minutes.do(_run_once, _retry_pitch_loc)
-                        schedule.every(30).minutes.do(_run_once, _retry_pitch_loc)
-                        if row_tmp[2]: finished_team_ids.add(row_tmp[2])
-                        if row_tmp[3]: finished_team_ids.add(row_tmp[3])
-            update_team_rankings()
-            schedule.every(10).minutes.do(_run_once, update_finished_game_records)
-            schedule.every(15).minutes.do(_run_once, update_finished_player_stats)
-            # 경기 종료 25분 후 출전 선수 KBO 크롤
-            for gid in newly_finished:
-                schedule.every(25).minutes.do(_run_once, _crawl_kbo_stats_for_game, gid)
+                            from crawler.crawl_pitch_locations import save_pitch_locations_for_game as _s
+                            n = _s(g, ng, mi)
+                            print(f"[{datetime.now()}] pitch_locations 재크롤: game_id={g} {n}구")
+                        except Exception as e:
+                            print(f"[{datetime.now()}] pitch_locations 재크롤 오류: {e}")
+                    schedule.every(5).minutes.do(_run_once, _retry_pitch_loc)
+                    schedule.every(30).minutes.do(_run_once, _retry_pitch_loc)
+                    if row_tmp[2]: finished_team_ids.add(row_tmp[2])
+                    if row_tmp[3]: finished_team_ids.add(row_tmp[3])
+                    # KBO 시즌 스탯 25분 후 (selenium 무거움 — schedule만)
+                    schedule.every(25).minutes.do(_run_once, _crawl_kbo_stats_for_game, gid)
+                    # 마일스톤 체크 27분 후
+                    schedule.every(27).minutes.do(_run_once, _check_post_game_milestones, gid)
+                    # 하이라이트 즉시 + 1시간 후 retry (Naver 색인 지연 대응)
+                    try:
+                        from crawler.crawl_highlights import crawl_highlights_for_game
+                        crawl_highlights_for_game(gid)
+                    except Exception as hl_err:
+                        print(f"[{datetime.now()}] 하이라이트 크롤링 오류: {hl_err}")
+                    _mark_notified(gid, 'post_finished_done')
+                # 뉴스: 종료된 팀들 일괄
+                if finished_team_ids:
+                    try:
+                        from crawler.crawl_naver_news import crawl_news_for_teams
+                        crawl_news_for_teams(list(finished_team_ids))
+                    except Exception as news_err:
+                        print(f"[{datetime.now()}] 뉴스 크롤링 오류: {news_err}")
+                # 종료 직후 records 업데이트 (10분 schedule + 즉시)
+                schedule.every(10).minutes.do(_run_once, update_finished_game_records)
+                schedule.every(15).minutes.do(_run_once, update_finished_player_stats)
+        except Exception as pf_err:
+            print(f"[종료 후처리] 오류: {pf_err}")
 
-        # daily_stats 즉시 갱신 (재시작 안전 — game별 _already_notified dedup)
+        # daily_stats 즉시 갱신 (재시작 안전 — game별 dedup)
         try:
             unsaved_finished = [
                 gid for gid, c in curr_details.items()
@@ -1194,22 +1316,6 @@ def smart_update():
                     _mark_notified(gid, 'daily_stats_saved')
         except Exception as ds_err:
             print(f"[즉시 daily_stats] 오류: {ds_err}")
-            # 경기 종료 팀 뉴스 크롤링
-            if finished_team_ids:
-                try:
-                    from crawler.crawl_naver_news import crawl_news_for_teams
-                    crawl_news_for_teams(list(finished_team_ids))
-                except Exception as news_err:
-                    print(f"[{datetime.now()}] 뉴스 크롤링 오류: {news_err}")
-            # 경기 종료 하이라이트 크롤링
-            for gid in newly_finished:
-                try:
-                    from crawler.crawl_highlights import crawl_highlights_for_game
-                    crawl_highlights_for_game(gid)
-                except Exception as hl_err:
-                    print(f"[{datetime.now()}] 하이라이트 크롤링 오류: {hl_err}")
-
-            pass  # streak/rank_change/gb_zero/pennant_race는 newly_finished 블록 밖으로 이동
 
         # ── 연승/연패/순위변동 알림 (재시작 안전: 종료 팀 전체 검사 + dedup) ─
         # newly_finished 의존 제거 → 재시작 후에도 누락 복구
@@ -1259,14 +1365,7 @@ def smart_update():
             except Exception as wo_err:
                 print(f"[FCM] 끝내기 알림 오류: {wo_err}")
 
-        # 경기 종료 후 시즌 마일스톤 (재시작 안전: dedup으로 중복 스케줄링 방지)
-        for gid, curr in curr_details.items():
-            if curr.get('status') != '종료':
-                continue
-            if _already_notified(gid, 'post_milestone_scheduled'):
-                continue
-            _mark_notified(gid, 'post_milestone_scheduled')
-            schedule.every(27).minutes.do(_run_once, _check_post_game_milestones, gid)
+        # 마일스톤 27분 후는 post_finished_done 블록에서 이미 schedule됨
 
         # 경기 종료 즉시 결과 요약 알림 (재시작 안전: 종료 경기 중 미발송만)
         for gid, curr in curr_details.items():
