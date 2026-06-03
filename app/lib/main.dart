@@ -46,12 +46,14 @@ Future<void> _initFirebase() async {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     final messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(alert: true, badge: true, sound: true);
+    final settings = await messaging.requestPermission(alert: true, badge: true, sound: true);
+    debugPrint('[FCM] 권한 상태: ${settings.authorizationStatus}');
     await messaging.setForegroundNotificationPresentationOptions(
       alert: true, badge: true, sound: true,
     );
 
     final token = await messaging.getToken();
+    debugPrint('[FCM] 토큰: ${token?.substring(0, 30)}...');
     if (token != null) {
       await ApiService.registerFcmToken(token);
     }
