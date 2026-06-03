@@ -194,30 +194,30 @@ class _TeamScreenState extends State<TeamScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
-        // ── 고정 헤더 ──
+        // ── 고정 헤더 (Notion-style: 작은 폰트 + subtle divider) ──
         Container(
           color: Theme.of(context).scaffoldBackgroundColor,
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
           child: Row(
             children: [
-              SizedBox(width: 28, child: Text('순위', style: _hdrStyle)),
-              const SizedBox(width: 8),
+              SizedBox(width: 26, child: Text('#', style: _hdrStyle)),
+              const SizedBox(width: 12),
               Expanded(child: Text('팀', style: _hdrStyle)),
-              SizedBox(width: 28, child: Text('승', style: _hdrStyle, textAlign: TextAlign.center)),
-              SizedBox(width: 28, child: Text('패', style: _hdrStyle, textAlign: TextAlign.center)),
-              SizedBox(width: 28, child: Text('무', style: _hdrStyle, textAlign: TextAlign.center)),
-              SizedBox(width: 44, child: Text('승률', style: _hdrStyle, textAlign: TextAlign.right)),
-              SizedBox(width: 40, child: Text('게임차', style: _hdrStyle, textAlign: TextAlign.right)),
+              SizedBox(width: 32, child: Text('승', style: _hdrStyle, textAlign: TextAlign.center)),
+              SizedBox(width: 32, child: Text('패', style: _hdrStyle, textAlign: TextAlign.center)),
+              SizedBox(width: 32, child: Text('무', style: _hdrStyle, textAlign: TextAlign.center)),
+              SizedBox(width: 48, child: Text('승률', style: _hdrStyle, textAlign: TextAlign.right)),
+              SizedBox(width: 44, child: Text('게임차', style: _hdrStyle, textAlign: TextAlign.right)),
             ],
           ),
         ),
-        Container(height: 1, color: isDark ? Colors.grey[800] : Colors.grey[200]),
+        Container(height: 0.5, color: isDark ? Colors.white12 : Colors.black12),
         // ── 스크롤 영역 ──
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async { await _loadTeams(); await _loadOdds(); },
             child: ListView(
-              padding: EdgeInsets.fromLTRB(14, 8, 14,
+              padding: EdgeInsets.fromLTRB(12, 4, 12,
                   (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
               children: [
                 ..._teams.map((team) {
@@ -225,10 +225,10 @@ class _TeamScreenState extends State<TeamScreen>
                   return _buildTabularRow(team, oddsById[id], isDark);
                 }),
                 Padding(
-                  padding: const EdgeInsets.only(top: 16, left: 4),
+                  padding: const EdgeInsets.fromLTRB(8, 20, 8, 8),
                   child: Text(
                     '포스트시즌 진출 확률 · Monte Carlo 100,000회 · 표기 임계값 10%',
-                    style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                    style: TextStyle(fontSize: 10, color: Colors.grey[500], letterSpacing: 0.2),
                   ),
                 ),
               ],
@@ -240,8 +240,8 @@ class _TeamScreenState extends State<TeamScreen>
   }
 
   TextStyle get _hdrStyle => TextStyle(
-        fontSize: 11, fontWeight: FontWeight.w700,
-        color: Colors.grey[600], letterSpacing: 0.3,
+        fontSize: 10, fontWeight: FontWeight.w700,
+        color: Colors.grey[500], letterSpacing: 0.6,
       );
 
   // 포스트시즌 단계 색상
@@ -278,85 +278,85 @@ class _TeamScreenState extends State<TeamScreen>
     final ps = ks + po + spo + wc4 + wc5;
     final out = (100.0 - ps).clamp(0.0, 100.0);
 
-    // 순위 셀: 1-3위 메달, 4-5위 진한 색 숫자, 6-10위 옅은 회색
+    // 순위 셀 (Apple Sports 스타일 — 1-3위 미니 메달 badge, 나머지 숫자)
     Widget rankCell() {
-      if (rank == 1) return const Text('🥇', style: TextStyle(fontSize: 18));
-      if (rank == 2) return const Text('🥈', style: TextStyle(fontSize: 18));
-      if (rank == 3) return const Text('🥉', style: TextStyle(fontSize: 18));
+      if (rank <= 3) {
+        final emoji = rank == 1 ? '🥇' : (rank == 2 ? '🥈' : '🥉');
+        return Text(emoji, style: const TextStyle(fontSize: 17, height: 1.0));
+      }
       return Text('$rank',
           style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
-            color: isPSZone ? color : Colors.grey[500],
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: isPSZone ? (isDark ? Colors.white70 : Colors.black87) : Colors.grey[400],
+            fontFeatures: const [FontFeature.tabularFigures()],
           ));
     }
 
     final rowContent = Padding(
-      padding: EdgeInsets.fromLTRB(isFav ? 14 : 2, isFav ? 14 : 12, isFav ? 14 : 2, isFav ? 14 : 12),
+      padding: EdgeInsets.fromLTRB(
+          isFav ? 18 : 8, isFav ? 16 : 14, isFav ? 18 : 8, isFav ? 16 : 14),
       child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Row 1: 메인 stats
+            // Row 1: 메인 stats — Apple Sports typography + Notion 정렬
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SizedBox(width: 28, child: Center(child: rankCell())),
-                const SizedBox(width: 8),
-                TeamLogo(teamCode: code, size: 26, logoUrl: team['logo_url'] as String?),
-                const SizedBox(width: 8),
+                SizedBox(width: 26, child: Center(child: rankCell())),
+                const SizedBox(width: 12),
+                TeamLogo(teamCode: code, size: 32, logoUrl: team['logo_url'] as String?),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Row(
                     children: [
                       Flexible(
                         child: Text(team['name'] as String? ?? '',
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: isFav
+                                  ? (isDark ? Colors.white : Colors.black87)
+                                  : (isDark ? Colors.white.withValues(alpha: 0.92) : Colors.black87),
+                              letterSpacing: -0.2,
+                            ),
                             overflow: TextOverflow.ellipsis),
                       ),
                       if (isFav) ...[
-                        const SizedBox(width: 4),
-                        Icon(Icons.star_rounded, size: 14, color: color),
+                        const SizedBox(width: 5),
+                        Icon(Icons.star_rounded, size: 15, color: color),
                       ],
                     ],
                   ),
                 ),
-                SizedBox(
-                  width: 28,
-                  child: Text('$wins',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w800,
-                          color: Color(0xFF1565C0))),
+                _numCell(
+                  width: 32, value: '$wins',
+                  color: isDark ? Colors.white : const Color(0xFF111827),
+                  fontSize: 15, fontWeight: FontWeight.w700,
                 ),
-                SizedBox(
-                  width: 28,
-                  child: Text('$losses',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.w800,
-                          color: Color(0xFFC62828))),
+                _numCell(
+                  width: 32, value: '$losses',
+                  color: isDark ? Colors.white60 : Colors.grey[600],
+                  fontSize: 14, fontWeight: FontWeight.w500,
                 ),
-                SizedBox(
-                  width: 28,
-                  child: Text('$draws',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w700,
-                          color: Colors.grey[500])),
+                _numCell(
+                  width: 32, value: '$draws',
+                  color: Colors.grey[isDark ? 600 : 400],
+                  fontSize: 13, fontWeight: FontWeight.w500,
                 ),
-                SizedBox(
-                  width: 44,
-                  child: Text(winRate,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                _numCell(
+                  width: 48, value: winRate,
+                  color: isDark ? Colors.white : const Color(0xFF111827),
+                  fontSize: 13, fontWeight: FontWeight.w700, align: TextAlign.right,
                 ),
-                SizedBox(
-                  width: 40,
-                  child: Text(gbText,
-                      textAlign: TextAlign.right,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                _numCell(
+                  width: 44, value: gbText,
+                  color: Colors.grey[isDark ? 500 : 500],
+                  fontSize: 13, fontWeight: FontWeight.w500, align: TextAlign.right,
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             // Row 2: 최근5 + streak + PS bar + PS%
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -422,37 +422,37 @@ class _TeamScreenState extends State<TeamScreen>
       );
 
     if (isFav) {
-      // 즐겨찾기: floating card + 좌→우 팀색 그라데이션 (외곽선 X, 그림자로 floating)
+      // Apple Wallet/Sports 스타일 floating card + 좌→우 팀색 그라데이션
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(team)))),
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
                 color: Theme.of(context).cardColor,
                 gradient: LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                   colors: [
-                    color.withValues(alpha: isDark ? 0.42 : 0.28),
-                    color.withValues(alpha: isDark ? 0.16 : 0.10),
+                    color.withValues(alpha: isDark ? 0.40 : 0.26),
+                    color.withValues(alpha: isDark ? 0.14 : 0.08),
                     Colors.transparent,
                   ],
-                  stops: const [0.0, 0.45, 1.0],
+                  stops: const [0.0, 0.5, 1.0],
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.10),
-                    blurRadius: 14, spreadRadius: 0, offset: const Offset(0, 6),
+                    color: Colors.black.withValues(alpha: isDark ? 0.55 : 0.08),
+                    blurRadius: 20, spreadRadius: 0, offset: const Offset(0, 8),
                   ),
                   BoxShadow(
-                    color: color.withValues(alpha: isDark ? 0.20 : 0.12),
-                    blurRadius: 22, spreadRadius: -2, offset: const Offset(0, 4),
+                    color: color.withValues(alpha: isDark ? 0.30 : 0.18),
+                    blurRadius: 32, spreadRadius: -4, offset: const Offset(0, 6),
                   ),
                 ],
               ),
@@ -462,21 +462,47 @@ class _TeamScreenState extends State<TeamScreen>
         ),
       );
     }
-    // 일반 팀: flat row + bottom divider
-    return InkWell(
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(team)))),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-              width: 0.7,
+    // 일반 팀: Notion-style — subtle hover/divider, no border
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(team)))),
+        hoverColor: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.03),
+        highlightColor: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.04),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.05),
+                width: 0.5,
+              ),
             ),
           ),
+          child: rowContent,
         ),
-        child: rowContent,
       ),
+    );
+  }
+
+  // Notion-style 숫자 셀 — tabular figures, 정렬
+  Widget _numCell({
+    required double width, required String value,
+    Color? color, double fontSize = 13,
+    FontWeight fontWeight = FontWeight.w500,
+    TextAlign align = TextAlign.center,
+  }) {
+    return SizedBox(
+      width: width,
+      child: Text(value,
+          textAlign: align,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: fontWeight,
+            color: color,
+            fontFeatures: const [FontFeature.tabularFigures()],
+            letterSpacing: -0.1,
+          )),
     );
   }
 
