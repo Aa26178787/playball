@@ -22,16 +22,10 @@ class ApiService {
   static Map<String, dynamic>? getGameDetailMem(int id) => _gameDetailMem[id];
   static void setGameDetailMem(int id, Map<String, dynamic> data) => _gameDetailMem[id] = data;
 
-  // 동일 GET URL 진행 중 호출 dedupe: 중복 호출이 단일 Future 공유 → 서버 부하 감소
-  static final Map<String, Future<Response>> _inFlight = {};
+  // _dedupGet 비활성화 — 첫 호출 hang 시 모든 후속 호출 stuck 버그 회피
+  // 직접 _dio.get으로 fallback
   static Future<Response> _dedupGet(String path, {Map<String, dynamic>? query, Options? options}) {
-    final key = '$path?${query == null ? '' : query.entries.map((e) => '${e.key}=${e.value}').join('&')}';
-    final existing = _inFlight[key];
-    if (existing != null) return existing;
-    final fut = _dio.get(path, queryParameters: query, options: options)
-        .whenComplete(() => _inFlight.remove(key));
-    _inFlight[key] = fut;
-    return fut;
+    return _dio.get(path, queryParameters: query, options: options);
   }
 
   static final Map<int, Map<String, dynamic>> _playerDetailMem = {};
@@ -736,7 +730,7 @@ class ApiService {
 
   // ML 모델 승리예측 (구 vote 엔드포인트 대체)
   static Future<Map<String, dynamic>> getWinPrediction(int gameId) async {
-    final res = await _dedupGet('/prediction/game/$gameId');
+    final res = await _dio.get('/prediction/game/$gameId');
     return Map<String, dynamic>.from(res.data);
   }
 
