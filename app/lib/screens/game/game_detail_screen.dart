@@ -3514,6 +3514,31 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     ]);
   }
 
+  Future<void> _openYouTube(String url) async {
+    if (url.isEmpty) return;
+    final isYT = url.contains('youtube.com') || url.contains('youtu.be');
+    // 1) YouTube 앱 직접 호출 (vnd.youtube scheme)
+    if (isYT) {
+      final m = RegExp(r'(?:v=|/shorts/|youtu\.be/)([A-Za-z0-9_-]{11})').firstMatch(url);
+      final vid = m?.group(1);
+      if (vid != null) {
+        final appUri = Uri.parse('vnd.youtube://$vid');
+        try {
+          if (await canLaunchUrl(appUri)) {
+            final ok = await launchUrl(appUri, mode: LaunchMode.externalNonBrowserApplication);
+            if (ok) return;
+          }
+        } catch (_) {}
+      }
+    }
+    // 2) fallback: 외부 브라우저 / 시스템 default
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+  }
+
   Widget _buildHighlightsTab() {
     if (_highlightsLoading) {
       return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
@@ -3544,8 +3569,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
         return GestureDetector(
           onTap: () async {
-            final uri = Uri.tryParse(url);
-            if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+            await _openYouTube(url);
           },
           child: Container(
             margin: const EdgeInsets.only(bottom: 10),
