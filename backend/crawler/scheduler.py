@@ -1095,13 +1095,13 @@ def smart_update():
                     except Exception as _we:
                         print(f'[Weather] 종료 날씨 저장 실패 game={gid}: {_we}')
 
-                # 연장전 돌입 (재시작 안전: state-based + DB dedup)
+                # 연장전 돌입 (재시작 안전: 회차별 sub_id로 dedup → 10/11/12회 각각 알림)
                 curr_inn = curr.get('current_inning', 0) or 0
-                if cs == '진행' and curr_inn >= 10 and not _already_notified(gid, 'extra_innings'):
+                if cs == '진행' and curr_inn >= 10 and not _already_notified(gid, 'extra_innings', str(curr_inn)):
                     notify_extra_innings(gid, curr['home_team'], curr['away_team'],
                                          curr_inn,
                                          curr['home_team_id'], curr['away_team_id'])
-                    _mark_notified(gid, 'extra_innings')
+                    _mark_notified(gid, 'extra_innings', str(curr_inn))
 
                 # 진행 중 투수 교체 감지
                 if cs == '진행':
