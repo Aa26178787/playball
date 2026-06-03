@@ -74,10 +74,14 @@ flutter build apk --debug   # 또는 --release
   - notify_score_change: 팀명+득점 제목, 타자/타구/상대투수 본문
   - notify_team_roster_change: 마이팀 등록말소 팀팬 알림 (선수팬 중복 방지)
   - notify_gb_zero: 게임차 0 달성 시 알림
-- database/connection.py — ThreadedConnectionPool(minconn=5, maxconn=20) + _PooledConn 래퍼
+- database/connection.py — ThreadedConnectionPool(minconn=3, maxconn=20) + _PooledConn 래퍼 + _reset_pool() (pool exhausted 자동 복구)
 - crawler/naver_crawler.py (**절대 수정 금지**)
 - crawler/scheduler.py
   - _get_scoring_play_detail: Naver 중계 API 실시간 득점 타자/투수/타구 파싱
+    - textRelays **reversed() 순회** (Naver 최신순 반환 → chronological 정렬 필요)
+    - type 13(홈팀) + 23(원정팀) 타석 결과 양쪽 처리
+  - _already_notified(game_id, ntype, sub_id) / _mark_notified — notification_log DB 영속 dedup
+  - 홈인 정규식: `r'([가-힣]{2,4})(?:이|가)?\s*홈인'` + 조사 어미(로/서/에/으/며/면/도/만/나) reject
   - _recover_missed_daily_stats: 서버 재시작 시 누락 daily_stats 복구 (최근 2일)
 - crawler/kbo_daily_crawler.py — games=0 행 건너뜀(중복방지) + wins/losses GREATEST 보호
 - crawler/crawl_all_games.py, crawl_past_rosters.py, kbo_roster_crawler.py
@@ -121,20 +125,21 @@ DELETE /auth/me              [Bearer] → 회원탈퇴
 ### 경기
 ```
 GET /games/today             (weather, home/away_recent_5, home/away_team_id 포함) @cached(30)
-GET /games/date/{date_str}   (home_starter, away_starter, weather, recent_5 포함) @cached(300)
+GET /games/date/{date_str}   (home_starter, away_starter, weather, recent_5 포함) 커스텀 캐시(과거=86400/오늘=30/미래=3600)
 GET /games/{id}              (innings, pitchers, batters) @cached(30)
-GET /games/{id}/relay        실시간(진행중만)
-GET /games/{id}/relay_all    ※ ThreadPoolExecutor 병렬 이닝 fetch
-GET /games/{id}/roster
-GET /games/{id}/preview      (선발투수, 상대전적)
-GET /games/{id}/record_detail
-GET /games/{id}/weather      (실내=indoor:true, 야외=temp/humidity/wind/pop)
-GET /games/{id}/pitch-types  → {pitchers:{name:[{type,count,pct}]}}
-GET /games/{id}/pitch-locations → {pitches:[{x,z,result,pitcher,top_sz,bot_sz}], pitchers:[...]}
-  ※ ThreadPoolExecutor 병렬 이닝 fetch
+GET /games/{id}/relay        실시간(진행중만) @cached(10)
+GET /games/{id}/relay_all    커스텀 캐시(진행=30/종료=3600) ※ ThreadPoolExecutor 병렬 이닝 fetch (max_workers=4)
+GET /games/{id}/roster       @cached(60)
+GET /games/{id}/preview      (선발투수, 상대전적) @cached(300)
+GET /games/{id}/record_detail @cached(60)
+GET /games/{id}/weather      (실내=indoor:true, 야외=temp/humidity/wind/pop) @cached(300)
+GET /games/{id}/pitch-types  → {pitchers:{name:[{type,count,pct}]}} @cached(60)
+GET /games/{id}/pitch-locations → {pitches:[{x,z,result,pitcher,top_sz,bot_sz}], pitchers:[...]} @cached(60)
+  ※ ThreadPoolExecutor 병렬 이닝 fetch (max_workers=4)
   ※ x=횡위치(ft), z=높이(ft, 물리궤적 계산), result=ball/strike/swing/foul/hit/other
-GET /games/{id}/highlights → {highlights:[{title,url,source,published_at}]}
+GET /games/{id}/highlights → {highlights:[{title,url,source,published_at}]} @cached(1800)
   ※ DB 우선 조회, 없으면 Google News RSS 실시간 크롤
+※ Naver API requests timeout=5초 (워커 점유 시간 제한)
 ```
 
 ### 선수
@@ -268,6 +273,14 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 ### user_notifications
 `id, user_id, title, body, type(VARCHAR30), game_id, is_read(bool), created_at`
 - type: game_start/score_change/comeback/game_end/extra_innings/cancelled/rank_change/winning_streak/losing_streak/roster_change/new_comment
+
+### notification_log (영속 dedup)
+`id, game_id(INT), type(VARCHAR60), sub_id(VARCHAR60 default=''), sent_at(TIMESTAMPTZ)`
+UNIQUE(game_id, type, sub_id)
+- scheduler.py _already_notified/_mark_notified가 사용
+- targets=0 (push_token 없음)이어도 dedup 작동 (재시작 후 중복 알림 차단)
+- sub_id 예시: `{home}_{away}` (score_change), `{player_id}_{hr_n}` (fav_hr), `{team_id}_{count}_{W/L}_{date}` (streak)
+- GRANT 필수: `GRANT ALL ON notification_log, notification_log_id_seq TO playball_user;`
 
 ### stadium_food_places / stadium_food_votes
 - food_places: `id, stadium_id, name, category, address, kakao_place_id, memo, status, vote_count, submitted_by, created_at`
@@ -420,17 +433,25 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 ## 성능 최적화 (구현 완료)
 
 ### 서버사이드
-- **DB 커넥션 풀**: ThreadedConnectionPool(5-20), _PooledConn 래퍼 (close()→putconn())
-- **TTL 인메모리 캐시** (api/cache.py): @cached(30)/60/300/3600 데코레이터
+- **DB 커넥션 풀**: ThreadedConnectionPool(3-20), _PooledConn 래퍼 (close()→putconn())
+  - _reset_pool(): PoolError 'exhausted' 감지 시 자동 재생성 (`closeall()` → 재시도)
+- **TTL 인메모리 캐시** (api/cache.py): @cached(seconds) 데코레이터
   - /games/today → 30초
-  - /games/date/{date_str} → 300초 (과거 날짜 데이터 변경 없음)
   - /games/{id} → 30초
+  - /games/{id}/relay → 10초 (신규)
+  - /games/{id}/roster, /record_detail, /pitch-types, /pitch-locations → 60초 (신규)
+  - /games/{id}/preview, /weather → 300초 (weather 신규)
+  - /games/{id}/highlights → 1800초 (신규)
+  - /games/date/{date_str} → 커스텀 (과거=86400/오늘=30/미래=3600)
+  - /games/{id}/relay_all → 커스텀 (진행=30/종료=3600)
   - /teams/rankings → 60초
   - /players/rankings, /players/{id} → 300초
   - /teams/ → 3600초
 - **GZipMiddleware**: minimum_size=500 (JSON ~65% 압축)
-- **ThreadPoolExecutor 병렬 이닝 fetch**: relay_all + pitch-locations (직렬 ~1800ms → 병렬 ~200ms)
+- **ThreadPoolExecutor 병렬 이닝 fetch**: relay_all + pitch-locations (max_workers=4, 직렬 ~1800ms → 병렬 ~200ms)
+- **Naver API timeout=5초** (워커 점유 시간 제한)
 - **GET /players/rankings 단일 엔드포인트**: 14→1 API 호출 (랜덤 빈탭 버그 해결)
+- **VPS swap 4G + swappiness 30**: OOM 방지 (RAM 956Mi 한계)
 
 ### 클라이언트사이드
 - **cached_network_image** 전체 적용 (모든 NetworkImage 대체)
@@ -438,6 +459,10 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - **LocalCache stale-while-revalidate**: 캐시→즉시표시 후 백그라운드 갱신
   - 재시작/재로그인 시 스피너 없이 즉시 데이터 표시
   - 로그아웃 시 clearUser() 자동 호출
+- **ApiService._dedupGet**: 동일 GET URL 동시 호출 → 단일 in-flight Future 공유
+  - 적용 엔드포인트: today/gameDetail/byDate/relay/relayAll/preview/recordDetail/pitchTypes/weather/roster/teams/rankings
+  - 캐시 stampede 차단 (race condition 시 중복 호출 단일화)
+- **GameDetailScreen _isLoadingInFlight**: _loadData 재진입 가드
 
 ## 주의사항
 - **baseUrl 반드시 `https://playball.duckdns.org`** — HTTP로 변경 시 Android 9+ 전체 API 차단
@@ -446,6 +471,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 서버 백엔드 루트: ~/playball/backend/
 - git push: --force 필수 (모노레포)
 - git push/pull 원격 작업은 확인 없이 바로 실행
+- 커밋 / 서버 배포(ssh pull+restart) / 서버 로그 확인 / APK 빌드 → yes/no 묻지 않고 바로 실행
 - 삼성 홈경기 구장: `UPDATE games SET stadium_id=7 WHERE home_team_id=11 AND stadium_id IS NULL`
 - sb_pct: 이미 퍼센트 단위 (×100 금지)
 - 소셜 로그인 구현 안 함 (결정)
@@ -458,6 +484,9 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - NetworkImage / Image.network 사용 금지 → CachedNetworkImage/CachedNetworkImageProvider
 - naver_crawler.py **절대 수정 금지**
 - firebase-service-account.json 서버 전용 (git push 금지)
+- **한글 파일 PowerShell `-replace` 금지**: UTF-8 인코딩 깨짐 → SyntaxError crash loop 유발. Edit 도구 사용
+- PgBouncer port 6432 → 5432 변경 금지 (동시접속 폭증 시 pool 고갈)
+- **scheduler 재시작 후 알림 누락 방지**: notification_log 테이블 + _already_notified/_mark_notified 사용 필수. 새 알림 추가 시 동일 패턴 적용
 
 ## FCM (활성화 완료)
 - google-services.json: app/android/app/google-services.json ✅
@@ -504,10 +533,17 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [x] stale-while-revalidate 캐시
 
 ### 알림
-- [x] 득점 알림: "팀명 득점!" 제목 + 타자/타구/상대투수 본문
+- [x] 득점 알림: "팀명 스코어:스코어 팀명 [N회 초/말]" 제목 + "[득점팀] 타자 vs 투수 — 타구결과 (N타점)" + 구종/속도 + 홈인 본문
 - [x] 마이팀 등록말소 알림 (팀 팬 전체 — 선수팬 중복 방지)
 - [x] 게임차 0 달성 알림 (동률 1위)
 - [x] FCM 알림 인프라 (게임시작/종료/역전/연장/취소/순위변동/연승연패/홈런)
+- [x] **경기 종료 알림 game_summary 즉시 발송** (이전 game_end 단순 스코어 → 승투/패투/홀드/세이브/MVP 포함)
+- [x] **알림 트리거 전면 idempotent화** — notification_log DB + _already_notified/_mark_notified
+  - 적용: game_start/cancelled/starter_announced/score_change/extra_innings/walkoff/game_summary/streak/rank_change/gb_zero/pennant_race/pitcher_change/fav_hr/fav_lineup
+  - scheduler 재시작 시 누락/중복 모두 해소
+- [x] **연승/연패 임계값 5→3**: 3연승부터 알림 (sub_id에 count 포함, 매 경기 증가마다)
+- [x] textRelays reversed 순회 (Naver 최신순 반환) + type 23(원정팀) 추가 → 알림 본문 타구결과/구종/홈인 정상 표시
+- [x] 홈인 정규식 개선: 조사 어미(로/서/에/으/며/면/도/만/나) reject → "실책으로 홈인" 같은 오추출 차단
 
 ### 인증/유저
 - [x] 비밀번호 찾기/재설정, 이메일 인증, 프로필 이미지
@@ -537,6 +573,13 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [x] pitch-locations batter 타순 접두사 제거 ("N번타자 이름" → "이름", DB+실시간 양쪽)
 - [x] FCM 서비스 계정 키 복원 (서버에서 사라진 firebase-service-account.json 재업로드)
 - [x] FCM 완전 활성화 (firebase-admin 7.4.0, push_tokens DB, _get_app() OK 확인)
+- [x] **DB pool 자동 복구** — PoolError 'exhausted' 감지 시 _reset_pool() → closeall() → 재생성
+- [x] **필드뷰 주자 표시 수정** — Naver currentGameState.base1/2/3가 타순번호(1-9) 반환 → game_batters.batting_order 조회 추가 (team_side = 공격팀)
+- [x] **API 캐시 5개 엔드포인트 추가** — pitch-types(60s) / pitch-locations(60s) / weather(300s) / highlights(1800s) / relay(10s)
+- [x] **relay_all/pitch-locations max_workers 9→4 + Naver timeout 10→5초** — 동시 부하 + 워커 점유 축소
+- [x] **ApiService._dedupGet** — 동일 GET URL in-flight Future 공유 (캐시 stampede 차단)
+- [x] **GameDetailScreen _isLoadingInFlight 가드** — _loadData 재진입 방지
+- [x] **VPS swap 1G→4G 확장** + swappiness 60→30 (OOM 방지)
 
 ## 진행 예정 기능
 
@@ -581,6 +624,16 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 
 ## 알려진 버그 / 성능 이슈
 
-- relay_all 서버사이드 캐시 없음 — 라이브 경기 30초 새로고침마다 Naver API 전체 이닝 재조회 (병렬이지만 느림)
 - pitch_locations DB 데이터에 타순 접두사 잔존 ("N번타자 이름") — API 응답에서 매번 정규식 처리 중 (DB 마이그레이션으로 근본 해결 가능)
 - 재계약 안 한 외인 선수 팀 명단에 여전히 표시
+- push_tokens 등록 사용자 매우 적음 (현재 1명) — 다수 유저 알림 시나리오 검증 불가
+- 라이브 경기 첫 진입 cold cache 2~3초 (pitch-locations/highlights 첫 호출 후 60s/1800s 캐시)
+- scheduler 30초 사이클 → 빠른 연속 이벤트(스코어 + 즉시 회복) 일부 합쳐서 1개 알림으로 통합
+
+## 해결됨 (이전 알려진 이슈)
+
+- ~~relay_all 서버사이드 캐시 없음~~ → 30초 캐시 + 완료 이닝 메모리 캐시
+- ~~DB pool 고갈~~ → _reset_pool() 자동 복구
+- ~~알림 본문 타구결과 빈값~~ → textRelays reversed + type 23 추가
+- ~~scheduler 재시작 시 알림 누락/중복~~ → notification_log dedup
+- ~~필드뷰 주자 이름/이미지 미표시~~ → batting_order 1-9 lookup 추가
