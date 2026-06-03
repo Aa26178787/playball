@@ -757,25 +757,33 @@ def _check_pitcher_change(game_id: int, game_info: dict):
     if not rows:
         return
 
-    # DB 기반 dedup: 메모리 _pitcher_seen 대신 notification_log 조회
-    # 재시작 후에도 동일 (game_id, player_id) 중복 알림 방지
+    # DB 기반 dedup + 재시작 안전 prime
     seen = _pitcher_seen.setdefault(game_id, set())
+
+    # 메모리 hydrate from DB (재시작 직후 DB-marked 투수 메모리 동기화)
+    db_marked_count = 0
+    for player_id, *_ in rows:
+        if _already_notified(game_id, 'pitcher_change', str(player_id)):
+            seen.add(player_id)
+            db_marked_count += 1
+
+    # 진짜 첫 호출 (DB+메모리 모두 비어있음): 모든 현재 투수 prime + 알림 없이 종료
+    # 재시작 시 25개 투수 일괄 알림 방지
+    if db_marked_count == 0 and not seen:
+        for player_id, *_ in rows:
+            seen.add(player_id)
+            _mark_notified(game_id, 'pitcher_change', str(player_id))
+        return
 
     try:
         from api.fcm_service import notify_pitcher_change
         for player_id, name, ip, side, order, prev_name in rows:
             if player_id in seen:
                 continue
-            if order == 1:
-                seen.add(player_id)
-                _mark_notified(game_id, 'pitcher_change', str(player_id))
-                continue  # 선발은 라인업 발표 알림에서 처리
-            # DB 영속 dedup
-            if _already_notified(game_id, 'pitcher_change', str(player_id)):
-                seen.add(player_id)
-                continue
             seen.add(player_id)
             _mark_notified(game_id, 'pitcher_change', str(player_id))
+            if order == 1:
+                continue  # 선발은 라인업 발표 알림에서 처리
             team_name = game_info.get('home_team') if side == 'home' else game_info.get('away_team')
             notify_pitcher_change(game_id, game_info.get('home_team', ''), game_info.get('away_team', ''),
                                   name, team_name or '', prev_name or '',
@@ -786,10 +794,7 @@ def _check_pitcher_change(game_id: int, game_info: dict):
 
 
 def _send_game_summary(game_id: int):
-    """경기 종료 30분 후 결과 요약 알림 (stats 업데이트 완료 후)"""
-    # 재시작으로 중복 스케줄된 경우 dedup
-    if _already_notified(game_id, 'game_end'):
-        return
+    """경기 종료 결과 요약 알림 (호출 측에서 dedup, 여기선 즉시 발송)"""
     conn = get_connection()
     if not conn:
         return
