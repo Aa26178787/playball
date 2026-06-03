@@ -2840,7 +2840,7 @@ def run_scheduler():
             print(f"[prediction] daily_pipeline 오류: {e}")
     schedule.every().day.at("15:30").do(_prediction_daily)
 
-    # 매일 UTC 15:40 (KST 00:40): 즐겨찾기 선수 데일리 활약 요약 + 연속안타 체크
+    # 매일 UTC 15:40 (KST 00:40): 즐겨찾기 선수 이벤트 처리
     def _player_events_daily():
         try:
             from crawler.crawl_player_events import (
@@ -2850,12 +2850,33 @@ def run_scheduler():
             ensure_tables()
             daily_player_summary()
             hitting_streak_check()
-            crawl_transactions()    # stub — 향후 구현
-            crawl_injury_list()     # stub
+            crawl_transactions()
+            crawl_injury_list()
             notify_pending()
         except Exception as e:
             print(f"[player-events] daily 오류: {e}")
     schedule.every().day.at("15:40").do(_player_events_daily)
+
+    # 시상/올스타 — 시즌 이벤트 (월별 트리거: 7월 올스타, 11월 시상식)
+    def _player_events_seasonal():
+        try:
+            from datetime import datetime as _dt
+            from crawler.crawl_player_events import (
+                ensure_tables, crawl_awards, crawl_allstars, notify_pending,
+            )
+            ensure_tables()
+            month_kst = (_dt.utcnow().month + (1 if _dt.utcnow().hour >= 15 else 0)) % 12 or 12
+            # 7월 (올스타 발표)
+            if month_kst == 7:
+                crawl_allstars()
+            # 11월 (시상식)
+            if month_kst == 11:
+                crawl_awards()
+            notify_pending()
+        except Exception as e:
+            print(f"[player-events] seasonal 오류: {e}")
+    # 매일 UTC 15:50 (KST 00:50): 시상/올스타 (해당 월만 작동)
+    schedule.every().day.at("15:50").do(_player_events_seasonal)
 
     # 매시간: 오늘 예측 로깅 (스케줄 변경 대응 — 선발 변경 시 갱신)
     def _prediction_hourly_log():

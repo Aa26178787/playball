@@ -69,33 +69,249 @@ def ensure_tables():
     cur.close(); conn.close()
 
 
+_TRANSACTION_KEYWORDS = {
+    'trade': ['트레이드', '트레이드 단행', '맞트레이드'],
+    'release': ['방출', '방출 통보', '웨이버 공시'],
+    'retire': ['은퇴', '은퇴 선언', '은퇴 발표', '현역 은퇴'],
+    'fa_signed': ['FA 계약', 'FA 잔류', 'FA 영입'],
+    'fa_filed': ['FA 신청', 'FA 자격', 'FA 선언'],
+}
+
+
+def _match_player_in_title(title: str, players_cache: dict) -> tuple[int, str] | None:
+    """제목에서 선수명 매칭 → (player_id, name) 반환. 동명이인은 처음 매칭만."""
+    for name, pid in players_cache.items():
+        if name in title:
+            return pid, name
+    return None
+
+
+def _classify_transaction(text: str) -> str | None:
+    """제목/본문에서 트랜잭션 타입 추론. 우선순위 적용."""
+    for ttype, keywords in _TRANSACTION_KEYWORDS.items():
+        for kw in keywords:
+            if kw in text:
+                return ttype
+    return None
+
+
 def crawl_transactions():
-    """Naver 선수 이동/은퇴 페이지 크롤 → player_transactions INSERT.
-    TODO: Naver 크롤 로직. 현재 stub — 향후 구현."""
-    # 예시 데이터 source: https://sports.news.naver.com/kbaseball/news/index?category=move
-    # 기사 제목/본문에서 키워드 감지: "트레이드", "방출", "은퇴 발표", "FA 계약", "FA 선언"
-    pass
+    """Google News RSS로 KBO 선수 이동 기사 검색 → player_transactions INSERT.
+    재시도 시점에 notified=FALSE 새 row를 notify_pending이 발송."""
+    from datetime import date
+    from crawler.crawl_naver_news import fetch_rss
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    cur.execute("SELECT id, name FROM players WHERE name IS NOT NULL AND LENGTH(name) >= 2")
+    rows = cur.fetchall()
+    # 짧은 이름 우선순위 낮춰 동명이인 매칭 정확도 향상 (긴 이름이 더 unique)
+    players_cache = {r[1]: r[0] for r in sorted(rows, key=lambda x: -len(x[1]))}
+    cur.close(); conn.close()
+
+    # 트랜잭션 키워드 결합으로 1회 RSS 조회 (Google이 OR 검색 지원)
+    queries = [
+        'KBO 트레이드', 'KBO 방출', 'KBO 은퇴',
+        'KBO FA 계약', 'KBO FA 신청',
+    ]
+    inserted = 0
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    today = date.today()
+
+    for q in queries:
+        articles = fetch_rss(q)
+        for art in articles:
+            title = art.get('title', '')
+            if not title:
+                continue
+            ttype = _classify_transaction(title)
+            if not ttype:
+                continue
+            matched = _match_player_in_title(title, players_cache)
+            if not matched:
+                continue
+            pid, pname = matched
+            try:
+                cur.execute("""
+                    INSERT INTO player_transactions
+                        (player_id, player_name, transaction_type, detail, event_date)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (player_id, transaction_type, event_date) DO NOTHING
+                    RETURNING id
+                """, (pid, pname, ttype, title[:500], today))
+                if cur.fetchone():
+                    inserted += 1
+            except Exception as e:
+                print(f"[transaction] INSERT 오류: {e}")
+    conn.commit()
+    cur.close(); conn.close()
+    if inserted:
+        print(f"[transactions] 신규 {inserted}건 감지")
 
 
 def crawl_injury_list():
-    """KBO 부상자 명단 크롤 → player_injury_list INSERT.
-    TODO: KBO 부상자 명단 페이지 분석."""
-    # 예시: https://www.koreabaseball.com/Player/IL.aspx (가상)
-    pass
+    """player_roster_changes 중 1군 말소 + 부상 사유 → player_injury_list 동기화.
+    별도 부상 명단 페이지 대신 등록말소 사유 활용 (안정적 + 이미 크롤 중)."""
+    from datetime import date, timedelta
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    cutoff = date.today() - timedelta(days=7)
+    cur.execute("""
+        SELECT prc.player_id, prc.player_name, p.team_id, prc.change_type,
+               prc.reason, prc.change_date
+        FROM player_roster_changes prc
+        LEFT JOIN players p ON p.id = prc.player_id
+        WHERE prc.change_date >= %s AND prc.player_id IS NOT NULL
+          AND prc.change_type IN ('1군 등록', '1군 말소')
+    """, (cutoff,))
+    rows = cur.fetchall()
+    inserted = 0
+    for pid, pname, team_id, ctype, reason, gdate in rows:
+        action = None
+        if ctype == '1군 말소' and reason and any(
+            kw in reason for kw in ['부상', '컨디션', '회복']
+        ):
+            action = 'listed'
+        elif ctype == '1군 등록' and reason and '복귀' in reason:
+            action = 'returned'
+        if not action:
+            continue
+        try:
+            cur.execute("""
+                INSERT INTO player_injury_list
+                    (player_id, player_name, team_id, action, reason, event_date)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (player_id, action, event_date) DO NOTHING
+                RETURNING id
+            """, (pid, pname, team_id, action, reason[:200] if reason else '', gdate))
+            if cur.fetchone():
+                inserted += 1
+        except Exception as e:
+            print(f"[injury] INSERT 오류: {e}")
+    conn.commit()
+    cur.close(); conn.close()
+    if inserted:
+        print(f"[injury] 신규 {inserted}건 감지")
 
 
-def crawl_awards(season: int):
-    """KBO 시상식 결과 크롤 → player_awards INSERT.
-    매년 11월 시상식 후 1회 실행."""
-    # 예시 source: KBO 공식 시상식 페이지
-    pass
+_AWARD_KEYWORDS = {
+    'mvp': ['정규시즌 MVP', '시즌 MVP'],
+    'rookie': ['신인왕', '올해의 신인'],
+    'goldenglove': ['골든글러브', '골든 글러브'],
+}
 
 
-def crawl_allstars(season: int):
-    """올스타 선발 크롤 → player_allstars INSERT.
-    매년 7월 중순 발표 후 1회 실행."""
-    # 예시 source: KBO 올스타전 페이지
-    pass
+def crawl_awards(season: int = None):
+    """KBO 시상식 발표 기사 Google News 크롤 → player_awards INSERT.
+    매년 11월 시상식 후 발견. 시즌 외엔 0건 정상."""
+    from datetime import date
+    if season is None:
+        season = date.today().year
+    from crawler.crawl_naver_news import fetch_rss
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    cur.execute("SELECT id, name, team_id FROM players WHERE name IS NOT NULL AND LENGTH(name) >= 2")
+    rows = cur.fetchall()
+    players_cache = {r[1]: (r[0], r[2]) for r in sorted(rows, key=lambda x: -len(x[1]))}
+    cur.close(); conn.close()
+
+    queries = [f'{season} KBO MVP', f'{season} KBO 신인왕', f'{season} KBO 골든글러브']
+    inserted = 0
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    for q in queries:
+        articles = fetch_rss(q)
+        for art in articles:
+            title = art.get('title', '')
+            atype = None
+            for k, kws in _AWARD_KEYWORDS.items():
+                if any(kw in title for kw in kws):
+                    atype = k
+                    break
+            if not atype:
+                continue
+            for name, (pid, tid) in players_cache.items():
+                if name in title:
+                    try:
+                        cur.execute("""
+                            INSERT INTO player_awards
+                                (player_id, player_name, team_id, award_type, position, season)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (player_id, award_type, season) DO NOTHING
+                            RETURNING id
+                        """, (pid, name, tid, atype, '', season))
+                        if cur.fetchone():
+                            inserted += 1
+                    except Exception as e:
+                        print(f"[award] INSERT 오류: {e}")
+                    break
+    conn.commit()
+    cur.close(); conn.close()
+    if inserted:
+        print(f"[awards] 신규 {inserted}건 감지")
+
+
+def crawl_allstars(season: int = None):
+    """KBO 올스타 선발 기사 Google News 크롤 → player_allstars INSERT.
+    매년 7월 중순 발표."""
+    from datetime import date
+    if season is None:
+        season = date.today().year
+    from crawler.crawl_naver_news import fetch_rss
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    cur.execute("SELECT id, name, team_id FROM players WHERE name IS NOT NULL AND LENGTH(name) >= 2")
+    rows = cur.fetchall()
+    players_cache = {r[1]: (r[0], r[2]) for r in sorted(rows, key=lambda x: -len(x[1]))}
+    cur.close(); conn.close()
+
+    queries = [f'{season} KBO 올스타 선발', f'{season} 올스타 베스트12', f'{season} KBO 올스타전']
+    inserted = 0
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    for q in queries:
+        articles = fetch_rss(q)
+        for art in articles:
+            title = art.get('title', '')
+            if '올스타' not in title:
+                continue
+            # league 추론
+            league = ''
+            if '드림' in title: league = 'dream'
+            elif '나눔' in title: league = 'nanum'
+            for name, (pid, tid) in players_cache.items():
+                if name in title:
+                    try:
+                        cur.execute("""
+                            INSERT INTO player_allstars
+                                (player_id, player_name, team_id, season, league, vote_rank)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (player_id, season) DO NOTHING
+                            RETURNING id
+                        """, (pid, name, tid, season, league, 0))
+                        if cur.fetchone():
+                            inserted += 1
+                    except Exception as e:
+                        print(f"[allstar] INSERT 오류: {e}")
+                    break
+    conn.commit()
+    cur.close(); conn.close()
+    if inserted:
+        print(f"[allstars] 신규 {inserted}건 감지")
 
 
 def notify_pending():
