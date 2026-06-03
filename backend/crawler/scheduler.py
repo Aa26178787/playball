@@ -263,7 +263,7 @@ def _check_game_milestones(game_id: int):
         # ── 타자: game_batters + 이번달 pre-game daily_stats ──
         cur.execute("""
             SELECT gb.player_id, p.name, t.name as team_name,
-                   gb.hits as g_hits, gb.home_runs as g_hr, gb.rbi as g_rbi,
+                   gb.hits as g_hits, gb.home_runs as g_hr, gb.rbis as g_rbi,
                    gb.stolen_bases as g_sb,
                    COALESCE(SUM(CASE WHEN ds.stat_type='hitter' THEN ds.hits   END),0) as m_hits,
                    COALESCE(SUM(CASE WHEN ds.stat_type='hitter' THEN ds.home_runs END),0) as m_hr,
@@ -278,7 +278,7 @@ def _check_game_milestones(game_id: int):
                AND ds.game_date < CURRENT_DATE
                AND ds.stat_type = 'hitter'
             WHERE gb.game_id = %s
-            GROUP BY gb.player_id, p.name, t.name, gb.hits, gb.home_runs, gb.rbi, gb.stolen_bases
+            GROUP BY gb.player_id, p.name, t.name, gb.hits, gb.home_runs, gb.rbis, gb.stolen_bases
         """, (month_start, game_id))
         batters = cur.fetchall()
 
@@ -834,12 +834,12 @@ def _send_game_summary(game_id: int):
 
         winner_side = 'home' if home_score > away_score else 'away'
         cur.execute("""
-            SELECT p.name, COALESCE(gb.hits,0), COALESCE(gb.home_runs,0), COALESCE(gb.rbi,0)
+            SELECT p.name, COALESCE(gb.hits,0), COALESCE(gb.home_runs,0), COALESCE(gb.rbis,0)
             FROM game_batters gb
             JOIN players p ON p.id = gb.player_id
             WHERE gb.game_id = %s AND gb.team_side = %s
-              AND (gb.rbi > 0 OR gb.home_runs > 0)
-            ORDER BY gb.rbi DESC, gb.home_runs DESC, gb.hits DESC
+              AND (gb.rbis > 0 OR gb.home_runs > 0)
+            ORDER BY gb.rbis DESC, gb.home_runs DESC, gb.hits DESC
             LIMIT 1
         """, (game_id, winner_side))
         mvp_row = cur.fetchone()
