@@ -22,8 +22,7 @@ class _TeamScreenState extends State<TeamScreen>
   List _teams = [];
   bool _isLoading = true;
   Set<int> _favoriteTeamIds = {};
-  // ignore: unused_field
-  final Set<int> _expandedRanks = {};  // legacy reference 유지
+  final Set<int> _expandedTeamIds = {};
   List _odds = [];
   Timer? _autoRefreshTimer;
 
@@ -309,7 +308,7 @@ class _TeamScreenState extends State<TeamScreen>
   static const Color _cWc4 = Color(0xFF26A69A);
   static const Color _cWc5 = Color(0xFF66BB6A);
 
-  // ──────────────── CARD ROW (mockup hi-fi 적용) ────────────────
+  // ──────────────── CARD ROW (mockup hi-fi + expand) ────────────────
   Widget _buildCardRow(Map team, Map? odds, bool isDark) {
     final rank = team['rank'] as int? ?? 0;
     final code = team['short_name'] as String? ?? '';
@@ -322,164 +321,293 @@ class _TeamScreenState extends State<TeamScreen>
     final isLead = gbNum == null || gbNum == 0;
     final gbText = isLead ? '–' : gbNum.toStringAsFixed(1);
     final isFav = _favoriteTeamIds.contains(id);
+    final isExpanded = _expandedTeamIds.contains(id);
 
     double pct(String key) => ((odds?[key] as num? ?? 0) * 100).toDouble();
     final ps = pct('ks_direct_prob') + pct('po_direct_prob') + pct('spo_direct_prob')
               + pct('wc_seed4_prob') + pct('wc_seed5_prob');
 
-    // 컬러 팔레트 (mockup)
-    final paper  = isDark ? const Color(0xFF1C1C1F) : Colors.white;
-    final myFill = isDark ? const Color(0xFF26262A) : const Color(0xFFF3F4F6);
-    final line   = isDark ? Colors.white12 : const Color(0xFFEDEDF0);
-    final line2  = isDark ? Colors.white24 : const Color(0xFFE0E0E4);
-    final ink    = isDark ? Colors.white : const Color(0xFF111113);
-    final ink2   = isDark ? Colors.white70 : const Color(0xFF3F3F46);
-    final ink3   = isDark ? Colors.white60 : const Color(0xFF6B6B73);
-    final sub    = isDark ? Colors.white38 : const Color(0xFF9A9AA2);
-    final track  = isDark ? Colors.white10 : const Color(0xFFE8E8EC);
+    // 컬러 팔레트 (mockup tokens)
+    final paper  = isDark ? const Color(0xFF18181C) : Colors.white;
+    final paper2 = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
+    final line   = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final line2  = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
+    final ink    = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink2   = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
+    final ink3   = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final sub    = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final track  = isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);
 
-    final card = Material(
-      color: Colors.transparent,
-      child: InkWell(
+    final tc = teamColor(code);
+    final cardBg = isFav ? tc.withValues(alpha: isDark ? 0.18 : 0.07) : paper;
+    final cardBd = isFav ? tc.withValues(alpha: isDark ? 0.55 : 0.40) : line;
+    final rankCol = isFav ? tc : (rank <= 3 ? ink : sub);
+    final barFill = isFav ? tc : (ps >= 50 ? ink : ink3);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
-        onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(team)))),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
-          decoration: BoxDecoration(
-            color: isFav ? myFill : paper,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isFav ? line2 : line, width: 1),
-            boxShadow: isFav ? null : [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0 : 0.03),
-                blurRadius: 2, offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // ── 순위 + ▲▼ stub ──
-              SizedBox(
-                width: 26,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+        border: Border.all(color: cardBd, width: 1),
+        boxShadow: (!isFav && !isDark) ? [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 2, offset: const Offset(0, 1)),
+        ] : null,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── 헤더 (탭 → 팀 상세) ──
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(team)))),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text('$rank',
-                        style: TextStyle(
-                          fontSize: 19, fontWeight: FontWeight.w800,
-                          color: rank <= 3 ? ink : sub,
-                          letterSpacing: -0.5,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        )),
-                    const SizedBox(height: 4),
-                    Text('—', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: line2)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 13),
-              TeamLogo(teamCode: code, size: 42, logoUrl: team['logo_url'] as String?),
-              const SizedBox(width: 13),
-              // ── 중앙: 팀명+badge + w/l/d+pct + PS bar ──
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // 팀명 + badge
-                    Row(children: [
-                      Flexible(
-                        child: Text(team['name'] as String? ?? '',
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: ink, letterSpacing: -0.15)),
-                      ),
-                      if (isFav) ...[
-                        const SizedBox(width: 6),
-                        _badge('마이팀', bg: isDark ? Colors.white12 : const Color(0xFFE7E7EA), fg: ink2),
-                      ],
-                      if (isLead) ...[
-                        const SizedBox(width: 6),
-                        _badge('선두', bg: ink, fg: isDark ? Colors.black : Colors.white),
-                      ],
-                    ]),
-                    const SizedBox(height: 7),
-                    // w승 l패 d무 + 승률
-                    Row(children: [
-                      Text('${wins}승 ${losses}패${draws > 0 ? ' ${draws}무' : ''}',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ink3,
-                              fontFeatures: const [FontFeature.tabularFigures()])),
-                      Container(width: 1, height: 9, margin: const EdgeInsets.symmetric(horizontal: 8), color: line2),
-                      Text(winRate,
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ink,
-                              fontFeatures: const [FontFeature.tabularFigures()])),
-                    ]),
-                    const SizedBox(height: 7),
-                    // PS bar
-                    Row(children: [
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(99),
-                          child: Container(
-                            height: 6, color: track,
-                            child: FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: (ps.clamp(1.5, 100.0)) / 100,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: ps >= 50 ? ink : ink3,
-                                  borderRadius: BorderRadius.circular(99),
+                    // rank + ▲▼ stub
+                    SizedBox(
+                      width: 24,
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Text('$rank',
+                            style: TextStyle(
+                              fontSize: 19, fontWeight: FontWeight.w800, color: rankCol,
+                              letterSpacing: -0.4, fontFeatures: const [FontFeature.tabularFigures()],
+                            )),
+                        const SizedBox(height: 4),
+                        Text('—', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: line2)),
+                      ]),
+                    ),
+                    const SizedBox(width: 13),
+                    TeamLogo(teamCode: code, size: 42, logoUrl: team['logo_url'] as String?),
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(children: [
+                            Flexible(
+                              child: Text(team['name'] as String? ?? '',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: ink, letterSpacing: -0.15)),
+                            ),
+                            if (isFav) ...[
+                              const SizedBox(width: 6),
+                              _badge('마이팀', bg: tc, fg: Colors.white),
+                            ],
+                            if (isLead) ...[
+                              const SizedBox(width: 6),
+                              _badge('선두', bg: ink, fg: isDark ? const Color(0xFF0F0F12) : Colors.white),
+                            ],
+                          ]),
+                          const SizedBox(height: 7),
+                          Row(children: [
+                            Text('$wins승 $losses패${draws > 0 ? ' $draws무' : ''}',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ink3,
+                                    fontFeatures: const [FontFeature.tabularFigures()])),
+                            Container(width: 1, height: 9, margin: const EdgeInsets.symmetric(horizontal: 8), color: line2),
+                            Text(winRate,
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ink,
+                                    fontFeatures: const [FontFeature.tabularFigures()])),
+                          ]),
+                          const SizedBox(height: 7),
+                          Row(children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(99),
+                                child: Container(
+                                  height: 6, color: track,
+                                  child: FractionallySizedBox(
+                                    alignment: Alignment.centerLeft,
+                                    widthFactor: (ps.clamp(1.5, 100.0)) / 100,
+                                    child: Container(decoration: BoxDecoration(color: barFill, borderRadius: BorderRadius.circular(99))),
+                                  ),
                                 ),
                               ),
                             ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 38,
+                              child: Text('${ps.toStringAsFixed(0)}%',
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: barFill,
+                                      fontFeatures: const [FontFeature.tabularFigures()])),
+                            ),
+                          ]),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // 우측: 게임차 + chevron 토글
+                    SizedBox(
+                      width: 40,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(gbText,
+                              style: TextStyle(
+                                fontSize: 17, fontWeight: FontWeight.w800,
+                                color: isLead ? ink : ink2, letterSpacing: -0.4,
+                                fontFeatures: const [FontFeature.tabularFigures()],
+                              )),
+                          const SizedBox(height: 4),
+                          Text('게임차', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600, color: sub)),
+                          const SizedBox(height: 6),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(7),
+                            onTap: () {
+                              setState(() {
+                                if (isExpanded) {
+                                  _expandedTeamIds.remove(id);
+                                } else {
+                                  _expandedTeamIds.add(id);
+                                }
+                              });
+                            },
+                            child: Container(
+                              width: 26, height: 22,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(7),
+                                color: isExpanded
+                                    ? (isFav ? tc.withValues(alpha: 0.15) : paper2)
+                                    : Colors.transparent,
+                                border: Border.all(color: line2, width: 1),
+                              ),
+                              child: AnimatedRotation(
+                                turns: isExpanded ? 0.5 : 0,
+                                duration: const Duration(milliseconds: 200),
+                                child: Icon(Icons.keyboard_arrow_down, size: 16, color: ink3),
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        width: 38,
-                        child: Text('${ps.toStringAsFixed(0)}%',
-                            textAlign: TextAlign.right,
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
-                                color: ps >= 50 ? ink : ink3,
-                                fontFeatures: const [FontFeature.tabularFigures()])),
-                      ),
-                    ]),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              // ── 우측: 게임차 ──
-              SizedBox(
-                width: 42,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(gbText,
-                        style: TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w800,
-                          color: isLead ? ink : ink2,
-                          letterSpacing: -0.4,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        )),
-                    const SizedBox(height: 4),
-                    Text('게임차',
-                        style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600, color: sub)),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          // ── expand section ──
+          if (isExpanded) _buildExpandSection(team, isDark, tc, isFav,
+              paper2: paper2, line: line, line2: line2, sub: sub, ink: ink, ink2: ink2, track: track),
+        ],
       ),
     );
-    return card;
+  }
+
+  Widget _buildExpandSection(Map team, bool isDark, Color tc, bool isFav,
+      {required Color paper2, required Color line, required Color line2,
+       required Color sub, required Color ink, required Color ink2, required Color track}) {
+    final home = team['home_record'] as String? ?? '-';
+    final away = team['away_record'] as String? ?? '-';
+    final pyth = (team['pythag_winpct'] as num?);
+    final pythStr = pyth == null ? '-' : pyth.toStringAsFixed(3);
+    final streak = team['streak'] as int? ?? 0;
+    final streakStr = streak > 0 ? '$streak연승' : (streak < 0 ? '${-streak}연패' : '-');
+    final ls = team['last_series'] as Map?;
+    final lastSeriesLabel = (ls?['label'] as String?) ?? '-';
+    final recent5 = (team['recent_5'] as List?)?.cast<String>() ?? [];
+
+    final borderTop = isFav
+        ? tc.withValues(alpha: isDark ? 0.40 : 0.25)
+        : line;
+    final bg = isDark ? paper2 : (isFav ? Colors.transparent : paper2);
+
+    Widget statCell(String label, String value) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: sub)),
+          const SizedBox(height: 5),
+          Text(value,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ink2,
+                  fontFeatures: const [FontFeature.tabularFigures()])),
+        ],
+      );
+    }
+
+    Widget formBar() {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('최근 5경기', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: sub)),
+          const SizedBox(height: 6),
+          Row(children: List.generate(5, (i) {
+            final r = i < recent5.length ? recent5[i] : '';
+            final accent = isFav ? tc : ink;
+            final fill = r == 'W' ? accent : track;
+            return Padding(
+              padding: const EdgeInsets.only(right: 2.5),
+              child: Container(
+                width: 5, height: 14,
+                decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(2)),
+              ),
+            );
+          })),
+        ],
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bg,
+        border: Border(top: BorderSide(color: borderTop, width: 1)),
+      ),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 3-col x 2-row grid
+          Row(children: [
+            Expanded(child: statCell('홈', home)),
+            Expanded(child: statCell('원정', away)),
+            Expanded(child: statCell('피타고리안', pythStr)),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: statCell('최근 시리즈', lastSeriesLabel)),
+            Expanded(child: statCell('연속', streakStr)),
+            Expanded(child: formBar()),
+          ]),
+          const SizedBox(height: 14),
+          // 팀 상세 버튼
+          SizedBox(
+            width: double.infinity,
+            child: Material(
+              color: isFav ? tc : ink,
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(team)))),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  child: Text('${team['name'] ?? ''} 팀 상세 보기 →',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w700,
+                        color: isDark && !isFav ? const Color(0xFF0F0F12) : Colors.white,
+                      )),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _badge(String text, {required Color bg, required Color fg}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(5)),
       child: Text(text, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: fg)),
     );
