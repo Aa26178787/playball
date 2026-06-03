@@ -22,7 +22,8 @@ class _TeamScreenState extends State<TeamScreen>
   List _teams = [];
   bool _isLoading = true;
   Set<int> _favoriteTeamIds = {};
-  final Set<int> _expandedRanks = {};
+  // ignore: unused_field
+  final Set<int> _expandedRanks = {};  // legacy reference 유지
   List _odds = [];
   Timer? _autoRefreshTimer;
 
@@ -205,10 +206,11 @@ class _TeamScreenState extends State<TeamScreen>
                 SizedBox(width: 28, child: Text('순위', style: _hdrStyle)),
                 const SizedBox(width: 8),
                 Expanded(child: Text('팀', style: _hdrStyle)),
-                SizedBox(width: 70, child: Text('승-패-무', style: _hdrStyle, textAlign: TextAlign.center)),
+                SizedBox(width: 28, child: Text('승', style: _hdrStyle, textAlign: TextAlign.center)),
+                SizedBox(width: 28, child: Text('패', style: _hdrStyle, textAlign: TextAlign.center)),
+                SizedBox(width: 28, child: Text('무', style: _hdrStyle, textAlign: TextAlign.center)),
                 SizedBox(width: 44, child: Text('승률', style: _hdrStyle, textAlign: TextAlign.right)),
                 SizedBox(width: 40, child: Text('게임차', style: _hdrStyle, textAlign: TextAlign.right)),
-                const SizedBox(width: 4),
               ],
             ),
           ),
@@ -260,7 +262,6 @@ class _TeamScreenState extends State<TeamScreen>
     final isFav = _favoriteTeamIds.contains(id);
     final isPSZone = rank <= 5;
     final color = teamColor(code);
-    final expanded = _expandedRanks.contains(rank);
 
     double pct(String key) => ((odds?[key] as num? ?? 0) * 100).toDouble();
     final ks = pct('ks_direct_prob');
@@ -284,18 +285,8 @@ class _TeamScreenState extends State<TeamScreen>
           ));
     }
 
-    // 큰 row + 단일 stacked bar 라인
     return InkWell(
-      onTap: () {
-        setState(() {
-          if (expanded) {
-            _expandedRanks.remove(rank);
-          } else {
-            _expandedRanks.add(rank);
-          }
-        });
-      },
-      onLongPress: () => Navigator.push(context,
+      onTap: () => Navigator.push(context,
           MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(team)))),
       child: Container(
         decoration: BoxDecoration(
@@ -309,10 +300,11 @@ class _TeamScreenState extends State<TeamScreen>
               ? color.withValues(alpha: isDark ? 0.06 : 0.04)
               : Colors.transparent,
         ),
-        padding: const EdgeInsets.fromLTRB(2, 11, 2, 9),
+        padding: const EdgeInsets.fromLTRB(2, 12, 2, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Row 1: 메인 stats
             Row(
               children: [
                 SizedBox(width: 28, child: Center(child: rankCell())),
@@ -335,18 +327,34 @@ class _TeamScreenState extends State<TeamScreen>
                   ),
                 ),
                 SizedBox(
-                  width: 70,
-                  child: Text(
-                    '$wins-$losses${draws > 0 ? '-$draws' : ''}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                  ),
+                  width: 28,
+                  child: Text('$wins',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w800,
+                          color: Color(0xFF1565C0))),
+                ),
+                SizedBox(
+                  width: 28,
+                  child: Text('$losses',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w800,
+                          color: Color(0xFFC62828))),
+                ),
+                SizedBox(
+                  width: 28,
+                  child: Text('$draws',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w700,
+                          color: Colors.grey[500])),
                 ),
                 SizedBox(
                   width: 44,
                   child: Text(winRate,
                       textAlign: TextAlign.right,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
                 SizedBox(
                   width: 40,
@@ -354,83 +362,106 @@ class _TeamScreenState extends State<TeamScreen>
                       textAlign: TextAlign.right,
                       style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                 ),
-                const SizedBox(width: 4),
               ],
             ),
-            const SizedBox(height: 6),
-            // PS bar + 1-2 chip
-            if (odds != null)
-              Row(
+            const SizedBox(height: 8),
+            // Row 2: 최근5 + streak + PS bar + PS%
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Row(
                 children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
-                      child: SizedBox(
-                        height: 6,
-                        child: Row(children: [
-                          if (ks > 0) Flexible(flex: (ks * 100).round(), child: Container(color: _cKs)),
-                          if (po > 0) Flexible(flex: (po * 100).round(), child: Container(color: _cPo)),
-                          if (spo > 0) Flexible(flex: (spo * 100).round(), child: Container(color: _cSpo)),
-                          if (wc4 > 0) Flexible(flex: (wc4 * 100).round(), child: Container(color: _cWc4)),
-                          if (wc5 > 0) Flexible(flex: (wc5 * 100).round(), child: Container(color: _cWc5)),
-                          if (out > 0) Flexible(flex: (out * 100).round(),
-                              child: Container(color: Colors.grey.withValues(alpha: 0.18))),
-                        ]),
+                  ...recent5.map((r) => _recentDotModern(r)),
+                  const SizedBox(width: 6),
+                  Text(_streakText(streak),
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800,
+                          color: _streakColor(streak))),
+                  const SizedBox(width: 10),
+                  if (odds != null) ...[
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: SizedBox(
+                          height: 6,
+                          child: Row(children: [
+                            if (ks > 0) Flexible(flex: (ks * 100).round(), child: Container(color: _cKs)),
+                            if (po > 0) Flexible(flex: (po * 100).round(), child: Container(color: _cPo)),
+                            if (spo > 0) Flexible(flex: (spo * 100).round(), child: Container(color: _cSpo)),
+                            if (wc4 > 0) Flexible(flex: (wc4 * 100).round(), child: Container(color: _cWc4)),
+                            if (wc5 > 0) Flexible(flex: (wc5 * 100).round(), child: Container(color: _cWc5)),
+                            if (out > 0) Flexible(flex: (out * 100).round(),
+                                child: Container(color: Colors.grey.withValues(alpha: 0.18))),
+                          ]),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 56,
-                    child: Text(
-                      'PS ${ps.toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w800,
-                        color: ps >= 90 ? color : (ps >= 50 ? color.withValues(alpha: 0.85) : Colors.grey),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 56,
+                      child: Text(
+                        'PS ${ps.toStringAsFixed(1)}%',
+                        style: TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w800,
+                          color: ps >= 90 ? color : (ps >= 50 ? color.withValues(alpha: 0.85) : Colors.grey),
+                        ),
+                        textAlign: TextAlign.right,
                       ),
-                      textAlign: TextAlign.right,
                     ),
-                  ),
-                  Icon(expanded ? Icons.expand_less : Icons.expand_more,
-                      size: 16, color: Colors.grey[500]),
+                  ] else
+                    const Spacer(),
                 ],
               ),
-            if (expanded) ...[
-              const SizedBox(height: 10),
+            ),
+            // Row 3: 단계별 chip (≥10%)
+            if (odds != null && (ks >= 10 || po >= 10 || spo >= 10 || wc4 >= 10 || wc5 >= 10)) ...[
+              const SizedBox(height: 7),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text('최근 5경기',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                                color: Colors.grey[600])),
-                        const SizedBox(width: 10),
-                        ...recent5.map((r) => _recentDot(r, size: 18)),
-                        const Spacer(),
-                        Text(_streakText(streak),
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
-                                color: _streakColor(streak))),
-                      ],
-                    ),
-                    if (odds != null) ...[
-                      const SizedBox(height: 8),
-                      Wrap(spacing: 6, runSpacing: 4, children: [
-                        if (ks >= 10) _stagePct('🥇 한국시리즈', ks, _cKs),
-                        if (po >= 10) _stagePct('🥈 플레이오프', po, _cPo),
-                        if (spo >= 10) _stagePct('🥉 준플레이오프', spo, _cSpo),
-                        if (wc4 >= 10) _stagePct('와일드카드 홈', wc4, _cWc4),
-                        if (wc5 >= 10) _stagePct('와일드카드 원정', wc5, _cWc5),
-                      ]),
-                    ],
-                  ],
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: Wrap(spacing: 5, runSpacing: 4, children: [
+                  if (ks >= 10) _stagePct('🥇 한국시리즈', ks, _cKs),
+                  if (po >= 10) _stagePct('🥈 플레이오프', po, _cPo),
+                  if (spo >= 10) _stagePct('🥉 준플레이오프', spo, _cSpo),
+                  if (wc4 >= 10) _stagePct('와일드카드 홈', wc4, _cWc4),
+                  if (wc5 >= 10) _stagePct('와일드카드 원정', wc5, _cWc5),
+                ]),
               ),
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  // 모던 최근경기 dot — 텍스트 없이 색만, subtle ring
+  Widget _recentDotModern(String result) {
+    Color fillColor;
+    Color ringColor;
+    switch (result) {
+      case 'W':
+        fillColor = const Color(0xFF1976D2);
+        ringColor = const Color(0xFF1565C0);
+        break;
+      case 'L':
+        fillColor = const Color(0xFFE53935);
+        ringColor = const Color(0xFFC62828);
+        break;
+      default:
+        fillColor = Colors.grey[400]!;
+        ringColor = Colors.grey[500]!;
+    }
+    return Container(
+      width: 12,
+      height: 12,
+      margin: const EdgeInsets.only(right: 4),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: fillColor,
+        border: Border.all(color: ringColor.withValues(alpha: 0.6), width: 0.5),
+        boxShadow: [
+          BoxShadow(
+            color: fillColor.withValues(alpha: 0.25),
+            blurRadius: 3, spreadRadius: 0, offset: const Offset(0, 1),
+          ),
+        ],
       ),
     );
   }
