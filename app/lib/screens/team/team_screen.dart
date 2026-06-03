@@ -328,7 +328,9 @@ class _TeamScreenState extends State<TeamScreen>
     final wins = team['wins'] as int? ?? 0;
     final losses = team['losses'] as int? ?? 0;
     final draws = team['draws'] as int? ?? 0;
-    final winRate = (team['win_rate'] as num?)?.toStringAsFixed(3) ?? '-';
+    final totalGames = team['total_games'] as int? ?? (wins + losses + draws);
+    final winRateNum = (team['win_rate'] as num?) ?? 0;
+    final winRatePct = '${(winRateNum * 100).round()}%';
     final gbNum = team['games_behind'] as num?;
     final isLead = gbNum == null || gbNum == 0;
     final gbText = isLead ? '–' : gbNum.toStringAsFixed(1);
@@ -336,8 +338,23 @@ class _TeamScreenState extends State<TeamScreen>
     final isExpanded = _expandedTeamIds.contains(id);
 
     double pct(String key) => ((odds?[key] as num? ?? 0) * 100).toDouble();
-    final ps = pct('ks_direct_prob') + pct('po_direct_prob') + pct('spo_direct_prob')
-              + pct('wc_seed4_prob') + pct('wc_seed5_prob');
+    final ks = pct('ks_direct_prob');
+    final po = pct('po_direct_prob');
+    final spo = pct('spo_direct_prob');
+    final wc4 = pct('wc_seed4_prob');
+    final wc5 = pct('wc_seed5_prob');
+    final ps = ks + po + spo + wc4 + wc5;
+
+    // 단계별 (라벨, 값, 색) — TOP2 추출용
+    final stages = [
+      ('한국시리즈', ks,  const Color(0xFFFFB300)),
+      ('플레이오프', po,  const Color(0xFF1565C0)),
+      ('준플레이오프', spo, const Color(0xFF1976D2)),
+      ('와카홈',    wc4, const Color(0xFF26A69A)),
+      ('와카원정',  wc5, const Color(0xFF66BB6A)),
+    ];
+    final top2 = [...stages]..sort((a, b) => b.$2.compareTo(a.$2));
+    final top2Picked = top2.where((s) => s.$2 > 0).take(2).toList();
 
     // 컬러 팔레트 (mockup tokens)
     final paper  = isDark ? const Color(0xFF18181C) : Colors.white;
@@ -354,7 +371,6 @@ class _TeamScreenState extends State<TeamScreen>
     final cardBg = isFav ? tc.withValues(alpha: isDark ? 0.18 : 0.07) : paper;
     final cardBd = isFav ? tc.withValues(alpha: isDark ? 0.55 : 0.40) : line;
     final rankCol = isFav ? tc : (rank <= 3 ? ink : sub);
-    final barFill = isFav ? tc : (ps >= 50 ? ink : ink3);
 
     return Container(
       decoration: BoxDecoration(
@@ -422,22 +438,31 @@ class _TeamScreenState extends State<TeamScreen>
                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ink3,
                                     fontFeatures: const [FontFeature.tabularFigures()])),
                             Container(width: 1, height: 9, margin: const EdgeInsets.symmetric(horizontal: 8), color: line2),
-                            Text(winRate,
+                            Text('$totalGames경기',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ink3,
+                                    fontFeatures: const [FontFeature.tabularFigures()])),
+                            Container(width: 1, height: 9, margin: const EdgeInsets.symmetric(horizontal: 8), color: line2),
+                            Text(winRatePct,
                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ink,
                                     fontFeatures: const [FontFeature.tabularFigures()])),
                           ]),
                           const SizedBox(height: 7),
+                          // PS bar — stacked 5 stages
                           Row(children: [
                             Expanded(
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(99),
                                 child: Container(
                                   height: 6, color: track,
-                                  child: FractionallySizedBox(
-                                    alignment: Alignment.centerLeft,
-                                    widthFactor: (ps.clamp(1.5, 100.0)) / 100,
-                                    child: Container(decoration: BoxDecoration(color: barFill, borderRadius: BorderRadius.circular(99))),
-                                  ),
+                                  child: Row(children: [
+                                    for (final s in stages)
+                                      if (s.$2 > 0)
+                                        Expanded(flex: (s.$2 * 100).round().clamp(1, 100000),
+                                            child: Container(color: s.$3)),
+                                    if (ps < 100)
+                                      Expanded(flex: ((100 - ps) * 100).round().clamp(1, 100000),
+                                          child: const SizedBox.shrink()),
+                                  ]),
                                 ),
                               ),
                             ),
@@ -446,10 +471,29 @@ class _TeamScreenState extends State<TeamScreen>
                               width: 38,
                               child: Text('${ps.toStringAsFixed(0)}%',
                                   textAlign: TextAlign.right,
-                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: barFill,
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                                      color: ps >= 50 ? ink : ink3,
                                       fontFeatures: const [FontFeature.tabularFigures()])),
                             ),
                           ]),
+                          // TOP2 단계 라벨
+                          if (top2Picked.isNotEmpty) ...[
+                            const SizedBox(height: 5),
+                            Wrap(
+                              spacing: 8, runSpacing: 3,
+                              children: [
+                                for (final s in top2Picked)
+                                  Row(mainAxisSize: MainAxisSize.min, children: [
+                                    Container(width: 6, height: 6,
+                                        decoration: BoxDecoration(color: s.$3, shape: BoxShape.circle)),
+                                    const SizedBox(width: 4),
+                                    Text('${s.$1} ${s.$2.toStringAsFixed(0)}%',
+                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: ink3,
+                                            fontFeatures: const [FontFeature.tabularFigures()])),
+                                  ]),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -521,7 +565,12 @@ class _TeamScreenState extends State<TeamScreen>
         final w = (v['wins'] as num?) ?? 0;
         final l = (v['losses'] as num?) ?? 0;
         final d = (v['draws'] as num?) ?? 0;
-        return d > 0 ? '$w-$l-$d' : '$w-$l';
+        final base = d > 0 ? '$w-$l-$d' : '$w-$l';
+        final tot = w + l;
+        if (tot == 0) return base;
+        final r = (w / tot).toStringAsFixed(3);
+        final rStr = r.startsWith('0') ? r.substring(1) : r;
+        return '$base ($rStr)';
       }
       if (v is String) return v;
       return '-';
@@ -535,7 +584,9 @@ class _TeamScreenState extends State<TeamScreen>
     final streak = team['streak'] as int? ?? 0;
     final streakStr = streak > 0 ? '$streak연승' : (streak < 0 ? '${-streak}연패' : '-');
     final ls = team['last_series'] as Map?;
-    final lastSeriesLabel = (ls?['label'] as String?) ?? '-';
+    final lsW = (ls?['wins'] as num?)?.toInt() ?? 0;
+    final lsL = (ls?['losses'] as num?)?.toInt() ?? 0;
+    final lastSeriesLabel = (lsW + lsL) == 0 ? '-' : '$lsW승 $lsL패';
     final recent10 = (team['recent_10'] as List?)?.cast<String>() ?? [];
 
     final borderTop = isFav
@@ -566,8 +617,7 @@ class _TeamScreenState extends State<TeamScreen>
           const SizedBox(height: 6),
           Row(children: List.generate(10, (i) {
             final r = i < recent10.length ? recent10[i] : '';
-            final accent = isFav ? tc : ink;
-            final fill = r == 'W' ? accent : track;
+            final fill = r == 'W' ? tc : track;
             return Padding(
               padding: const EdgeInsets.only(right: 2),
               child: Container(
