@@ -1694,6 +1694,28 @@ class _TeamScreenState extends State<TeamScreen>
 }
 
 
+// 공통 디자인 토큰 (mockup hi-fi)
+class _Tok {
+  final Color paper, paper2, line, line2, ink, ink2, ink3, sub, track;
+  const _Tok({
+    required this.paper, required this.paper2,
+    required this.line, required this.line2,
+    required this.ink, required this.ink2, required this.ink3, required this.sub,
+    required this.track,
+  });
+  factory _Tok.of(bool isDark) => _Tok(
+    paper:  isDark ? const Color(0xFF18181C) : Colors.white,
+    paper2: isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
+    line:   isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
+    line2:  isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4),
+    ink:    isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113),
+    ink2:   isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46),
+    ink3:   isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73),
+    sub:    isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2),
+    track:  isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC),
+  );
+}
+
 // CutLine 점선 painter
 class _DashedLinePainter extends CustomPainter {
   final Color color;
@@ -1870,11 +1892,13 @@ class _TeamStatsTabState extends State<TeamStatsTab>
   }
 
   Widget _buildCategoryChips(List<Map<String, dynamic>> cats, String selected, Function(String) onSelect) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final t = _Tok.of(isDark);
     return SizedBox(
       height: 40,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
         itemCount: cats.length,
         itemBuilder: (_, i) {
           final cat = cats[i];
@@ -1883,10 +1907,11 @@ class _TeamStatsTabState extends State<TeamStatsTab>
             onTap: () => onSelect(cat['value'] as String),
             child: Container(
               margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
-                color: sel ? const Color(0xFF1A237E) : Colors.grey.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(16),
+                color: sel ? t.ink : Colors.transparent,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: sel ? t.ink : t.line2, width: 1),
               ),
               child: Text(
                 cat['label'] as String,
@@ -1904,121 +1929,118 @@ class _TeamStatsTabState extends State<TeamStatsTab>
   }
 
   Widget _buildTeamStatList(List<Map<String, dynamic>> cats, String selected, bool isBatting) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tk = _Tok.of(isDark);
     final catMap = cats.firstWhere((c) => c['value'] == selected);
     final isLow = catMap['isLow'] as bool;
     final label = catMap['label'] as String;
     final sorted = _sortedTeams(selected, isBatting, isLow);
+    if (sorted.isEmpty) return const SizedBox.shrink();
     final best = sorted.first;
     final bestVal = ((isBatting ? best['batting'] : best['pitching']) ?? {})[selected];
 
-    return ListView.builder(
-      padding: EdgeInsets.fromLTRB(12, 8, 12, (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
-      itemCount: sorted.length,
-      itemBuilder: (_, i) {
-        final t = sorted[i];
-        final stats = (isBatting ? t['batting'] : t['pitching']) as Map? ?? {};
-        final rawVal = stats[selected];
-        final displayVal = isBatting
-            ? _fmtBatting(stats, selected)
-            : _fmtPitching(stats, selected);
-        final isBest = i == 0;
-        final code = t['short_name'] as String? ?? '';
-        final color = teamColor(code);
+    final favIds = ApiService.myTeamData.value
+        .map((m) => (m['id'] as int?) ?? -1).toSet();
 
-        // 바 너비 비율
-        double barFraction = 0;
-        if (rawVal != null && bestVal != null && (bestVal as num) != 0) {
-          final ratio = (rawVal as num) / bestVal;
-          barFraction = isLow ? (bestVal / (rawVal as num)) : ratio.toDouble();
-          barFraction = barFraction.clamp(0.05, 1.0);
-        }
+    return Container(
+      color: isDark ? const Color(0xFF111113) : const Color(0xFFFAFAFB),
+      child: ListView.builder(
+        padding: EdgeInsets.fromLTRB(16, 8, 16, (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
+        itemCount: sorted.length,
+        itemBuilder: (_, i) {
+          final t = sorted[i];
+          final stats = (isBatting ? t['batting'] : t['pitching']) as Map? ?? {};
+          final rawVal = stats[selected];
+          final displayVal = isBatting
+              ? _fmtBatting(stats, selected)
+              : _fmtPitching(stats, selected);
+          final rank = i + 1;
+          final isBest = rank == 1;
+          final code = t['short_name'] as String? ?? '';
+          final id = t['id'] as int? ?? -1;
+          final isFav = favIds.contains(id);
+          final tc = teamColor(code);
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 6),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: isBest
-                ? const Color(0xFF1A237E).withOpacity(0.06)
-                : Colors.grey.withOpacity(0.04),
-            borderRadius: BorderRadius.circular(12),
-            border: isBest
-                ? Border.all(color: const Color(0xFF1A237E).withOpacity(0.2))
-                : null,
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 24,
-                child: Text(
-                  '${i + 1}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: isBest ? const Color(0xFF1A237E) : Colors.grey[600],
+          double barFraction = 0;
+          if (rawVal != null && bestVal != null && (bestVal as num) != 0) {
+            final ratio = (rawVal as num) / bestVal;
+            barFraction = isLow ? (bestVal / (rawVal as num)) : ratio.toDouble();
+            barFraction = barFraction.clamp(0.05, 1.0);
+          }
+
+          final cardBg = isFav ? tc.withValues(alpha: isDark ? 0.18 : 0.07) : tk.paper;
+          final cardBd = isFav ? tc.withValues(alpha: isDark ? 0.55 : 0.40) : tk.line;
+          final rankCol = isFav ? tc : (isBest ? tk.ink : tk.sub);
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 9),
+            padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: cardBd, width: 1),
+              boxShadow: (!isFav && !isDark) ? [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 2, offset: const Offset(0, 1)),
+              ] : null,
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 24,
+                  child: Text('$rank',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.w800, color: rankCol,
+                        letterSpacing: -0.4, fontFeatures: const [FontFeature.tabularFigures()],
+                      )),
+                ),
+                const SizedBox(width: 13),
+                TeamLogo(teamCode: code, size: 36, logoUrl: t['logo_url']),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(t['name'] as String? ?? '',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: tk.ink, letterSpacing: -0.15)),
+                      const SizedBox(height: 7),
+                      LayoutBuilder(builder: (_, box) {
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(99),
+                          child: Container(
+                            height: 6, width: box.maxWidth, color: tk.track,
+                            child: FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: barFraction,
+                              child: Container(decoration: BoxDecoration(color: tc, borderRadius: BorderRadius.circular(99))),
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              TeamLogo(teamCode: code, size: 30, logoUrl: t['logo_url']),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      t['name'] as String? ?? '',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: isBest ? const Color(0xFF1A237E) : null,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    LayoutBuilder(builder: (_, box) {
-                      return Stack(
-                        children: [
-                          Container(
-                            height: 5,
-                            width: box.maxWidth,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          Container(
-                            height: 5,
-                            width: box.maxWidth * barFraction,
-                            decoration: BoxDecoration(
-                              color: color.withOpacity(0.7),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                        ],
-                      );
-                    }),
+                    Text(displayVal,
+                        style: TextStyle(
+                          fontSize: isBest ? 17 : 15, fontWeight: FontWeight.w800,
+                          color: tk.ink, letterSpacing: -0.3,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        )),
+                    const SizedBox(height: 2),
+                    Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: tk.sub)),
                   ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    displayVal,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: isBest ? const Color(0xFF1A237E) : null,
-                    ),
-                  ),
-                  Text(label, style: TextStyle(fontSize: 9, color: Colors.grey[500])),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -2046,7 +2068,9 @@ class _TeamStatsTabState extends State<TeamStatsTab>
       );
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Column(
+    return Container(
+      color: isDark ? const Color(0xFF111113) : const Color(0xFFFAFAFB),
+      child: Column(
       children: [
         _buildSegmentControl(isDark, ['타격', '투수'], _tabController),
         Expanded(
@@ -2089,6 +2113,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
           ),
         ),
       ],
+    ),
     );
   }
 }
@@ -2242,28 +2267,33 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Column(
-      children: [
-        _buildSegmentControl(isDark, ['타자', '투수'], _tabController),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildHitterRankings(),
-              _buildPitcherRankings(),
-            ],
+    return Container(
+      color: isDark ? const Color(0xFF111113) : const Color(0xFFFAFAFB),
+      child: Column(
+        children: [
+          _buildSegmentControl(isDark, ['타자', '투수'], _tabController),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildHitterRankings(),
+                _buildPitcherRankings(),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildCategoryChips(List<Map<String, String>> categories, String selected, Function(String) onSelect) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final t = _Tok.of(isDark);
     return SizedBox(
       height: 40,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
         itemCount: categories.length,
         itemBuilder: (context, index) {
           final cat = categories[index];
@@ -2272,17 +2302,17 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
             onTap: () => onSelect(cat['value']!),
             child: Container(
               margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF1A237E) : Colors.grey.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(16),
+                color: isSelected ? t.ink : Colors.transparent,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: isSelected ? t.ink : t.line2, width: 1),
               ),
               child: Text(
                 cat['label']!,
                 style: TextStyle(
-                  fontSize: 12,
-                  color: isSelected ? Colors.white : null,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 12, fontWeight: FontWeight.w600,
+                  color: isSelected ? (isDark ? Colors.black : Colors.white) : t.ink3,
                 ),
               ),
             ),
@@ -2401,40 +2431,33 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   }
 
   Widget _buildRankingsContent(List players, String Function(Map) statValue, String label) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final top3 = players.take(3).toList();
     final rest = players.skip(3).toList();
-    return ListView(
-      padding: EdgeInsets.only(bottom: (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
-      children: [
-        if (top3.length >= 3) ...[
-          _buildPodium(top3, statValue),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(children: [
-              const SizedBox(width: 32, child: Text('순위', style: TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center)),
-              const SizedBox(width: 56),
-              const Expanded(child: Text('선수', style: TextStyle(fontSize: 11, color: Colors.grey))),
-              Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-              const SizedBox(width: 8),
-            ]),
-          ),
-          const Divider(height: 8),
+    return Container(
+      color: isDark ? const Color(0xFF111113) : const Color(0xFFFAFAFB),
+      child: ListView(
+        padding: EdgeInsets.only(top: 8, bottom: (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
+        children: [
+          if (top3.length >= 3) ...[
+            _buildPodium(top3, statValue),
+            const SizedBox(height: 14),
+          ],
+          ...rest.asMap().entries.map((e) {
+            final p = e.value as Map;
+            return _buildRankRow(
+              rank: e.key + 4,
+              playerId: p['id'],
+              name: p['name'] ?? '',
+              team: p['team'] ?? '',
+              teamCode: p['team_code'] ?? '',
+              profileImage: p['profile_image'] as String?,
+              label: label,
+              value: statValue(p),
+            );
+          }),
         ],
-        ...rest.asMap().entries.map((e) {
-          final p = e.value as Map;
-          return _buildRankRow(
-            rank: e.key + 4,
-            playerId: p['id'],
-            name: p['name'] ?? '',
-            team: p['team'] ?? '',
-            teamCode: p['team_code'] ?? '',
-            profileImage: p['profile_image'] as String?,
-            label: label,
-            value: statValue(p),
-          );
-        }),
-      ],
+      ),
     );
   }
 
@@ -2529,71 +2552,90 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     required String value,
     String? profileImage,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final t = _Tok.of(isDark);
+    final tc = teamColor(teamCode);
     final isTop3 = rank <= 3;
-    final rankColors = [Colors.amber, Colors.grey[600]!, Colors.brown];
-    final color = teamColor(teamCode);
+    const medal1 = Color(0xFFFFB300);
+    const medal2 = Color(0xFFC0C0C0);
+    const medal3 = Color(0xFFCD7F32);
+    final medal = rank == 1 ? medal1 : (rank == 2 ? medal2 : medal3);
+    final rankCol = isTop3 ? medal : t.sub;
 
-    return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId)),
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        margin: const EdgeInsets.only(bottom: 4),
-        decoration: BoxDecoration(
-          color: isTop3
-              ? rankColors[rank - 1].withOpacity(0.08)
-              : Colors.grey.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 32,
-              child: Text(
-                '$rank',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: isTop3 ? rankColors[rank - 1] : Colors.grey[600],
-                ),
-              ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 9),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId))),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+            decoration: BoxDecoration(
+              color: t.paper,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: t.line, width: 1),
+              boxShadow: !isDark ? [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 2, offset: const Offset(0, 1)),
+              ] : null,
             ),
-            const SizedBox(width: 8),
-            // 선수 사진 (없으면 팀 컬러 이니셜)
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: color,
-              backgroundImage: (profileImage != null && profileImage.isNotEmpty)
-                  ? CachedNetworkImageProvider(profileImage)
-                  : null,
-              child: (profileImage == null || profileImage.isEmpty)
-                  ? Text(
-                      teamDisplayName(teamCode).substring(0, teamDisplayName(teamCode).length.clamp(0, 2)),
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  Text(team, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            child: Row(
               children: [
-                Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                SizedBox(
+                  width: 24,
+                  child: Text('$rank',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.w800, color: rankCol,
+                        letterSpacing: -0.4, fontFeatures: const [FontFeature.tabularFigures()],
+                      )),
+                ),
+                const SizedBox(width: 12),
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: tc.withValues(alpha: isDark ? 0.35 : 0.18),
+                  backgroundImage: (profileImage != null && profileImage.isNotEmpty)
+                      ? CachedNetworkImageProvider(profileImage) : null,
+                  child: (profileImage == null || profileImage.isEmpty)
+                      ? Text(teamDisplayName(teamCode).substring(0,
+                              teamDisplayName(teamCode).length.clamp(0, 2)),
+                          style: TextStyle(color: tc, fontSize: 10, fontWeight: FontWeight.w800))
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(name,
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
+                              color: t.ink, letterSpacing: -0.15)),
+                      const SizedBox(height: 3),
+                      Text(team,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: t.ink3)),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(value,
+                        style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w800, color: t.ink,
+                          letterSpacing: -0.3,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        )),
+                    const SizedBox(height: 2),
+                    Text(label,
+                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: t.sub)),
+                  ],
+                ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
