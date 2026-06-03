@@ -1944,10 +1944,16 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
                             found_scoring = True
 
                 # 홈인 수집 (type 14/24/31)
+                # 정규식: 한글 이름 2~4자 + 선택적 조사(이/가) + 홈인
+                # 조사/부사 어미('로'/'서'/'에'/'으') 끝나면 reject → "실책으로 홈인" 같은 케이스 차단
                 if found_scoring and otype in (14, 24, 31):
-                    m2 = _re.search(r'([가-힣A-Za-z]+)\s*홈인', text_now)
-                    if m2 and m2.group(1) not in result_homein:
-                        result_homein.append(m2.group(1))
+                    _PARTICLE_SUFFIX = ('로', '서', '에', '으', '며', '면', '도', '만', '나')
+                    for _m in _re.finditer(r'([가-힣]{2,4})(?:이|가)?\s*홈인', text_now):
+                        _name = _m.group(1)
+                        if _name.endswith(_PARTICLE_SUFFIX):
+                            continue
+                        if _name not in result_homein:
+                            result_homein.append(_name)
 
         return result_batter, result_pitcher, result_text, result_stuff, result_speed, result_homein, result_pitch_num
     except Exception:
