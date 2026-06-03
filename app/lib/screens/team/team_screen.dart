@@ -192,50 +192,108 @@ class _TeamScreenState extends State<TeamScreen>
       for (final o in _odds) (o['id'] as int? ?? 0): o,
     };
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Column(
-      children: [
-        // ── 고정 헤더 (Notion-style: 작은 폰트 + subtle divider) ──
-        Container(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
-          child: Row(
-            children: [
-              SizedBox(width: 26, child: Text('#', style: _hdrStyle)),
-              const SizedBox(width: 12),
-              Expanded(child: Text('팀', style: _hdrStyle)),
-              SizedBox(width: 32, child: Text('승', style: _hdrStyle, textAlign: TextAlign.center)),
-              SizedBox(width: 32, child: Text('패', style: _hdrStyle, textAlign: TextAlign.center)),
-              SizedBox(width: 32, child: Text('무', style: _hdrStyle, textAlign: TextAlign.center)),
-              SizedBox(width: 48, child: Text('승률', style: _hdrStyle, textAlign: TextAlign.right)),
-              SizedBox(width: 44, child: Text('게임차', style: _hdrStyle, textAlign: TextAlign.right)),
-            ],
-          ),
-        ),
-        Container(height: 0.5, color: isDark ? Colors.white12 : Colors.black12),
-        // ── 스크롤 영역 ──
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () async { await _loadTeams(); await _loadOdds(); },
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(12, 4, 12,
-                  (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
-              children: [
-                ..._teams.map((team) {
-                  final id = team['id'] as int? ?? 0;
-                  return _buildTabularRow(team, oddsById[id], isDark);
-                }),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 20, 8, 8),
-                  child: Text(
-                    '포스트시즌 진출 확률 · Monte Carlo 100,000회 · 표기 임계값 10%',
-                    style: TextStyle(fontSize: 10, color: Colors.grey[500], letterSpacing: 0.2),
-                  ),
-                ),
-              ],
+    final scaffoldBg = isDark ? const Color(0xFF111113) : const Color(0xFFFAFAFB);
+    return Container(
+      color: scaffoldBg,
+      child: RefreshIndicator(
+        onRefresh: () async { await _loadTeams(); await _loadOdds(); },
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(16, 8, 16,
+              (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
+          children: [
+            // ── 필터 chip (stub: mv/전반기/최근10 백엔드 미지원) ──
+            _buildFilterChips(isDark),
+            const SizedBox(height: 8),
+            // ── 막대 설명 ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(2, 2, 2, 12),
+              child: Row(
+                children: [
+                  Text('막대 = 포스트시즌 진출확률',
+                      style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white38 : const Color(0xFF9A9AA2))),
+                  const SizedBox(width: 6),
+                  Text('Monte Carlo 100,000회',
+                      style: TextStyle(fontSize: 9.5, fontFamilyFallback: const ['monospace'],
+                          color: isDark ? Colors.white24 : const Color(0xFFE0E0E4))),
+                ],
+              ),
             ),
-          ),
+            // ── 1~5위 ──
+            ..._teams.where((t) => (t['rank'] as int? ?? 99) <= 5).map((t) {
+              final id = t['id'] as int? ?? 0;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 9),
+                child: _buildCardRow(t, oddsById[id], isDark),
+              );
+            }),
+            // ── CutLine (가을야구 진출선) ──
+            _buildCutLine(isDark),
+            // ── 6~10위 ──
+            ..._teams.where((t) => (t['rank'] as int? ?? 0) > 5).map((t) {
+              final id = t['id'] as int? ?? 0;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 9),
+                child: _buildCardRow(t, oddsById[id], isDark),
+              );
+            }),
+            const SizedBox(height: 8),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChips(bool isDark) {
+    final ink = isDark ? Colors.white : const Color(0xFF111113);
+    final sub = isDark ? Colors.white60 : const Color(0xFF6B6B73);
+    final line = isDark ? Colors.white24 : const Color(0xFFE0E0E4);
+    Widget chip(String label, {bool active = false, bool disabled = false}) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          color: active ? ink : Colors.transparent,
+          border: Border.all(color: active ? ink : line, width: 1),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w600,
+                color: active ? (isDark ? Colors.black : Colors.white)
+                        : (disabled ? sub.withValues(alpha: 0.5) : sub))),
+      );
+    }
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(children: [
+        chip('${DateTime.now().year} 시즌', active: true),
+        const SizedBox(width: 8),
+        chip('전반기', disabled: true),
+        const SizedBox(width: 8),
+        chip('최근 10경기', disabled: true),
+      ]),
+    );
+  }
+
+  Widget _buildCutLine(bool isDark) {
+    final c = isDark ? Colors.white24 : const Color(0xFFE0E0E4);
+    final ink3 = isDark ? Colors.white60 : const Color(0xFF6B6B73);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(6, 4, 6, 13),
+      child: Row(children: [
+        Expanded(child: CustomPaint(
+          painter: _DashedLinePainter(color: c),
+          child: const SizedBox(height: 1),
+        )),
+        const SizedBox(width: 10),
+        Text('가을야구 진출선',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: ink3)),
+        const SizedBox(width: 10),
+        Expanded(child: CustomPaint(
+          painter: _DashedLinePainter(color: c),
+          child: const SizedBox(height: 1),
+        )),
+      ]),
     );
   }
 
@@ -251,7 +309,183 @@ class _TeamScreenState extends State<TeamScreen>
   static const Color _cWc4 = Color(0xFF26A69A);
   static const Color _cWc5 = Color(0xFF66BB6A);
 
-  // ──────────────── TABULAR ROW (옵션 2: Apple Sports style) ────────────────
+  // ──────────────── CARD ROW (mockup hi-fi 적용) ────────────────
+  Widget _buildCardRow(Map team, Map? odds, bool isDark) {
+    final rank = team['rank'] as int? ?? 0;
+    final code = team['short_name'] as String? ?? '';
+    final id = team['id'] as int? ?? -1;
+    final wins = team['wins'] as int? ?? 0;
+    final losses = team['losses'] as int? ?? 0;
+    final draws = team['draws'] as int? ?? 0;
+    final winRate = (team['win_rate'] as num?)?.toStringAsFixed(3) ?? '-';
+    final gbNum = team['games_behind'] as num?;
+    final isLead = gbNum == null || gbNum == 0;
+    final gbText = isLead ? '–' : gbNum.toStringAsFixed(1);
+    final isFav = _favoriteTeamIds.contains(id);
+
+    double pct(String key) => ((odds?[key] as num? ?? 0) * 100).toDouble();
+    final ps = pct('ks_direct_prob') + pct('po_direct_prob') + pct('spo_direct_prob')
+              + pct('wc_seed4_prob') + pct('wc_seed5_prob');
+
+    // 컬러 팔레트 (mockup)
+    final paper  = isDark ? const Color(0xFF1C1C1F) : Colors.white;
+    final myFill = isDark ? const Color(0xFF26262A) : const Color(0xFFF3F4F6);
+    final line   = isDark ? Colors.white12 : const Color(0xFFEDEDF0);
+    final line2  = isDark ? Colors.white24 : const Color(0xFFE0E0E4);
+    final ink    = isDark ? Colors.white : const Color(0xFF111113);
+    final ink2   = isDark ? Colors.white70 : const Color(0xFF3F3F46);
+    final ink3   = isDark ? Colors.white60 : const Color(0xFF6B6B73);
+    final sub    = isDark ? Colors.white38 : const Color(0xFF9A9AA2);
+    final track  = isDark ? Colors.white10 : const Color(0xFFE8E8EC);
+
+    final card = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(team)))),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+          decoration: BoxDecoration(
+            color: isFav ? myFill : paper,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isFav ? line2 : line, width: 1),
+            boxShadow: isFav ? null : [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0 : 0.03),
+                blurRadius: 2, offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // ── 순위 + ▲▼ stub ──
+              SizedBox(
+                width: 26,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('$rank',
+                        style: TextStyle(
+                          fontSize: 19, fontWeight: FontWeight.w800,
+                          color: rank <= 3 ? ink : sub,
+                          letterSpacing: -0.5,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        )),
+                    const SizedBox(height: 4),
+                    Text('—', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: line2)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 13),
+              TeamLogo(teamCode: code, size: 42, logoUrl: team['logo_url'] as String?),
+              const SizedBox(width: 13),
+              // ── 중앙: 팀명+badge + w/l/d+pct + PS bar ──
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 팀명 + badge
+                    Row(children: [
+                      Flexible(
+                        child: Text(team['name'] as String? ?? '',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: ink, letterSpacing: -0.15)),
+                      ),
+                      if (isFav) ...[
+                        const SizedBox(width: 6),
+                        _badge('마이팀', bg: isDark ? Colors.white12 : const Color(0xFFE7E7EA), fg: ink2),
+                      ],
+                      if (isLead) ...[
+                        const SizedBox(width: 6),
+                        _badge('선두', bg: ink, fg: isDark ? Colors.black : Colors.white),
+                      ],
+                    ]),
+                    const SizedBox(height: 7),
+                    // w승 l패 d무 + 승률
+                    Row(children: [
+                      Text('${wins}승 ${losses}패${draws > 0 ? ' ${draws}무' : ''}',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ink3,
+                              fontFeatures: const [FontFeature.tabularFigures()])),
+                      Container(width: 1, height: 9, margin: const EdgeInsets.symmetric(horizontal: 8), color: line2),
+                      Text(winRate,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ink,
+                              fontFeatures: const [FontFeature.tabularFigures()])),
+                    ]),
+                    const SizedBox(height: 7),
+                    // PS bar
+                    Row(children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(99),
+                          child: Container(
+                            height: 6, color: track,
+                            child: FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: (ps.clamp(1.5, 100.0)) / 100,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: ps >= 50 ? ink : ink3,
+                                  borderRadius: BorderRadius.circular(99),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 38,
+                        child: Text('${ps.toStringAsFixed(0)}%',
+                            textAlign: TextAlign.right,
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                                color: ps >= 50 ? ink : ink3,
+                                fontFeatures: const [FontFeature.tabularFigures()])),
+                      ),
+                    ]),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // ── 우측: 게임차 ──
+              SizedBox(
+                width: 42,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(gbText,
+                        style: TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.w800,
+                          color: isLead ? ink : ink2,
+                          letterSpacing: -0.4,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        )),
+                    const SizedBox(height: 4),
+                    Text('게임차',
+                        style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600, color: sub)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return card;
+  }
+
+  Widget _badge(String text, {required Color bg, required Color fg}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(5)),
+      child: Text(text, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: fg)),
+    );
+  }
+
+  // ──────────────── LEGACY TABULAR ROW (남겨둠 — 미사용) ────────────────
   Widget _buildTabularRow(Map team, Map? odds, bool isDark) {
     final rank = team['rank'] as int? ?? 0;
     final code = team['short_name'] as String? ?? '';
@@ -1242,6 +1476,28 @@ class _TeamScreenState extends State<TeamScreen>
   }
 }
 
+
+// CutLine 점선 painter
+class _DashedLinePainter extends CustomPainter {
+  final Color color;
+  _DashedLinePainter({required this.color});
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    const dash = 5.0, gap = 5.0;
+    double x = 0;
+    final y = size.height / 2;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, y), Offset(x + dash, y), paint);
+      x += dash + gap;
+    }
+  }
+  @override
+  bool shouldRepaint(covariant _DashedLinePainter old) => old.color != color;
+}
 
 Widget _buildSegmentControl(bool isDark, List<String> labels, TabController ctrl) {
   return Container(
