@@ -146,7 +146,7 @@ def _starter_stats(cur, game_id: int, team_side: str, season: int) -> dict:
 
 
 def _lineup_stats(cur, game_id: int, team_side: str, season: int) -> dict:
-    """선발 라인업 9명 평균 OPS/wOBA."""
+    """선발 라인업 9명 평균 OPS/wOBA. 라인업 미공개 시 팀 평균 fallback."""
     cur.execute("""
         SELECT AVG(NULLIF(bs.ops, 0))::float, AVG(NULLIF(bs.woba, 0))::float,
                AVG(NULLIF(bs.avg, 0))::float
@@ -157,10 +157,27 @@ def _lineup_stats(cur, game_id: int, team_side: str, season: int) -> dict:
           AND gr.batting_order BETWEEN 1 AND 9
     """, (season, game_id, team_side))
     row = cur.fetchone() or (0, 0, 0)
+    ops, woba, avg = _f(row[0]), _f(row[1]), _f(row[2])
+    # 라인업 미공개 시 팀 평균 fallback (예정 게임)
+    if ops == 0 and woba == 0:
+        cur.execute("""
+            SELECT g.home_team_id, g.away_team_id FROM games g WHERE g.id=%s
+        """, (game_id,))
+        teams_row = cur.fetchone()
+        if teams_row:
+            team_id = teams_row[0] if team_side == 'home' else teams_row[1]
+            cur.execute("""
+                SELECT AVG(NULLIF(ops,0))::float, AVG(NULLIF(woba,0))::float,
+                       AVG(NULLIF(avg,0))::float
+                FROM batter_stats bs JOIN players p ON p.id=bs.player_id
+                WHERE p.team_id=%s AND bs.season=%s AND bs.at_bats > 50
+            """, (team_id, season))
+            r2 = cur.fetchone() or (0, 0, 0)
+            ops, woba, avg = _f(r2[0]), _f(r2[1]), _f(r2[2])
     return {
-        'lineup_ops': round(_f(row[0]), 3),
-        'lineup_woba': round(_f(row[1]), 3),
-        'lineup_avg': round(_f(row[2]), 3),
+        'lineup_ops': round(ops, 3),
+        'lineup_woba': round(woba, 3),
+        'lineup_avg': round(avg, 3),
     }
 
 
