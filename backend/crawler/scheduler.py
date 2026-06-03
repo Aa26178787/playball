@@ -32,6 +32,37 @@ _game_hr_cache: dict = {}       # {game_id: {player_id: hr_count}} — HR 중복
 _fav_lineup_sent: set = set()   # (game_id, player_id) — 선발출전 알림 중복 방지
 _lineup_announced: set = set()  # game_id — 선발투수 발표 알림 중복 방지
 _pitcher_seen: dict = {}        # {game_id: set(player_id)} — 투수 교체 알림 추적
+_notified_cache: set = set()    # (game_id, ntype) — 알림 중복 방지 (재시작 후 DB로 hydrate)
+
+
+def _already_notified(game_id: int, ntype: str) -> bool:
+    """DB+메모리 조합 중복 체크. 재시작 후에도 동일 game+type 재발송 방지."""
+    key = (game_id, ntype)
+    if key in _notified_cache:
+        return True
+    conn = get_connection()
+    if not conn:
+        return False
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT 1 FROM user_notifications WHERE game_id=%s AND type=%s LIMIT 1",
+            (game_id, ntype)
+        )
+        if cur.fetchone():
+            _notified_cache.add(key)
+            cur.close()
+            return True
+        cur.close()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+    return False
+
+
+def _mark_notified(game_id: int, ntype: str):
+    _notified_cache.add((game_id, ntype))
 
 
 def _parse_ip(ip_val) -> float:
@@ -711,6 +742,9 @@ def _check_pitcher_change(game_id: int, game_info: dict):
 
 def _send_game_summary(game_id: int):
     """경기 종료 30분 후 결과 요약 알림 (stats 업데이트 완료 후)"""
+    # 재시작으로 중복 스케줄된 경우 dedup
+    if _already_notified(game_id, 'game_end'):
+        return
     conn = get_connection()
     if not conn:
         return
@@ -909,8 +943,8 @@ def smart_update():
                         except Exception:
                             pass
 
-                # 경기 시작
-                elif cs == '진행' and ps in ('예정', '라인업', ''):
+                # 경기 시작 (재시작 안전: dedup)
+                elif cs == '진행' and ps in ('예정', '라인업', '') and not _already_notified(gid, 'game_start'):
                     # 선발 투수 조회
                     _hs = _ls = ''
                     try:
@@ -933,6 +967,7 @@ def smart_update():
                                       curr['home_team_id'], curr['away_team_id'],
                                       start_time=curr.get('start_time', ''),
                                       home_starter=_hs, away_starter=_ls)
+                    _mark_notified(gid, 'game_start')
                     # 즐겨찾기 선수 선발 출전 알림
                     try:
                         _notify_fav_player_lineup(gid, curr['home_team'], curr['away_team'])
@@ -1003,13 +1038,13 @@ def smart_update():
                     except Exception as _we:
                         print(f'[Weather] 종료 날씨 저장 실패 game={gid}: {_we}')
 
-                # 연장전 돌입 (별도 체크)
-                prev_inn = prev.get('current_inning', 0) or 0
+                # 연장전 돌입 (재시작 안전: state-based + DB dedup)
                 curr_inn = curr.get('current_inning', 0) or 0
-                if cs == '진행' and curr_inn >= 10 and prev_inn < 10:
+                if cs == '진행' and curr_inn >= 10 and not _already_notified(gid, 'extra_innings'):
                     notify_extra_innings(gid, curr['home_team'], curr['away_team'],
                                          curr_inn,
                                          curr['home_team_id'], curr['away_team_id'])
+                    _mark_notified(gid, 'extra_innings')
 
                 # 진행 중 투수 교체 감지
                 if cs == '진행':
@@ -1084,15 +1119,19 @@ def smart_update():
             except Exception as streak_err:
                 print(f"[FCM] 연승/연패 알림 오류: {streak_err}")
 
-        # 끝내기 승리 알림
-        for gid in newly_finished:
+        # 끝내기 승리 알림 (재시작 안전: 모든 종료 경기 검사 + dedup)
+        for gid, curr in curr_details.items():
+            if curr.get('status') != '종료':
+                continue
             try:
-                curr = curr_details.get(gid, {})
-                if curr.get('home_score', 0) > curr.get('away_score', 0) and _is_walkoff(gid):
+                if (curr.get('home_score', 0) > curr.get('away_score', 0)
+                        and _is_walkoff(gid)
+                        and not _already_notified(gid, 'walkoff')):
                     from api.fcm_service import notify_walkoff
                     notify_walkoff(gid, curr['home_team'], curr['away_team'],
                                    curr['home_score'], curr['away_score'],
                                    curr['home_team_id'], curr['away_team_id'])
+                    _mark_notified(gid, 'walkoff')
             except Exception as wo_err:
                 print(f"[FCM] 끝내기 알림 오류: {wo_err}")
 
@@ -1100,8 +1139,14 @@ def smart_update():
         for gid in newly_finished:
             schedule.every(27).minutes.do(_run_once, _check_post_game_milestones, gid)
 
-        # 경기 종료 30분 후 결과 요약 알림
-        for gid in newly_finished:
+        # 경기 종료 30분 후 결과 요약 알림 (재시작 안전: 종료 경기 중 미발송만)
+        for gid, curr in curr_details.items():
+            if curr.get('status') != '종료':
+                continue
+            if _already_notified(gid, 'game_end'):
+                continue
+            # 마킹 먼저 (중복 스케줄링 방지)
+            _mark_notified(gid, 'game_end')
             schedule.every(30).minutes.do(_run_once, _send_game_summary, gid)
 
     conn = get_connection()
