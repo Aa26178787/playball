@@ -185,17 +185,6 @@ def _starter_stats(cur, game_id: int, team_side: str, season: int,
         cur.execute("""
             SELECT SUM(er)::float, SUM(ip)::float
             FROM player_daily_stats pds
-            JOIN games g ON g.opponent IS NOT NULL
-            WHERE pds.player_id=%s AND pds.stat_type='pitcher'
-              AND pds.opponent = (SELECT name FROM teams WHERE id=%s)
-              AND pds.game_date < (SELECT game_date FROM games WHERE id=%s)
-              AND EXTRACT(YEAR FROM pds.game_date)=%s
-            LIMIT 1
-        """, (pid, opponent_team_id, game_id, season))
-        # Simpler version: just query player_daily_stats
-        cur.execute("""
-            SELECT SUM(er)::float, SUM(ip)::float
-            FROM player_daily_stats pds
             WHERE pds.player_id=%s AND pds.stat_type='pitcher'
               AND pds.opponent = (SELECT name FROM teams WHERE id=%s)
               AND pds.game_date < (SELECT game_date FROM games WHERE id=%s)
