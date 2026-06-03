@@ -41,6 +41,23 @@ def cache_set(key: str, value: Any, ttl: int) -> None:
         _store[key] = (value, time.monotonic() + ttl)
 
 
+def cache_delete(key: str) -> bool:
+    with _global_lock:
+        if key in _store:
+            del _store[key]
+            return True
+    return False
+
+
+def cache_delete_prefix(prefix: str) -> int:
+    """prefix로 시작하는 모든 키 삭제."""
+    with _global_lock:
+        keys = [k for k in _store if k.startswith(prefix)]
+        for k in keys:
+            del _store[k]
+        return len(keys)
+
+
 def cached(ttl: int):
     """Decorator: cache FastAPI sync route return value by function name + args."""
     def decorator(fn):

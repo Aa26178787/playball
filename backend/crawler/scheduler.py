@@ -1251,6 +1251,14 @@ def smart_update():
                                                              curr['home_team_id'], curr['away_team_id'],
                                                              _la_hs, _la_ls)
                                     _mark_notified(gid, 'starter_announced')
+                                    # 라인업 발표 → 예측 캐시 무효화 (해당 game만) + 재로깅
+                                    try:
+                                        from api.cache import cache_delete_prefix
+                                        from api.prediction.eval import log_prediction
+                                        cache_delete_prefix(f'api.routers.prediction.get_game_win_prediction:({gid},)')
+                                        log_prediction(gid)
+                                    except Exception as _pe:
+                                        print(f"[prediction] 라인업 재로깅 오류 game={gid}: {_pe}")
                         except Exception:
                             pass
 
@@ -1933,9 +1941,20 @@ def _update_lineup_by_starttime():
 
     if games_no_lineup:
         print(f"[{datetime.now()}] 선발 타자 없는 예정 경기 재크롤링: {len(games_no_lineup)}개")
+        refreshed = []
         for (db_game_id, naver_game_id) in games_no_lineup:
             save_game_roster(db_game_id, naver_game_id)
+            refreshed.append(db_game_id)
             time.sleep(0.5)
+        # 라인업 크롤 후 예측 재로깅 (선발 타자가 새로 채워졌으면 라인업 OPS 정확)
+        try:
+            from api.cache import cache_delete_prefix
+            from api.prediction.eval import log_prediction
+            for gid in refreshed:
+                cache_delete_prefix(f'api.routers.prediction.get_game_win_prediction:({gid},)')
+                log_prediction(gid)
+        except Exception as _pe:
+            print(f"[prediction] 라인업 크롤 후 재로깅 오류: {_pe}")
 
 
 def _update_lineup_fallback():
@@ -2480,6 +2499,15 @@ def _update_roster_changes():
         run_today()
         run_trade(days=7)
         _notify_roster_for_fans()
+        # 등록말소 발생 → 오늘 예정 게임 예측 캐시 무효화 + 재로깅
+        try:
+            from api.cache import cache_delete_prefix
+            from api.prediction.eval import log_today_predictions
+            cache_delete_prefix('api.routers.prediction.get_game_win_prediction')
+            log_today_predictions()
+            print(f"[{datetime.now()}] 등록말소 후 예측 재로깅 완료")
+        except Exception as _pe:
+            print(f"[prediction] 등록말소 후 재로깅 오류: {_pe}")
     except Exception as e:
         print(f"[{datetime.now()}] 등록말소 크롤링 오류: {e}")
 
