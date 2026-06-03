@@ -100,12 +100,13 @@ def _team_pitching_stats(cur, team_id: int, season: int) -> dict:
 
 
 def _starter_stats(cur, game_id: int, team_side: str, season: int) -> dict:
-    """선발투수 시즌 stats + 최근 3등판 ERA."""
+    """선발투수 시즌 stats + 최근 3등판 ERA. pitching_order 0/1 혼재 → MIN."""
     cur.execute("""
         SELECT gp.player_id, p.name
         FROM game_pitchers gp
         JOIN players p ON p.id = gp.player_id
-        WHERE gp.game_id=%s AND gp.team_side=%s AND gp.pitching_order=1
+        WHERE gp.game_id=%s AND gp.team_side=%s
+        ORDER BY gp.pitching_order ASC NULLS LAST
         LIMIT 1
     """, (game_id, team_side))
     row = cur.fetchone()
