@@ -190,31 +190,37 @@ class _TeamScreenState extends State<TeamScreen>
     final oddsById = <int, Map>{
       for (final o in _odds) (o['id'] as int? ?? 0): o,
     };
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return RefreshIndicator(
       onRefresh: () async { await _loadTeams(); await _loadOdds(); },
       child: ListView(
-        padding: EdgeInsets.fromLTRB(12, 12, 12, (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
+        padding: EdgeInsets.fromLTRB(14, 8, 14,
+            (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
         children: [
-          // 1-3위: Hero card
-          ..._teams.where((t) => (t['rank'] as int? ?? 0) <= 3).map((team) {
-            final id = team['id'] as int? ?? 0;
-            return _buildHeroCard(team, oddsById[id]);
-          }),
-          if (_teams.any((t) => (t['rank'] as int? ?? 0) >= 4)) ...[
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 4),
-              child: Text('4 - 10위',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey[500])),
-            ),
-          ],
-          // 4-10위: Compact row
-          ..._teams.where((t) => (t['rank'] as int? ?? 0) >= 4).map((team) {
-            final id = team['id'] as int? ?? 0;
-            return _buildCompactRow(team, oddsById[id]);
-          }),
+          // 헤더 row
           Padding(
-            padding: const EdgeInsets.only(top: 12, left: 4),
+            padding: const EdgeInsets.fromLTRB(2, 10, 2, 8),
+            child: Row(
+              children: [
+                SizedBox(width: 28, child: Text('순위', style: _hdrStyle)),
+                const SizedBox(width: 8),
+                Expanded(child: Text('팀', style: _hdrStyle)),
+                SizedBox(width: 70, child: Text('승-패-무', style: _hdrStyle, textAlign: TextAlign.center)),
+                SizedBox(width: 44, child: Text('승률', style: _hdrStyle, textAlign: TextAlign.right)),
+                SizedBox(width: 40, child: Text('게임차', style: _hdrStyle, textAlign: TextAlign.right)),
+                const SizedBox(width: 4),
+              ],
+            ),
+          ),
+          Container(height: 1, color: isDark ? Colors.grey[800] : Colors.grey[200]),
+          // 팀 row
+          ..._teams.map((team) {
+            final id = team['id'] as int? ?? 0;
+            return _buildTabularRow(team, oddsById[id], isDark);
+          }),
+          // 캡션
+          Padding(
+            padding: const EdgeInsets.only(top: 16, left: 4),
             child: Text(
               '포스트시즌 진출 확률 · Monte Carlo 100,000회 · 표기 임계값 10%',
               style: TextStyle(fontSize: 10, color: Colors.grey[500]),
@@ -225,6 +231,11 @@ class _TeamScreenState extends State<TeamScreen>
     );
   }
 
+  TextStyle get _hdrStyle => TextStyle(
+        fontSize: 11, fontWeight: FontWeight.w700,
+        color: Colors.grey[600], letterSpacing: 0.3,
+      );
+
   // 포스트시즌 단계 색상
   static const Color _cKs = Color(0xFFFFB300);
   static const Color _cPo = Color(0xFF1565C0);
@@ -232,8 +243,200 @@ class _TeamScreenState extends State<TeamScreen>
   static const Color _cWc4 = Color(0xFF26A69A);
   static const Color _cWc5 = Color(0xFF66BB6A);
 
-  // ──────────────── HERO CARD (1-3위) ────────────────
-  Widget _buildHeroCard(Map team, Map? odds) {
+  // ──────────────── TABULAR ROW (옵션 2: Apple Sports style) ────────────────
+  Widget _buildTabularRow(Map team, Map? odds, bool isDark) {
+    final rank = team['rank'] as int? ?? 0;
+    final code = team['short_name'] as String? ?? '';
+    final id = team['id'] as int? ?? -1;
+    final wins = team['wins'] as int? ?? 0;
+    final losses = team['losses'] as int? ?? 0;
+    final draws = team['draws'] as int? ?? 0;
+    final winRate = (team['win_rate'] as num?)?.toStringAsFixed(3) ?? '-';
+    final gb = team['games_behind'];
+    final gbNum = gb as num?;
+    final gbText = gbNum == null || gbNum == 0 ? '-' : gbNum.toStringAsFixed(1);
+    final recent5 = (team['recent_5'] as List?)?.cast<String>() ?? [];
+    final streak = team['streak'] as int? ?? 0;
+    final isFav = _favoriteTeamIds.contains(id);
+    final isPSZone = rank <= 5;
+    final color = teamColor(code);
+    final expanded = _expandedRanks.contains(rank);
+
+    double pct(String key) => ((odds?[key] as num? ?? 0) * 100).toDouble();
+    final ks = pct('ks_direct_prob');
+    final po = pct('po_direct_prob');
+    final spo = pct('spo_direct_prob');
+    final wc4 = pct('wc_seed4_prob');
+    final wc5 = pct('wc_seed5_prob');
+    final ps = ks + po + spo + wc4 + wc5;
+    final out = (100.0 - ps).clamp(0.0, 100.0);
+
+    // 순위 셀: 1-3위 메달, 4-5위 진한 색 숫자, 6-10위 옅은 회색
+    Widget rankCell() {
+      if (rank == 1) return const Text('🥇', style: TextStyle(fontSize: 18));
+      if (rank == 2) return const Text('🥈', style: TextStyle(fontSize: 18));
+      if (rank == 3) return const Text('🥉', style: TextStyle(fontSize: 18));
+      return Text('$rank',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w900,
+            color: isPSZone ? color : Colors.grey[500],
+          ));
+    }
+
+    // 큰 row + 단일 stacked bar 라인
+    return InkWell(
+      onTap: () {
+        setState(() {
+          if (expanded) {
+            _expandedRanks.remove(rank);
+          } else {
+            _expandedRanks.add(rank);
+          }
+        });
+      },
+      onLongPress: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(team)))),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+              width: 0.7,
+            ),
+          ),
+          color: isFav
+              ? color.withValues(alpha: isDark ? 0.06 : 0.04)
+              : Colors.transparent,
+        ),
+        padding: const EdgeInsets.fromLTRB(2, 11, 2, 9),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                SizedBox(width: 28, child: Center(child: rankCell())),
+                const SizedBox(width: 8),
+                TeamLogo(teamCode: code, size: 26, logoUrl: team['logo_url'] as String?),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(team['name'] as String? ?? '',
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                      if (isFav) ...[
+                        const SizedBox(width: 4),
+                        Icon(Icons.star_rounded, size: 14, color: color),
+                      ],
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  width: 70,
+                  child: Text(
+                    '$wins-$losses${draws > 0 ? '-$draws' : ''}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                SizedBox(
+                  width: 44,
+                  child: Text(winRate,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                ),
+                SizedBox(
+                  width: 40,
+                  child: Text(gbText,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                ),
+                const SizedBox(width: 4),
+              ],
+            ),
+            const SizedBox(height: 6),
+            // PS bar + 1-2 chip
+            if (odds != null)
+              Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: SizedBox(
+                        height: 6,
+                        child: Row(children: [
+                          if (ks > 0) Flexible(flex: (ks * 100).round(), child: Container(color: _cKs)),
+                          if (po > 0) Flexible(flex: (po * 100).round(), child: Container(color: _cPo)),
+                          if (spo > 0) Flexible(flex: (spo * 100).round(), child: Container(color: _cSpo)),
+                          if (wc4 > 0) Flexible(flex: (wc4 * 100).round(), child: Container(color: _cWc4)),
+                          if (wc5 > 0) Flexible(flex: (wc5 * 100).round(), child: Container(color: _cWc5)),
+                          if (out > 0) Flexible(flex: (out * 100).round(),
+                              child: Container(color: Colors.grey.withValues(alpha: 0.18))),
+                        ]),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 56,
+                    child: Text(
+                      'PS ${ps.toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        fontSize: 11, fontWeight: FontWeight.w800,
+                        color: ps >= 90 ? color : (ps >= 50 ? color.withValues(alpha: 0.85) : Colors.grey),
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                  Icon(expanded ? Icons.expand_less : Icons.expand_more,
+                      size: 16, color: Colors.grey[500]),
+                ],
+              ),
+            if (expanded) ...[
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('최근 5경기',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                                color: Colors.grey[600])),
+                        const SizedBox(width: 10),
+                        ...recent5.map((r) => _recentDot(r, size: 18)),
+                        const Spacer(),
+                        Text(_streakText(streak),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
+                                color: _streakColor(streak))),
+                      ],
+                    ),
+                    if (odds != null) ...[
+                      const SizedBox(height: 8),
+                      Wrap(spacing: 6, runSpacing: 4, children: [
+                        if (ks >= 10) _stagePct('🥇 한국시리즈', ks, _cKs),
+                        if (po >= 10) _stagePct('🥈 플레이오프', po, _cPo),
+                        if (spo >= 10) _stagePct('🥉 준플레이오프', spo, _cSpo),
+                        if (wc4 >= 10) _stagePct('와일드카드 홈', wc4, _cWc4),
+                        if (wc5 >= 10) _stagePct('와일드카드 원정', wc5, _cWc5),
+                      ]),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ignore: unused_element
+  Widget _buildHeroCardLegacy(Map team, Map? odds) {
     final rank = team['rank'] as int? ?? 0;
     final code = team['short_name'] as String? ?? '';
     final id = team['id'] as int? ?? -1;
@@ -381,8 +584,8 @@ class _TeamScreenState extends State<TeamScreen>
     );
   }
 
-  // ──────────────── COMPACT ROW (4-10위) ────────────────
-  Widget _buildCompactRow(Map team, Map? odds) {
+  // ignore: unused_element
+  Widget _buildCompactRowLegacy(Map team, Map? odds) {
     final rank = team['rank'] as int? ?? 0;
     final code = team['short_name'] as String? ?? '';
     final id = team['id'] as int? ?? -1;
