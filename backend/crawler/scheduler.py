@@ -110,6 +110,162 @@ def _parse_ip(ip_val) -> float:
 
 # ===== 동명이인 후처리 =====
 
+def _parse_naver_ip(s) -> float:
+    """Naver 'inn' 문자열을 float 이닝 변환. '2 ⅓' → 2.333"""
+    s = str(s).replace('⅓', '.333').replace('⅔', '.667').strip()
+    if not s:
+        return 0.0
+    try:
+        if ' ' in s:
+            parts = s.split()
+            return float(parts[0]) + float(parts[1])
+        return float(s)
+    except Exception:
+        return 0.0
+
+
+def _reinsert_dupe_name_rows(game_id: int, naver_game_id: str):
+    """동명이인 케이스에서 naver_crawler가 1개 row로 합친 데이터를 raw stats로
+    각 pcode별 별도 INSERT. game_pitchers + game_batters 둘 다 처리."""
+    import requests as _req
+    HEADERS = {'User-Agent': 'Mozilla/5.0', 'Referer': 'https://sports.naver.com/'}
+    try:
+        url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/record"
+        res = _req.get(url, headers=HEADERS, timeout=5)
+        rd = res.json().get('result', {}).get('recordData', {})
+    except Exception as e:
+        print(f"[reinsert-dupe] Naver fetch 실패 game={game_id}: {e}")
+        return
+
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+
+        # 동명이인 name 식별
+        cur.execute("""
+            SELECT name FROM players
+            WHERE name IS NOT NULL
+            GROUP BY name HAVING COUNT(*) > 1
+        """)
+        dupe_names = {r[0] for r in cur.fetchall()}
+        if not dupe_names:
+            return
+
+        # pcode → player_id 매핑
+        cur.execute("""
+            SELECT name, naver_player_id, id FROM players
+            WHERE name = ANY(%s) AND naver_player_id IS NOT NULL
+        """, (list(dupe_names),))
+        pcode_to_id = {(r[0], r[1]): r[2] for r in cur.fetchall()}
+
+        def _process_pitchers(side):
+            rows = rd.get('pitchersBoxscore', {}).get(side, [])
+            # name별 그룹화
+            name_groups = {}
+            for i, p in enumerate(rows, 1):
+                name = p.get('name', '')
+                if name in dupe_names:
+                    name_groups.setdefault(name, []).append((i, p))
+            for name, items in name_groups.items():
+                if len(items) < 2:
+                    continue  # 동명이인 raw 단일 → 단순 dupe-fix가 처리
+                # DB 현재 row count
+                cur.execute("""
+                    SELECT COUNT(*) FROM game_pitchers gp
+                    JOIN players p ON p.id = gp.player_id
+                    WHERE gp.game_id = %s AND gp.team_side = %s AND p.name = %s
+                """, (game_id, side, name))
+                db_count = cur.fetchone()[0]
+                if db_count >= len(items):
+                    continue  # 이미 모두 등록
+                # 부족 → 해당 name DB row 모두 DELETE 후 raw INSERT
+                cur.execute("""
+                    DELETE FROM game_pitchers
+                    WHERE game_id = %s AND team_side = %s AND player_id IN (
+                        SELECT id FROM players WHERE name = %s
+                    )
+                """, (game_id, side, name))
+                for order, p in items:
+                    pcode = str(p.get('pcode') or '')
+                    pid = pcode_to_id.get((name, pcode))
+                    if not pid:
+                        continue
+                    cur.execute("""
+                        INSERT INTO game_pitchers (
+                            game_id, player_id, team_side, result,
+                            innings_pitched, hits_allowed, earned_runs, runs_allowed,
+                            walks, strikeouts, home_runs_allowed, pitch_count, pitching_order
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (game_id, player_id, team_side) DO UPDATE SET
+                            innings_pitched = EXCLUDED.innings_pitched,
+                            pitching_order = EXCLUDED.pitching_order
+                    """, (game_id, pid, side, p.get('wls', ''),
+                          _parse_naver_ip(p.get('inn', 0)),
+                          p.get('hit', 0), p.get('er', 0), p.get('r', 0),
+                          p.get('bb', 0), p.get('kk', 0), p.get('hr', 0),
+                          p.get('bf', 0), order))
+                    print(f"[reinsert-dupe] game_pitchers {name} pcode={pcode} pid={pid} order={order} (game={game_id})")
+
+        def _process_batters(side):
+            rows = rd.get('battersBoxscore', {}).get(side, [])
+            name_groups = {}
+            for p in rows:
+                name = p.get('name', '')
+                if name in dupe_names:
+                    name_groups.setdefault(name, []).append(p)
+            for name, items in name_groups.items():
+                if len(items) < 2:
+                    continue
+                cur.execute("""
+                    SELECT COUNT(*) FROM game_batters gb
+                    JOIN players p ON p.id = gb.player_id
+                    WHERE gb.game_id = %s AND gb.team_side = %s AND p.name = %s
+                """, (game_id, side, name))
+                db_count = cur.fetchone()[0]
+                if db_count >= len(items):
+                    continue
+                cur.execute("""
+                    DELETE FROM game_batters
+                    WHERE game_id = %s AND team_side = %s AND player_id IN (
+                        SELECT id FROM players WHERE name = %s
+                    )
+                """, (game_id, side, name))
+                for p in items:
+                    pcode = str(p.get('playerCode') or '')
+                    pid = pcode_to_id.get((name, pcode))
+                    if not pid:
+                        continue
+                    bat_order = int(p.get('batOrder') or 0)
+                    cur.execute("""
+                        INSERT INTO game_batters (
+                            game_id, player_id, team_side, batting_order, position,
+                            at_bats, runs, hits, rbis, home_runs, walks, strikeouts,
+                            stolen_bases, avg
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (game_id, player_id, team_side, batting_order) DO UPDATE SET
+                            position = EXCLUDED.position,
+                            at_bats = EXCLUDED.at_bats
+                    """, (game_id, pid, side, bat_order, p.get('pos', ''),
+                          p.get('ab', 0), p.get('run', 0), p.get('hit', 0),
+                          p.get('rbi', 0), p.get('hr', 0), p.get('bb', 0),
+                          p.get('kk', 0), p.get('sb', 0),
+                          float(p.get('hra') or 0)))
+                    print(f"[reinsert-dupe] game_batters {name} pcode={pcode} pid={pid} order={bat_order} (game={game_id})")
+
+        for side in ('home', 'away'):
+            _process_pitchers(side)
+            _process_batters(side)
+
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print(f"[reinsert-dupe] 오류 game={game_id}: {e}")
+    finally:
+        conn.close()
+
+
 def _fix_dupe_name_player_ids(game_id: int, naver_game_id: str):
     """Naver record API pcode 기준으로 game_pitchers/game_batters의
     동명이인 player_id 매칭 정정. naver_crawler는 name+team_id+type LIMIT 1로
@@ -1270,6 +1426,12 @@ def smart_update():
                     except Exception as sgp_err:
                         print(f"[{datetime.now()}] save_game_pitches 오류: {sgp_err}")
                     # 동명이인 자동 정정 (game_pitchers + game_batters)
+                    # 1) 합쳐진 케이스: raw stats 재INSERT
+                    try:
+                        _reinsert_dupe_name_rows(gid, naver_gid)
+                    except Exception as ri_err:
+                        print(f"[reinsert-dupe] 오류 game={gid}: {ri_err}")
+                    # 2) mis-match 케이스: player_id 정정
                     try:
                         _fix_dupe_name_player_ids(gid, naver_gid)
                     except Exception as df_err:
