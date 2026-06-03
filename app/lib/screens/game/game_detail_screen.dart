@@ -776,6 +776,19 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     });
   }
 
+  // 진행중 게임: _relayData.current_state 우선 사용 (Naver 직조회 — DB(30s 사이클)보다 fresh)
+  int _liveScore(Map<String, dynamic> game, String key) {
+    if (game['status'] == '진행' && _relayData != null) {
+      final cs = _relayData!['current_state'];
+      if (cs is Map) {
+        final v = cs[key];
+        if (v is int) return v;
+        if (v is String) return int.tryParse(v) ?? 0;
+      }
+    }
+    return (game[key] as int?) ?? 0;
+  }
+
   Widget _buildGameHeader(Map<String, dynamic> game, {bool roundedBottom = true}) {
     final status = game['status'] as String? ?? '';
     final isLive = status == '진행';
@@ -786,8 +799,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final awayCode  = game['away_team_code']  as String? ?? '';
     final homeTeam  = game['home_team']  as String? ?? '';
     final awayTeam  = game['away_team']  as String? ?? '';
-    final homeScore = game['home_score'] as int? ?? 0;
-    final awayScore = game['away_score'] as int? ?? 0;
+    final homeScore = _liveScore(game, 'home_score');
+    final awayScore = _liveScore(game, 'away_score');
     final homeRank  = _rankMap[game['home_team_id'] as int?];
     final awayRank  = _rankMap[game['away_team_id'] as int?];
     final homeRecent = List<String>.from(game['home_recent_5'] ?? []);
@@ -1092,7 +1105,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           const SizedBox(height: 3),
           // 원정팀 행
           dataRow(awayShort, awayRuns,
-            game['away_score'] as int? ?? 0,
+            _liveScore(game, 'away_score'),
             game['away_hits']  as int? ?? 0,
             game['away_walks'] as int? ?? 0,
             game['away_errors'] as int? ?? 0,
@@ -1100,7 +1113,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           const SizedBox(height: 2),
           // 홈팀 행
           dataRow(homeShort, homeRuns,
-            game['home_score'] as int? ?? 0,
+            _liveScore(game, 'home_score'),
             game['home_hits']  as int? ?? 0,
             game['home_walks'] as int? ?? 0,
             game['home_errors'] as int? ?? 0,
@@ -1145,7 +1158,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               Text(
                 game['status'] == '예정'
                     ? 'VS'
-                    : '${game['home_score']} : ${game['away_score']}',
+                    : '${_liveScore(game, 'home_score')} : ${_liveScore(game, 'away_score')}',
                 style: const TextStyle(
                     color: Colors.white,
                     fontSize: 28,
