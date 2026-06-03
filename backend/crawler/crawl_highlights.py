@@ -22,6 +22,23 @@ HEADERS = {
 KBO_YT_CHANNEL_ID = 'UCoVz66yWHzVsXAFG8WhJK9g'  # 크보모먼트 채널
 _YT_API_KEY = os.environ.get('YOUTUBE_API_KEY', '')
 
+# 구단 공식 YouTube 핸들 → team_id (channelId는 동적 resolve)
+TEAM_YT_HANDLES = {
+    'LGTWINSTV':         9,   # LG
+    'KTwiz':             1,   # KT
+    'SsgLandersTv':      10,  # SSG
+    'NCDinosTV':         6,   # NC
+    'doosanbearstv5959': 7,   # 두산
+    'KIATIGERSTV':       2,   # KIA
+    'LotteGiantsTV':     4,   # 롯데
+    'SamsungLionsTV':    11,  # 삼성
+    'hanwhaeaglestv':    5,   # 한화
+    'kiwoomheroes':      8,   # 키움
+}
+
+# 핸들 → channelId 캐시 (모듈 lifetime)
+_TEAM_CHANNEL_IDS: dict[str, tuple[int, str]] = {}  # {channelId: (team_id, team_name)}
+
 # 팀명 → team_id 매핑 (DB 기준)
 TEAM_NAME_MAP = {
     'KT': 1, 'KT위즈': 1,
@@ -239,6 +256,113 @@ def fetch_youtube_highlights(today: str | None = None) -> list[dict]:
     return articles
 
 
+def _resolve_team_channels():
+    """팀 공식 채널 핸들 → channelId resolve (1회 캐시)."""
+    if _TEAM_CHANNEL_IDS or not _YT_API_KEY:
+        return
+    for handle, team_id in TEAM_YT_HANDLES.items():
+        try:
+            r = requests.get(
+                'https://www.googleapis.com/youtube/v3/channels',
+                params={'part': 'snippet', 'forHandle': '@' + handle, 'key': _YT_API_KEY},
+                timeout=10,
+            )
+            if r.status_code != 200:
+                print(f'[YT channels] @{handle} {r.status_code}: {r.text[:120]}')
+                continue
+            items = r.json().get('items', [])
+            if not items:
+                # 핸들 매치 실패 → 검색 fallback
+                rs = requests.get(
+                    'https://www.googleapis.com/youtube/v3/search',
+                    params={'part': 'snippet', 'q': handle, 'type': 'channel',
+                            'maxResults': 1, 'key': _YT_API_KEY},
+                    timeout=10,
+                )
+                if rs.status_code == 200:
+                    sitems = rs.json().get('items', [])
+                    if sitems:
+                        cid = sitems[0].get('id', {}).get('channelId', '')
+                        name = sitems[0].get('snippet', {}).get('title', handle)
+                        if cid:
+                            _TEAM_CHANNEL_IDS[cid] = (team_id, name)
+                            print(f'[YT channels] @{handle} (search) → {cid}')
+                continue
+            cid = items[0].get('id', '')
+            name = items[0].get('snippet', {}).get('title', handle)
+            if cid:
+                _TEAM_CHANNEL_IDS[cid] = (team_id, name)
+                print(f'[YT channels] @{handle} → {cid}')
+        except Exception as e:
+            print(f'[YT channels] @{handle} 오류: {e}')
+
+
+def fetch_team_official_highlights(today: str | None = None) -> list[dict]:
+    """구단 공식 채널 당일 업로드 영상 수집."""
+    if today is None:
+        today = datetime.now().strftime('%Y-%m-%d')
+    if not _YT_API_KEY:
+        return []
+    _resolve_team_channels()
+    if not _TEAM_CHANNEL_IDS:
+        return []
+    since = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+    published_after = f'{since}T00:00:00Z'
+    articles = []
+    for channel_id, (team_id, channel_name) in _TEAM_CHANNEL_IDS.items():
+        try:
+            r = requests.get(
+                'https://www.googleapis.com/youtube/v3/search',
+                params={
+                    'part': 'snippet',
+                    'channelId': channel_id,
+                    'type': 'video',
+                    'publishedAfter': published_after,
+                    'maxResults': 10,
+                    'order': 'date',
+                    'key': _YT_API_KEY,
+                },
+                timeout=10,
+            )
+            if r.status_code != 200:
+                print(f'[YT team] {channel_name} {r.status_code}')
+                continue
+            for item in r.json().get('items', []):
+                video_id = item.get('id', {}).get('videoId', '')
+                if not video_id:
+                    continue
+                snippet = item.get('snippet', {})
+                title = snippet.get('title', '')
+                pub_str = snippet.get('publishedAt', '')
+                is_shorts = '#Shorts' in title or 'Shorts' in title
+                video_url = (f'https://www.youtube.com/shorts/{video_id}'
+                             if is_shorts else f'https://www.youtube.com/watch?v={video_id}')
+                try:
+                    pub_dt = datetime.fromisoformat(pub_str.replace('Z', '+00:00')).replace(tzinfo=None)
+                except Exception:
+                    pub_dt = datetime.now()
+                t1, t2 = _parse_teams_from_title(title)
+                # 채널 소속팀을 기본 team_id1로 보정
+                if not t1 and not t2:
+                    t1 = team_id
+                thumbs = snippet.get('thumbnails', {})
+                thumb = (thumbs.get('maxres') or thumbs.get('high')
+                         or thumbs.get('medium') or {}).get('url') or ''
+                articles.append({
+                    'title': title,
+                    'url': video_url,
+                    'thumbnail': thumb,
+                    'source': 'youtube',
+                    'published_at': pub_dt,
+                    'team_id1': t1,
+                    'team_id2': t2,
+                    'game_date': _parse_date_from_title(title, pub_dt.year) or today,
+                })
+        except Exception as e:
+            print(f'[YT team] {channel_name} 오류: {e}')
+    return articles
+
+
 # ── Naver 스포츠 하이라이트 ────────────────────────────────────────────────────
 
 _NAVER_HL_APIS = [
@@ -325,6 +449,12 @@ def crawl_highlights():
     if yt_articles:
         total += save_highlights(yt_articles)
         print(f'[YouTube] {len(yt_articles)}건 수집')
+
+    # 2-b) 구단 공식 채널 당일 영상
+    team_yt = fetch_team_official_highlights(today)
+    if team_yt:
+        total += save_highlights(team_yt)
+        print(f'[YouTube 구단] {len(team_yt)}건 수집')
 
     # 3) Naver 스포츠 하이라이트
     nv_articles = fetch_naver_highlights(today)
