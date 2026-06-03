@@ -368,7 +368,7 @@ class _TeamScreenState extends State<TeamScreen>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // rank + ▲▼ stub
+                    // rank + ▲▼ (rank_change)
                     SizedBox(
                       width: 24,
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -378,7 +378,7 @@ class _TeamScreenState extends State<TeamScreen>
                               letterSpacing: -0.4, fontFeatures: const [FontFeature.tabularFigures()],
                             )),
                         const SizedBox(height: 4),
-                        Text('—', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: line2)),
+                        _buildMoveIndicator(team['rank_change'] as int?, ink2, sub, line2),
                       ]),
                     ),
                     const SizedBox(width: 13),
@@ -506,13 +506,15 @@ class _TeamScreenState extends State<TeamScreen>
        required Color sub, required Color ink, required Color ink2, required Color track}) {
     final home = team['home_record'] as String? ?? '-';
     final away = team['away_record'] as String? ?? '-';
+    final oneRun = team['one_run_pct'] as String?;
     final pyth = (team['pythag_winpct'] as num?);
-    final pythStr = pyth == null ? '-' : pyth.toStringAsFixed(3);
+    final oneRunStr = oneRun ?? (pyth == null ? '-' : pyth.toStringAsFixed(3));
+    final oneRunLabel = oneRun != null ? '1점차 승률' : '피타고리안';
     final streak = team['streak'] as int? ?? 0;
     final streakStr = streak > 0 ? '$streak연승' : (streak < 0 ? '${-streak}연패' : '-');
     final ls = team['last_series'] as Map?;
     final lastSeriesLabel = (ls?['label'] as String?) ?? '-';
-    final recent5 = (team['recent_5'] as List?)?.cast<String>() ?? [];
+    final recent10 = (team['recent_10'] as List?)?.cast<String>() ?? [];
 
     final borderTop = isFav
         ? tc.withValues(alpha: isDark ? 0.40 : 0.25)
@@ -538,17 +540,17 @@ class _TeamScreenState extends State<TeamScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('최근 5경기', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: sub)),
+          Text('최근 10경기', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: sub)),
           const SizedBox(height: 6),
-          Row(children: List.generate(5, (i) {
-            final r = i < recent5.length ? recent5[i] : '';
+          Row(children: List.generate(10, (i) {
+            final r = i < recent10.length ? recent10[i] : '';
             final accent = isFav ? tc : ink;
             final fill = r == 'W' ? accent : track;
             return Padding(
-              padding: const EdgeInsets.only(right: 2.5),
+              padding: const EdgeInsets.only(right: 2),
               child: Container(
-                width: 5, height: 14,
-                decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(2)),
+                width: 4, height: 14,
+                decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(1.5)),
               ),
             );
           })),
@@ -569,7 +571,7 @@ class _TeamScreenState extends State<TeamScreen>
           Row(children: [
             Expanded(child: statCell('홈', home)),
             Expanded(child: statCell('원정', away)),
-            Expanded(child: statCell('피타고리안', pythStr)),
+            Expanded(child: statCell(oneRunLabel, oneRunStr)),
           ]),
           const SizedBox(height: 12),
           Row(children: [
@@ -603,6 +605,21 @@ class _TeamScreenState extends State<TeamScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildMoveIndicator(int? mv, Color ink2, Color sub, Color line2) {
+    if (mv == null) {
+      return Text('—', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: line2));
+    }
+    if (mv > 0) {
+      return Text('▲ $mv',
+          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: ink2));
+    }
+    if (mv < 0) {
+      return Text('▼ ${-mv}',
+          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: sub));
+    }
+    return Text('—', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: line2));
   }
 
   Widget _badge(String text, {required Color bg, required Color fg}) {
@@ -1100,7 +1117,7 @@ class _TeamScreenState extends State<TeamScreen>
     final isPSZone = rank <= 5;
     final color = teamColor(code);
     final bandColor = isPSZone ? color : color.withValues(alpha: 0.35);
-    final expanded = _expandedRanks.contains(rank);
+    final expanded = _expandedTeamIds.contains(rank);
 
     double pct(String key) => ((odds?[key] as num? ?? 0) * 100).toDouble();
     final ks = pct('ks_direct_prob');
@@ -1128,9 +1145,9 @@ class _TeamScreenState extends State<TeamScreen>
           onTap: () {
             setState(() {
               if (expanded) {
-                _expandedRanks.remove(rank);
+                _expandedTeamIds.remove(rank);
               } else {
-                _expandedRanks.add(rank);
+                _expandedTeamIds.add(rank);
               }
             });
           },

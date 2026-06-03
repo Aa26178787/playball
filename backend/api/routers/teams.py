@@ -54,6 +54,63 @@ def _calc_recent_5(team_id, cur):
     return result
 
 
+def _calc_rank_change(team_id, cur, today_rank):
+    """어제 → 오늘 순위 변화. 양수=상승, 음수=하락, 0=동률, None=기록 없음."""
+    cur.execute("""
+        SELECT rank FROM team_rank_history
+        WHERE team_id = %s AND snapshot_date < CURRENT_DATE
+        ORDER BY snapshot_date DESC
+        LIMIT 1
+    """, (team_id,))
+    row = cur.fetchone()
+    if not row or today_rank is None:
+        return None
+    prev = row[0]
+    return prev - today_rank  # +면 prev 낮은 순위 → 오늘 높은 순위 = 상승
+
+
+def _calc_recent_10(team_id, cur):
+    """최근 10경기 W/L/D 리스트 (가장 최근 → 과거 순)."""
+    cur.execute("""
+        SELECT home_team_id, away_team_id, home_score, away_score
+        FROM games
+        WHERE (home_team_id = %s OR away_team_id = %s)
+          AND status = '종료'
+        ORDER BY game_date DESC, id DESC
+        LIMIT 10
+    """, (team_id, team_id))
+    result = []
+    for home_id, away_id, hs, as_ in cur.fetchall():
+        if hs == as_:
+            result.append('D')
+        elif (home_id == team_id and hs > as_) or (away_id == team_id and as_ > hs):
+            result.append('W')
+        else:
+            result.append('L')
+    return result
+
+
+def _calc_one_run_pct(team_id, cur):
+    """1점차 경기 승률 (.xxx 형식 문자열) — 경기 5건 미만시 None."""
+    cur.execute("""
+        SELECT home_team_id, home_score, away_score
+        FROM games
+        WHERE (home_team_id = %s OR away_team_id = %s)
+          AND status = '종료'
+          AND ABS(home_score - away_score) = 1
+    """, (team_id, team_id))
+    rows = cur.fetchall()
+    if len(rows) < 5:
+        return None
+    wins = 0
+    for home_id, hs, as_ in rows:
+        if (home_id == team_id and hs > as_) or (home_id != team_id and as_ > hs):
+            wins += 1
+    pct = wins / len(rows)
+    s = f"{pct:.3f}"
+    return s[1:] if s.startswith('0') else s
+
+
 def _calc_last_series(team_id, cur):
     """최근 시리즈 결과: 같은 상대팀과 연속 경기 그룹"""
     cur.execute("""
@@ -175,9 +232,12 @@ def get_team_rankings():
 
         streak        = _calc_streak(team_id, cur)
         recent_5      = _calc_recent_5(team_id, cur)
+        recent_10     = _calc_recent_10(team_id, cur)
         home_away     = _calc_home_away(team_id, cur)
         last_series   = _calc_last_series(team_id, cur)
         pythag_winpct = _calc_pythagorean(team_id, cur)
+        one_run_pct   = _calc_one_run_pct(team_id, cur)
+        rank_change   = _calc_rank_change(team_id, cur, rank)
 
         result.append({
             "id":           team_id,
@@ -193,10 +253,13 @@ def get_team_rankings():
             "logo_url":     r[9],
             "streak":       streak,
             "recent_5":     recent_5,
+            "recent_10":    recent_10,
             "home_record":  home_away["home"],
             "away_record":  home_away["away"],
             "last_series":  last_series,
             "pythag_winpct": pythag_winpct,
+            "one_run_pct":  one_run_pct,
+            "rank_change":  rank_change,
         })
 
     cur.close()

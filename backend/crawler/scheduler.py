@@ -2420,6 +2420,33 @@ def update_finished_game_records():
     print(f"[{datetime.now()}] 상세 기록 업데이트 완료")
 
 
+def _snapshot_rank_history(curr_ranks: dict):
+    """오늘 순위 스냅샷 INSERT (mv 계산용). UNIQUE(team_id, snapshot_date) ON CONFLICT DO NOTHING."""
+    from database.connection import get_connection as _gc
+    from datetime import date as _date
+    conn = _gc()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        today = _date.today()
+        for team_id, curr in curr_ranks.items():
+            rank = curr.get('rank')
+            if not rank:
+                continue
+            cur.execute("""
+                INSERT INTO team_rank_history (team_id, rank, snapshot_date)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (team_id, snapshot_date) DO NOTHING
+            """, (team_id, rank, today))
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print(f"[rank_history] snapshot 오류: {e}")
+    finally:
+        conn.close()
+
+
 def update_team_rankings():
     print(f"[{datetime.now()}] 팀 순위 업데이트")
     prev_ranks = _get_rankings_snapshot()
@@ -2427,6 +2454,9 @@ def update_team_rankings():
     save_team_rankings(teams)
     curr_ranks = _get_rankings_snapshot()
     today_str = datetime.now().strftime('%Y-%m-%d')
+
+    # mv 계산용 daily snapshot
+    _snapshot_rank_history(curr_ranks)
 
     # 순위 변동 알림 (재시작 안전: sub_id에 old→new 순위 + 날짜 포함)
     try:
