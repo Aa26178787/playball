@@ -1181,6 +1181,19 @@ def smart_update():
             # 경기 종료 25분 후 출전 선수 KBO 크롤
             for gid in newly_finished:
                 schedule.every(25).minutes.do(_run_once, _crawl_kbo_stats_for_game, gid)
+
+        # daily_stats 즉시 갱신 (재시작 안전 — game별 _already_notified dedup)
+        try:
+            unsaved_finished = [
+                gid for gid, c in curr_details.items()
+                if c.get('status') == '종료' and not _already_notified(gid, 'daily_stats_saved')
+            ]
+            if unsaved_finished:
+                _save_player_daily_stats_today()
+                for gid in unsaved_finished:
+                    _mark_notified(gid, 'daily_stats_saved')
+        except Exception as ds_err:
+            print(f"[즉시 daily_stats] 오류: {ds_err}")
             # 경기 종료 팀 뉴스 크롤링
             if finished_team_ids:
                 try:
