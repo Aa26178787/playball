@@ -602,23 +602,27 @@ class _TodayGamesTabState extends State<TodayGamesTab>
 
     try {
       // 오늘 날짜: /games/today (서버 30초 캐시) 사용 — /games/date/{date}는 5분 캐시라 스코어 갱신 지연
+      print('[loadGames] dateStr=$dateStr isToday=$isToday calling API');
       final data = isToday
           ? await ApiService.getTodayGames()
           : await ApiService.getGamesByDate(dateStr);
-      if (!mounted) return;
+      print('[loadGames] response keys=${data.keys.toList()} games_count=${(data['games'] as List?)?.length}');
+      if (!mounted) { print('[loadGames] unmounted after API'); return; }
       if (_loadGen != gen) {
-        // 더 최신 요청이 있음 — _isLoading이 이 요청이 set한 상태라면 reset
+        print('[loadGames] loadGen mismatch $gen vs $_loadGen — skip');
         if (_isLoading) setState(() => _isLoading = false);
         return;
       }
       final games = data['games'] as List? ?? [];
       await LocalCache.set('games_$dateStr', games);
-      if (!mounted || _loadGen != gen) return;
+      if (!mounted || _loadGen != gen) { print('[loadGames] unmounted/gen after cache set'); return; }
+      print('[loadGames] setState _games=${games.length} _isLoading=false');
       setState(() { _games = games; _isLoading = false; _loadError = false; });
       _updateMyTeamData();
       _prefetchAdjacentDates(dateStr);
       _prefetchGameDetails(games);
-    } catch (e) {
+    } catch (e, st) {
+      print('[loadGames] ERROR: $e\n$st');
       if (!mounted) return;
       if (_loadGen != gen) {
         if (_isLoading) setState(() => _isLoading = false);
@@ -2229,6 +2233,7 @@ class _PredictionBarState extends State<_PredictionBar> {
   Future<void> _load() async {
     try {
       final data = await ApiService.getWinPrediction(widget.gameId);
+      debugPrint('[PredBar ${widget.gameId}] data=$data');
       _cache[widget.gameId] = data;
       if (mounted) setState(() {
         _homeProb = (data['home_prob'] as num?)?.toDouble();
@@ -2237,7 +2242,8 @@ class _PredictionBarState extends State<_PredictionBar> {
         _awayStarter = data['away_starter'] as String? ?? '';
         _loading = false;
       });
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[PredBar ${widget.gameId}] ERROR: $e\n$st');
       if (mounted) setState(() => _loading = false);
     }
   }

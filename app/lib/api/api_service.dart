@@ -10,6 +10,7 @@ class ApiService {
     baseUrl: baseUrl,
     connectTimeout: const Duration(seconds: 8),
     receiveTimeout: const Duration(seconds: 8),
+    headers: {'Accept-Encoding': 'identity'},  // gzip 디코드 hang 회피
   ));
   static bool _interceptorAdded = false;
 
@@ -230,18 +231,18 @@ class ApiService {
 
   // ===== 경기 API =====
   static Future<Map<String, dynamic>> getTodayGames() async {
-    final res = await _dedupGet('/games/today');
-    return res.data;
+    final res = await _dio.get('/games/today');
+    return Map<String, dynamic>.from(res.data);
   }
 
   static Future<Map<String, dynamic>> getGameDetail(int gameId) async {
-    final res = await _dedupGet('/games/$gameId');
-    return res.data;
+    final res = await _dio.get('/games/$gameId');
+    return Map<String, dynamic>.from(res.data);
   }
 
   static Future<Map<String, dynamic>> getGamesByDate(String date) async {
-    final res = await _dedupGet('/games/date/$date');
-    return res.data;
+    final res = await _dio.get('/games/date/$date');
+    return Map<String, dynamic>.from(res.data);
   }
 
   static Future<Map<String, dynamic>> getGameRelay(int gameId) async {
