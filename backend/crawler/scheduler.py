@@ -168,15 +168,27 @@ def _fix_dupe_name_player_ids(game_id: int, naver_game_id: str):
                 existing = [r[0] for r in cur.fetchall()]
                 if correct_pid in existing:
                     continue  # 이미 정확
-                # 잘못 매칭된 player_id를 correct_pid로 UPDATE (해당 game_id 안에서)
+                # 잘못 매칭된 player_id 처리 — correct_pid row 유무에 따라 DELETE 또는 UPDATE
                 wrong_ids = [pid for pid in existing if pid != correct_pid]
                 for wid in wrong_ids:
+                    # correct_pid row 이미 있으면 wrong row DELETE (이전 wrong matching 잔재)
                     cur.execute(f"""
-                        UPDATE {db_table}
-                        SET player_id = %s
-                        WHERE game_id = %s AND team_side = %s AND player_id = %s
-                    """, (correct_pid, game_id, side, wid))
-                    print(f"[dupe-fix] {db_table} {name} pcode={pcode} {wid}→{correct_pid} (game={game_id})")
+                        SELECT 1 FROM {db_table}
+                        WHERE game_id=%s AND team_side=%s AND player_id=%s
+                    """, (game_id, side, correct_pid))
+                    if cur.fetchone():
+                        cur.execute(f"""
+                            DELETE FROM {db_table}
+                            WHERE game_id=%s AND team_side=%s AND player_id=%s
+                        """, (game_id, side, wid))
+                        print(f"[dupe-fix] {db_table} {name} DELETE wrong {wid} (correct {correct_pid} 있음, game={game_id})")
+                    else:
+                        cur.execute(f"""
+                            UPDATE {db_table}
+                            SET player_id = %s
+                            WHERE game_id=%s AND team_side=%s AND player_id=%s
+                        """, (correct_pid, game_id, side, wid))
+                        print(f"[dupe-fix] {db_table} {name} UPDATE {wid}→{correct_pid} (game={game_id})")
 
         pitchers_box = rd.get('pitchersBoxscore', {})
         for side in ('home', 'away'):
