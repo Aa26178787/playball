@@ -485,17 +485,12 @@ def _check_new_hrs(game_id: int, home_team_id: int, away_team_id: int):
         return
 
     try:
-        from api.fcm_service import notify_fav_hr
-        for player_id, hr_count, player_name, team_name in rows:
+        # fav_hr 알림 비활성화 — score_change 알림(notify_score_change)에 타자/타구/타점/홈런 이미 포함됨
+        # 중복 알림 방지. HR 카운트는 _game_hr_cache 갱신만 (마일스톤 체크용)
+        for player_id, hr_count, *_ in rows:
             prev_hr = prev_hrs.get(player_id, 0)
-            if hr_count <= prev_hr:
-                continue
             for hr_n in range(prev_hr + 1, hr_count + 1):
-                sub_id = f"{player_id}_{hr_n}"
-                if _already_notified(game_id, 'fav_hr', sub_id):
-                    continue
-                _mark_notified(game_id, 'fav_hr', sub_id)
-                notify_fav_hr(player_id, player_name, team_name, game_id)
+                _mark_notified(game_id, 'fav_hr', f"{player_id}_{hr_n}")
     except Exception as e:
         print(f"[FCM] HR 알림 오류: {e}")
 
@@ -1287,11 +1282,8 @@ def smart_update():
                                       start_time=curr.get('start_time', ''),
                                       home_starter=_hs, away_starter=_ls)
                     _mark_notified(gid, 'game_start')
-                    # 즐겨찾기 선수 선발 출전 알림
-                    try:
-                        _notify_fav_player_lineup(gid, curr['home_team'], curr['away_team'])
-                    except Exception:
-                        pass
+                    # 즐겨찾기 선수 선발 출전 알림 — 비활성화
+                    # (notify_starter_announced에 선발투수 + game_start에 라인업 정보 이미 포함)
 
                 # 득점 변화 — DB 기반 dedup: 현재 스코어 sub_id 미알림 + delta>0이면 발송
                 elif (cs == '진행'
@@ -2847,6 +2839,23 @@ def run_scheduler():
         except Exception as e:
             print(f"[prediction] daily_pipeline 오류: {e}")
     schedule.every().day.at("15:30").do(_prediction_daily)
+
+    # 매일 UTC 15:40 (KST 00:40): 즐겨찾기 선수 데일리 활약 요약 + 연속안타 체크
+    def _player_events_daily():
+        try:
+            from crawler.crawl_player_events import (
+                ensure_tables, daily_player_summary, hitting_streak_check,
+                crawl_transactions, crawl_injury_list, notify_pending,
+            )
+            ensure_tables()
+            daily_player_summary()
+            hitting_streak_check()
+            crawl_transactions()    # stub — 향후 구현
+            crawl_injury_list()     # stub
+            notify_pending()
+        except Exception as e:
+            print(f"[player-events] daily 오류: {e}")
+    schedule.every().day.at("15:40").do(_player_events_daily)
 
     # 매시간: 오늘 예측 로깅 (스케줄 변경 대응 — 선발 변경 시 갱신)
     def _prediction_hourly_log():

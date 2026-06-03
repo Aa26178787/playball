@@ -696,8 +696,11 @@ _MILESTONE_LABELS: dict[str, tuple] = {
 def notify_milestone(player_id: int, player_name: str, team_name: str,
                      milestone_type: str, milestone_value: int,
                      season: int, month: int, game_id: int | None = None,
-                     extra_label: str = ''):
-    """즐겨찾기 선수 대기록 달성 알림. extra_label: '22세' 등 부가 정보."""
+                     extra_label: str = '', team_id: int = 0):
+    """대기록 달성 알림.
+    - 통산(career_*): 즐겨찾기 선수 팬 + 즐겨찾기 팀 팬
+    - 시즌/월간/단일경기/연속안타/연소(young)/개인최다(personal_*): 즐겨찾기 팀 팬 (선수팬 X)
+    """
     conn = get_connection()
     if not conn:
         return
@@ -713,7 +716,7 @@ def notify_milestone(player_id: int, player_name: str, team_name: str,
             cur.close()
             conn.commit()
             conn.close()
-            return  # 이미 발송됨
+            return
         conn.commit()
         cur.close()
     except Exception as e:
@@ -722,8 +725,39 @@ def notify_milestone(player_id: int, player_name: str, team_name: str,
     finally:
         conn.close()
 
-    targets = _get_player_fan_targets(player_id, 'notify_milestone')
-    if not targets:
+    # team_id 자동 조회 (호출 측 전달 안 한 경우)
+    if not team_id:
+        try:
+            _c = get_connection()
+            if _c:
+                _cur = _c.cursor()
+                _cur.execute("SELECT team_id FROM players WHERE id=%s", (player_id,))
+                _row = _cur.fetchone()
+                team_id = _row[0] if _row and _row[0] else 0
+                _cur.close(); _c.close()
+        except Exception:
+            pass
+
+    # 분류: 통산만 선수팬, 나머지는 팀팬
+    is_career = milestone_type.startswith('career_') or milestone_type.startswith('young_career_')
+    targets = []
+    if is_career:
+        # 통산: 선수팬 + 팀팬 둘 다 (중복 dedup)
+        targets.extend(_get_player_fan_targets(player_id, 'notify_milestone'))
+        if team_id:
+            targets.extend(_get_team_fan_targets(team_id, 'notify_milestone'))
+    else:
+        # 시즌/월간/단일경기/연속/연소/개인최다: 팀팬만
+        if team_id:
+            targets = _get_team_fan_targets(team_id, 'notify_milestone')
+    # 중복 제거 (user_id 기준)
+    seen_uids = set()
+    unique_targets = []
+    for uid, tok in targets:
+        if uid not in seen_uids:
+            seen_uids.add(uid)
+            unique_targets.append((uid, tok))
+    if not unique_targets:
         return
 
     emoji, cat, unit = _MILESTONE_LABELS.get(milestone_type, ('⭐', milestone_type, ''))
@@ -733,7 +767,145 @@ def notify_milestone(player_id: int, player_name: str, team_name: str,
     title = f"{emoji} {player_name} {month_str}{cat} {milestone_value}{unit}!{extra_str}"
     body = f"{team_name} {player_name} {month_str}{cat} {milestone_value}{unit} 달성!{extra_str}"
 
-    _send(targets, title, body,
+    _send(unique_targets, title, body,
           {"player_id": str(player_id), "type": "milestone",
            **({"game_id": str(game_id)} if game_id else {})},
           "score_change", game_id)
+
+
+# ── 신규 선수 알림 함수들 (Phase 1-3) ─────────────────────────────────────────
+
+def notify_hitting_streak(player_id: int, player_name: str, team_name: str,
+                          streak: int, game_id: int | None = None):
+    """연속 안타 기록 (8경기 이상) — 즐겨찾기 선수 팬에게."""
+    if streak < 8:
+        return
+    targets = _get_player_fan_targets(player_id, 'notify_milestone')
+    if not targets:
+        return
+    _send(targets,
+          f"🔥 {player_name} {streak}경기 연속 안타!",
+          f"{team_name} {player_name} 선수가 {streak}경기 연속 안타 기록을 이어갑니다!",
+          {"player_id": str(player_id), "type": "hitting_streak"},
+          "score_change", game_id)
+
+
+def notify_daily_player_summary(player_id: int, player_name: str, team_name: str,
+                                 player_type: str, stats: dict, game_date):
+    """매일 자정 즐겨찾기 선수 활약 요약. stats: {hits, at_bats, rbi, hr, ip, er, so, ...}"""
+    targets = _get_player_fan_targets(player_id, 'notify_milestone')
+    if not targets:
+        return
+    parts = []
+    if player_type == '타자':
+        ab = stats.get('at_bats', 0) or 0
+        h = stats.get('hits', 0) or 0
+        hr = stats.get('home_runs', 0) or 0
+        rbi = stats.get('rbi', 0) or 0
+        bb = stats.get('walks', 0) or 0
+        sb = stats.get('sb', 0) or 0
+        if ab == 0 and bb == 0:
+            return  # 출전 안 함
+        parts.append(f"{h}안타")
+        if hr > 0: parts.append(f"{hr}홈런")
+        if rbi > 0: parts.append(f"{rbi}타점")
+        if sb > 0: parts.append(f"{sb}도루")
+        if bb > 0: parts.append(f"{bb}볼넷")
+    else:
+        ip = stats.get('ip', 0) or 0
+        er = stats.get('er', 0) or 0
+        so = stats.get('so', 0) or 0
+        result = stats.get('result', '') or ''
+        if ip == 0:
+            return
+        if result:
+            parts.append(result)
+        parts.append(f"{ip}이닝")
+        parts.append(f"{er}자책")
+        if so > 0: parts.append(f"{so}K")
+    body = ' · '.join(parts) if parts else '경기 출전'
+    _send(targets,
+          f"⭐ 오늘의 {player_name}",
+          f"{team_name} {player_name} — {body}",
+          {"player_id": str(player_id), "type": "daily_player_summary"},
+          "score_change", None)
+
+
+def notify_player_transaction(player_id: int, player_name: str,
+                              transaction_type: str, detail: str = ''):
+    """트레이드/방출/은퇴/FA — 즐겨찾기 선수 팬에게.
+    transaction_type: 'trade' / 'release' / 'retire' / 'fa_signed' / 'fa_filed'."""
+    targets = _get_player_fan_targets(player_id, 'notify_milestone')
+    if not targets:
+        return
+    emoji_map = {
+        'trade': '🔄', 'release': '👋', 'retire': '🎬',
+        'fa_signed': '✍️', 'fa_filed': '📝',
+    }
+    label_map = {
+        'trade': '트레이드', 'release': '방출', 'retire': '은퇴',
+        'fa_signed': 'FA 계약', 'fa_filed': 'FA 선언',
+    }
+    emoji = emoji_map.get(transaction_type, '📰')
+    label = label_map.get(transaction_type, transaction_type)
+    _send(targets,
+          f"{emoji} {player_name} {label}",
+          f"{player_name} 선수 {label}{f' — {detail}' if detail else ''}",
+          {"player_id": str(player_id), "type": f"transaction_{transaction_type}"},
+          "score_change", None)
+
+
+def notify_injury_list(player_id: int, player_name: str, team_name: str,
+                       action: str, reason: str = ''):
+    """부상자 명단 등재/복귀 — 즐겨찾기 선수 팬에게.
+    action: 'listed' / 'returned'"""
+    targets = _get_player_fan_targets(player_id, 'notify_milestone')
+    if not targets:
+        return
+    if action == 'listed':
+        emoji = '🤕'
+        title = f"{emoji} {player_name} 부상자 명단 등재"
+        body = f"{team_name} {player_name} 부상자 명단 등재{f' — {reason}' if reason else ''}"
+    else:
+        emoji = '💪'
+        title = f"{emoji} {player_name} 부상자 명단 복귀"
+        body = f"{team_name} {player_name} 부상자 명단 복귀!"
+    _send(targets, title, body,
+          {"player_id": str(player_id), "type": f"injury_{action}"},
+          "score_change", None)
+
+
+def notify_award(player_id: int, player_name: str, team_name: str,
+                 award_type: str, season: int, position: str = ''):
+    """시상 (MVP/신인왕/GG) — 즐겨찾기 선수 팬에게.
+    award_type: 'mvp' / 'rookie' / 'gg' / 'pitcher_gg' / 'goldenglove'"""
+    targets = _get_player_fan_targets(player_id, 'notify_milestone')
+    if not targets:
+        return
+    emoji_map = {'mvp': '👑', 'rookie': '🌟', 'gg': '🏆', 'goldenglove': '🏆'}
+    label_map = {'mvp': f'{season}시즌 MVP', 'rookie': f'{season}시즌 신인왕',
+                 'gg': f'{season}시즌 골든글러브{f" ({position})" if position else ""}',
+                 'goldenglove': f'{season}시즌 골든글러브{f" ({position})" if position else ""}'}
+    emoji = emoji_map.get(award_type, '🏅')
+    label = label_map.get(award_type, award_type)
+    _send(targets,
+          f"{emoji} {player_name} {label}!",
+          f"{team_name} {player_name} 선수 {label} 수상!",
+          {"player_id": str(player_id), "type": f"award_{award_type}"},
+          "score_change", None)
+
+
+def notify_allstar(player_id: int, player_name: str, team_name: str,
+                   season: int, league: str = '', vote_rank: int = 0):
+    """올스타 선발 — 즐겨찾기 선수 팬에게.
+    league: 'dream' / 'nanum'"""
+    targets = _get_player_fan_targets(player_id, 'notify_milestone')
+    if not targets:
+        return
+    league_str = f"({'드림' if league == 'dream' else '나눔'} 올스타) " if league else ""
+    rank_str = f" · 팬투표 {vote_rank}위" if vote_rank > 0 else ""
+    _send(targets,
+          f"⭐ {player_name} {season} 올스타 선발!",
+          f"{team_name} {player_name} 선수가 {season} 올스타전에 선발되었습니다 {league_str}{rank_str}",
+          {"player_id": str(player_id), "type": "allstar"},
+          "score_change", None)
