@@ -122,7 +122,8 @@ def train_model(season: int = 2026):
     rf.fit(X_tr, y_tr)
     rf_p = rf.predict_proba(X_te)[:, 1]
 
-    ens_p = (lr_p + rf_p) / 2
+    # RF 가중 0.7 (RF가 LR보다 정확도 높음)
+    ens_p = 0.3 * lr_p + 0.7 * rf_p
     ens_pred = (ens_p > 0.5).astype(int)
 
     print(f"\n[train] LR  test acc={accuracy_score(y_te, (lr_p>0.5).astype(int)):.3f} auc={roc_auc_score(y_te, lr_p):.3f}")
@@ -185,7 +186,7 @@ def predict_win_probability(game_id: int) -> dict:
     vec_s = model['scaler'].transform(vec)
     lr_p = model['lr'].predict_proba(vec_s)[0, 1]
     rf_p = model['rf'].predict_proba(vec)[0, 1]
-    ens_p = (lr_p + rf_p) / 2
+    ens_p = 0.3 * lr_p + 0.7 * rf_p
 
     # Top factor explanation (LR 계수 × scaled feature)
     lr_coefs = model['lr'].coef_[0]
