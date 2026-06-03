@@ -439,61 +439,75 @@ def _context_features(cur, game_id: int, home_id: int, away_id: int, gdate) -> d
     }
 
 
-def _cap_outliers(features: dict) -> dict:
-    """이상치 capping — 회귀 모델 robustness."""
+def _cap_value(v, lo, hi):
+    """단일 값 cap."""
+    if v is None:
+        return v
+    return max(lo, min(hi, v))
+
+
+def _cap_input(features: dict) -> dict:
+    """공식 계산 전 preprocessing — 이상치 cap.
+    사용자 공식 [8] 안정성 보정을 시작 단계로 이동."""
     caps = {
         'h_lineup_ops': (0, 1.2), 'a_lineup_ops': (0, 1.2),
         'h_starter_recent3_era': (1.0, 15.0), 'a_starter_recent3_era': (1.0, 15.0),
         'h_starter_era': (0.5, 15.0), 'a_starter_era': (0.5, 15.0),
         'h_bullpen_era': (1.0, 12.0), 'a_bullpen_era': (1.0, 12.0),
+        'h_bullpen_fip': (1.0, 10.0), 'a_bullpen_fip': (1.0, 10.0),
         'h_team_ops': (0.5, 1.0), 'a_team_ops': (0.5, 1.0),
+        'h_recent_ops': (0.4, 1.2), 'a_recent_ops': (0.4, 1.2),
         'h_team_wrc_plus': (50, 180), 'a_team_wrc_plus': (50, 180),
         'h_starter_kbb': (0, 10), 'a_starter_kbb': (0, 10),
+        'h_starter_fip': (1.0, 10.0), 'a_starter_fip': (1.0, 10.0),
     }
     for k, (lo, hi) in caps.items():
         if k in features and features[k]:
-            v = features[k]
-            features[k] = max(lo, min(hi, v))
+            features[k] = _cap_value(features[k], lo, hi)
     return features
 
 
 def _composite_pitching(season_fip: float, recent_era: float, kbb: float,
-                        league_fip: float = 4.5, league_era: float = 4.5) -> float:
-    """사용자 공식 [2][3] 합성 투수력 P_starter.
-    P_season = league_FIP/pitcher_FIP, P_recent = league_ERA/recent_ERA
-    K/BB 보정 적용."""
+                        league_fip: float, league_era: float,
+                        w_season: float, babip_cfg: dict | None = None) -> float:
+    """사용자 공식 [2][3] 합성 투수력 P_starter — calibrated."""
+    season_fip = _cap_value(season_fip, 1.0, 10.0) or league_fip
+    recent_era = _cap_value(recent_era, 1.0, 15.0) or league_era
     p_season = league_fip / season_fip if season_fip > 0 else 1.0
     p_recent = league_era / recent_era if recent_era > 0 else 1.0
     if kbb > 3:
         p_recent *= 1.05
     elif kbb < 2:
         p_recent *= 0.95
-    return round(0.7 * p_season + 0.3 * p_recent, 3)
+    return round(w_season * p_season + (1 - w_season) * p_recent, 3)
 
 
 def _composite_offense(wrc_plus: float, season_ops: float, recent_ops: float,
-                       babip: float, league_ops: float = 0.74) -> float:
-    """사용자 공식 [1] 공격력 O.
-    O_season = wRC+/100, O_recent = OPS/league_OPS
-    BABIP 보정 적용."""
-    o_season = wrc_plus / 100 if wrc_plus else 1.0
+                       babip: float, league_ops: float,
+                       w_season: float, babip_cfg: dict) -> float:
+    """사용자 공식 [1] 공격력 O — calibrated BABIP cutoff + 보정폭."""
+    wrc_plus = _cap_value(wrc_plus, 50, 180) or 100
+    season_ops = _cap_value(season_ops, 0.5, 1.0) or league_ops
+    recent_ops = _cap_value(recent_ops, 0.4, 1.2) or season_ops
+    o_season = wrc_plus / 100
     if recent_ops <= 0:
         recent_ops = season_ops
     o_recent = recent_ops / league_ops if league_ops > 0 else 1.0
-    o = 0.7 * o_season + 0.3 * o_recent
-    if babip > 0.320:
-        o *= 0.97
-    elif 0 < babip < 0.280:
-        o *= 1.03
+    o = w_season * o_season + (1 - w_season) * o_recent
+    if babip > babip_cfg['hi_cutoff']:
+        o *= babip_cfg['hi_mult']
+    elif 0 < babip < babip_cfg['lo_cutoff']:
+        o *= babip_cfg['lo_mult']
     return round(o, 3)
 
 
-def _pythag_expected_runs(o_team: float, p_opp_total: float,
-                          league_runs: float = 4.5, home_adv: bool = False) -> float:
-    """사용자 공식 [5][6] 예상 득점. runs = league_runs * O * P_opp."""
+def _pythag_expected_runs(o_team: float, p_opp_total: float, league_runs: float,
+                          park_runs_factor: float = 1.0, is_home: bool = False) -> float:
+    """사용자 공식 [5][6] 예상 득점. 구장별 home advantage 적용."""
     runs = league_runs * o_team * p_opp_total
-    if home_adv:
-        runs *= 1.04
+    if is_home:
+        # 홈 advantage = 1.0 + 0.04 * park_runs_factor (타자친화 구장일수록 더 큰 home edge)
+        runs *= (1.0 + 0.04 * park_runs_factor)
     return round(runs, 2)
 
 
@@ -562,30 +576,52 @@ def get_features(game_id: int, season: int = 2026) -> dict:
 
         cur.close()
 
-        # 사용자 공식 [2][3][4] 합성 투수력
-        h_p_starter = _composite_pitching(h_st['starter_fip'], h_st['starter_recent3_era'], h_st['starter_kbb'])
-        a_p_starter = _composite_pitching(a_st['starter_fip'], a_st['starter_recent3_era'], a_st['starter_kbb'])
-        # 불펜 P = 0.8 * (league_FIP/bullpen_FIP) + 0.2 * (league_ERA/bullpen_recent_ERA)
+        # Calibrated 상수/가중치 (KBO 26시즌 회귀 결과)
+        from api.prediction.calibration import get_calibration
+        cal = get_calibration()
+        L = cal['league']
+        pyth_exp = cal['pythagorean_exponent']
+        babip_cfg = cal['babip']
+        cw = cal['composite_weights']
+        L_fip = L['league_fip']
+        L_era = L['league_era']
+        L_ops = L['league_ops']
+        L_runs = L['league_runs_pg']
+
+        # 사용자 공식 [2][3] 합성 투수력 (calibrated weights)
+        h_p_starter = _composite_pitching(h_st['starter_fip'], h_st['starter_recent3_era'],
+                                          h_st['starter_kbb'], L_fip, L_era, cw['w_pitcher_season'])
+        a_p_starter = _composite_pitching(a_st['starter_fip'], a_st['starter_recent3_era'],
+                                          a_st['starter_kbb'], L_fip, L_era, cw['w_pitcher_season'])
+        # 불펜 P = w_pen_fip * (L_fip/bullpen_fip) + (1-w) * (L_era/bullpen_era)
+        w_pen = cw['w_bullpen_fip']
         h_p_bullpen = round(
-            0.8 * (4.5 / h_pen['bullpen_fip'] if h_pen['bullpen_fip'] > 0 else 1.0) +
-            0.2 * (4.5 / h_pen['bullpen_era'] if h_pen['bullpen_era'] > 0 else 1.0), 3)
+            w_pen * (L_fip / max(h_pen['bullpen_fip'], 0.1)) +
+            (1 - w_pen) * (L_era / max(h_pen['bullpen_era'], 0.1)), 3)
         a_p_bullpen = round(
-            0.8 * (4.5 / a_pen['bullpen_fip'] if a_pen['bullpen_fip'] > 0 else 1.0) +
-            0.2 * (4.5 / a_pen['bullpen_era'] if a_pen['bullpen_era'] > 0 else 1.0), 3)
-        h_p_total = round(0.65 * h_p_starter + 0.35 * h_p_bullpen, 3)
-        a_p_total = round(0.65 * a_p_starter + 0.35 * a_p_bullpen, 3)
-        # 사용자 공식 [1] 공격력
+            w_pen * (L_fip / max(a_pen['bullpen_fip'], 0.1)) +
+            (1 - w_pen) * (L_era / max(a_pen['bullpen_era'], 0.1)), 3)
+        # P_total = w_starter * P_starter + (1-w) * P_bullpen
+        w_s = cw['w_starter']
+        h_p_total = round(w_s * h_p_starter + (1 - w_s) * h_p_bullpen, 3)
+        a_p_total = round(w_s * a_p_starter + (1 - w_s) * a_p_bullpen, 3)
+        # 사용자 공식 [1] 공격력 (calibrated)
         h_o = _composite_offense(h_bat['team_wrc_plus'], h_bat['team_ops'],
-                                  h_recent_bat['recent_ops'], h_bat['team_babip'])
+                                  h_recent_bat['recent_ops'], h_bat['team_babip'],
+                                  L_ops, cw['w_offense_season'], babip_cfg)
         a_o = _composite_offense(a_bat['team_wrc_plus'], a_bat['team_ops'],
-                                  a_recent_bat['recent_ops'], a_bat['team_babip'])
-        # 사용자 공식 [5][6] 예상 득점
-        h_exp_runs = _pythag_expected_runs(h_o, a_p_total, home_adv=True)
-        a_exp_runs = _pythag_expected_runs(a_o, h_p_total, home_adv=False)
-        # Pythagorean 게임 단위 win prob (참고용 — feature)
-        if (h_exp_runs ** 2 + a_exp_runs ** 2) > 0:
-            sabermetric_home_win_prob = round(
-                (h_exp_runs ** 2) / (h_exp_runs ** 2 + a_exp_runs ** 2), 3)
+                                  a_recent_bat['recent_ops'], a_bat['team_babip'],
+                                  L_ops, cw['w_offense_season'], babip_cfg)
+        # 사용자 공식 [5][6] 예상 득점 (구장별 home advantage)
+        h_exp_runs = _pythag_expected_runs(h_o, a_p_total, L_runs,
+                                            park_runs_factor=pf['runs'], is_home=True)
+        a_exp_runs = _pythag_expected_runs(a_o, h_p_total, L_runs,
+                                            park_runs_factor=pf['runs'], is_home=False)
+        # Pythagorean win prob (calibrated exponent)
+        h_pow = h_exp_runs ** pyth_exp
+        a_pow = a_exp_runs ** pyth_exp
+        if (h_pow + a_pow) > 0:
+            sabermetric_home_win_prob = round(h_pow / (h_pow + a_pow), 3)
         else:
             sabermetric_home_win_prob = 0.54
 
@@ -664,6 +700,6 @@ def get_features(game_id: int, season: int = 2026) -> dict:
             'rain_delay_prev': ctx['rain_delay_prev'],
             'weekday_doubleheader': ctx['weekday_doubleheader'],
         }
-        return _cap_outliers(features)
+        return _cap_input(features)
     finally:
         conn.close()

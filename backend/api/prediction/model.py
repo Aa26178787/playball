@@ -134,6 +134,12 @@ def train_model(season: int = 2026):
     from sklearn.model_selection import train_test_split
     from sklearn.metrics import accuracy_score, roc_auc_score, log_loss
 
+    # Calibration 먼저 (league 상수 + Pythagorean exp + BABIP + composite weights)
+    from api.prediction.calibration import calibrate_all, invalidate
+    print(f"[train] Calibration 시작 season={season}")
+    calibrate_all(season)
+    invalidate()
+
     print(f"[train] 데이터 로드 season={season}")
     X, y, ids = load_training_data(season)
     print(f"[train] {len(X)}개 게임 features 산출")
