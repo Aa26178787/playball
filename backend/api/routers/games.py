@@ -255,10 +255,19 @@ def get_game_relay_all(game_id: int):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"중계 조회 실패: {str(e)}")
 
+    # ── 종료 경기 archive 우선 조회 (재시작 시 메모리 캐시 휘발 대비) ──
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
     cur = conn.cursor()
+    cur.execute("SELECT payload FROM game_relay_archive WHERE game_id = %s", (game_id,))
+    arch = cur.fetchone()
+    if arch:
+        cur.close()
+        conn.close()
+        result = arch[0]
+        cache_set(_cache_key, result, 3600)
+        return result
 
     cur.execute("""
         SELECT inning, inning_half, seqno, batter_name, pitcher_name,
@@ -398,7 +407,23 @@ def get_game_relay_all(game_id: int):
         "win_rate": win_rate,
         "source": "db",
     }
-    cache_set(_cache_key, result, 3600)  # 종료 경기: 1시간 캐시 (데이터 불변)
+    cache_set(_cache_key, result, 3600)
+    # 종료 게임 archive 영속화 (재시작 후에도 즉시 반환)
+    try:
+        import json as _json
+        ac = get_connection()
+        if ac:
+            acur = ac.cursor()
+            acur.execute(
+                "INSERT INTO game_relay_archive (game_id, payload) VALUES (%s, %s) "
+                "ON CONFLICT (game_id) DO NOTHING",
+                (game_id, _json.dumps(result))
+            )
+            ac.commit()
+            acur.close()
+            ac.close()
+    except Exception:
+        pass
     return result
 
 
