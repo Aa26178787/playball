@@ -254,7 +254,7 @@ def get_postseason_odds():
 
     result = []
     for tid, t in teams_meta.items():
-        o = odds.get(tid, {'ps_prob': 0, 'ks_prob': 0})
+        o = odds.get(tid, {})
         result.append({
             "id":         tid,
             "name":       t["name"],
@@ -264,8 +264,13 @@ def get_postseason_odds():
             "draws":      t["draws"],
             "remaining":  remaining_count[tid],
             "elo":        round(elos.get(tid, 1500.0), 1),
-            "ps_prob":    round(o['ps_prob'], 4),
-            "ks_prob":    round(o['ks_prob'], 4),
+            "ps_prob":    round(o.get('ps_prob', 0), 4),
+            "ks_prob":    round(o.get('ks_direct_prob', 0), 4),  # 호환성 유지 (구 클라이언트)
+            "ks_direct_prob":  round(o.get('ks_direct_prob', 0), 4),
+            "po_direct_prob":  round(o.get('po_direct_prob', 0), 4),
+            "spo_direct_prob": round(o.get('spo_direct_prob', 0), 4),
+            "wc_seed4_prob":   round(o.get('wc_seed4_prob', 0), 4),
+            "wc_seed5_prob":   round(o.get('wc_seed5_prob', 0), 4),
         })
     result.sort(key=lambda x: -x["ps_prob"])
     return {
@@ -273,6 +278,13 @@ def get_postseason_odds():
         "method": "elo_monte_carlo_v2",
         "n_sim": 50000,
         "hfa_points": 50,
+        "structure": {
+            "ks_direct": "정규시즌 1위 → 한국시리즈 직행",
+            "po_direct": "정규시즌 2위 → 플레이오프 직행",
+            "spo_direct": "정규시즌 3위 → 준플레이오프 직행",
+            "wc_seed4": "정규시즌 4위 → 와일드카드전 (1승 어드밴티지)",
+            "wc_seed5": "정규시즌 5위 → 와일드카드전",
+        },
     }
 
 

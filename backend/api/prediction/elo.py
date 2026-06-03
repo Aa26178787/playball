@@ -69,16 +69,20 @@ def get_remaining_schedule(season: int = 2026) -> list:
 def simulate_postseason(elos: dict, current_wins: dict, current_losses: dict,
                          remaining: list, n_sim: int = 50000,
                          ps_spots: int = 5, ks_spots: int = 1) -> dict:
-    """Monte Carlo: Elo 기반 남은 경기 결과 샘플링 → 최종 순위 → 진출 확률.
-    Elo는 시뮬레이션 동안 정적 (단순화). 진짜 정확히는 매 게임 동적 갱신 가능하지만
-    100K sim에선 차이 작음."""
+    """Monte Carlo: Elo 기반 남은 경기 결과 샘플링 → 최종 순위 → 단계별 진출 확률.
+    KBO 포스트시즌 구조:
+      1위 → 한국시리즈 직행
+      2위 → 플레이오프 직행
+      3위 → 준플레이오프 직행
+      4위 → 와일드카드전 (1승 어드밴티지)
+      5위 → 와일드카드전
+    """
     import numpy as np
 
     team_ids = list(elos.keys())
     n_teams = len(team_ids)
     tid_to_idx = {tid: i for i, tid in enumerate(team_ids)}
 
-    # 사전 계산: 각 남은 경기의 home win prob
     home_probs = np.array([
         expected_score(elos[h], elos[a]) for h, a in remaining
     ])
@@ -88,36 +92,44 @@ def simulate_postseason(elos: dict, current_wins: dict, current_losses: dict,
 
     base_wins = np.array([current_wins.get(tid, 0) for tid in team_ids], dtype=np.int32)
 
-    ps_count = np.zeros(n_teams, dtype=np.int64)
-    ks_count = np.zeros(n_teams, dtype=np.int64)
+    # 각 순위별 카운트 (1위~5위 + 6위 이하)
+    rank_count = np.zeros((6, n_teams), dtype=np.int64)  # [rank_idx][team]
+    # rank_idx: 0=1위, 1=2위, 2=3위, 3=4위, 4=5위, 5=6위 이하
 
     BATCH = 1000
     for batch_start in range(0, n_sim, BATCH):
         batch_size = min(BATCH, n_sim - batch_start)
-        # batch_size × n_games random uniform
         rng = np.random.random((batch_size, n_games))
-        home_wins = rng < home_probs  # bool array
-        # wins 집계
+        home_wins = rng < home_probs
         sim_wins = np.tile(base_wins, (batch_size, 1)).astype(np.int32)
         for g in range(n_games):
             hi, ai = home_idx[g], away_idx[g]
             sim_wins[home_wins[:, g], hi] += 1
             sim_wins[~home_wins[:, g], ai] += 1
-        # 순위
-        # argsort descending
         ranks = np.argsort(-sim_wins, axis=1)
         for r in range(ranks.shape[0]):
             top = ranks[r]
             for i, t in enumerate(top):
-                if i < ps_spots:
-                    ps_count[t] += 1
-                if i < ks_spots:
-                    ks_count[t] += 1
+                if i < 5:
+                    rank_count[i][t] += 1
+                else:
+                    rank_count[5][t] += 1
 
-    return {
-        team_ids[i]: {
-            'ps_prob': float(ps_count[i]) / n_sim,
-            'ks_prob': float(ks_count[i]) / n_sim,
+    result = {}
+    for i, tid in enumerate(team_ids):
+        r1 = float(rank_count[0][i]) / n_sim
+        r2 = float(rank_count[1][i]) / n_sim
+        r3 = float(rank_count[2][i]) / n_sim
+        r4 = float(rank_count[3][i]) / n_sim
+        r5 = float(rank_count[4][i]) / n_sim
+        result[tid] = {
+            'ps_prob': r1 + r2 + r3 + r4 + r5,
+            'ks_direct_prob': r1,           # 한국시리즈 직행 (1위)
+            'po_direct_prob': r2,           # 플레이오프 직행 (2위)
+            'spo_direct_prob': r3,          # 준플레이오프 직행 (3위)
+            'wc_seed4_prob': r4,            # 와일드카드 4위 (어드밴티지)
+            'wc_seed5_prob': r5,            # 와일드카드 5위
+            'rank1_prob': r1, 'rank2_prob': r2, 'rank3_prob': r3,
+            'rank4_prob': r4, 'rank5_prob': r5,
         }
-        for i in range(n_teams)
-    }
+    return result
