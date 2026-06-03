@@ -1709,17 +1709,17 @@ def get_game_highlights(game_id: int):
         return {"highlights": []}
     cur = conn.cursor()
 
-    # DB에 저장된 하이라이트 조회
+    # YouTube 하이라이트만 조회 (뉴스 제외)
     cur.execute("""
         SELECT title, url, thumbnail, source, published_at
         FROM game_highlights
-        WHERE game_id = %s
+        WHERE game_id = %s AND source = 'youtube'
         ORDER BY COALESCE(published_at, crawled_at) DESC
     """, (game_id,))
     rows = cur.fetchall()
 
     if not rows:
-        # DB에 없으면 실시간 Google News RSS 조회
+        # DB에 없으면 실시간 YouTube 크롤 시도
         cur.execute("""
             SELECT ht.name, at2.name, g.game_date
             FROM games g
@@ -1736,18 +1736,20 @@ def get_game_highlights(game_id: int):
 
         home_name, away_name, game_date = game_row
         try:
-            from crawler.crawl_highlights import fetch_highlight_rss, save_highlights
-            import re
-            articles = fetch_highlight_rss(f'{home_name} {away_name} 하이라이트')
+            from crawler.crawl_highlights import fetch_youtube_highlights, save_highlights
+            articles = fetch_youtube_highlights(game_date.strftime('%Y-%m-%d') if game_date else None)
+            # 게임 매치업 필터 (팀명 첫 2자 매칭)
+            articles = [
+                a for a in articles
+                if any(kw in a['title'] for kw in [home_name[:2], away_name[:2]])
+            ]
             for a in articles:
                 if not a.get('game_id'):
                     a['game_id'] = game_id
             save_highlights(articles)
-            # filter relevant
             rows = [
                 (a['title'], a['url'], a.get('thumbnail') or None, a.get('source', ''), a.get('published_at'))
                 for a in articles
-                if any(kw in a['title'] for kw in [home_name[:2], away_name[:2]])
             ]
         except Exception:
             rows = []
