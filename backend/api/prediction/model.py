@@ -150,18 +150,28 @@ def train_model(season: int = 2026):
     for n_, im in imps[:10]:
         print(f"  {n_:30s} {im:.4f}")
 
+    # 평가 끝 → 전체 데이터(100%)로 final refit → 최신 데이터 모두 반영
+    print("\n[train] 전체 데이터 final refit")
+    scaler_full = StandardScaler()
+    X_full_s = scaler_full.fit_transform(X)
+    lr_full = LogisticRegression(max_iter=1000, C=1.0, random_state=42)
+    lr_full.fit(X_full_s, y)
+    rf_full = RandomForestClassifier(n_estimators=200, max_depth=6, random_state=42)
+    rf_full.fit(X, y)
+
     os.makedirs(MODEL_DIR, exist_ok=True)
     with open(MODEL_PATH, 'wb') as f:
         pickle.dump({
-            'lr': lr, 'rf': rf, 'scaler': scaler,
+            'lr': lr_full, 'rf': rf_full, 'scaler': scaler_full,
             'feature_names': names,
             'season': season,
             'rf_weight': float(rf_weight),
             'test_acc': float(accuracy_score(y_te, ens_pred)),
             'test_auc': float(roc_auc_score(y_te, ens_p)),
+            'train_size': len(X),
             'trained_at': __import__('datetime').datetime.now().isoformat(),
         }, f)
-    print(f"\n[train] 모델 저장: {MODEL_PATH}")
+    print(f"[train] 모델 저장: {MODEL_PATH} (전체 {len(X)}개 게임)")
 
 
 _loaded_model = None
