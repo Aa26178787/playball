@@ -1061,6 +1061,26 @@ def smart_update():
                                 naver_gid, inning_now, ch, ca)
                         except Exception:
                             pass
+                    # pitcher 누락 시 DB game_pitchers fallback (현재 등판 중 pitcher)
+                    if not pitcher:
+                        try:
+                            # 득점한 공격팀의 반대팀이 수비 (=현재 투수의 팀)
+                            pitching_side = 'home' if scoring_team == curr['away_team'] else 'away'
+                            _fc = get_connection()
+                            if _fc:
+                                _fcur = _fc.cursor()
+                                _fcur.execute("""
+                                    SELECT p.name FROM game_pitchers gp
+                                    JOIN players p ON p.id = gp.player_id
+                                    WHERE gp.game_id = %s AND gp.team_side = %s
+                                    ORDER BY gp.pitching_order DESC NULLS LAST LIMIT 1
+                                """, (gid, pitching_side))
+                                _r = _fcur.fetchone()
+                                if _r:
+                                    pitcher = _r[0]
+                                _fcur.close(); _fc.close()
+                        except Exception:
+                            pass
                     notify_score_change(gid, curr['home_team'], curr['away_team'],
                                         ch, ca,
                                         curr['home_team_id'], curr['away_team_id'],

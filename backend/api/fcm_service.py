@@ -290,6 +290,20 @@ def notify_score_change(game_id: int, home_team: str, away_team: str,
     if clean_text and clean_text.strip() == '볼':
         clean_text = '볼넷'
 
+    # clean_text가 batter 이름으로 시작하면 prefix 제거 (중복 표시 방지)
+    # 예: batter="박찬호", clean_text="박찬호 : 우익수 오른쪽 3루타" → "우익수 오른쪽 3루타"
+    if batter and clean_text:
+        _stripped = clean_text.lstrip()
+        if _stripped.startswith(batter):
+            _rest = _stripped[len(batter):].lstrip()
+            # 공통 구분자(: / : 등) 제거
+            for _sep in (':', ':', '-', '–', '—'):
+                if _rest.startswith(_sep):
+                    _rest = _rest[len(_sep):].lstrip()
+                    break
+            if _rest:
+                clean_text = _rest
+
     display_pitch_num = embedded_num or pitch_num
 
     lines = []
