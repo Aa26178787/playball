@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 def _batch_recent5(cur, team_ids: list) -> dict:
-    """team_id → ['W','L','D','C',...] 최신순 5개 (취소 포함)"""
+    """team_id ??['W','L','D','C',...] 최신??5�?(취소 ?�함)"""
     if not team_ids:
         return {}
     cur.execute("""
@@ -51,17 +51,17 @@ NAVER_HEADERS = {
     "Referer": "https://sports.naver.com/"
 }
 
-# 이닝별 raw Naver JSON 캐시 — 완료 이닝 영구 보존, 현재 이닝만 매 주기 fetch
+# ?�닝�?raw Naver JSON 캐시 ???�료 ?�닝 ?�구 보존, ?�재 ?�닝�?�?주기 fetch
 _inning_raw_cache: dict = {}  # {naver_game_id: {inning: raw_json}}
 
 
 @router.get("/{game_id}/relay_all")
 def get_game_relay_all(game_id: int):
-    # ─── relay_all 서버사이드 캐시 ────────────────────────────────────────
-    # 목적: 1000명 동시접속 시 매 요청마다 Naver API 전체 이닝 재조회 방지
-    #       → Naver IP 차단 + 서버 과부하 방지
-    # TTL: 진행중=30초(클라이언트 새로고침 주기와 일치), 종료=3600초(불변)
-    # 삭제 금지: 고부하 시 Naver 차단 즉시 재발
+    # ?�?�?� relay_all ?�버?�이??캐시 ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+    # 목적: 1000�??�시?�속 ??�??�청마다 Naver API ?�체 ?�닝 ?�조??방�?
+    #       ??Naver IP 차단 + ?�버 과�???방�?
+    # TTL: 진행�?30�??�라?�언???�로고침 주기?� ?�치), 종료=3600�?불�?)
+    # ??�� 금�?: 고�?????Naver 차단 즉시 ?�발
     from api.cache import cache_get, cache_set
     _cache_key = f"relay_all:{game_id}"
     _hit, _cached = cache_get(_cache_key)
@@ -70,7 +70,7 @@ def get_game_relay_all(game_id: int):
 
     conn = get_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail="DB 연결 실패")
+        raise HTTPException(status_code=500, detail="DB ?�결 ?�패")
     cur = conn.cursor()
 
     cur.execute("""
@@ -79,7 +79,7 @@ def get_game_relay_all(game_id: int):
     """, (game_id,))
     row = cur.fetchone()
     if not row:
-        raise HTTPException(status_code=404, detail="경기를 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="경기�?찾을 ???�습?�다")
 
     naver_game_id, status, current_inning = row
 
@@ -115,7 +115,7 @@ def get_game_relay_all(game_id: int):
 
         max_inning_live = current_inning or 1
 
-        # 이닝별 raw JSON 캐시: 완료 이닝 재사용, 현재 이닝만 Naver fetch
+        # ?�닝�?raw JSON 캐시: ?�료 ?�닝 ?�사?? ?�재 ?�닝�?Naver fetch
         game_inning_raw = _inning_raw_cache.setdefault(naver_game_id, {})
 
         def _fetch_inning(inning):
@@ -128,7 +128,7 @@ def get_game_relay_all(game_id: int):
                 pass
             return inning, None
 
-        # 완료 이닝 중 캐시 미보유 + 현재 이닝만 fetch
+        # ?�료 ?�닝 �?캐시 미보??+ ?�재 ?�닝�?fetch
         innings_to_fetch = [
             i for i in range(1, max_inning_live + 1)
             if i == max_inning_live or i not in game_inning_raw
@@ -141,12 +141,12 @@ def get_game_relay_all(game_id: int):
         else:
             freshly_fetched = {}
 
-        # 완료 이닝 캐시 저장 (현재 이닝 제외)
+        # ?�료 ?�닝 캐시 ?�??(?�재 ?�닝 ?�외)
         for i, data in freshly_fetched.items():
             if i < max_inning_live and data is not None:
                 game_inning_raw[i] = data
 
-        # 완료 이닝: 캐시, 현재 이닝: 신규 fetch 조합
+        # ?�료 ?�닝: 캐시, ?�재 ?�닝: ?�규 fetch 조합
         _fetched = {}
         for i in range(1, max_inning_live + 1):
             if i < max_inning_live and i in game_inning_raw:
@@ -201,7 +201,7 @@ def get_game_relay_all(game_id: int):
                                     del batter_last_pitch[current_batter]
                             current_batter = new_batter
                         elif rtype == 8 and opt_text:
-                            m = re.match(r'^(?:\d+번타자|대타)\s+(\S+)', opt_text)
+                            m = re.match(r'^(?:\d+번�????�?�)\s+(\S+)', opt_text)
                             if m:
                                 new_batter = m.group(1).strip()
                                 if new_batter != current_batter:
@@ -249,15 +249,15 @@ def get_game_relay_all(game_id: int):
                 "inning_scores": inning_scores,
                 "source": "api"
             }
-            cache_set(_cache_key, result, 30)  # 진행중: 30초 캐시
+            cache_set(_cache_key, result, 30)  # 진행�? 30�?캐시
             return result
 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"중계 조회 실패: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"중계 조회 ?�패: {str(e)}")
 
     conn = get_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail="DB 연결 실패")
+        raise HTTPException(status_code=500, detail="DB ?�결 ?�패")
     cur = conn.cursor()
 
     cur.execute("""
@@ -286,16 +286,16 @@ def get_game_relay_all(game_id: int):
     cur.close()
     conn.close()
 
-    pitch_title_pattern = re.compile(r'^(\d+)구\s+(.+?)\s+(\d+)km/h\s+(.+)$')
+    pitch_title_pattern = re.compile(r'^(\d+)�?s+(.+?)\s+(\d+)km/h\s+(.+)$')
 
     def parse_pitch_result(title):
         if not title:
             return None
-        if '헛스윙' in title: return 'S'
-        if '스트라이크' in title: return 'S'
-        if '볼' in title and 'km/h' in title: return 'B'
-        if '파울' in title: return 'F'
-        if '타격' in title: return 'X'
+        if '?�스?? in title: return 'S'
+        if '?�트?�이?? in title: return 'S'
+        if '�? in title and 'km/h' in title: return 'B'
+        if '?�울' in title: return 'F'
+        if '?��? in title: return 'X'
         return None
 
     relay_list = []
@@ -315,7 +315,7 @@ def get_game_relay_all(game_id: int):
         stuff = p[7]
         batter_name = p[3]
 
-        if rtype == 8 and title and '번타자' in str(title):
+        if rtype == 8 and title and '번�??? in str(title):
             parts = title.split(' ')
             if len(parts) >= 2:
                 current_batter = parts[-1]
@@ -332,7 +332,7 @@ def get_game_relay_all(game_id: int):
                 stuff = stuff or m.group(4)
                 speed = speed or int(m.group(3))
 
-        if rtype == 2 and title and '투수' in title and '교체' in title:
+        if rtype == 2 and title and '?�수' in title and '교체' in title:
             if inning_half == '0':
                 home_pitcher_idx = min(home_pitcher_idx + 1, len(home_pitchers) - 1)
             else:
@@ -370,7 +370,7 @@ def get_game_relay_all(game_id: int):
             "type": rtype,
         })
 
-    # 이미 conn 닫혔으니 새 연결
+    # ?��? conn ?�혔?�니 ???�결
     conn3 = get_connection()
     cur3 = conn3.cursor()
     cur3.execute("""
@@ -398,7 +398,7 @@ def get_game_relay_all(game_id: int):
         "win_rate": win_rate,
         "source": "db",
     }
-    cache_set(_cache_key, result, 3600)  # 종료 경기: 1시간 캐시 (데이터 불변)
+    cache_set(_cache_key, result, 3600)  # 종료 경기: 1?�간 캐시 (?�이??불�?)
     return result
 
 
@@ -409,7 +409,7 @@ def get_game_relay_all(game_id: int):
 def get_game_preview(game_id: int):
     conn = get_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail="DB 연결 실패")
+        raise HTTPException(status_code=500, detail="DB ?�결 ?�패")
     cur = conn.cursor()
     cur.execute("SELECT naver_game_id FROM games WHERE id = %s", (game_id,))
     row = cur.fetchone()
@@ -417,12 +417,12 @@ def get_game_preview(game_id: int):
     conn.close()
 
     if not row:
-        raise HTTPException(status_code=404, detail="경기를 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="경기�?찾을 ???�습?�다")
 
     naver_game_id = row[0]
     try:
         url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/preview"
-        res = req.get(url, headers=NAVER_HEADERS, timeout=10)
+        res = req.get(url, headers=NAVER_HEADERS, timeout=5)
         res.raise_for_status()
         data = res.json()
         preview = data["result"]["previewData"]
@@ -512,7 +512,7 @@ def get_game_preview(game_id: int):
             },
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"프리뷰 조회 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"?�리�?조회 ?�패: {str(e)}")
 
 
 @router.get("/{game_id}/record_detail")
@@ -520,7 +520,7 @@ def get_game_preview(game_id: int):
 def get_game_record_detail(game_id: int):
     conn = get_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail="DB 연결 실패")
+        raise HTTPException(status_code=500, detail="DB ?�결 ?�패")
     cur = conn.cursor()
     cur.execute("SELECT naver_game_id FROM games WHERE id = %s", (game_id,))
     row = cur.fetchone()
@@ -528,12 +528,12 @@ def get_game_record_detail(game_id: int):
     conn.close()
 
     if not row:
-        raise HTTPException(status_code=404, detail="경기를 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="경기�?찾을 ???�습?�다")
 
     naver_game_id = row[0]
     try:
         url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/record"
-        res = req.get(url, headers=NAVER_HEADERS, timeout=10)
+        res = req.get(url, headers=NAVER_HEADERS, timeout=5)
         res.raise_for_status()
         data = res.json()
         record = (data.get("result") or {}).get("recordData") or {}
@@ -591,7 +591,7 @@ def get_game_record_detail(game_id: int):
             "recent_vs": recent_vs,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"상세 기록 조회 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"?�세 기록 조회 ?�패: {str(e)}")
 
 
 @router.get("/{game_id}/roster")
@@ -599,7 +599,7 @@ def get_game_record_detail(game_id: int):
 def get_game_roster(game_id: int):
     conn = get_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail="DB 연결 실패")
+        raise HTTPException(status_code=500, detail="DB ?�결 ?�패")
     cur = conn.cursor()
     cur.execute("""
         SELECT p.name, p.number, p.profile_image,
@@ -654,7 +654,7 @@ def get_game_roster(game_id: int):
 def get_today_games():
     conn = get_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail="DB 연결 실패")
+        raise HTTPException(status_code=500, detail="DB ?�결 ?�패")
 
     cur = conn.cursor()
     cur.execute("""
@@ -679,12 +679,12 @@ def get_today_games():
         LEFT JOIN (
             SELECT gp.game_id, p.name, p.profile_image
             FROM game_pitchers gp JOIN players p ON gp.player_id = p.id
-            WHERE gp.result = '승'
+            WHERE gp.result = '??
         ) wp ON wp.game_id = g.id
         LEFT JOIN (
             SELECT gp.game_id, p.name, p.profile_image
             FROM game_pitchers gp JOIN players p ON gp.player_id = p.id
-            WHERE gp.result = '패'
+            WHERE gp.result = '??
         ) lp ON lp.game_id = g.id
         LEFT JOIN (
             SELECT gp.game_id, p.name
@@ -703,13 +703,13 @@ def get_today_games():
     rows = cur.fetchall()
 
     all_team_ids = list({tid for r in rows for tid in (r[14], r[15]) if tid})
-    # r 인덱스: 0-15 기존, 16=win_pitcher, 17=win_pitcher_image, 18=lose_pitcher, 19=lose_pitcher_image, 20=home_starter, 21=away_starter
+    # r ?�덱?? 0-15 기존, 16=win_pitcher, 17=win_pitcher_image, 18=lose_pitcher, 19=lose_pitcher_image, 20=home_starter, 21=away_starter
     recent5_map = _batch_recent5(cur, all_team_ids)
 
     cur.close()
     conn.close()
 
-    # 구장별 날씨 캐시 (같은 구장 중복 호출 방지)
+    # 구장�??�씨 캐시 (같�? 구장 중복 ?�출 방�?)
     weather_cache: dict = {}
 
     games = []
@@ -723,7 +723,7 @@ def get_today_games():
             if start_time:
                 try:
                     total_sec = int(start_time.total_seconds())
-                    start_hour = (total_sec // 3600 + 9) % 24  # UTC→KST
+                    start_hour = (total_sec // 3600 + 9) % 24  # UTC?�KST
                 except Exception:
                     pass
             weather_cache[stadium_id] = (
@@ -768,7 +768,7 @@ def get_today_games():
 def get_game_detail(game_id: int):
     conn = get_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail="DB 연결 실패")
+        raise HTTPException(status_code=500, detail="DB ?�결 ?�패")
 
     cur = conn.cursor()
 
@@ -796,7 +796,7 @@ def get_game_detail(game_id: int):
     game = cur.fetchone()
 
     if not game:
-        raise HTTPException(status_code=404, detail="경기를 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="경기�?찾을 ???�습?�다")
 
     status = game[2]
     naver_game_id = game[14]
@@ -811,7 +811,7 @@ def get_game_detail(game_id: int):
     """, (game_id,))
     innings = cur.fetchall()
 
-    # 투수 - 진행 중이면 game_rosters 선발투수, 종료면 game_pitchers
+    # ?�수 - 진행 중이�?game_rosters ?�발?�수, 종료�?game_pitchers
     if status == '진행':
         cur.execute("""
             SELECT p.name, gp.role, gp.result,
@@ -865,7 +865,7 @@ def get_game_detail(game_id: int):
         FROM game_batters gb
         JOIN players p ON gb.player_id = p.id
         WHERE gb.game_id = %s
-        AND gb.position != '투'
+        AND gb.position != '??
         AND gb.batting_order != 0
         ORDER BY gb.team_side, gb.batting_order
     """, (game_id,))
@@ -912,8 +912,8 @@ def get_game_detail(game_id: int):
         {"name": r[0], "result": r[2], "profile_image": r[12]}
         for r in pitchers
     ]
-    win_p = next((p for p in pitcher_list_preview if p["result"] == "승"), None)
-    lose_p = next((p for p in pitcher_list_preview if p["result"] == "패"), None)
+    win_p = next((p for p in pitcher_list_preview if p["result"] == "??), None)
+    lose_p = next((p for p in pitcher_list_preview if p["result"] == "??), None)
 
     return {
         "game": {
@@ -995,7 +995,7 @@ def get_games_by_date(date_str: str):
         return _val
     conn = get_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail="DB 연결 실패")
+        raise HTTPException(status_code=500, detail="DB ?�결 ?�패")
 
     cur = conn.cursor()
     cur.execute("""
@@ -1030,13 +1030,13 @@ def get_games_by_date(date_str: str):
             SELECT gp.game_id, p.name, p.profile_image
             FROM game_pitchers gp
             JOIN players p ON gp.player_id = p.id
-            WHERE gp.result = '승'
+            WHERE gp.result = '??
         ) wp ON wp.game_id = g.id
         LEFT JOIN (
             SELECT gp.game_id, p.name, p.profile_image
             FROM game_pitchers gp
             JOIN players p ON gp.player_id = p.id
-            WHERE gp.result = '패'
+            WHERE gp.result = '??
         ) lp ON lp.game_id = g.id
         LEFT JOIN LATERAL (
             SELECT COALESCE(
@@ -1098,7 +1098,7 @@ def get_games_by_date(date_str: str):
     cur.close()
     conn.close()
 
-    # 오늘 날짜 경기만 날씨 포함 (과거 날짜는 스킵)
+    # ?�늘 ?�짜 경기�??�씨 ?�함 (과거 ?�짜???�킵)
     from datetime import date as _date
     _today_str = str(_date.today())
     is_today = (date_str == _today_str)
@@ -1112,22 +1112,22 @@ def get_games_by_date(date_str: str):
         seen_ids.add(r[0])
 
         status = r[2]
-        db_weather = r[15]   # games.weather DB 컬럼 (종료 시 저장)
+        db_weather = r[15]   # games.weather DB 컬럼 (종료 ???�??
         has_lineup = r[16]
         win_pitcher = r[13]
         lose_pitcher = r[14]
 
-        if status == '예정' and has_lineup:
-            status = '라인업'
+        if status == '?�정' and has_lineup:
+            status = '?�인??
 
-        # 날씨: 과거=DB, 오늘=실시간, 미래=예보
+        # ?�씨: 과거=DB, ?�늘=?�시�? 미래=?�보
         weather = None
         stadium_id = stadium_map.get(r[0])
         if date_str < _today_str:
-            # 과거: DB에 저장된 값 사용
+            # 과거: DB???�?�된 �??�용
             weather = db_weather
         elif is_today:
-            # 오늘: 실시간 날씨
+            # ?�늘: ?�시�??�씨
             if stadium_id and stadium_id not in weather_cache:
                 start_time = r[7]
                 start_hour = None
@@ -1143,7 +1143,7 @@ def get_games_by_date(date_str: str):
                 )
             weather = weather_cache.get(stadium_id)
         else:
-            # 미래: 예보 날씨
+            # 미래: ?�보 ?�씨
             if stadium_id and stadium_id not in weather_cache:
                 start_time = r[7]
                 start_hour = None
@@ -1188,7 +1188,7 @@ def get_games_by_date(date_str: str):
         })
 
     result = {"games": games, "count": len(games)}
-    # 날짜별 서버캐시 TTL: 과거=86400s, 오늘=30s, 미래=3600s
+    # ?�짜�??�버캐시 TTL: 과거=86400s, ?�늘=30s, 미래=3600s
     if date_str < _today_str:
         _ttl = 86400
     elif is_today:
@@ -1200,10 +1200,11 @@ def get_games_by_date(date_str: str):
 
 
 @router.get("/{game_id}/relay")
+@cached(10)
 def get_game_relay(game_id: int):
     conn = get_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail="DB 연결 실패")
+        raise HTTPException(status_code=500, detail="DB ?�결 ?�패")
 
     cur = conn.cursor()
     cur.execute("""
@@ -1215,36 +1216,36 @@ def get_game_relay(game_id: int):
     conn.close()
 
     if not game:
-        raise HTTPException(status_code=404, detail="경기를 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="경기�?찾을 ???�습?�다")
 
     naver_game_id, status, current_inning, home_team_id, away_team_id = game
 
     if status != '진행':
-        raise HTTPException(status_code=400, detail="진행 중인 경기가 아닙니다")
+        raise HTTPException(status_code=400, detail="진행 중인 경기가 ?�닙?�다")
 
     inning = current_inning or 1
 
     _POS_CODE = {
-        '투수': 'P', '포수': 'C', '1루수': '1B', '2루수': '2B',
-        '유격수': 'SS', '3루수': '3B', '좌익수': 'LF', '중견수': 'CF',
-        '우익수': 'RF', '지명타자': 'DH',
+        '?�수': 'P', '?�수': 'C', '1루수': '1B', '2루수': '2B',
+        '?�격??: 'SS', '3루수': '3B', '좌익??: 'LF', '중견??: 'CF',
+        '?�익??: 'RF', '지명�???: 'DH',
     }
 
     try:
         url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/relay?inning={inning}"
-        res = req.get(url, headers=NAVER_HEADERS, timeout=10)
+        res = req.get(url, headers=NAVER_HEADERS, timeout=5)
         res.raise_for_status()
         data = res.json()
 
         if not data.get("success"):
-            raise HTTPException(status_code=500, detail="네이버 API 응답 실패")
+            raise HTTPException(status_code=500, detail="?�이�?API ?�답 ?�패")
 
         relay = data["result"]["textRelayData"]
         game_state = relay.get("currentGameState", {}) or {}
 
-        # ── field_view: 타자/주자/수비9명 ──────────────────────────────────
+        # ?�?� field_view: ?�??주자/?�비9�??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
         home_or_away = relay.get("homeOrAway", "0")
-        # "0" = away batting (초), "1" = home batting (말)
+        # "0" = away batting (�?, "1" = home batting (�?
         batting_side   = 'away' if home_or_away == '0' else 'home'
         fielding_side  = 'home' if batting_side == 'away' else 'away'
 
@@ -1254,8 +1255,8 @@ def get_game_relay(game_id: int):
             if fconn:
                 fcur = fconn.cursor()
 
-                # 1) naver_player_id → player info (타자/투수는 실제 naver_player_id)
-                #    base1/2/3: 1~9이면 타순 번호(batting_order), 아니면 naver_player_id
+                # 1) naver_player_id ??player info (?�???�수???�제 naver_player_id)
+                #    base1/2/3: 1~9?�면 ?�??번호(batting_order), ?�니�?naver_player_id
                 pid_keys = ('batter', 'pitcher')
                 base_keys = ('base1', 'base2', 'base3')
 
@@ -1270,7 +1271,7 @@ def get_game_relay(game_id: int):
                     for r in fcur.fetchall():
                         player_by_nid[str(r[0])] = {"player_id": r[1], "name": r[2], "image": r[3], "jersey": r[4]}
 
-                # 타순 번호 방식(1-9)인 주자는 game_batters batting_order로 조회
+                # ?�??번호 방식(1-9)??주자??game_batters batting_order�?조회
                 base_nids = []
                 base_orders = []
                 for k in base_keys:
@@ -1293,7 +1294,7 @@ def get_game_relay(game_id: int):
                     for r in fcur.fetchall():
                         player_by_nid[str(r[0])] = {"player_id": r[1], "name": r[2], "image": r[3], "jersey": r[4]}
 
-                # 타순 번호 → DB game_batters 조회 (batting_side = 공격팀)
+                # ?�??번호 ??DB game_batters 조회 (batting_side = 공격?�)
                 player_by_order: dict = {}
                 if base_orders:
                     order_nums = [o for _, o in base_orders]
@@ -1319,7 +1320,7 @@ def get_game_relay(game_id: int):
                         pass
                     return player_by_nid.get(v)
 
-                # 2) 수비 9명 (fielding_side)
+                # 2) ?�비 9�?(fielding_side)
                 fcur.execute("""
                     SELECT p.id, p.name, p.profile_image, p.number, gb.position
                     FROM game_batters gb
@@ -1408,7 +1409,7 @@ def get_game_relay(game_id: int):
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"중계 데이터 조회 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"중계 ?�이??조회 ?�패: {str(e)}")
 
 
 @router.get("/{game_id}/pitch-types")
@@ -1416,11 +1417,11 @@ def get_game_relay(game_id: int):
 def get_pitch_types(game_id: int):
     conn = get_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail="DB 연결 실패")
+        raise HTTPException(status_code=500, detail="DB ?�결 ?�패")
     cur = conn.cursor()
     cur.execute("SELECT id FROM games WHERE id = %s", (game_id,))
     if not cur.fetchone():
-        raise HTTPException(status_code=404, detail="경기를 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="경기�?찾을 ???�습?�다")
     cur.execute("""
         SELECT pitcher_name, stuff, COUNT(*) as cnt
         FROM game_pitches
@@ -1450,7 +1451,7 @@ def get_pitch_locations(game_id: int):
     import math as _math
     conn = get_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail="DB 연결 실패")
+        raise HTTPException(status_code=500, detail="DB ?�결 ?�패")
     cur = conn.cursor()
     cur.execute("""
         SELECT g.naver_game_id, g.status, g.current_inning,
@@ -1463,12 +1464,12 @@ def get_pitch_locations(game_id: int):
     row = cur.fetchone()
     if not row or not row[0]:
         cur.close(); conn.close()
-        raise HTTPException(status_code=404, detail="경기 없음")
+        raise HTTPException(status_code=404, detail="경기 ?�음")
     naver_game_id = row[0]
     game_status = row[1]
     max_inning = row[3] or 9
 
-    # 팀 이름 + 투수 홈/어웨이 분류
+    # ?� ?�름 + ?�수 ???�웨??분류
     cur.execute("""
         SELECT ht.name, at.name
         FROM games g
@@ -1477,8 +1478,8 @@ def get_pitch_locations(game_id: int):
         WHERE g.id = %s
     """, (game_id,))
     team_row = cur.fetchone()
-    home_team = team_row[0] if team_row else "홈"
-    away_team = team_row[1] if team_row else "원정"
+    home_team = team_row[0] if team_row else "??
+    away_team = team_row[1] if team_row else "?�정"
 
     cur.execute("""
         SELECT DISTINCT p.name, gp.team_side
@@ -1507,7 +1508,7 @@ def get_pitch_locations(game_id: int):
             "away_team": away_team,
         }
 
-    # 종료 경기 → DB 우선 조회
+    # 종료 경기 ??DB ?�선 조회
     if game_status == '종료':
         cur.execute("""
             SELECT inning, inning_half, batter_name, pitcher_name,
@@ -1520,7 +1521,7 @@ def get_pitch_locations(game_id: int):
         if db_rows:
             cur.close(); conn.close()
             import re as _re
-            def _strip_order(name): return _re.sub(r'^\d+번타자 ', '', name or '')
+            def _strip_order(name): return _re.sub(r'^\d+번�???', '', name or '')
             all_pitches = [
                 {
                     "inning": r[0], "inning_half": r[1], "batter": _strip_order(r[2]),
@@ -1555,11 +1556,11 @@ def get_pitch_locations(game_id: int):
 
     def classify(text):
         if not text: return "other"
-        if "볼" in text: return "ball"
-        if "헛스윙" in text or "스윙" in text: return "swing"
-        if "파울" in text: return "foul"
-        if "타격" in text or "안타" in text or "홈런" in text or "2루타" in text or "3루타" in text: return "hit"
-        if "스트라이크" in text: return "strike"
+        if "�? in text: return "ball"
+        if "?�스?? in text or "?�윙" in text: return "swing"
+        if "?�울" in text: return "foul"
+        if "?��? in text or "?��?" in text or "?�런" in text or "2루�?" in text or "3루�?" in text: return "hit"
+        if "?�트?�이?? in text: return "strike"
         return "other"
 
     def _fetch_and_parse_inning(inning):
@@ -1578,7 +1579,7 @@ def get_pitch_locations(game_id: int):
             txt_opts = item.get("textOptions", [])
             batter_raw = item.get("title", "")
             import re as _re2
-            batter = _re2.sub(r'^\d+번타자 ', '', batter_raw)
+            batter = _re2.sub(r'^\d+번�???', '', batter_raw)
             inning_half = str(item.get("homeOrAway", ""))
             if not pts_opts: continue
 
@@ -1632,8 +1633,7 @@ def get_pitch_locations(game_id: int):
     for _, pitches in _results:
         all_pitches.extend(pitches)
 
-    # 종료 경기인데 DB 데이터 없었으면 → 방금 fetch한 데이터 저장
-    if game_status == '종료' and all_pitches:
+    # 종료 경기?�데 DB ?�이???�었?�면 ??방금 fetch???�이???�??    if game_status == '종료' and all_pitches:
         try:
             from crawler.crawl_pitch_locations import save_pitch_locations_for_game
             save_pitch_locations_for_game(game_id, naver_game_id, max_inning)
@@ -1647,7 +1647,7 @@ def get_pitch_locations(game_id: int):
 def get_game_weather(game_id: int):
     conn = get_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail="DB 연결 실패")
+        raise HTTPException(status_code=500, detail="DB ?�결 ?�패")
     cur = conn.cursor()
     cur.execute(
         "SELECT stadium_id, start_time, status FROM games WHERE id = %s",
@@ -1657,7 +1657,7 @@ def get_game_weather(game_id: int):
     cur.close()
     conn.close()
     if not row:
-        raise HTTPException(status_code=404, detail="경기를 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="경기�?찾을 ???�습?�다")
     stadium_id, start_time, status = row
     if not stadium_id:
         return {"weather": None}
@@ -1668,7 +1668,7 @@ def get_game_weather(game_id: int):
             start_hour = (total_sec // 3600 + 9) % 24
         except Exception:
             pass
-    if status in ('예정', '라인업') and start_hour is not None:
+    if status in ('?�정', '?�인??) and start_hour is not None:
         weather = get_forecast_at(stadium_id, start_hour)
     else:
         weather = get_weather(stadium_id)
@@ -1683,7 +1683,7 @@ def get_game_highlights(game_id: int):
         return {"highlights": []}
     cur = conn.cursor()
 
-    # DB에 저장된 하이라이트 조회
+    # DB???�?�된 ?�이?�이??조회
     cur.execute("""
         SELECT title, url, thumbnail, source, published_at
         FROM game_highlights
@@ -1693,7 +1693,7 @@ def get_game_highlights(game_id: int):
     rows = cur.fetchall()
 
     if not rows:
-        # DB에 없으면 실시간 Google News RSS 조회
+        # DB???�으�??�시�?Google News RSS 조회
         cur.execute("""
             SELECT ht.name, at2.name, g.game_date
             FROM games g
@@ -1712,7 +1712,7 @@ def get_game_highlights(game_id: int):
         try:
             from crawler.crawl_highlights import fetch_highlight_rss, save_highlights
             import re
-            articles = fetch_highlight_rss(f'{home_name} {away_name} 하이라이트')
+            articles = fetch_highlight_rss(f'{home_name} {away_name} ?�이?�이??)
             for a in articles:
                 if not a.get('game_id'):
                     a['game_id'] = game_id
@@ -1743,7 +1743,7 @@ def get_game_highlights(game_id: int):
     }
 
 
-# ===== 팬 승리 예측 =====
+# ===== ???�리 ?�측 =====
 
 class PredictionBody(BaseModel):
     predicted_team_id: int
@@ -1753,7 +1753,7 @@ class PredictionBody(BaseModel):
 def get_predictions(game_id: int, current_user: dict = Depends(get_optional_user)):
     conn = get_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail='DB 연결 실패')
+        raise HTTPException(status_code=500, detail='DB ?�결 ?�패')
     cur = conn.cursor()
     cur.execute("""
         SELECT predicted_team_id, COUNT(*) FROM game_predictions
@@ -1775,7 +1775,7 @@ def get_predictions(game_id: int, current_user: dict = Depends(get_optional_user
     g = cur.fetchone()
     cur.close(); conn.close()
     if not g:
-        raise HTTPException(status_code=404, detail='경기 없음')
+        raise HTTPException(status_code=404, detail='경기 ?�음')
 
     home_id, away_id = g
     return {
@@ -1790,21 +1790,21 @@ def predict_game(game_id: int, body: PredictionBody,
                  current_user: dict = Depends(get_current_user)):
     conn = get_connection()
     if not conn:
-        raise HTTPException(status_code=500, detail='DB 연결 실패')
+        raise HTTPException(status_code=500, detail='DB ?�결 ?�패')
     cur = conn.cursor()
-    # 예정/진행중만 허용
+    # ?�정/진행중만 ?�용
     cur.execute("SELECT status, home_team_id, away_team_id FROM games WHERE id=%s", (game_id,))
     g = cur.fetchone()
     if not g:
         cur.close(); conn.close()
-        raise HTTPException(status_code=404, detail='경기 없음')
+        raise HTTPException(status_code=404, detail='경기 ?�음')
     status, home_id, away_id = g
     if status == '종료':
         cur.close(); conn.close()
-        raise HTTPException(status_code=400, detail='종료된 경기는 예측 불가')
+        raise HTTPException(status_code=400, detail='종료??경기???�측 불�?')
     if body.predicted_team_id not in (home_id, away_id):
         cur.close(); conn.close()
-        raise HTTPException(status_code=400, detail='해당 경기 팀 아님')
+        raise HTTPException(status_code=400, detail='?�당 경기 ?� ?�님')
 
     cur.execute("""
         INSERT INTO game_predictions (user_id, game_id, predicted_team_id)
