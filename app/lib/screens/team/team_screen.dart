@@ -285,23 +285,9 @@ class _TeamScreenState extends State<TeamScreen>
           ));
     }
 
-    return InkWell(
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(team)))),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-              width: 0.7,
-            ),
-          ),
-          color: isFav
-              ? color.withValues(alpha: isDark ? 0.06 : 0.04)
-              : Colors.transparent,
-        ),
-        padding: const EdgeInsets.fromLTRB(2, 12, 2, 12),
-        child: Column(
+    final rowContent = Padding(
+      padding: EdgeInsets.fromLTRB(isFav ? 14 : 2, isFav ? 14 : 12, isFav ? 14 : 2, isFav ? 14 : 12),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Row 1: 메인 stats
@@ -427,41 +413,92 @@ class _TeamScreenState extends State<TeamScreen>
             ],
           ],
         ),
+      );
+
+    if (isFav) {
+      // 즐겨찾기: floating card (rounded + shadow + 팀색 border)
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(team)))),
+            child: Container(
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: isDark ? 0.10 : 0.06),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: color.withValues(alpha: 0.55), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: isDark ? 0.35 : 0.22),
+                    blurRadius: 14, spreadRadius: 0, offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: rowContent,
+            ),
+          ),
+        ),
+      );
+    }
+    // 일반 팀: flat row + bottom divider
+    return InkWell(
+      onTap: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(team)))),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+              width: 0.7,
+            ),
+          ),
+        ),
+        child: rowContent,
       ),
     );
   }
 
-  // 모던 최근경기 dot — 텍스트 없이 색만, subtle ring
+  // 게임카드 스타일 최근경기 — rounded square + 옅은 배경 + 진한 border + 텍스트
   Widget _recentDotModern(String result) {
-    Color fillColor;
-    Color ringColor;
+    Color textC;
+    Color bgC;
+    String label;
     switch (result) {
       case 'W':
-        fillColor = const Color(0xFF1976D2);
-        ringColor = const Color(0xFF1565C0);
+        textC = const Color(0xFF1565C0);
+        bgC = const Color(0xFF1565C0).withValues(alpha: 0.12);
+        label = 'W';
         break;
       case 'L':
-        fillColor = const Color(0xFFE53935);
-        ringColor = const Color(0xFFC62828);
+        textC = const Color(0xFFC62828);
+        bgC = const Color(0xFFC62828).withValues(alpha: 0.12);
+        label = 'L';
+        break;
+      case 'C':
+        textC = const Color(0xFFF59E0B);
+        bgC = const Color(0xFFF59E0B).withValues(alpha: 0.12);
+        label = 'C';
         break;
       default:
-        fillColor = Colors.grey[400]!;
-        ringColor = Colors.grey[500]!;
+        textC = Colors.grey[600]!;
+        bgC = Colors.grey.withValues(alpha: 0.12);
+        label = 'D';
     }
-    return Container(
-      width: 12,
-      height: 12,
-      margin: const EdgeInsets.only(right: 4),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: fillColor,
-        border: Border.all(color: ringColor.withValues(alpha: 0.6), width: 0.5),
-        boxShadow: [
-          BoxShadow(
-            color: fillColor.withValues(alpha: 0.25),
-            blurRadius: 3, spreadRadius: 0, offset: const Offset(0, 1),
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(right: 3),
+      child: Container(
+        width: 18, height: 18,
+        decoration: BoxDecoration(
+          color: bgC,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: textC.withValues(alpha: 0.55), width: 0.8),
+        ),
+        alignment: Alignment.center,
+        child: Text(label,
+            style: TextStyle(fontSize: 9, color: textC, fontWeight: FontWeight.w800)),
       ),
     );
   }
