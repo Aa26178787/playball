@@ -121,7 +121,7 @@ def get_game_relay_all(game_id: int):
         def _fetch_inning(inning):
             url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/relay?inning={inning}"
             try:
-                res = req.get(url, headers=NAVER_HEADERS, timeout=10)
+                res = req.get(url, headers=NAVER_HEADERS, timeout=5)
                 if res.status_code == 200:
                     return inning, res.json()
             except Exception:
@@ -135,7 +135,7 @@ def get_game_relay_all(game_id: int):
         ]
 
         if innings_to_fetch:
-            workers = max(1, len(innings_to_fetch))
+            workers = min(4, max(1, len(innings_to_fetch)))
             with ThreadPoolExecutor(max_workers=workers) as _ex:
                 freshly_fetched = dict(_ex.map(_fetch_inning, innings_to_fetch))
         else:
@@ -1412,6 +1412,7 @@ def get_game_relay(game_id: int):
 
 
 @router.get("/{game_id}/pitch-types")
+@cached(60)
 def get_pitch_types(game_id: int):
     conn = get_connection()
     if not conn:
@@ -1444,6 +1445,7 @@ def get_pitch_types(game_id: int):
 
 
 @router.get("/{game_id}/pitch-locations")
+@cached(60)
 def get_pitch_locations(game_id: int):
     import math as _math
     conn = get_connection()
@@ -1625,7 +1627,7 @@ def get_pitch_locations(game_id: int):
 
     from concurrent.futures import ThreadPoolExecutor
     all_pitches = []
-    with ThreadPoolExecutor(max_workers=max_inning) as _ex:
+    with ThreadPoolExecutor(max_workers=min(4, max_inning)) as _ex:
         _results = sorted(_ex.map(_fetch_and_parse_inning, range(1, max_inning + 1)), key=lambda x: x[0])
     for _, pitches in _results:
         all_pitches.extend(pitches)
@@ -1641,6 +1643,7 @@ def get_pitch_locations(game_id: int):
     return _build_response(all_pitches)
 
 @router.get("/{game_id}/weather")
+@cached(300)
 def get_game_weather(game_id: int):
     conn = get_connection()
     if not conn:
@@ -1673,6 +1676,7 @@ def get_game_weather(game_id: int):
 
 
 @router.get("/{game_id}/highlights")
+@cached(1800)
 def get_game_highlights(game_id: int):
     conn = get_connection()
     if not conn:
