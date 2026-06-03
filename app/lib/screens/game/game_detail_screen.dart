@@ -3516,24 +3516,27 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Future<void> _openYouTube(String url) async {
     if (url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
     final isYT = url.contains('youtube.com') || url.contains('youtu.be');
-    // 1) YouTube 앱 직접 호출 (vnd.youtube scheme)
+    // 1) YouTube 앱이 https URL을 가로채도록 시도
     if (isYT) {
+      try {
+        final ok = await launchUrl(uri, mode: LaunchMode.externalNonBrowserApplication);
+        if (ok) return;
+      } catch (_) {}
+      // 2) vnd.youtube:VIDEO_ID (콜론만, 슬래시 X)
       final m = RegExp(r'(?:v=|/shorts/|youtu\.be/)([A-Za-z0-9_-]{11})').firstMatch(url);
       final vid = m?.group(1);
       if (vid != null) {
-        final appUri = Uri.parse('vnd.youtube://$vid');
         try {
-          if (await canLaunchUrl(appUri)) {
-            final ok = await launchUrl(appUri, mode: LaunchMode.externalNonBrowserApplication);
-            if (ok) return;
-          }
+          final appUri = Uri.parse('vnd.youtube:$vid');
+          final ok = await launchUrl(appUri, mode: LaunchMode.externalNonBrowserApplication);
+          if (ok) return;
         } catch (_) {}
       }
     }
-    // 2) fallback: 외부 브라우저 / 시스템 default
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
+    // 3) fallback: 외부 브라우저
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {}
