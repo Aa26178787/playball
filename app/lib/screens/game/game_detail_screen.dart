@@ -45,6 +45,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Map<int, int> _rankMap = {};
   bool _isLoading = true;
   int _loadAttempt = 0;
+  bool _isLoadingInFlight = false;
   bool _isRelayRefreshing = false;
   bool _scoringExpanded = true;
   List _sameDayGames = [];
@@ -148,6 +149,16 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   String _ck(String suffix) => 'game_${widget.gameId}_$suffix';
 
   Future<void> _loadData() async {
+    if (_isLoadingInFlight) return;
+    _isLoadingInFlight = true;
+    try {
+      await _loadDataInner();
+    } finally {
+      _isLoadingInFlight = false;
+    }
+  }
+
+  Future<void> _loadDataInner() async {
     // Phase 1: 모든 캐시를 병렬로 읽기
     final cacheResults = await Future.wait([
       LocalCache.get(_ck('detail'), maxAgeSeconds: 86400),

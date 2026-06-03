@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiService {
   static final favoriteTeamsChanged = ValueNotifier<int>(0);
+  static final myTeamData = ValueNotifier<List<Map<String, dynamic>>>([]);
   static const String baseUrl = 'https://playball.duckdns.org';
   static final Dio _dio = Dio(BaseOptions(
     baseUrl: baseUrl,
@@ -19,6 +20,18 @@ class ApiService {
   static final Map<int, Map<String, dynamic>> _gameDetailMem = {};
   static Map<String, dynamic>? getGameDetailMem(int id) => _gameDetailMem[id];
   static void setGameDetailMem(int id, Map<String, dynamic> data) => _gameDetailMem[id] = data;
+
+  // 동일 GET URL 진행 중 호출 dedupe: 중복 호출이 단일 Future 공유 → 서버 부하 감소
+  static final Map<String, Future<Response>> _inFlight = {};
+  static Future<Response> _dedupGet(String path, {Map<String, dynamic>? query, Options? options}) {
+    final key = '$path?${query == null ? '' : query.entries.map((e) => '${e.key}=${e.value}').join('&')}';
+    final existing = _inFlight[key];
+    if (existing != null) return existing;
+    final fut = _dio.get(path, queryParameters: query, options: options)
+        .whenComplete(() => _inFlight.remove(key));
+    _inFlight[key] = fut;
+    return fut;
+  }
 
   static final Map<int, Map<String, dynamic>> _playerDetailMem = {};
   static Map<String, dynamic>? getPlayerDetailMem(int id) => _playerDetailMem[id];
@@ -217,48 +230,48 @@ class ApiService {
 
   // ===== 경기 API =====
   static Future<Map<String, dynamic>> getTodayGames() async {
-    final res = await _dio.get('/games/today');
+    final res = await _dedupGet('/games/today');
     return res.data;
   }
 
   static Future<Map<String, dynamic>> getGameDetail(int gameId) async {
-    final res = await _dio.get('/games/$gameId');
+    final res = await _dedupGet('/games/$gameId');
     return res.data;
   }
 
   static Future<Map<String, dynamic>> getGamesByDate(String date) async {
-    final res = await _dio.get('/games/date/$date');
+    final res = await _dedupGet('/games/date/$date');
     return res.data;
   }
 
   static Future<Map<String, dynamic>> getGameRelay(int gameId) async {
-    final res = await _dio.get('/games/$gameId/relay');
+    final res = await _dedupGet('/games/$gameId/relay');
     return res.data;
   }
 
   static Future<Map<String, dynamic>> getGamePreview(int gameId) async {
-    final res = await _dio.get('/games/$gameId/preview');
+    final res = await _dedupGet('/games/$gameId/preview');
     return res.data;
   }
 
   static Future<Map<String, dynamic>> getGameRecordDetail(int gameId) async {
-    final res = await _dio.get('/games/$gameId/record_detail');
+    final res = await _dedupGet('/games/$gameId/record_detail');
     return res.data;
   }
 
   static Future<Map<String, dynamic>> getGameRelayAll(int gameId) async {
-    final res = await _dio.get('/games/$gameId/relay_all');
+    final res = await _dedupGet('/games/$gameId/relay_all');
     return res.data;
   }
 
   static Future<Map<String, dynamic>> getGamePitchTypes(int gameId) async {
-    final res = await _dio.get('/games/$gameId/pitch-types');
+    final res = await _dedupGet('/games/$gameId/pitch-types');
     return res.data;
   }
 
   static Future<Map<String, dynamic>?> getGameWeather(int gameId) async {
     try {
-      final res = await _dio.get('/games/$gameId/weather');
+      final res = await _dedupGet('/games/$gameId/weather');
       final w = res.data['weather'];
       return w != null ? Map<String, dynamic>.from(w) : null;
     } catch (_) {
@@ -267,7 +280,7 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getGameRoster(int gameId) async {
-    final res = await _dio.get('/games/$gameId/roster');
+    final res = await _dedupGet('/games/$gameId/roster');
     return res.data;
   }
 
@@ -334,12 +347,12 @@ class ApiService {
 
   // ===== 팀 API =====
   static Future<Map<String, dynamic>> getTeams() async {
-    final res = await _dio.get('/teams/');
+    final res = await _dedupGet('/teams/');
     return res.data;
   }
 
   static Future<Map<String, dynamic>> getTeamRankings() async {
-    final res = await _dio.get('/teams/rankings');
+    final res = await _dedupGet('/teams/rankings');
     return res.data;
   }
 
