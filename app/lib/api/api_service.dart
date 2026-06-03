@@ -733,17 +733,9 @@ class ApiService {
     return Map<String, dynamic>.from(res.data);
   }
 
-  static Future<Map<String, dynamic>> getGamePredictions(int gameId) async {
-    final headers = await optionalAuthHeaders();
-    final res = await _dio.get('/games/$gameId/predictions', options: Options(headers: headers));
-    return Map<String, dynamic>.from(res.data);
-  }
-
-  static Future<Map<String, dynamic>> predictGame(int gameId, int teamId) async {
-    final headers = await authHeaders();
-    final res = await _dio.post('/games/$gameId/predict',
-        data: {'predicted_team_id': teamId},
-        options: Options(headers: headers));
+  // ML 모델 승리예측 (구 vote 엔드포인트 대체)
+  static Future<Map<String, dynamic>> getWinPrediction(int gameId) async {
+    final res = await _dedupGet('/prediction/game/$gameId');
     return Map<String, dynamic>.from(res.data);
   }
 

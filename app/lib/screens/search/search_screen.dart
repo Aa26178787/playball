@@ -83,6 +83,8 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: TextField(
           controller: _ctrl,
           autofocus: true,
@@ -110,7 +112,7 @@ class _SearchScreenState extends State<SearchScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5))
           : !_searched
               ? _buildHistory()
               : _players.isEmpty && _teams.isEmpty

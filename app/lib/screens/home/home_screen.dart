@@ -2190,26 +2190,26 @@ class _PredictionBar extends StatefulWidget {
 }
 
 class _PredictionBarState extends State<_PredictionBar> {
-  // 세션 내 재생성 시 (스크롤 아웃→인) 즉시 표시용 static cache
+  // ML 모델 예측 결과 cache
   static final Map<int, Map<String, dynamic>> _cache = {};
 
-  int _homeVotes = 0;
-  int _awayVotes = 0;
-  int? _userVote;
+  double? _homeProb;
+  double? _awayProb;
+  String _homeStarter = '';
+  String _awayStarter = '';
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     _applyCache();
-    if (_loading) _load(); // 캐시 hit 시 재호출 금지 — setState 플리커 방지
+    if (_loading) _load();
   }
 
   @override
   void didUpdateWidget(_PredictionBar old) {
     super.didUpdateWidget(old);
     if (old.gameId != widget.gameId) {
-      // 게임 교체 (list 재정렬) — cache로 즉시 전환
       _applyCache();
       if (_loading) _load();
     }
@@ -2218,25 +2218,23 @@ class _PredictionBarState extends State<_PredictionBar> {
   void _applyCache() {
     final cached = _cache[widget.gameId];
     if (cached != null) {
-      _homeVotes = cached['home_votes'] as int? ?? 0;
-      _awayVotes = cached['away_votes'] as int? ?? 0;
-      _userVote = cached['user_vote'] as int?;
+      _homeProb = (cached['home_prob'] as num?)?.toDouble();
+      _awayProb = (cached['away_prob'] as num?)?.toDouble();
+      _homeStarter = cached['home_starter'] as String? ?? '';
+      _awayStarter = cached['away_starter'] as String? ?? '';
       _loading = false;
     }
   }
 
   Future<void> _load() async {
     try {
-      final data = await ApiService.getGamePredictions(widget.gameId);
-      _cache[widget.gameId] = {
-        'home_votes': data['home_votes'],
-        'away_votes': data['away_votes'],
-        'user_vote': data['user_vote'],
-      };
+      final data = await ApiService.getWinPrediction(widget.gameId);
+      _cache[widget.gameId] = data;
       if (mounted) setState(() {
-        _homeVotes = data['home_votes'] as int? ?? 0;
-        _awayVotes = data['away_votes'] as int? ?? 0;
-        _userVote = data['user_vote'] as int?;
+        _homeProb = (data['home_prob'] as num?)?.toDouble();
+        _awayProb = (data['away_prob'] as num?)?.toDouble();
+        _homeStarter = data['home_starter'] as String? ?? '';
+        _awayStarter = data['away_starter'] as String? ?? '';
         _loading = false;
       });
     } catch (_) {
@@ -2244,88 +2242,12 @@ class _PredictionBarState extends State<_PredictionBar> {
     }
   }
 
-  Future<void> _vote(int teamId) async {
-    try {
-      final data = await ApiService.predictGame(widget.gameId, teamId);
-      _cache[widget.gameId] = {
-        'home_votes': data['home_votes'],
-        'away_votes': data['away_votes'],
-        'user_vote': data['user_vote'],
-      };
-      if (mounted) setState(() {
-        _homeVotes = data['home_votes'] as int? ?? 0;
-        _awayVotes = data['away_votes'] as int? ?? 0;
-        _userVote = data['user_vote'] as int?;
-      });
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('로그인 후 예측 가능합니다'), duration: Duration(seconds: 2)),
-        );
-      }
-    }
-  }
-
-  Widget _voteButton({
-    required bool isSelected,
-    required String name,
-    required String pct,
-    required VoidCallback? onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 7),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? Colors.white.withOpacity(0.28)
-                : Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected
-                  ? Colors.white.withOpacity(0.8)
-                  : Colors.white.withOpacity(0.25),
-              width: isSelected ? 1.5 : 0.8,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                name,
-                style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.bold,
-                  color: Colors.white.withOpacity(isSelected ? 1.0 : 0.7),
-                  shadows: GameCard._textShadow,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                pct,
-                style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w800,
-                  color: Colors.white.withOpacity(isSelected ? 1.0 : 0.55),
-                  shadows: GameCard._textShadow,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final total = _homeVotes + _awayVotes;
-    final homePct = total > 0 ? _homeVotes / total : 0.5;
-    final awayPct = 1.0 - homePct;
-    final homeSelected = _userVote == widget.homeTeamId;
-    final awaySelected = _userVote == widget.awayTeamId;
-    final homePctStr = _loading ? '-' : '${(homePct * 100).round()}%';
-    final awayPctStr = _loading ? '-' : '${(awayPct * 100).round()}%';
+    final homeP = _homeProb ?? 0.5;
+    final awayP = _awayProb ?? 0.5;
+    final homePctStr = _loading ? '-' : '${(homeP * 100).round()}%';
+    final awayPctStr = _loading ? '-' : '${(awayP * 100).round()}%';
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -2334,38 +2256,74 @@ class _PredictionBarState extends State<_PredictionBar> {
           padding: const EdgeInsets.only(bottom: 5),
           child: Row(
             children: [
-              Text('승리 예측',
+              Text('AI 승리 예측',
                   style: TextStyle(
                     fontSize: 10, fontWeight: FontWeight.bold,
-                    color: Colors.white.withOpacity(0.6),
+                    color: Colors.white.withValues(alpha: 0.6),
                   )),
               const Spacer(),
-              if (total > 0)
-                Text('$total명 참여',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.white.withOpacity(0.45),
-                    )),
+              Text('ML 모델',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.white.withValues(alpha: 0.45),
+                  )),
             ],
           ),
         ),
-        Row(
-          children: [
-            _voteButton(
-              isSelected: homeSelected,
-              name: teamDisplayName(widget.homeCode),
-              pct: homePctStr,
-              onTap: () => _vote(widget.homeTeamId),
+        // 좌(원정) - 우(홈) 분할 바
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            height: 28,
+            child: Row(
+              children: [
+                Flexible(
+                  flex: (awayP * 1000).round().clamp(50, 950),
+                  child: Container(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '${teamDisplayName(widget.awayCode)} $awayPctStr',
+                      style: TextStyle(
+                        fontSize: 11, fontWeight: FontWeight.w800,
+                        color: Colors.white.withValues(alpha: 0.95),
+                        shadows: GameCard._textShadow,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                Container(width: 1, color: Colors.white.withValues(alpha: 0.4)),
+                Flexible(
+                  flex: (homeP * 1000).round().clamp(50, 950),
+                  child: Container(
+                    color: Colors.white.withValues(alpha: 0.32),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$homePctStr ${teamDisplayName(widget.homeCode)}',
+                      style: TextStyle(
+                        fontSize: 11, fontWeight: FontWeight.w800,
+                        color: Colors.white.withValues(alpha: 0.95),
+                        shadows: GameCard._textShadow,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            _voteButton(
-              isSelected: awaySelected,
-              name: teamDisplayName(widget.awayCode),
-              pct: awayPctStr,
-              onTap: () => _vote(widget.awayTeamId),
-            ),
-          ],
+          ),
         ),
+        if (_homeStarter.isNotEmpty || _awayStarter.isNotEmpty) ...[
+          const SizedBox(height: 3),
+          Text(
+            '$_awayStarter vs $_homeStarter',
+            style: TextStyle(
+              fontSize: 9,
+              color: Colors.white.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
       ],
     );
   }

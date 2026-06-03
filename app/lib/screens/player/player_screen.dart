@@ -447,7 +447,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 2))],
         ),
         child: Column(
@@ -456,7 +456,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                     child: (img != null && img.isNotEmpty)
                         ? CachedNetworkImage(
                             imageUrl: img,
@@ -526,7 +526,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final base = isDark ? Colors.grey[800]! : Colors.grey[300]!;
     final highlight = isDark ? Colors.grey[700]! : Colors.grey[100]!;
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+      padding: EdgeInsets.fromLTRB(12, 8, 12, (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         childAspectRatio: 0.72,
@@ -552,7 +552,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (_hitters.isEmpty) return const Center(child: Text('데이터가 없습니다'));
     final label = _hitterSorts.firstWhere((s) => s['value'] == _hitterSort)['label']!;
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+      padding: EdgeInsets.fromLTRB(12, 8, 12, (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         childAspectRatio: 0.72,
@@ -569,7 +569,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (_pitchers.isEmpty) return const Center(child: Text('데이터가 없습니다'));
     final label = _pitcherSorts.firstWhere((s) => s['value'] == _pitcherSort)['label']!;
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+      padding: EdgeInsets.fromLTRB(12, 8, 12, (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         childAspectRatio: 0.72,
@@ -608,7 +608,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Widget _buildPopularityTab() {
     if (_popularLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final items = _popularShowTeam ? _popularTeams : _popularPlayers;
@@ -692,7 +692,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             child: RefreshIndicator(
               onRefresh: _loadPopularity,
               child: ListView.separated(
-                padding: const EdgeInsets.only(bottom: 24),
+                padding: EdgeInsets.only(bottom: (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
                 itemCount: items.length,
                 separatorBuilder: (_, __) =>
                     Divider(height: 1, indent: 64, endIndent: 16, color: Colors.grey.withValues(alpha: 0.15)),
@@ -833,10 +833,18 @@ class _PlayerScreenState extends State<PlayerScreen>
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
           ),
         ],
+        surfaceTintColor: Colors.transparent,
         bottom: _isSearching
             ? null
             : TabBar(
                 controller: _tabController,
+                indicatorColor: const Color(0xFF1A237E),
+                indicatorWeight: 2.5,
+                labelColor: const Color(0xFF1A237E),
+                unselectedLabelColor: Colors.grey,
+                labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
+                dividerColor: Colors.transparent,
                 tabs: const [Tab(text: '타자'), Tab(text: '투수'), Tab(text: '인기투표')],
               ),
       ),
