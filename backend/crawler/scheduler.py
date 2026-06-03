@@ -1139,15 +1139,18 @@ def smart_update():
         for gid in newly_finished:
             schedule.every(27).minutes.do(_run_once, _check_post_game_milestones, gid)
 
-        # 경기 종료 30분 후 결과 요약 알림 (재시작 안전: 종료 경기 중 미발송만)
+        # 경기 종료 즉시 결과 요약 알림 (재시작 안전: 종료 경기 중 미발송만)
         for gid, curr in curr_details.items():
             if curr.get('status') != '종료':
                 continue
             if _already_notified(gid, 'game_end'):
                 continue
-            # 마킹 먼저 (중복 스케줄링 방지)
+            # 마킹 먼저 (중복 호출 방지)
             _mark_notified(gid, 'game_end')
-            schedule.every(30).minutes.do(_run_once, _send_game_summary, gid)
+            try:
+                _send_game_summary(gid)
+            except Exception as gs_err:
+                print(f"[FCM] game_summary 즉시 발송 오류 game={gid}: {gs_err}")
 
     conn = get_connection()
     if conn:
