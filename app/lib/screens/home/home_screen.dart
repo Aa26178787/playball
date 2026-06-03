@@ -2276,7 +2276,7 @@ class _PredictionBarState extends State<_PredictionBar> {
             ],
           ),
         ),
-        // 좌(원정) - 우(홈) 분할 바
+        // 좌(홈) - 우(원정) 분할 바 — GameCard 로고 배치(home 왼쪽 / away 오른쪽)와 매칭
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: SizedBox(
@@ -2284,12 +2284,12 @@ class _PredictionBarState extends State<_PredictionBar> {
             child: Row(
               children: [
                 Flexible(
-                  flex: (awayP * 1000).round().clamp(50, 950),
+                  flex: (homeP * 1000).round().clamp(50, 950),
                   child: Container(
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: Colors.white.withValues(alpha: 0.32),
                     alignment: Alignment.center,
                     child: Text(
-                      '${teamDisplayName(widget.awayCode)} $awayPctStr',
+                      '${teamDisplayName(widget.homeCode)} $homePctStr',
                       style: TextStyle(
                         fontSize: 11, fontWeight: FontWeight.w800,
                         color: Colors.white.withValues(alpha: 0.95),
@@ -2301,12 +2301,12 @@ class _PredictionBarState extends State<_PredictionBar> {
                 ),
                 Container(width: 1, color: Colors.white.withValues(alpha: 0.4)),
                 Flexible(
-                  flex: (homeP * 1000).round().clamp(50, 950),
+                  flex: (awayP * 1000).round().clamp(50, 950),
                   child: Container(
-                    color: Colors.white.withValues(alpha: 0.32),
+                    color: Colors.white.withValues(alpha: 0.2),
                     alignment: Alignment.center,
                     child: Text(
-                      '$homePctStr ${teamDisplayName(widget.homeCode)}',
+                      '$awayPctStr ${teamDisplayName(widget.awayCode)}',
                       style: TextStyle(
                         fontSize: 11, fontWeight: FontWeight.w800,
                         color: Colors.white.withValues(alpha: 0.95),
@@ -2323,7 +2323,7 @@ class _PredictionBarState extends State<_PredictionBar> {
         if (_homeStarter.isNotEmpty || _awayStarter.isNotEmpty) ...[
           const SizedBox(height: 3),
           Text(
-            '$_awayStarter vs $_homeStarter',
+            '$_homeStarter vs $_awayStarter',
             style: TextStyle(
               fontSize: 9,
               color: Colors.white.withValues(alpha: 0.5),
