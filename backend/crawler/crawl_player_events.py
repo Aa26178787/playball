@@ -64,6 +64,18 @@ def ensure_tables():
             crawled_at TIMESTAMPTZ DEFAULT NOW(),
             UNIQUE(player_id, season)
         );
+        CREATE TABLE IF NOT EXISTS allstar_vote_events (
+            id SERIAL PRIMARY KEY,
+            season INT NOT NULL,
+            opens_at DATE NOT NULL,
+            closes_at DATE NOT NULL,
+            vote_url TEXT,
+            notified_open BOOLEAN DEFAULT FALSE,
+            notified_d3 BOOLEAN DEFAULT FALSE,
+            notified_d1 BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(season)
+        );
     """)
     conn.commit()
     cur.close(); conn.close()
@@ -379,6 +391,39 @@ def notify_pending():
         except Exception as e:
             print(f"[event] allstar 알림 실패 id={aid}: {e}")
 
+    conn.commit()
+    cur.close(); conn.close()
+
+
+def check_allstar_vote_events():
+    """allstar_vote_events 테이블 검사 → 시작/D-3/D-1 알림 발송."""
+    from api.fcm_service import notify_allstar_vote_period
+    from datetime import date, timedelta
+    today = date.today()
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, season, opens_at, closes_at, vote_url,
+               notified_open, notified_d3, notified_d1
+        FROM allstar_vote_events
+        WHERE closes_at >= %s
+    """, (today,))
+    for eid, season, opens_at, closes_at, vote_url, n_open, n_d3, n_d1 in cur.fetchall():
+        deadline = closes_at.strftime('%m월 %d일')
+        try:
+            if not n_open and today >= opens_at:
+                notify_allstar_vote_period('opened', season, deadline, vote_url or '')
+                cur.execute("UPDATE allstar_vote_events SET notified_open=TRUE WHERE id=%s", (eid,))
+            if not n_d3 and today == closes_at - timedelta(days=3):
+                notify_allstar_vote_period('closing_d3', season, deadline, vote_url or '')
+                cur.execute("UPDATE allstar_vote_events SET notified_d3=TRUE WHERE id=%s", (eid,))
+            if not n_d1 and today == closes_at - timedelta(days=1):
+                notify_allstar_vote_period('closing_d1', season, deadline, vote_url or '')
+                cur.execute("UPDATE allstar_vote_events SET notified_d1=TRUE WHERE id=%s", (eid,))
+        except Exception as e:
+            print(f"[allstar_vote] 알림 실패 id={eid}: {e}")
     conn.commit()
     cur.close(); conn.close()
 

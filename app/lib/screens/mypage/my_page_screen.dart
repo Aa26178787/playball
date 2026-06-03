@@ -47,6 +47,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
   int  _notifyBeforeMinutes = 60;
   bool _notifyMilestone     = true;
   bool _notifyFavLineup     = true;
+  bool _notifyPlayerDaily   = true;
+  bool _notifyPlayerNews    = true;
+  bool _notifyTeamMilestone = true;
+  bool _notifyAllstarVote   = true;
   bool _settingsLoaded      = false;
 
   @override
@@ -74,6 +78,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
     _notifyBeforeMinutes = (settings['notify_before_minutes'] as num?)?.toInt() ?? 60;
     _notifyMilestone     = settings['notify_milestone']      as bool? ?? true;
     _notifyFavLineup     = settings['notify_fav_lineup']     as bool? ?? true;
+    _notifyPlayerDaily   = settings['notify_player_daily']   as bool? ?? true;
+    _notifyPlayerNews    = settings['notify_player_news']    as bool? ?? true;
+    _notifyTeamMilestone = settings['notify_team_milestone'] as bool? ?? true;
+    _notifyAllstarVote   = settings['notify_allstar_vote']   as bool? ?? true;
   }
 
   Future<void> _loadFromCache() async {
@@ -172,6 +180,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
         'notify_before_minutes':  _notifyBeforeMinutes,
         'notify_milestone':       _notifyMilestone,
         'notify_fav_lineup':      _notifyFavLineup,
+        'notify_player_daily':    _notifyPlayerDaily,
+        'notify_player_news':     _notifyPlayerNews,
+        'notify_team_milestone':  _notifyTeamMilestone,
+        'notify_allstar_vote':    _notifyAllstarVote,
       });
     } catch (_) {}
   }
@@ -812,16 +824,26 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 (v) { setState(() => _notifyRankChange = v); _saveSettings(); }),
             _notifTile('선두 추격', '마이팀 1위일 때 2위와 격차 좁혀질 때', _notifyPennantRace,
                 (v) { setState(() => _notifyPennantRace = v); _saveSettings(); }),
+            _notifTile('팀 선수 대기록', '마이팀 선수 시즌·월간·단일경기 기록 (홈런/타점/탈삼진 등)',
+                _notifyTeamMilestone,
+                (v) { setState(() => _notifyTeamMilestone = v); _saveSettings(); }),
+            _notifTile('1군 등록/말소', '마이팀 선수 등록 변경 시', _notifyRoster,
+                (v) { setState(() => _notifyRoster = v); _saveSettings(); }),
           ]),
           _notifCategory(Icons.person_outline, '선수 알림', [
-            _notifTile('홈런', '즐겨찾기 선수 홈런 시', _notifyFavHr,
-                (v) { setState(() => _notifyFavHr = v); _saveSettings(); }),
-            _notifTile('선발 출전', '즐겨찾기 선수 선발 출전 시', _notifyFavLineup,
-                (v) { setState(() => _notifyFavLineup = v); _saveSettings(); }),
-            _notifTile('대기록 달성', '연속안타·시즌/통산 기록·노히터·완봉 등', _notifyMilestone,
+            _notifTile('통산 대기록', '즐겨찾기 선수 통산 기록 달성 시 (홈런·안타·승·세이브 등)',
+                _notifyMilestone,
                 (v) { setState(() => _notifyMilestone = v); _saveSettings(); }),
-            _notifTile('1군 등록/말소', '즐겨찾기 선수·마이팀 선수 등록 변경 시', _notifyRoster,
-                (v) { setState(() => _notifyRoster = v); _saveSettings(); }),
+            _notifTile('오늘의 활약', '즐겨찾기 선수 매일 출전 결과 요약', _notifyPlayerDaily,
+                (v) { setState(() => _notifyPlayerDaily = v); _saveSettings(); }),
+            _notifTile('선수 뉴스', '트레이드·방출·은퇴·FA·부상·시상·올스타·연속안타',
+                _notifyPlayerNews,
+                (v) { setState(() => _notifyPlayerNews = v); _saveSettings(); }),
+          ]),
+          _notifCategory(Icons.how_to_vote, '올스타 팬투표', [
+            _notifTile('투표 기간 알림', '투표 시작·마감 D-3·D-1 + 즐겨찾기 선수 상위권 진입',
+                _notifyAllstarVote,
+                (v) { setState(() => _notifyAllstarVote = v); _saveSettings(); }),
           ]),
           _notifCategory(Icons.forum, '커뮤니티 알림', [
             _notifTile('댓글', '내 글에 댓글이 달릴 때', _notifyComment,

@@ -2853,6 +2853,8 @@ def run_scheduler():
             crawl_transactions()
             crawl_injury_list()
             notify_pending()
+            from crawler.crawl_player_events import check_allstar_vote_events
+            check_allstar_vote_events()
         except Exception as e:
             print(f"[player-events] daily 오류: {e}")
     schedule.every().day.at("15:40").do(_player_events_daily)

@@ -738,18 +738,16 @@ def notify_milestone(player_id: int, player_name: str, team_name: str,
         except Exception:
             pass
 
-    # 분류: 통산만 선수팬, 나머지는 팀팬
+    # 분류: 통산은 통산 토글(선수팬+팀팬), 나머지는 팀 마일스톤 토글(팀팬만)
     is_career = milestone_type.startswith('career_') or milestone_type.startswith('young_career_')
     targets = []
     if is_career:
-        # 통산: 선수팬 + 팀팬 둘 다 (중복 dedup)
         targets.extend(_get_player_fan_targets(player_id, 'notify_milestone'))
         if team_id:
             targets.extend(_get_team_fan_targets(team_id, 'notify_milestone'))
     else:
-        # 시즌/월간/단일경기/연속/연소/개인최다: 팀팬만
         if team_id:
-            targets = _get_team_fan_targets(team_id, 'notify_milestone')
+            targets = _get_team_fan_targets(team_id, 'notify_team_milestone')
     # 중복 제거 (user_id 기준)
     seen_uids = set()
     unique_targets = []
@@ -780,7 +778,7 @@ def notify_hitting_streak(player_id: int, player_name: str, team_name: str,
     """연속 안타 기록 (8경기 이상) — 즐겨찾기 선수 팬에게."""
     if streak < 8:
         return
-    targets = _get_player_fan_targets(player_id, 'notify_milestone')
+    targets = _get_player_fan_targets(player_id, 'notify_player_news')
     if not targets:
         return
     _send(targets,
@@ -793,7 +791,7 @@ def notify_hitting_streak(player_id: int, player_name: str, team_name: str,
 def notify_daily_player_summary(player_id: int, player_name: str, team_name: str,
                                  player_type: str, stats: dict, game_date):
     """매일 자정 즐겨찾기 선수 활약 요약. stats: {hits, at_bats, rbi, hr, ip, er, so, ...}"""
-    targets = _get_player_fan_targets(player_id, 'notify_milestone')
+    targets = _get_player_fan_targets(player_id, 'notify_player_daily')
     if not targets:
         return
     parts = []
@@ -835,7 +833,7 @@ def notify_player_transaction(player_id: int, player_name: str,
                               transaction_type: str, detail: str = ''):
     """트레이드/방출/은퇴/FA — 즐겨찾기 선수 팬에게.
     transaction_type: 'trade' / 'release' / 'retire' / 'fa_signed' / 'fa_filed'."""
-    targets = _get_player_fan_targets(player_id, 'notify_milestone')
+    targets = _get_player_fan_targets(player_id, 'notify_player_news')
     if not targets:
         return
     emoji_map = {
@@ -859,7 +857,7 @@ def notify_injury_list(player_id: int, player_name: str, team_name: str,
                        action: str, reason: str = ''):
     """부상자 명단 등재/복귀 — 즐겨찾기 선수 팬에게.
     action: 'listed' / 'returned'"""
-    targets = _get_player_fan_targets(player_id, 'notify_milestone')
+    targets = _get_player_fan_targets(player_id, 'notify_player_news')
     if not targets:
         return
     if action == 'listed':
@@ -879,7 +877,7 @@ def notify_award(player_id: int, player_name: str, team_name: str,
                  award_type: str, season: int, position: str = ''):
     """시상 (MVP/신인왕/GG) — 즐겨찾기 선수 팬에게.
     award_type: 'mvp' / 'rookie' / 'gg' / 'pitcher_gg' / 'goldenglove'"""
-    targets = _get_player_fan_targets(player_id, 'notify_milestone')
+    targets = _get_player_fan_targets(player_id, 'notify_player_news')
     if not targets:
         return
     emoji_map = {'mvp': '👑', 'rookie': '🌟', 'gg': '🏆', 'goldenglove': '🏆'}
@@ -899,7 +897,7 @@ def notify_allstar(player_id: int, player_name: str, team_name: str,
                    season: int, league: str = '', vote_rank: int = 0):
     """올스타 선발 — 즐겨찾기 선수 팬에게.
     league: 'dream' / 'nanum'"""
-    targets = _get_player_fan_targets(player_id, 'notify_milestone')
+    targets = _get_player_fan_targets(player_id, 'notify_player_news')
     if not targets:
         return
     league_str = f"({'드림' if league == 'dream' else '나눔'} 올스타) " if league else ""
@@ -908,4 +906,61 @@ def notify_allstar(player_id: int, player_name: str, team_name: str,
           f"⭐ {player_name} {season} 올스타 선발!",
           f"{team_name} {player_name} 선수가 {season} 올스타전에 선발되었습니다 {league_str}{rank_str}",
           {"player_id": str(player_id), "type": "allstar"},
+          "score_change", None)
+
+
+def notify_allstar_vote_period(stage: str, season: int, deadline: str = '',
+                                 vote_url: str = ''):
+    """올스타 팬투표 기간 알림 — 모든 사용자에게 (notify_allstar_vote 토글).
+    stage: 'opened' (시작) / 'closing_d3' (D-3) / 'closing_d1' (D-1).
+    deadline: 'MM월 DD일' 형식."""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT pt.user_id, pt.token
+            FROM push_tokens pt
+            JOIN user_settings us ON us.user_id = pt.user_id
+            WHERE COALESCE(us.notify_allstar_vote, TRUE) = TRUE
+              AND pt.token IS NOT NULL
+        """)
+        targets = [(r[0], r[1]) for r in cur.fetchall()]
+        cur.close()
+    finally:
+        conn.close()
+    if not targets:
+        return
+    if stage == 'opened':
+        title = f"🗳️ {season} 올스타 팬투표 시작!"
+        body = f"마이팀 선수를 응원해 주세요{f' · 마감 {deadline}' if deadline else ''}"
+    elif stage == 'closing_d3':
+        title = f"⏰ {season} 올스타 팬투표 마감 D-3"
+        body = f"{deadline} 마감 · 아직 투표 안 하셨다면 서둘러주세요!"
+    elif stage == 'closing_d1':
+        title = f"🚨 {season} 올스타 팬투표 마감 D-1"
+        body = f"내일 {deadline} 마감 · 마지막 기회입니다!"
+    else:
+        title = f"🗳️ {season} 올스타 팬투표"
+        body = deadline or "진행 중"
+    _send(targets, title, body,
+          {"type": "allstar_vote", "stage": stage,
+           **({"vote_url": vote_url} if vote_url else {})},
+          "score_change", None)
+
+
+def notify_allstar_vote_player_in(player_id: int, player_name: str, team_name: str,
+                                    league: str = '', vote_rank: int = 0):
+    """즐겨찾기 선수가 올스타 팬투표 상위권(예: TOP3) 진입 시 알림.
+    league: 'dream'/'nanum'."""
+    targets = _get_player_fan_targets(player_id, 'notify_allstar_vote')
+    if not targets:
+        return
+    league_str = f"({'드림' if league == 'dream' else '나눔'} 올스타) " if league else ""
+    rank_str = f"팬투표 {vote_rank}위" if vote_rank > 0 else "상위권 진입"
+    _send(targets,
+          f"📈 {player_name} 올스타 투표 {rank_str}",
+          f"{team_name} {player_name} 선수 {league_str}{rank_str}!",
+          {"player_id": str(player_id), "type": "allstar_vote_in"},
           "score_change", None)
