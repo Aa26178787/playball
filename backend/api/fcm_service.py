@@ -194,9 +194,24 @@ def _send(targets: list[tuple[int, str]], title: str, body: str,
         return
     try:
         from firebase_admin import messaging
+        # Android high priority + APNs alert → Doze 우회, background에서도 즉시 표시
         msg = messaging.MulticastMessage(
             notification=messaging.Notification(title=title, body=body),
             data={k: str(v) for k, v in data.items()},
+            android=messaging.AndroidConfig(
+                priority='high',
+                notification=messaging.AndroidNotification(
+                    channel_id='playball_default',
+                    sound='default',
+                    default_vibrate_timings=True,
+                ),
+            ),
+            apns=messaging.APNSConfig(
+                headers={'apns-priority': '10'},
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(sound='default', badge=1),
+                ),
+            ),
             tokens=tokens,
         )
         resp = messaging.send_each_for_multicast(msg)
