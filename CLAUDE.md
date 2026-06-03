@@ -630,6 +630,28 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 라이브 경기 첫 진입 cold cache 2~3초 (pitch-locations/highlights 첫 호출 후 60s/1800s 캐시)
 - scheduler 30초 사이클 → 빠른 연속 이벤트(스코어 + 즉시 회복) 일부 합쳐서 1개 알림으로 통합
 
+### WiFi 환경 체감 로딩 느림 (2026-06-04 진단 중)
+서버 측 최적화 적용했지만 사용자 체감 차이 존재. **모바일 직접 nslookup+curl 측정 시 WiFi vs 셀룰러 raw 동일** → 네트워크 자체 문제 아님.
+**서버 측 적용 완료:**
+- nginx HTTP/2 활성화 (`listen 443 ssl http2;`)
+- ssl_session_tickets on (TLS resume 빠름)
+- TCP BBR congestion control (`net.ipv4.tcp_congestion_control=bbr`)
+- TCP fastopen 양방향 (`tcp_fastopen=3`)
+- slow_start_after_idle=0 (keep-alive 약신호 회복)
+- qdisc fq (BBR pair)
+- tcp_notsent_lowat=16384
+**잔여 의심 후보 (향후 진단):**
+1. Dio/HttpClient maxConnectionsPerHost=6 → 게임 상세 10+ 동시 호출 시 큐잉
+2. Naver CDN (sports-phinf.pstatic.net) 이미지 라우팅 WiFi unstable
+3. WiFi 백그라운드 트래픽 (카카오톡/유튜브 등) 대역폭 점유
+4. WiFi 2.4GHz 혼잡 (5GHz 대비)
+5. 앱 콜드 스타트 첫 DNS+TLS (curl은 이미 캐시 hit 상태)
+**진단 step (다음 세션):**
+- A. 모바일에서 Naver CDN 이미지 직접 측정 (WiFi vs 데이터)
+- B. Dio interceptor 로깅 (동시 호출 수 + per-request timing)
+- C. maxConnectionsPerHost 6→20 변경 후 비교
+- D. 폰 백그라운드 트래픽 비교
+
 ## 해결됨 (이전 알려진 이슈)
 
 - ~~relay_all 서버사이드 캐시 없음~~ → 30초 캐시 + 완료 이닝 메모리 캐시
@@ -637,3 +659,9 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - ~~알림 본문 타구결과 빈값~~ → textRelays reversed + type 23 추가
 - ~~scheduler 재시작 시 알림 누락/중복~~ → notification_log dedup
 - ~~필드뷰 주자 이름/이미지 미표시~~ → batting_order 1-9 lookup 추가
+- ~~동명이인(박준영/이승현) game_pitchers 합쳐짐~~ → _reinsert_dupe_name_rows + _fix_dupe_name_player_ids (Naver pcode 기반 자동 재INSERT)
+- ~~game_summary 미발송~~ → outer dedup mark 먼저로 인한 내부 체크 즉시 return → 내부 체크 제거
+- ~~한화 두산 11회 연장 알림 누락~~ → inning sub_id 적용 (회차별 dedup)
+- ~~선수 상세 최근 5경기 미업데이트~~ → daily_stats dedup으로 매 사이클 호출 (newly_finished 의존 제거)
+- ~~FCM 핸드폰 미수신~~ → AndroidConfig high priority + channel_id='playball_default'
+- ~~예측 모델 vote UI~~ → ML 기반 win-prediction (LR+RF 앙상블, RF weight grid search, 70.1% acc)
