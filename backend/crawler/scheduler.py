@@ -869,7 +869,7 @@ def smart_update():
         # FCM 알림
         try:
             from api.fcm_service import (
-                notify_game_start, notify_score_change, notify_game_end,
+                notify_game_start, notify_score_change,
                 notify_extra_innings, notify_game_cancelled, notify_streak,
             )
             for gid, curr in curr_details.items():
@@ -980,11 +980,9 @@ def smart_update():
                     _check_new_hrs(gid, curr['home_team_id'], curr['away_team_id'])
                     _check_game_milestones(gid)
 
-                # 경기 종료
+                # 경기 종료 — 즉시 game_end 대신 30분 후 _send_game_summary로 발송
+                # (game_pitchers 승/패/홀드/세이브 + game_batters MVP 데이터 채워질 시간 확보)
                 elif cs == '종료' and ps == '진행':
-                    notify_game_end(gid, curr['home_team'], curr['away_team'],
-                                    curr['home_score'], curr['away_score'],
-                                    curr['home_team_id'], curr['away_team_id'])
                     # 종료 시점 날씨 DB 저장
                     try:
                         from api.weather_service import get_weather
