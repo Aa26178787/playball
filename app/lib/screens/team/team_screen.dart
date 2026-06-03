@@ -23,6 +23,7 @@ class _TeamScreenState extends State<TeamScreen>
   bool _isLoading = true;
   Set<int> _favoriteTeamIds = {};
   final Set<int> _expandedTeamIds = {};
+  String _period = 'full'; // 'full' | 'first_half' | 'last_10'
   List _odds = [];
   Timer? _autoRefreshTimer;
 
@@ -64,16 +65,17 @@ class _TeamScreenState extends State<TeamScreen>
   }
 
   Future<void> _loadTeams() async {
-    final cached = await LocalCache.get('team_rankings') as List?;
+    final cacheKey = 'team_rankings_$_period';
+    final cached = await LocalCache.get(cacheKey) as List?;
     if (cached != null && mounted) {
       setState(() { _teams = cached; _isLoading = false; });
     } else {
       if (mounted) setState(() => _isLoading = true);
     }
     try {
-      final data = await ApiService.getTeamRankings();
+      final data = await ApiService.getTeamRankings(period: _period);
       final rankings = data['rankings'] as List? ?? [];
-      await LocalCache.set('team_rankings', rankings);
+      await LocalCache.set(cacheKey, rankings);
       if (mounted) setState(() { _teams = rankings; _isLoading = false; });
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
@@ -247,29 +249,39 @@ class _TeamScreenState extends State<TeamScreen>
     final ink = isDark ? Colors.white : const Color(0xFF111113);
     final sub = isDark ? Colors.white60 : const Color(0xFF6B6B73);
     final line = isDark ? Colors.white24 : const Color(0xFFE0E0E4);
-    Widget chip(String label, {bool active = false, bool disabled = false}) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
-          color: active ? ink : Colors.transparent,
-          border: Border.all(color: active ? ink : line, width: 1),
+    Widget chip(String label, String value) {
+      final active = _period == value;
+      return GestureDetector(
+        onTap: () {
+          if (_period == value) return;
+          setState(() {
+            _period = value;
+            _expandedTeamIds.clear();
+          });
+          _loadTeams();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            color: active ? ink : Colors.transparent,
+            border: Border.all(color: active ? ink : line, width: 1),
+          ),
+          child: Text(label,
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600,
+                  color: active ? (isDark ? Colors.black : Colors.white) : sub)),
         ),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w600,
-                color: active ? (isDark ? Colors.black : Colors.white)
-                        : (disabled ? sub.withValues(alpha: 0.5) : sub))),
       );
     }
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(children: [
-        chip('${DateTime.now().year} 시즌', active: true),
+        chip('${DateTime.now().year} 시즌', 'full'),
         const SizedBox(width: 8),
-        chip('전반기', disabled: true),
+        chip('전반기', 'first_half'),
         const SizedBox(width: 8),
-        chip('최근 10경기', disabled: true),
+        chip('최근 10경기', 'last_10'),
       ]),
     );
   }
@@ -504,8 +516,18 @@ class _TeamScreenState extends State<TeamScreen>
   Widget _buildExpandSection(Map team, bool isDark, Color tc, bool isFav,
       {required Color paper2, required Color line, required Color line2,
        required Color sub, required Color ink, required Color ink2, required Color track}) {
-    final home = team['home_record'] as String? ?? '-';
-    final away = team['away_record'] as String? ?? '-';
+    String fmtRec(dynamic v) {
+      if (v is Map) {
+        final w = (v['wins'] as num?) ?? 0;
+        final l = (v['losses'] as num?) ?? 0;
+        final d = (v['draws'] as num?) ?? 0;
+        return d > 0 ? '$w-$l-$d' : '$w-$l';
+      }
+      if (v is String) return v;
+      return '-';
+    }
+    final home = fmtRec(team['home_record']);
+    final away = fmtRec(team['away_record']);
     final oneRun = team['one_run_pct'] as String?;
     final pyth = (team['pythag_winpct'] as num?);
     final oneRunStr = oneRun ?? (pyth == null ? '-' : pyth.toStringAsFixed(3));

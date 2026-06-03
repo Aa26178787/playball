@@ -346,8 +346,8 @@ class ApiService {
     return res.data;
   }
 
-  static Future<Map<String, dynamic>> getTeamRankings() async {
-    final res = await _dedupGet('/teams/rankings');
+  static Future<Map<String, dynamic>> getTeamRankings({String period = 'full'}) async {
+    final res = await _dedupGet('/teams/rankings', query: {'period': period});
     return res.data;
   }
 

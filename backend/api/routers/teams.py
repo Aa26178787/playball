@@ -1,8 +1,56 @@
+import os
 import random
-from fastapi import APIRouter, HTTPException, Depends
+from datetime import datetime
+from fastapi import APIRouter, HTTPException, Depends, Query
 from database.connection import get_connection
 from api.routers.auth import get_current_user, get_optional_user
 from api.cache import cached
+
+
+# 전반기 cutoff — KBO 올스타브레이크 직전 (ENV로 시즌마다 override)
+def _first_half_cutoff():
+    val = os.environ.get('KBO_ALLSTAR_BREAK_DATE', '').strip()
+    if val:
+        return val
+    return f"{datetime.now().year}-07-15"
+
+
+def _calc_period_record(team_id, cur, period):
+    """period별 wins/losses/draws/win_rate 재계산.
+    period: 'full' (None 반환=기본 사용), 'first_half', 'last_10'."""
+    if period == 'first_half':
+        cur.execute("""
+            SELECT home_team_id, home_score, away_score
+            FROM games
+            WHERE (home_team_id = %s OR away_team_id = %s)
+              AND status = '종료'
+              AND game_date <= %s
+        """, (team_id, team_id, _first_half_cutoff()))
+    elif period == 'last_10':
+        cur.execute("""
+            SELECT home_team_id, home_score, away_score
+            FROM (
+              SELECT home_team_id, away_team_id, home_score, away_score, game_date, id
+              FROM games
+              WHERE (home_team_id = %s OR away_team_id = %s)
+                AND status = '종료'
+              ORDER BY game_date DESC, id DESC
+              LIMIT 10
+            ) sub
+        """, (team_id, team_id))
+    else:
+        return None
+    w, l, d = 0, 0, 0
+    for home_id, hs, as_ in cur.fetchall():
+        if hs == as_:
+            d += 1
+        elif (home_id == team_id and hs > as_) or (home_id != team_id and as_ > hs):
+            w += 1
+        else:
+            l += 1
+    total = w + l
+    rate = (w / total) if total > 0 else 0.0
+    return {'wins': w, 'losses': l, 'draws': d, 'win_rate': rate}
 
 router = APIRouter()
 
@@ -207,7 +255,7 @@ def _calc_home_away(team_id, cur):
 
 @router.get("/rankings")
 @cached(60)
-def get_team_rankings():
+def get_team_rankings(period: str = Query('full', regex='^(full|first_half|last_10)$')):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -230,6 +278,13 @@ def get_team_rankings():
         rank    = r[6]
         gb      = float(r[7]) if r[7] else 0
 
+        # period 모드: wins/losses/draws/win_rate 재계산 (rank/gb는 아래서 정렬 후 재할당)
+        period_rec = _calc_period_record(team_id, cur, period) if period != 'full' else None
+        if period_rec:
+            wins   = period_rec['wins']
+            losses = period_rec['losses']
+            draws  = period_rec['draws']
+
         streak        = _calc_streak(team_id, cur)
         recent_5      = _calc_recent_5(team_id, cur)
         recent_10     = _calc_recent_10(team_id, cur)
@@ -238,6 +293,9 @@ def get_team_rankings():
         pythag_winpct = _calc_pythagorean(team_id, cur)
         one_run_pct   = _calc_one_run_pct(team_id, cur)
         rank_change   = _calc_rank_change(team_id, cur, rank)
+
+        win_rate_db = float(r[8]) if r[8] else 0
+        win_rate = period_rec['win_rate'] if period_rec else win_rate_db
 
         result.append({
             "id":           team_id,
@@ -249,7 +307,7 @@ def get_team_rankings():
             "total_games":  wins + losses + draws,
             "rank":         rank,
             "games_behind": None if rank == 1 else gb,
-            "win_rate":     float(r[8]) if r[8] else 0,
+            "win_rate":     win_rate,
             "logo_url":     r[9],
             "streak":       streak,
             "recent_5":     recent_5,
@@ -262,9 +320,21 @@ def get_team_rankings():
             "rank_change":  rank_change,
         })
 
+    # period != full → rank/games_behind 재정렬
+    if period != 'full':
+        result.sort(key=lambda t: (-t['win_rate'], -t['wins']))
+        leader_w = result[0]['wins'] if result else 0
+        leader_l = result[0]['losses'] if result else 0
+        for i, t in enumerate(result, 1):
+            t['rank'] = i
+            if i == 1:
+                t['games_behind'] = None
+            else:
+                t['games_behind'] = ((leader_w - t['wins']) + (t['losses'] - leader_l)) / 2
+
     cur.close()
     conn.close()
-    return {"count": len(result), "rankings": result}
+    return {"count": len(result), "rankings": result, "period": period}
 
 
 @router.get("/postseason-odds")
