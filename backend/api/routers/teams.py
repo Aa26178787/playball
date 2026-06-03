@@ -205,56 +205,56 @@ def get_team_rankings():
 
 
 @router.get("/postseason-odds")
-@cached(300)
+@cached(600)
 def get_postseason_odds():
-    """가을야구 진출 확률 (Monte Carlo 100,000회 시뮬레이션)"""
+    """가을야구 진출 + 한국시리즈 직행 확률.
+    Elo 레이팅 기반 Monte Carlo 시뮬레이션 (실제 남은 schedule + 홈/원정 + 상대 강도)."""
+    from api.prediction.elo import compute_team_elo, get_remaining_schedule, simulate_postseason
+
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
     cur = conn.cursor()
     cur.execute("""
-        SELECT id, name, short_name, wins, losses, draws, win_rate
+        SELECT id, name, short_name, wins, losses, draws
         FROM teams ORDER BY rank ASC NULLS LAST
     """)
     rows = cur.fetchall()
     cur.close(); conn.close()
 
-    TOTAL_GAMES = 144
-    N_SIM = 100000
-    PS_SPOTS = 5  # 가을야구 진출 팀 수
-    KS_SPOTS = 1  # 한국시리즈 직행 (정규시즌 1위)
+    teams_meta = {r[0]: {
+        "id": r[0], "name": r[1], "short_name": r[2],
+        "wins": r[3] or 0, "losses": r[4] or 0, "draws": r[5] or 0,
+    } for r in rows}
 
-    teams = []
-    for r in rows:
-        played = (r[3] or 0) + (r[4] or 0) + (r[5] or 0)
-        remaining = max(0, TOTAL_GAMES - played)
-        w, l = r[3] or 0, r[4] or 0
-        wr = w / (w + l) if (w + l) > 0 else 0.5
-        teams.append({
-            "id": r[0], "name": r[1], "short_name": r[2],
-            "wins": w, "losses": l, "draws": r[5] or 0,
-            "win_rate": wr, "remaining": remaining,
-        })
+    # 26시즌 Elo 산출
+    elos = compute_team_elo(season=2026)
+    # 남은 schedule
+    remaining = get_remaining_schedule(season=2026)
+    current_wins = {tid: t["wins"] for tid, t in teams_meta.items()}
+    current_losses = {tid: t["losses"] for tid, t in teams_meta.items()}
 
-    ps_count = {t["id"]: 0 for t in teams}
-    ks_count = {t["id"]: 0 for t in teams}
+    # Monte Carlo
+    odds = simulate_postseason(
+        elos=elos,
+        current_wins=current_wins,
+        current_losses=current_losses,
+        remaining=remaining,
+        n_sim=50000,
+        ps_spots=5, ks_spots=1
+    )
 
-    for _ in range(N_SIM):
-        sim_wins = {}
-        for t in teams:
-            extra = sum(1 for _ in range(t["remaining"]) if random.random() < t["win_rate"])
-            sim_wins[t["id"]] = t["wins"] + extra
-
-        ranked = sorted(sim_wins.items(), key=lambda x: -x[1])
-        for i, (tid, _) in enumerate(ranked):
-            if i < PS_SPOTS:
-                ps_count[tid] += 1
-            if i < KS_SPOTS:
-                ks_count[tid] += 1
+    # 남은 경기 수 (팀별)
+    remaining_count = {tid: 0 for tid in teams_meta}
+    for h, a in remaining:
+        if h in remaining_count:
+            remaining_count[h] += 1
+        if a in remaining_count:
+            remaining_count[a] += 1
 
     result = []
-    for t in teams:
-        tid = t["id"]
+    for tid, t in teams_meta.items():
+        o = odds.get(tid, {'ps_prob': 0, 'ks_prob': 0})
         result.append({
             "id":         tid,
             "name":       t["name"],
@@ -262,12 +262,18 @@ def get_postseason_odds():
             "wins":       t["wins"],
             "losses":     t["losses"],
             "draws":      t["draws"],
-            "remaining":  t["remaining"],
-            "ps_prob":    round(ps_count[tid] / N_SIM, 4),
-            "ks_prob":    round(ks_count[tid] / N_SIM, 4),
+            "remaining":  remaining_count[tid],
+            "elo":        round(elos.get(tid, 1500.0), 1),
+            "ps_prob":    round(o['ps_prob'], 4),
+            "ks_prob":    round(o['ks_prob'], 4),
         })
     result.sort(key=lambda x: -x["ps_prob"])
-    return {"odds": result}
+    return {
+        "odds": result,
+        "method": "elo_monte_carlo_v2",
+        "n_sim": 50000,
+        "hfa_points": 50,
+    }
 
 
 @router.get("/")
