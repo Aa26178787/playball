@@ -1254,8 +1254,12 @@ def get_game_relay(game_id: int):
             if fconn:
                 fcur = fconn.cursor()
 
-                # 1) naver_player_id → player info (타자 + 주자 3명 + 투수)
-                nids = [str(game_state.get(k, '')) for k in ('batter', 'pitcher', 'base1', 'base2', 'base3')]
+                # 1) naver_player_id → player info (타자/투수는 실제 naver_player_id)
+                #    base1/2/3: 1~9이면 타순 번호(batting_order), 아니면 naver_player_id
+                pid_keys = ('batter', 'pitcher')
+                base_keys = ('base1', 'base2', 'base3')
+
+                nids = [str(game_state.get(k, '')) for k in pid_keys]
                 nids = [n for n in nids if n and n != '0']
                 player_by_nid = {}
                 if nids:
@@ -1266,10 +1270,54 @@ def get_game_relay(game_id: int):
                     for r in fcur.fetchall():
                         player_by_nid[str(r[0])] = {"player_id": r[1], "name": r[2], "image": r[3], "jersey": r[4]}
 
+                # 타순 번호 방식(1-9)인 주자는 game_batters batting_order로 조회
+                base_nids = []
+                base_orders = []
+                for k in base_keys:
+                    v = str(game_state.get(k, '') or '')
+                    if v and v != '0':
+                        try:
+                            n = int(v)
+                            if 1 <= n <= 9:
+                                base_orders.append((k, n))
+                            else:
+                                base_nids.append(v)
+                        except ValueError:
+                            base_nids.append(v)
+
+                if base_nids:
+                    fcur.execute("""
+                        SELECT naver_player_id, id, name, profile_image, number
+                        FROM players WHERE naver_player_id = ANY(%s)
+                    """, (base_nids,))
+                    for r in fcur.fetchall():
+                        player_by_nid[str(r[0])] = {"player_id": r[1], "name": r[2], "image": r[3], "jersey": r[4]}
+
+                # 타순 번호 → DB game_batters 조회 (batting_side = 공격팀)
+                player_by_order: dict = {}
+                if base_orders:
+                    order_nums = [o for _, o in base_orders]
+                    fcur.execute("""
+                        SELECT p.id, p.name, p.profile_image, p.number, gb.batting_order
+                        FROM game_batters gb
+                        JOIN players p ON p.id = gb.player_id
+                        WHERE gb.game_id = %s AND gb.team_side = %s
+                          AND gb.batting_order = ANY(%s) AND gb.batting_order > 0
+                        ORDER BY gb.batting_order
+                    """, (game_id, batting_side, order_nums))
+                    for r in fcur.fetchall():
+                        player_by_order[r[4]] = {"player_id": r[0], "name": r[1], "image": r[2], "jersey": r[3]}
+
                 def _pinfo(key):
-                    nid = str(game_state.get(key, ''))
-                    if not nid or nid == '0': return None
-                    return player_by_nid.get(nid)
+                    v = str(game_state.get(key, '') or '')
+                    if not v or v == '0': return None
+                    try:
+                        n = int(v)
+                        if 1 <= n <= 9:
+                            return player_by_order.get(n)
+                    except ValueError:
+                        pass
+                    return player_by_nid.get(v)
 
                 # 2) 수비 9명 (fielding_side)
                 fcur.execute("""

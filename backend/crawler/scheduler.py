@@ -1770,8 +1770,8 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
                     last1_speed = int(opt.get('speed', 0) or 0) or curr_speed
                     last1_pitch_num = curr_pitch_num
 
-                # type=13: 타석 최종 결과 (희생플라이/안타/번트/볼넷/삼진 등)
-                elif otype == 13:
+                # type=13(홈팀)/23(원정팀): 타석 최종 결과 (희생플라이/안타/번트/볼넷/삼진 등)
+                elif otype in (13, 23):
                     last13_text = text_now
                     last13_batter = curr_batter
                     last13_pitcher = curr_pitcher

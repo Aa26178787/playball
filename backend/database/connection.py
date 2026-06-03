@@ -1,4 +1,5 @@
 import os
+import threading
 import psycopg2
 from psycopg2 import pool
 
@@ -17,6 +18,7 @@ DB_CONFIG = {
 }
 
 _pool: pool.ThreadedConnectionPool | None = None
+_pool_lock = threading.Lock()
 
 
 def _get_pool() -> pool.ThreadedConnectionPool:
@@ -26,6 +28,17 @@ def _get_pool() -> pool.ThreadedConnectionPool:
         minconn = min(3, maxconn)
         _pool = pool.ThreadedConnectionPool(minconn=minconn, maxconn=maxconn, **DB_CONFIG)
     return _pool
+
+
+def _reset_pool():
+    global _pool
+    with _pool_lock:
+        if _pool is not None:
+            try:
+                _pool.closeall()
+            except Exception:
+                pass
+            _pool = None
 
 
 class _PooledConn:
@@ -66,10 +79,20 @@ class _PooledConn:
 def get_connection() -> _PooledConn | None:
     """Return a pooled DB connection. Call conn.close() to return it to the pool."""
     try:
-        conn = _get_pool().getconn()
-        return _PooledConn(conn)
+        return _PooledConn(_get_pool().getconn())
+    except pool.PoolError as e:
+        if 'exhausted' in str(e).lower():
+            print(f"[DB] 풀 고갈 감지 → 풀 재생성")
+            _reset_pool()
+            try:
+                return _PooledConn(_get_pool().getconn())
+            except Exception as e2:
+                print(f"[DB] 풀 재생성 후 연결 실패: {e2}")
+                return None
+        print(f"[DB] 연결 오류: {e}")
+        return None
     except Exception as e:
-        print(f"DB 연결 오류: {e}")
+        print(f"[DB] 연결 오류: {e}")
         return None
 
 
