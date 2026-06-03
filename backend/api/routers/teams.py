@@ -240,7 +240,7 @@ def get_postseason_odds():
         current_wins=current_wins,
         current_losses=current_losses,
         remaining=remaining,
-        n_sim=50000,
+        n_sim=100000,
         ps_spots=5, ks_spots=1
     )
 
@@ -276,7 +276,7 @@ def get_postseason_odds():
     return {
         "odds": result,
         "method": "elo_monte_carlo_v2",
-        "n_sim": 50000,
+        "n_sim": 100000,
         "hfa_points": 50,
         "structure": {
             "ks_direct": "정규시즌 1위 → 한국시리즈 직행",
