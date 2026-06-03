@@ -32,3 +32,44 @@ def admin_reload_model(pw: str = ""):
     reload_model()
     invalidate_park_factors()
     return {"status": "reloaded"}
+
+
+@router.get("/accuracy")
+@cached(300)
+def get_accuracy_history(limit: int = 30):
+    """일별 정확도 + 최근 모델 정보."""
+    from database.connection import get_connection
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500)
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT log_date, games, correct, accuracy, avg_log_loss
+            FROM prediction_accuracy_daily
+            ORDER BY log_date DESC LIMIT %s
+        """, (limit,))
+        rows = cur.fetchall()
+        daily = [
+            {'date': r[0].isoformat(), 'games': r[1], 'correct': r[2],
+             'accuracy': round(float(r[3] or 0), 3),
+             'log_loss': round(float(r[4] or 0), 3)}
+            for r in rows
+        ]
+        # 전체 누적
+        cur.execute("""
+            SELECT COUNT(*) total, SUM(CASE WHEN correct THEN 1 ELSE 0 END) corr,
+                   AVG(log_loss) avg_ll
+            FROM prediction_log WHERE actual_winner IS NOT NULL
+        """)
+        total, corr, avg_ll = cur.fetchone()
+        cur.close()
+        overall = {
+            'total': total or 0,
+            'correct': corr or 0,
+            'accuracy': round((corr / total) if total else 0, 3),
+            'log_loss': round(float(avg_ll or 0), 3),
+        }
+        return {'daily': daily, 'overall': overall}
+    finally:
+        conn.close()

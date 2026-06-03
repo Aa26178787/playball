@@ -282,6 +282,34 @@ def _bullpen_rest(cur, team_id: int, before_date) -> dict:
     return {'bullpen_rest_score': round(1.0 - (used_yesterday / 7.0), 3)}
 
 
+def _context_features(cur, game_id: int, home_id: int, away_id: int, gdate) -> dict:
+    """요일/주말/더블헤더 등 컨텍스트 features."""
+    dow = gdate.weekday()  # 0=월, 6=일
+    is_weekend = 1 if dow >= 5 else 0
+    # 더블헤더: 같은 날 같은 두 팀 게임이 2개
+    cur.execute("""
+        SELECT COUNT(*) FROM games
+        WHERE game_date=%s
+          AND ((home_team_id=%s AND away_team_id=%s) OR (home_team_id=%s AND away_team_id=%s))
+    """, (gdate, home_id, away_id, away_id, home_id))
+    same_day = cur.fetchone()[0] or 1
+    is_dh = 1 if same_day > 1 else 0
+    # 직전 경기 우천 취소 (양 팀 어느쪽이라도)
+    cur.execute("""
+        SELECT COUNT(*) FROM games
+        WHERE status='취소'
+          AND game_date = %s::date - INTERVAL '1 day'
+          AND (home_team_id IN (%s,%s) OR away_team_id IN (%s,%s))
+    """, (gdate, home_id, away_id, home_id, away_id))
+    rain_prev = 1 if (cur.fetchone()[0] or 0) > 0 else 0
+    return {
+        'day_of_week': dow,
+        'is_weekend': is_weekend,
+        'is_doubleheader': is_dh,
+        'rain_delay_prev': rain_prev,
+    }
+
+
 def get_features(game_id: int, season: int = 2026) -> dict:
     """게임 1건의 전체 feature dict.
     예측/학습 공통 — game_date 시점 기준 prior data만 사용."""
@@ -332,6 +360,9 @@ def get_features(game_id: int, season: int = 2026) -> dict:
         h_form = _recent_form(cur, home_id, gdate, 10)
         a_form = _recent_form(cur, away_id, gdate, 10)
 
+        # 컨텍스트
+        ctx = _context_features(cur, game_id, home_id, away_id, gdate)
+
         cur.close()
 
         features = {
@@ -376,6 +407,11 @@ def get_features(game_id: int, season: int = 2026) -> dict:
             'h_recent_ra': h_form['recent_ra_pg'], 'a_recent_ra': a_form['recent_ra_pg'],
             # 파크
             'park_runs_factor': pf['runs'], 'park_hr_factor': pf['hr'],
+            # 컨텍스트
+            'day_of_week': ctx['day_of_week'],
+            'is_weekend': ctx['is_weekend'],
+            'is_doubleheader': ctx['is_doubleheader'],
+            'rain_delay_prev': ctx['rain_delay_prev'],
         }
         return features
     finally:

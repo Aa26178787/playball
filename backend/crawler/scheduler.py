@@ -2811,6 +2811,24 @@ def run_scheduler():
     # 매일 UTC 00:30 (KST 09:30): 등록말소 크롤링
     schedule.every().day.at("00:30").do(_update_roster_changes)
 
+    # 매일 UTC 15:30 (KST 00:30): 예측 정확도 평가 + 일별 집계 + 오늘 로깅 + 재학습
+    def _prediction_daily():
+        try:
+            from api.prediction.eval import daily_pipeline
+            daily_pipeline()
+        except Exception as e:
+            print(f"[prediction] daily_pipeline 오류: {e}")
+    schedule.every().day.at("15:30").do(_prediction_daily)
+
+    # 매시간: 오늘 예측 로깅 (스케줄 변경 대응 — 선발 변경 시 갱신)
+    def _prediction_hourly_log():
+        try:
+            from api.prediction.eval import log_today_predictions
+            log_today_predictions()
+        except Exception as e:
+            print(f"[prediction] hourly log 오류: {e}")
+    schedule.every(1).hours.do(_prediction_hourly_log)
+
     # 매주 월요일 UTC 03:00: 시즌 일정
     schedule.every().monday.at("03:00").do(update_season_schedule)
 

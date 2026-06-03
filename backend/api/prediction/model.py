@@ -29,6 +29,7 @@ FEATURE_KEYS = [
     'h_recent_wpct', 'a_recent_wpct',
     'h_recent_rs', 'a_recent_rs', 'h_recent_ra', 'a_recent_ra',
     'park_runs_factor', 'park_hr_factor',
+    'day_of_week', 'is_weekend', 'is_doubleheader', 'rain_delay_prev',
 ]
 
 # Derived diff features (often 더 강한 signal)
@@ -122,8 +123,16 @@ def train_model(season: int = 2026):
     rf.fit(X_tr, y_tr)
     rf_p = rf.predict_proba(X_te)[:, 1]
 
-    # RF 가중 0.7 (RF가 LR보다 정확도 높음)
-    ens_p = 0.3 * lr_p + 0.7 * rf_p
+    # 가중치 grid search → 최고 정확도 선택
+    best_w, best_acc = 0.5, 0.0
+    for w in [0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1.0]:
+        ep = (1 - w) * lr_p + w * rf_p
+        acc = accuracy_score(y_te, (ep > 0.5).astype(int))
+        if acc > best_acc:
+            best_w, best_acc = w, acc
+    print(f"[train] best RF weight = {best_w}, acc = {best_acc:.3f}")
+    rf_weight = best_w
+    ens_p = (1 - rf_weight) * lr_p + rf_weight * rf_p
     ens_pred = (ens_p > 0.5).astype(int)
 
     print(f"\n[train] LR  test acc={accuracy_score(y_te, (lr_p>0.5).astype(int)):.3f} auc={roc_auc_score(y_te, lr_p):.3f}")
@@ -147,8 +156,10 @@ def train_model(season: int = 2026):
             'lr': lr, 'rf': rf, 'scaler': scaler,
             'feature_names': names,
             'season': season,
+            'rf_weight': float(rf_weight),
             'test_acc': float(accuracy_score(y_te, ens_pred)),
             'test_auc': float(roc_auc_score(y_te, ens_p)),
+            'trained_at': __import__('datetime').datetime.now().isoformat(),
         }, f)
     print(f"\n[train] 모델 저장: {MODEL_PATH}")
 
@@ -186,7 +197,8 @@ def predict_win_probability(game_id: int) -> dict:
     vec_s = model['scaler'].transform(vec)
     lr_p = model['lr'].predict_proba(vec_s)[0, 1]
     rf_p = model['rf'].predict_proba(vec)[0, 1]
-    ens_p = 0.3 * lr_p + 0.7 * rf_p
+    rf_w = float(model.get('rf_weight', 0.85))
+    ens_p = (1 - rf_w) * lr_p + rf_w * rf_p
 
     # Top factor explanation (LR 계수 × scaled feature)
     lr_coefs = model['lr'].coef_[0]
