@@ -2898,8 +2898,8 @@ def run_scheduler():
     # 매시간: 팀 뉴스 크롤링
     schedule.every(1).hours.do(_crawl_news_hourly)
 
-    # 매시간: 하이라이트 크롤링
-    schedule.every(1).hours.do(_crawl_highlights_hourly)
+    # 6시간마다: 하이라이트 크롤링 (YouTube API quota 절감)
+    schedule.every(6).hours.do(_crawl_highlights_hourly)
 
     # 15분마다: 크롤러 헬스체크
     schedule.every(15).minutes.do(_health_check)
