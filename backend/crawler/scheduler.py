@@ -32,12 +32,16 @@ _game_hr_cache: dict = {}       # {game_id: {player_id: hr_count}} — HR 중복
 _fav_lineup_sent: set = set()   # (game_id, player_id) — 선발출전 알림 중복 방지
 _lineup_announced: set = set()  # game_id — 선발투수 발표 알림 중복 방지
 _pitcher_seen: dict = {}        # {game_id: set(player_id)} — 투수 교체 알림 추적
-_notified_cache: set = set()    # (game_id, ntype) — 알림 중복 방지 (재시작 후 DB로 hydrate)
+_notified_cache: set = set()    # (game_id, ntype, sub_id) — 알림 중복 방지 (재시작 후 DB로 hydrate)
 
 
-def _already_notified(game_id: int, ntype: str) -> bool:
-    """DB+메모리 조합 중복 체크. 재시작 후에도 동일 game+type 재발송 방지."""
-    key = (game_id, ntype)
+def _already_notified(game_id, ntype: str, sub_id: str = '') -> bool:
+    """DB(notification_log + user_notifications) + 메모리 조합 중복 체크.
+    재시작 후에도 동일 game/type/sub_id 재발송 방지.
+    game_id=None이면 0으로 정규화 (팀 기반 알림 등).
+    """
+    gid = int(game_id) if game_id is not None else 0
+    key = (gid, ntype, sub_id)
     if key in _notified_cache:
         return True
     conn = get_connection()
@@ -45,14 +49,25 @@ def _already_notified(game_id: int, ntype: str) -> bool:
         return False
     try:
         cur = conn.cursor()
+        # 1) notification_log: targets 없어도 마킹 가능, 모든 ntype 지원
         cur.execute(
-            "SELECT 1 FROM user_notifications WHERE game_id=%s AND type=%s LIMIT 1",
-            (game_id, ntype)
+            "SELECT 1 FROM notification_log WHERE game_id=%s AND type=%s AND sub_id=%s LIMIT 1",
+            (gid, ntype, sub_id)
         )
         if cur.fetchone():
             _notified_cache.add(key)
             cur.close()
             return True
+        # 2) user_notifications: 과거 데이터 호환 (sub_id 없는 ntype만)
+        if not sub_id and gid > 0:
+            cur.execute(
+                "SELECT 1 FROM user_notifications WHERE game_id=%s AND type=%s LIMIT 1",
+                (gid, ntype)
+            )
+            if cur.fetchone():
+                _notified_cache.add(key)
+                cur.close()
+                return True
         cur.close()
     except Exception:
         pass
@@ -61,8 +76,26 @@ def _already_notified(game_id: int, ntype: str) -> bool:
     return False
 
 
-def _mark_notified(game_id: int, ntype: str):
-    _notified_cache.add((game_id, ntype))
+def _mark_notified(game_id, ntype: str, sub_id: str = ''):
+    """메모리 + DB(notification_log) 양쪽 마킹. 재시작 안전."""
+    gid = int(game_id) if game_id is not None else 0
+    _notified_cache.add((gid, ntype, sub_id))
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO notification_log (game_id, type, sub_id) VALUES (%s, %s, %s) "
+            "ON CONFLICT (game_id, type, sub_id) DO NOTHING",
+            (gid, ntype, sub_id)
+        )
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print(f"[FCM] notification_log 마킹 실패: {e}")
+    finally:
+        conn.close()
 
 
 def _parse_ip(ip_val) -> float:
@@ -184,21 +217,31 @@ def _check_new_hrs(game_id: int, home_team_id: int, away_team_id: int):
     finally:
         conn.close()
 
-    prev_hrs = _game_hr_cache.get(game_id, {})
-    curr_hrs: dict = {}
-    new_hr_players = []
-    for player_id, hr_count, player_name, team_name in rows:
-        curr_hrs[player_id] = hr_count
-        if hr_count > prev_hrs.get(player_id, 0):
-            new_hr_players.append((player_id, player_name, team_name))
+    # DB 기반 dedup: sub_id = "{player_id}_{hr_n}"
+    # 재시작 후 첫 사이클: 기존 HR DB에 마킹 (알림 안 함)
+    prev_hrs = _game_hr_cache.get(game_id)
+    curr_hrs = {pid: hr for pid, hr, _, _ in rows}
     _game_hr_cache[game_id] = curr_hrs
 
-    if not new_hr_players:
+    if prev_hrs is None:
+        # 첫 실행/재시작 직후: 기존 HR 마킹만 (DB에 기록 안 된 것들)
+        for player_id, hr_count, _, _ in rows:
+            for hr_n in range(1, hr_count + 1):
+                _mark_notified(game_id, 'fav_hr', f"{player_id}_{hr_n}")
         return
+
     try:
         from api.fcm_service import notify_fav_hr
-        for player_id, player_name, team_name in new_hr_players:
-            notify_fav_hr(player_id, player_name, team_name, game_id)
+        for player_id, hr_count, player_name, team_name in rows:
+            prev_hr = prev_hrs.get(player_id, 0)
+            if hr_count <= prev_hr:
+                continue
+            for hr_n in range(prev_hr + 1, hr_count + 1):
+                sub_id = f"{player_id}_{hr_n}"
+                if _already_notified(game_id, 'fav_hr', sub_id):
+                    continue
+                _mark_notified(game_id, 'fav_hr', sub_id)
+                notify_fav_hr(player_id, player_name, team_name, game_id)
     except Exception as e:
         print(f"[FCM] HR 알림 오류: {e}")
 
@@ -714,13 +757,9 @@ def _check_pitcher_change(game_id: int, game_info: dict):
     if not rows:
         return
 
+    # DB 기반 dedup: 메모리 _pitcher_seen 대신 notification_log 조회
+    # 재시작 후에도 동일 (game_id, player_id) 중복 알림 방지
     seen = _pitcher_seen.setdefault(game_id, set())
-
-    # 첫 실행: 기존 선발 모두 seen에 등록 (알림 없이)
-    if not seen:
-        for player_id, name, ip, side, order, prev in rows:
-            seen.add(player_id)
-        return
 
     try:
         from api.fcm_service import notify_pitcher_change
@@ -729,8 +768,14 @@ def _check_pitcher_change(game_id: int, game_info: dict):
                 continue
             if order == 1:
                 seen.add(player_id)
+                _mark_notified(game_id, 'pitcher_change', str(player_id))
                 continue  # 선발은 라인업 발표 알림에서 처리
+            # DB 영속 dedup
+            if _already_notified(game_id, 'pitcher_change', str(player_id)):
+                seen.add(player_id)
+                continue
             seen.add(player_id)
+            _mark_notified(game_id, 'pitcher_change', str(player_id))
             team_name = game_info.get('home_team') if side == 'home' else game_info.get('away_team')
             notify_pitcher_change(game_id, game_info.get('home_team', ''), game_info.get('away_team', ''),
                                   name, team_name or '', prev_name or '',
@@ -843,12 +888,17 @@ def _notify_fav_player_lineup(game_id: int, home_team: str, away_team: str):
     try:
         from api.fcm_service import notify_fav_player_lineup
         for player_id, pname, tname, batting_order, position, side in starters:
+            sub_id = str(player_id)
             if (game_id, player_id) in _fav_lineup_sent:
+                continue
+            if _already_notified(game_id, 'fav_lineup', sub_id):
+                _fav_lineup_sent.add((game_id, player_id))
                 continue
             opponent = away_team if side == 'home' else home_team
             notify_fav_player_lineup(player_id, pname, tname, game_id,
                                      opponent, batting_order or 0, position or '')
             _fav_lineup_sent.add((game_id, player_id))
+            _mark_notified(game_id, 'fav_lineup', sub_id)
     except Exception as e:
         print(f"[FCM] 선발출전 알림 오류: {e}")
 
@@ -910,14 +960,15 @@ def smart_update():
                 prev = prev_details.get(gid, {})
                 cs, ps = curr['status'], prev.get('status', '')
 
-                # 우천취소
-                if cs == '취소' and ps not in ('취소', ''):
+                # 우천취소 (state-based + dedup)
+                if cs == '취소' and not _already_notified(gid, 'cancelled'):
                     notify_game_cancelled(gid, curr['home_team'], curr['away_team'],
                                           curr['home_team_id'], curr['away_team_id'])
+                    _mark_notified(gid, 'cancelled')
                     continue
 
-                # 라인업 발표 → 선발투수 발표 알림
-                if cs == '라인업' and ps in ('예정', ''):
+                # 라인업 발표 → 선발투수 발표 알림 (state-based + dedup)
+                if cs == '라인업' and not _already_notified(gid, 'starter_announced'):
                     if gid not in _lineup_announced:
                         _lineup_announced.add(gid)
                         try:
@@ -940,6 +991,7 @@ def smart_update():
                                     notify_starter_announced(gid, curr['home_team'], curr['away_team'],
                                                              curr['home_team_id'], curr['away_team_id'],
                                                              _la_hs, _la_ls)
+                                    _mark_notified(gid, 'starter_announced')
                         except Exception:
                             pass
 
@@ -974,12 +1026,16 @@ def smart_update():
                     except Exception:
                         pass
 
-                # 득점 변화
-                elif (cs == '진행' and ps == '진행' and
-                      (curr['home_score'] != prev.get('home_score', 0) or
-                       curr['away_score'] != prev.get('away_score', 0))):
-                    ph, pa = prev.get('home_score', 0), prev.get('away_score', 0)
-                    ch, ca = curr['home_score'], curr['away_score']
+                # 득점 변화 — DB 기반 dedup: 현재 스코어 sub_id 미알림 + delta>0이면 발송
+                elif (cs == '진행'
+                      and (curr['home_score'] or 0) + (curr['away_score'] or 0) > 0
+                      and (curr['home_score'] != prev.get('home_score', 0)
+                           or curr['away_score'] != prev.get('away_score', 0))
+                      and not _already_notified(gid, 'score_change',
+                                                 f"{curr['home_score'] or 0}_{curr['away_score'] or 0}")):
+                    score_subid = f"{curr['home_score'] or 0}_{curr['away_score'] or 0}"
+                    ph, pa = prev.get('home_score', 0) or 0, prev.get('away_score', 0) or 0
+                    ch, ca = curr['home_score'] or 0, curr['away_score'] or 0
                     # 역전: 득점 전 앞서던 팀이 뒤처짐
                     is_comeback = ((ph > pa and ch < ca) or (pa > ph and ca < ch))
                     # 대역전: 3점 이상 차이 뒤집기
@@ -1012,6 +1068,7 @@ def smart_update():
                                         batter=batter, pitcher=pitcher, play_text=play_text,
                                         stuff=stuff, speed=speed, homein=homein,
                                         pitch_num=pitch_num)
+                    _mark_notified(gid, 'score_change', score_subid)
                     _check_new_hrs(gid, curr['home_team_id'], curr['away_team_id'])
                     _check_game_milestones(gid)
 
@@ -1102,22 +1159,39 @@ def smart_update():
                 except Exception as hl_err:
                     print(f"[{datetime.now()}] 하이라이트 크롤링 오류: {hl_err}")
 
-            # 연승/연패 알림 (5연승/5연패 이상, 이후 1씩 증가마다)
-            try:
-                from api.fcm_service import notify_streak
-                for team_id in finished_team_ids:
-                    streak = _get_consecutive_record(team_id)
-                    if abs(streak) >= 5:
-                        conn_s = get_connection()
-                        if conn_s:
+            pass  # streak/rank_change/gb_zero/pennant_race는 newly_finished 블록 밖으로 이동
+
+        # ── 연승/연패/순위변동 알림 (재시작 안전: 종료 팀 전체 검사 + dedup) ─
+        # newly_finished 의존 제거 → 재시작 후에도 누락 복구
+        try:
+            from api.fcm_service import notify_streak
+            today_str = datetime.now().strftime('%Y-%m-%d')
+            # 오늘 종료된 모든 팀 검사
+            todays_finished_teams: set = set()
+            for gid, curr in curr_details.items():
+                if curr.get('status') == '종료':
+                    if curr.get('home_team_id'): todays_finished_teams.add(curr['home_team_id'])
+                    if curr.get('away_team_id'): todays_finished_teams.add(curr['away_team_id'])
+            for team_id in todays_finished_teams:
+                streak = _get_consecutive_record(team_id)
+                if abs(streak) >= 3:  # 5→3 으로 임계값 낮춤
+                    streak_subid = f"{team_id}_{abs(streak)}_{'W' if streak > 0 else 'L'}_{today_str}"
+                    if _already_notified(0, 'streak', streak_subid):
+                        continue
+                    conn_s = get_connection()
+                    if conn_s:
+                        try:
                             cur_s = conn_s.cursor()
                             cur_s.execute("SELECT name FROM teams WHERE id = %s", (team_id,))
                             row_s = cur_s.fetchone()
-                            cur_s.close(); conn_s.close()
-                            if row_s:
-                                notify_streak(team_id, row_s[0], abs(streak), streak > 0)
-            except Exception as streak_err:
-                print(f"[FCM] 연승/연패 알림 오류: {streak_err}")
+                            cur_s.close()
+                        finally:
+                            conn_s.close()
+                        if row_s:
+                            notify_streak(team_id, row_s[0], abs(streak), streak > 0)
+                            _mark_notified(0, 'streak', streak_subid)
+        except Exception as streak_err:
+            print(f"[FCM] 연승/연패 알림 오류: {streak_err}")
 
         # 끝내기 승리 알림 (재시작 안전: 모든 종료 경기 검사 + dedup)
         for gid, curr in curr_details.items():
@@ -1135,8 +1209,13 @@ def smart_update():
             except Exception as wo_err:
                 print(f"[FCM] 끝내기 알림 오류: {wo_err}")
 
-        # 경기 종료 후 시즌 마일스톤 (stats 업데이트 후 25분 지연 실행)
-        for gid in newly_finished:
+        # 경기 종료 후 시즌 마일스톤 (재시작 안전: dedup으로 중복 스케줄링 방지)
+        for gid, curr in curr_details.items():
+            if curr.get('status') != '종료':
+                continue
+            if _already_notified(gid, 'post_milestone_scheduled'):
+                continue
+            _mark_notified(gid, 'post_milestone_scheduled')
             schedule.every(27).minutes.do(_run_once, _check_post_game_milestones, gid)
 
         # 경기 종료 즉시 결과 요약 알림 (재시작 안전: 종료 경기 중 미발송만)
@@ -2007,19 +2086,25 @@ def update_team_rankings():
     teams = get_team_rankings(2026)
     save_team_rankings(teams)
     curr_ranks = _get_rankings_snapshot()
-    # 순위 변동 알림
+    today_str = datetime.now().strftime('%Y-%m-%d')
+
+    # 순위 변동 알림 (재시작 안전: sub_id에 old→new 순위 + 날짜 포함)
     try:
         from api.fcm_service import notify_rank_change
         for team_id, curr in curr_ranks.items():
             prev = prev_ranks.get(team_id, {})
             old_r, new_r = prev.get('rank'), curr['rank']
             if old_r and new_r and old_r != new_r:
+                sub_id = f"{team_id}_{old_r}_{new_r}_{today_str}"
+                if _already_notified(0, 'rank_change', sub_id):
+                    continue
                 notify_rank_change(team_id, curr['name'], old_r, new_r,
                                    curr.get('games_behind') or 0)
+                _mark_notified(0, 'rank_change', sub_id)
     except Exception as e:
         print(f"[FCM] 순위 알림 오류: {e}")
 
-    # 1위 마이팀 추격전 알림 (2위와 게임차 좁혀질 때)
+    # 1위 마이팀 추격전 알림 (재시작 안전: sub_id에 gap + 날짜)
     try:
         from api.fcm_service import notify_pennant_race
         first_curr = [(tid, d) for tid, d in curr_ranks.items() if d.get('rank') == 1]
@@ -2032,22 +2117,28 @@ def update_team_rankings():
                 curr_gap = float(sec_curr[0].get('games_behind') or 0)
                 prev_gap = float(sec_prev[0].get('games_behind') or 0)
                 if curr_gap < prev_gap and curr_gap >= 0:
-                    notify_pennant_race(first_tid, first_data['name'], curr_gap, prev_gap)
+                    sub_id = f"{first_tid}_{curr_gap:.1f}_{today_str}"
+                    if not _already_notified(0, 'pennant_race', sub_id):
+                        notify_pennant_race(first_tid, first_data['name'], curr_gap, prev_gap)
+                        _mark_notified(0, 'pennant_race', sub_id)
     except Exception as e:
         print(f"[FCM] 페넌트레이스 알림 오류: {e}")
 
-    # 게임차 0 달성 알림 (새로 동률 1위가 된 팀)
+    # 게임차 0 달성 알림 (재시작 안전: sub_id에 team_id + 날짜)
     try:
         from api.fcm_service import notify_gb_zero
         first_name = next((d['name'] for d in curr_ranks.values() if d.get('rank') == 1), '')
         for team_id, curr in curr_ranks.items():
             if curr.get('rank', 99) <= 1:
                 continue
-            prev = prev_ranks.get(team_id, {})
-            old_gb = prev.get('games_behind')
             new_gb = curr.get('games_behind')
-            if old_gb and float(old_gb) > 0 and new_gb is not None and float(new_gb) == 0:
-                notify_gb_zero(team_id, curr['name'], first_name)
+            if new_gb is None or float(new_gb) != 0:
+                continue
+            sub_id = f"{team_id}_{today_str}"
+            if _already_notified(0, 'gb_zero', sub_id):
+                continue
+            notify_gb_zero(team_id, curr['name'], first_name)
+            _mark_notified(0, 'gb_zero', sub_id)
     except Exception as e:
         print(f"[FCM] 게임차0 알림 오류: {e}")
 
