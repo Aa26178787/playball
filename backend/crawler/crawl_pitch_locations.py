@@ -64,6 +64,8 @@ def save_pitch_locations_for_game(game_id, naver_game_id, max_inning):
     cur.execute("DELETE FROM game_pitch_locations WHERE game_id = %s", (game_id,))
 
     rows = []
+    # 이닝/이닝하프별 last_known_pitcher 추적 (Naver currentGameState.pitcher 누락 보완)
+    last_known_pitcher_by_half: dict = {}  # {('inning', 'half'): pitcher_name}
     for inning in range(1, max_inning + 1):
         try:
             url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/relay?inning={inning}"
@@ -83,8 +85,10 @@ def save_pitch_locations_for_game(game_id, naver_game_id, max_inning):
                 continue
 
             pitch_txts = [o for o in txt_opts if o.get('type') == 1]
-            # fallback: type=8 타석시작 opt의 pitcher (교체 후 첫 타석에서 부정확할 수 있음)
-            fallback_pitcher = ''
+            half_key = (inning, inning_half)
+
+            # fallback_pitcher: txt_opts 전체 스캔으로 첫 매칭 pitcher 찾기
+            fallback_pitcher = last_known_pitcher_by_half.get(half_key, '')
             for opt in txt_opts:
                 gs = opt.get('currentGameState') or {}
                 pid = str(gs.get('pitcher') or '')
@@ -111,6 +115,12 @@ def save_pitch_locations_for_game(game_id, naver_game_id, max_inning):
                         pitcher_name = pitcher_cache[pid]
                 if '고의' in result_text:
                     continue
+                # last_known_pitcher 갱신 (현재 이닝하프)
+                if pitcher_name:
+                    last_known_pitcher_by_half[half_key] = pitcher_name
+                else:
+                    # 현 타석에서 pitcher_name 없음 → 직전 last_known 사용
+                    pitcher_name = last_known_pitcher_by_half.get(half_key, '')
                 rows.append((
                     game_id, inning, inning_half, pitcher_name, batter,
                     round(float(x), 4), z, classify(result_text),
