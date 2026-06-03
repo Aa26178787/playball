@@ -1133,7 +1133,7 @@ def smart_update():
                     conn_tmp.close()
                     if row_tmp and row_tmp[1]:
                         save_game_pitches(gid, row_tmp[0], row_tmp[1])
-                        # 투구 위치 데이터 저장
+                        # 투구 위치 데이터 저장 (즉시 + 5/30분 후 재크롤 — Naver 마지막 이닝 incomplete 대응)
                         try:
                             from crawler.crawl_pitch_locations import save_pitch_locations_for_game
                             max_inn = int(row_tmp[1])
@@ -1141,6 +1141,18 @@ def smart_update():
                             print(f"[{datetime.now()}] pitch_locations 저장: game_id={gid} {n}구")
                         except Exception as pl_err:
                             print(f"[{datetime.now()}] pitch_locations 오류: {pl_err}")
+                        # 5분 + 30분 후 재크롤 (마지막 이닝 데이터 안정화)
+                        naver_gid_for_retry = row_tmp[0]
+                        max_inn_for_retry = int(row_tmp[1])
+                        def _retry_pitch_loc(g=gid, ng=naver_gid_for_retry, mi=max_inn_for_retry):
+                            try:
+                                from crawler.crawl_pitch_locations import save_pitch_locations_for_game as _s
+                                n = _s(g, ng, mi)
+                                print(f"[{datetime.now()}] pitch_locations 재크롤: game_id={g} {n}구")
+                            except Exception as e:
+                                print(f"[{datetime.now()}] pitch_locations 재크롤 오류: {e}")
+                        schedule.every(5).minutes.do(_run_once, _retry_pitch_loc)
+                        schedule.every(30).minutes.do(_run_once, _retry_pitch_loc)
                         if row_tmp[2]: finished_team_ids.add(row_tmp[2])
                         if row_tmp[3]: finished_team_ids.add(row_tmp[3])
             update_team_rankings()
