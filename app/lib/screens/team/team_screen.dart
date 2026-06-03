@@ -303,7 +303,7 @@ class _TeamScreenState extends State<TeamScreen>
         }),
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Text('* Elo 레이팅 + 남은 schedule(홈/원정/상대 강도 반영). 진출확률 10% 미만은 제거.',
+          child: Text('* Elo 레이팅 + 남은 schedule(홈/원정/상대 강도 반영) · 표기 임계값 10% (미만 단계는 막대에만 반영)',
               style: TextStyle(fontSize: 10, color: Colors.grey[500])),
         ),
       ],
