@@ -1102,7 +1102,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: live, borderRadius: BorderRadius.circular(999),
+                                        // 진행중 빨강, 그 외 회색
+                                        color: isLive ? live : const Color(0xFF9A9AA3),
+                                        borderRadius: BorderRadius.circular(999),
                                       ),
                                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                                         Container(width: 4, height: 4,
@@ -1570,7 +1572,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                               children: [
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: live, borderRadius: BorderRadius.circular(999)),
+                                  decoration: BoxDecoration(
+                                    color: isLive ? live : const Color(0xFF9A9AA3),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
                                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                                     Container(width: 4, height: 4, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
                                     const SizedBox(width: 3),
