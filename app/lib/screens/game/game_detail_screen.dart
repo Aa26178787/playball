@@ -4453,20 +4453,8 @@ class _FullFieldView extends StatelessWidget {
     required this.isDark, this.fieldView,
   });
 
-  // C안: 진짜 homography (3x3 perspective matrix)
-  // dst quad tl(0.30,0)/tr(0.70,0)/br(1,1)/bl(0,1) 미리 계산 coefficient
-  // 외야 y 압축 + horizontal trapezoid (진짜 카드 기울임)
-  static Offset _perspective(Offset src) {
-    const a11 = 0.40, a12 = -0.30, a13 = 0.30;
-    const a21 = 0.00, a22 = 0.40, a23 = 0.00;
-    const a31 = 0.00, a32 = -0.60;
-    final x = src.dx, y = src.dy;
-    final w = a31 * x + a32 * y + 1;
-    return Offset(
-      (a11 * x + a12 * y + a13) / w,
-      (a21 * x + a22 * y + a23) / w,
-    );
-  }
+  // 3D rollback — no-op (원래 2D top-down 좌표 그대로)
+  static Offset _perspective(Offset src) => src;
 
   // Normalized (x,y) coordinates on the field widget (0=left/top, 1=right/bottom)
   static const Map<String, Offset> _posCoords = {
@@ -4521,16 +4509,11 @@ class _FullFieldView extends StatelessWidget {
       final h = constraints.maxHeight;
 
       Widget placed(Offset norm, Widget child, double chipW, double chipH) {
-        // 3D perspective projection + depth-based size scaling
-        final p = _perspective(norm);
-        final depth = (1 - norm.dy).clamp(0.0, 1.0);
-        final scale = 1.0 - depth * 0.18;  // 가까이 1.0, 멀리 ~0.82 (적당)
-        final sw = chipW * scale;
-        final sh = chipH * scale;
+        // 3D rollback — 좌표/scale 변환 없음
         return Positioned(
-          left: (w * p.dx - sw / 2).clamp(0, w - sw),
-          top:  (h * p.dy - sh / 2).clamp(0, h - sh),
-          child: Transform.scale(scale: scale, child: child),
+          left: (w * norm.dx - chipW / 2).clamp(0, w - chipW),
+          top:  (h * norm.dy - chipH / 2).clamp(0, h - chipH),
+          child: child,
         );
       }
 
@@ -4728,18 +4711,8 @@ class _FieldBgPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // C안: 진짜 homography (3x3 perspective matrix) — same coefficients as _FullFieldView._perspective
-    Offset proj(Offset src) {
-      const a11 = 0.40, a12 = -0.30, a13 = 0.30;
-      const a21 = 0.00, a22 = 0.40, a23 = 0.00;
-      const a31 = 0.00, a32 = -0.60;
-      final x = src.dx, y = src.dy;
-      final wd = a31 * x + a32 * y + 1;
-      return Offset(
-        (a11 * x + a12 * y + a13) / wd,
-        (a21 * x + a22 * y + a23) / wd,
-      );
-    }
+    // 3D rollback — no-op
+    Offset proj(Offset src) => src;
     Offset toPixel(Offset src) {
       final p = proj(src);
       return Offset(w * p.dx, h * p.dy);
