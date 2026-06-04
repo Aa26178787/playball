@@ -1086,9 +1086,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           padding: const EdgeInsets.fromLTRB(16, 60, 16, 20),
                           child: SizedBox(height: 230, width: double.infinity, child: fieldWidget),
                         ),
-                        // BSO overlay — 진행중 + relay 데이터 시 필드 상단(중견수 위) center
-                        if (isLive && _relayData?['current_state'] != null)
-                          Positioned(
+                        // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
+                        Positioned(
                             top: 8, left: 0, right: 0,
                             child: Center(
                               child: Container(
@@ -1113,11 +1112,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                       ]),
                                     ),
                                     const SizedBox(width: 8),
-                                    _bsoOverlayGroup('B', (_relayData!['current_state']['ball'] as int? ?? 0).clamp(0, 3), 3, const Color(0xFF22C55E)),
+                                    _bsoOverlayGroup('B', ((_relayData?['current_state']?['ball'] as int?) ?? 0).clamp(0, 3), 3, const Color(0xFF22C55E)),
                                     const SizedBox(width: 6),
-                                    _bsoOverlayGroup('S', (_relayData!['current_state']['strike'] as int? ?? 0).clamp(0, 2), 2, live),
+                                    _bsoOverlayGroup('S', ((_relayData?['current_state']?['strike'] as int?) ?? 0).clamp(0, 2), 2, live),
                                     const SizedBox(width: 6),
-                                    _bsoOverlayGroup('O', (_relayData!['current_state']['out'] as int? ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
+                                    _bsoOverlayGroup('O', ((_relayData?['current_state']?['out'] as int?) ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
                                     const SizedBox(width: 8),
                                     _isRelayRefreshing
                                         ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
@@ -1531,9 +1530,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final isLive = (game['status'] as String? ?? '') == '진행';
 
     return Container(
-      color: paper,
-      // panel-spacer와 동일 height 강제 — 빈 공간 발생 시 scaffold body 검은 띠 노출 방지
+      // panel-spacer와 동일 height + 하단 rounded (gameHeader ClipRRect bottom 16과 일치)
       height: _sameDayGames.isNotEmpty ? 410 : 330,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: paper,
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1548,12 +1551,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   children: [
                     const Positioned.fill(child: CustomPaint(painter: _GrassExtensionPainter())),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 28, 16, 20),
+                      // inline field padding과 동일 (BSO overlay ↔ CF 라벨 ~18px gap)
+                      padding: const EdgeInsets.fromLTRB(16, 60, 16, 20),
                       child: SizedBox(height: 230, width: double.infinity, child: fieldWidget),
                     ),
-                    // BSO overlay
-                    if (isLive && _relayData?['current_state'] != null)
-                      Positioned(
+                    // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
+                    Positioned(
                         top: 8, left: 0, right: 0,
                         child: Center(
                           child: Container(
@@ -1575,11 +1578,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                   ]),
                                 ),
                                 const SizedBox(width: 8),
-                                _bsoOverlayGroup('B', (_relayData!['current_state']['ball'] as int? ?? 0).clamp(0, 3), 3, const Color(0xFF22C55E)),
+                                _bsoOverlayGroup('B', ((_relayData?['current_state']?['ball'] as int?) ?? 0).clamp(0, 3), 3, const Color(0xFF22C55E)),
                                 const SizedBox(width: 6),
-                                _bsoOverlayGroup('S', (_relayData!['current_state']['strike'] as int? ?? 0).clamp(0, 2), 2, live),
+                                _bsoOverlayGroup('S', ((_relayData?['current_state']?['strike'] as int?) ?? 0).clamp(0, 2), 2, live),
                                 const SizedBox(width: 6),
-                                _bsoOverlayGroup('O', (_relayData!['current_state']['out'] as int? ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
+                                _bsoOverlayGroup('O', ((_relayData?['current_state']?['out'] as int?) ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
                                 const SizedBox(width: 8),
                                 _isRelayRefreshing
                                     ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
