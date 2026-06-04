@@ -1000,11 +1000,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
                       decoration: BoxDecoration(
                         color: isDark ? paper2 : const Color(0xFFFAFAFA),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: SizedBox(height: 280, width: double.infinity, child: fieldWidget),
+                      child: SizedBox(height: 190, width: double.infinity, child: fieldWidget),
                     ),
                   ),
                 ),
@@ -4248,11 +4249,10 @@ class _FullFieldView extends StatelessWidget {
         );
       }
 
-      // 배경은 슬롯 전체 채우고, player widgets는 inset (가장자리 여유)
+      // 초기 버전: 배경 Positioned.fill + player widgets 같은 Stack 영역 (Padding 없음)
       return Stack(
         clipBehavior: Clip.none,
         children: [
-          // 배경: 슬롯 전체 채움
           Positioned.fill(
             child: CustomPaint(
               painter: _FieldBgPainter(
@@ -4260,35 +4260,24 @@ class _FullFieldView extends StatelessWidget {
               ),
             ),
           ),
-          // player widgets는 슬롯 전체 영역 안 (placed의 clamp로 chip boundary 강제)
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ...defenseWidgets,
-                  if (base1 || runner1 != null) runnerWidget(runner1, 'base1', base1),
-                  if (base2 || runner2 != null) runnerWidget(runner2, 'base2', base2),
-                  if (base3 || runner3 != null) runnerWidget(runner3, 'base3', base3),
-                  if (batter != null)
-                    placed(
-                      _baseCoords['batter']!,
-                      _PlayerDot(
-                        name: batter['name'] as String? ?? '',
-                        imageUrl: batter['image'] as String?,
-                        label: '타자',
-                        isOffense: true,
-                        isDark: isDark,
-                        size: 26,
-                        isBatter: true,
-                      ),
-                      68, 40,
-                    ),
-                ],
+          ...defenseWidgets,
+          if (base1 || runner1 != null) runnerWidget(runner1, 'base1', base1),
+          if (base2 || runner2 != null) runnerWidget(runner2, 'base2', base2),
+          if (base3 || runner3 != null) runnerWidget(runner3, 'base3', base3),
+          if (batter != null)
+            placed(
+              _baseCoords['batter']!,
+              _PlayerDot(
+                name: batter['name'] as String? ?? '',
+                imageUrl: batter['image'] as String?,
+                label: '타자',
+                isOffense: true,
+                isDark: isDark,
+                size: 26,
+                isBatter: true,
               ),
+              68, 40,
             ),
-          ),
         ],
       );
     });
