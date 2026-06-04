@@ -2290,9 +2290,10 @@ class GameCard extends StatelessWidget {
                     )),
                   ],
                 ),
-                // ── divider + 선발 + 다음 시리즈 (footer 영역, overlay 안 침범) ──
+                // ── divider + 선발 + 다음 시리즈 (opaque cardBg로 overlay 가림) ──
                 if (hasPitchers || hasStarters || nextHomeSeries != null || nextAwaySeries != null)
                   Container(
+                    color: cardBg,
                     margin: const EdgeInsets.only(top: 13),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -2350,6 +2351,7 @@ class GameCard extends StatelessWidget {
                   ),
                 if (showPrediction)
                   Container(
+                    color: cardBg,
                     margin: const EdgeInsets.only(top: 13),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
