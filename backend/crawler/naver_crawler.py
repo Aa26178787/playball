@@ -1007,6 +1007,45 @@ def save_game_roster(db_game_id, naver_game_id):
                             roster_type = 'pitcher'
                     """, (db_game_id, player_id, side, p['pitching_style']))
 
+        # ── starter position fixup ──
+        # Naver lineup이 batting_order N에 '대타'/'대주자' 만 starter로 표시하고
+        # 실제 포지션(유격수/포수 등) 은 backup으로 분류되는 경우 발생 → 필드뷰 포지션 누락
+        # 같은 batting_order의 backup 중 실제 포지션 가진 첫 row를 starter로 promote + 대타 starter 강등
+        cur.execute("""
+            WITH targets AS (
+              SELECT DISTINCT ON (gr.game_id, gr.team_side, gr.batting_order) gr.id
+              FROM game_rosters gr
+              JOIN game_rosters s ON s.game_id=gr.game_id
+                AND s.team_side=gr.team_side
+                AND s.batting_order=gr.batting_order
+                AND s.is_starter=TRUE
+                AND s.position IN ('대타', '대주자')
+              WHERE gr.game_id = %s
+                AND gr.is_starter = FALSE
+                AND gr.roster_type = 'batter'
+                AND gr.position IS NOT NULL
+                AND gr.position NOT IN ('대타', '대주자', '')
+              ORDER BY gr.game_id, gr.team_side, gr.batting_order, gr.id
+            )
+            UPDATE game_rosters SET is_starter = TRUE WHERE id IN (SELECT id FROM targets)
+        """, (db_game_id,))
+        cur.execute("""
+            UPDATE game_rosters SET is_starter = FALSE
+            WHERE game_id = %s
+              AND roster_type = 'batter'
+              AND is_starter = TRUE
+              AND position IN ('대타', '대주자')
+              AND EXISTS (
+                SELECT 1 FROM game_rosters g2
+                WHERE g2.game_id = game_rosters.game_id
+                  AND g2.team_side = game_rosters.team_side
+                  AND g2.batting_order = game_rosters.batting_order
+                  AND g2.is_starter = TRUE
+                  AND g2.position NOT IN ('대타', '대주자', '')
+                  AND g2.id != game_rosters.id
+              )
+        """, (db_game_id,))
+
         conn.commit()
         cur.close()
         conn.close()

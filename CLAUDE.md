@@ -75,7 +75,7 @@ flutter build apk --debug   # 또는 --release
   - notify_team_roster_change: 마이팀 등록말소 팀팬 알림 (선수팬 중복 방지)
   - notify_gb_zero: 게임차 0 달성 시 알림
 - database/connection.py — ThreadedConnectionPool(minconn=3, maxconn=20) + _PooledConn 래퍼 + _reset_pool() (pool exhausted 자동 복구)
-- crawler/naver_crawler.py (**절대 수정 금지**)
+- crawler/naver_crawler.py (수정 가능 — 2026-06-04부터)
 - crawler/scheduler.py
   - _get_scoring_play_detail: Naver 중계 API 실시간 득점 타자/투수/타구 파싱
     - textRelays **reversed() 순회** (Naver 최신순 반환 → chronological 정렬 필요)
@@ -403,7 +403,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 
 ## 크롤러 핵심 로직
 
-### naver_crawler.py (**절대 수정 금지**)
+### naver_crawler.py (수정 가능)
 - 5분마다 진행중 경기 실시간 업데이트
 - 종료 감지 시 15분 후 선수 스탯 업데이트
 
@@ -482,7 +482,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - ABS 존 상수: plateHalfW=8.5/12, absHalfW=9.95/12, ballR=1.45/12 (ft) — **변경 금지**
 - share_plus 버전: ^10.0.0 (^10.1.4는 firebase_messaging 충돌)
 - NetworkImage / Image.network 사용 금지 → CachedNetworkImage/CachedNetworkImageProvider
-- naver_crawler.py **절대 수정 금지**
+- naver_crawler.py 수정 가능 (2026-06-04부터)
 - firebase-service-account.json 서버 전용 (git push 금지)
 - **한글 파일 PowerShell `-replace` 금지**: UTF-8 인코딩 깨짐 → SyntaxError crash loop 유발. Edit 도구 사용
 - PgBouncer port 6432 → 5432 변경 금지 (동시접속 폭증 시 pool 고갈)

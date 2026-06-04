@@ -1157,6 +1157,61 @@ def _notify_fav_player_lineup(game_id: int, home_team: str, away_team: str):
         print(f"[FCM] 선발출전 알림 오류: {e}")
 
 
+def _fixup_starter_positions():
+    """대타 starter + 실제 포지션 sub 케이스 보정.
+    Naver lineup이 batting_order 9번을 '대타'로만 표기하고 실제 유격수/포수 등은 sub로 기록 → 필드뷰 포지션 누락.
+    같은 batting_order의 실제 포지션 sub를 starter로 promote + 기존 대타 starter 강등."""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        # 1. 실제 포지션 sub를 starter로 promote (batting_order별 1명만)
+        cur.execute("""
+            WITH targets AS (
+              SELECT DISTINCT ON (gr.game_id, gr.team_side, gr.batting_order) gr.id
+              FROM game_rosters gr
+              JOIN game_rosters s ON s.game_id=gr.game_id
+                AND s.team_side=gr.team_side
+                AND s.batting_order=gr.batting_order
+                AND s.is_starter=TRUE
+                AND s.position IN ('대타', '대주자')
+              WHERE gr.is_starter = FALSE
+                AND gr.roster_type = 'batter'
+                AND gr.position IS NOT NULL
+                AND gr.position NOT IN ('대타', '대주자', '')
+              ORDER BY gr.game_id, gr.team_side, gr.batting_order, gr.id
+            )
+            UPDATE game_rosters SET is_starter = TRUE WHERE id IN (SELECT id FROM targets)
+        """)
+        promoted = cur.rowcount
+        # 2. 대타 starter 강등 (같은 batting_order에 다른 starter 있을 때만)
+        cur.execute("""
+            UPDATE game_rosters SET is_starter = FALSE
+            WHERE roster_type = 'batter'
+              AND is_starter = TRUE
+              AND position IN ('대타', '대주자')
+              AND EXISTS (
+                SELECT 1 FROM game_rosters g2
+                WHERE g2.game_id = game_rosters.game_id
+                  AND g2.team_side = game_rosters.team_side
+                  AND g2.batting_order = game_rosters.batting_order
+                  AND g2.is_starter = TRUE
+                  AND g2.position NOT IN ('대타', '대주자', '')
+                  AND g2.id != game_rosters.id
+              )
+        """)
+        demoted = cur.rowcount
+        conn.commit()
+        cur.close()
+        if promoted or demoted:
+            print(f"[fixup_starter] promoted={promoted} demoted={demoted}")
+    except Exception as e:
+        print(f"[fixup_starter] 오류: {e}")
+    finally:
+        conn.close()
+
+
 def smart_update():
     """
     1분마다 실행
