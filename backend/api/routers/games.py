@@ -407,6 +407,12 @@ def get_game_relay_all(game_id: int):
         "win_rate": win_rate,
         "source": "db",
     }
+    # relay_list 비어있으면 archive 저장 skip + 짧은 캐시 (game_pitches 채워지면 재조회)
+    # 이전 버그: 종료 직후 game_pitches 비어있을 때 archive 빈 payload 영속화 → 이후 호출도 빈 결과
+    if not relay_list:
+        cache_set(_cache_key, result, 60)
+        return result
+
     cache_set(_cache_key, result, 3600)
     # 종료 게임 archive 영속화 (재시작 후에도 즉시 반환)
     try:
