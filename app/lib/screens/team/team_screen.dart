@@ -472,9 +472,9 @@ class _TeamScreenState extends State<TeamScreen>
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 0),
+                            const SizedBox(width: 8),
                             SizedBox(
-                              width: 38,
+                              width: 42,
                               child: Text('${ps.toStringAsFixed(1)}%',
                                   textAlign: TextAlign.left,
                                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,

@@ -1000,12 +1000,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                       decoration: BoxDecoration(
                         color: isDark ? paper2 : const Color(0xFFFAFAFA),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: SizedBox(height: 190, width: double.infinity, child: fieldWidget),
+                      child: SizedBox(height: 220, width: double.infinity, child: fieldWidget),
                     ),
                   ),
                 ),
@@ -1937,28 +1936,67 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       byHalf.putIfAbsent('$ing:$half', () => []).add(r);
     }
 
-    // Collect scoring half-innings with 누적 score
+    // 득점 부여한 atbat 단위로 row 분리. 누적 score 매 row마다.
+    int cumAway = 0, cumHome = 0;
     final items = <Map<String, dynamic>>[];
-    int cumAway = 0;
-    int cumHome = 0;
     for (final inn in innings) {
       final num = inn['inning'] as int? ?? 0;
       final awayR = inn['away_runs'] as int? ?? 0;
       final homeR = inn['home_runs'] as int? ?? 0;
-      cumAway += awayR;
-      if (awayR > 0) {
-        items.add({'inning': num, 'half': 'top', 'runs': awayR, 'team': awayTeam,
-          'teamCode': awayCode,
-          'cumAway': cumAway, 'cumHome': cumHome,
-          'relays': byHalf['$num:0'] ?? []});
+
+      // 한 half-inning에서 RBI atbat을 분리 — 매 RBI마다 1 row
+      void splitHalf(int totalRuns, String half, String team, String tCode, bool isAway) {
+        if (totalRuns <= 0) return;
+        final halfRelays = byHalf['$num:${half == 'top' ? 0 : 1}'] ?? [];
+
+        // atbat 단위로 그룹: [atbat, scorer1, scorer2, ...] 분리
+        final groups = <List<Map>>[];
+        List<Map>? curGroup;
+        for (final r in halfRelays) {
+          final rtype = r['type'] as int?;
+          if (rtype == 13 || rtype == 23) {
+            if (curGroup != null) groups.add(curGroup);
+            curGroup = [r as Map];
+          } else if (rtype == 14 || rtype == 24 || rtype == 31) {
+            final txt = (r['title'] as String? ?? r['text'] as String? ?? '').trim();
+            if (!txt.contains('홈인') && !txt.contains('득점')) continue;
+            if (curGroup != null) curGroup.add(r as Map);
+          }
+        }
+        if (curGroup != null) groups.add(curGroup);
+
+        // 득점 발생 그룹만 — group 안에 scorers 있거나 결과 텍스트에 점수 키워드
+        bool isScoringGroup(List<Map> g) {
+          if (g.length > 1) return true; // scorer 있음
+          final txt = (g.first['title'] as String? ?? g.first['text'] as String? ?? '');
+          return txt.contains('홈런') || txt.contains('점') || txt.contains('홈인');
+        }
+        final scoringGroups = groups.where(isScoringGroup).toList();
+        final groupCount = scoringGroups.length;
+
+        if (groupCount == 0) {
+          // fallback: relay 분리 못 함 → 전체 한 row (legacy)
+          if (isAway) cumAway += totalRuns; else cumHome += totalRuns;
+          items.add({'inning': num, 'half': half, 'team': team, 'teamCode': tCode,
+            'cumAway': cumAway, 'cumHome': cumHome,
+            'relays': halfRelays, 'isFallback': true});
+          return;
+        }
+
+        // 그룹별로 runs 분배 (totalRuns / groupCount, 나머지는 마지막에 추가)
+        final base = totalRuns ~/ groupCount;
+        final remainder = totalRuns - base * groupCount;
+        for (int i = 0; i < scoringGroups.length; i++) {
+          final runs = base + (i == scoringGroups.length - 1 ? remainder : 0);
+          if (isAway) cumAway += runs; else cumHome += runs;
+          items.add({'inning': num, 'half': half, 'team': team, 'teamCode': tCode,
+            'cumAway': cumAway, 'cumHome': cumHome,
+            'relays': scoringGroups[i], 'runs': runs});
+        }
       }
-      cumHome += homeR;
-      if (homeR > 0) {
-        items.add({'inning': num, 'half': 'bottom', 'runs': homeR, 'team': homeTeam,
-          'teamCode': homeCode,
-          'cumAway': cumAway, 'cumHome': cumHome,
-          'relays': byHalf['$num:1'] ?? []});
-      }
+
+      splitHalf(awayR, 'top',    awayTeam, awayCode, true);
+      splitHalf(homeR, 'bottom', homeTeam, homeCode, false);
     }
     if (items.isEmpty) return const SizedBox.shrink();
 
