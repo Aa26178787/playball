@@ -990,11 +990,23 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             ),
 
             const SizedBox(height: 16),
-            // ── FieldSlot (사용자 명시: 기존 코드 유지) ──
+            // ── FieldSlot (mockup dashed 슬롯 컨테이너 안에 기존 _FullFieldView 삽입) ──
             if (fieldWidget != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: SizedBox(height: 190, child: fieldWidget),
+                child: CustomPaint(
+                  painter: _DashedRectPainter(color: line2, radius: 16, dashLength: 6, gap: 4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                    decoration: BoxDecoration(
+                      color: isDark ? paper2 : const Color(0xFFFAFAFA),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: SizedBox(height: 190, width: double.infinity, child: fieldWidget),
+                    ),
+                  ),
+                ),
               ),
 
             // ── LIVE BSO bar (진행중만) / 승투패투 (종료) — paper2 박스 ──
@@ -1616,6 +1628,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // mockup divider (헤더와 ScoringSummary 사이)
+          Container(height: 1, color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0)),
+          const SizedBox(height: 16),
           if (innings.isNotEmpty && _relayAllData != null) ...[
             _buildScoringSection(innings, awayTeam, homeTeam),
             const SizedBox(height: 16),
@@ -2159,6 +2174,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       );
     }).toList();
 
+    final isDarkS = Theme.of(context).brightness == Brightness.dark;
+    final inkS  = isDarkS ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink3S = isDarkS ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final paperS = isDarkS ? const Color(0xFF18181C) : Colors.white;
+    final lineS  = isDarkS ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2166,23 +2187,30 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           onTap: () => setState(() => _scoringExpanded = !_scoringExpanded),
           borderRadius: BorderRadius.circular(6),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
+            padding: const EdgeInsets.fromLTRB(2, 4, 2, 12),
             child: Row(
               children: [
-                const Text('득점 요약', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text('득점 요약',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: inkS, letterSpacing: -0.2)),
                 const Spacer(),
                 Icon(
                   _scoringExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                  size: 20, color: Colors.grey[600],
+                  size: 18, color: ink3S,
                 ),
               ],
             ),
           ),
         ),
-        if (_scoringExpanded) ...[
-          const SizedBox(height: 8),
-          ...halfCards,
-        ],
+        if (_scoringExpanded)
+          Container(
+            decoration: BoxDecoration(
+              color: paperS,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: lineS, width: 1),
+            ),
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+            child: Column(children: halfCards),
+          ),
       ],
     );
   }
@@ -4407,4 +4435,36 @@ class _FieldBgPainter extends CustomPainter {
   @override
   bool shouldRepaint(_FieldBgPainter old) =>
       old.base1 != base1 || old.base2 != base2 || old.base3 != base3 || old.isDark != isDark;
+}
+
+class _DashedRectPainter extends CustomPainter {
+  final Color color;
+  final double radius;
+  final double dashLength;
+  final double gap;
+  _DashedRectPainter({required this.color, required this.radius, this.dashLength = 6, this.gap = 4});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    final rect = RRect.fromRectAndRadius(
+        Offset.zero & size, Radius.circular(radius));
+    final path = Path()..addRRect(rect);
+    final metrics = path.computeMetrics().toList();
+    for (final m in metrics) {
+      double dist = 0;
+      while (dist < m.length) {
+        final next = (dist + dashLength).clamp(0, m.length).toDouble();
+        canvas.drawPath(m.extractPath(dist, next), paint);
+        dist = next + gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedRectPainter old) =>
+      old.color != color || old.radius != radius || old.dashLength != dashLength || old.gap != gap;
 }
