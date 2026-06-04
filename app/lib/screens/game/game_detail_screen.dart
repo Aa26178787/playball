@@ -2392,9 +2392,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF111113).withOpacity(0.05),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF111113).withOpacity(0.2)),
+                color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -2982,9 +2982,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               margin: const EdgeInsets.all(12),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF111113).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF111113).withOpacity(0.2)),
+                color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -3513,16 +3513,16 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF111113).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
+                        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
+                        borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(type,
-                          style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF111113))),
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFF4F4F5) : const Color(0xFF111113))),
                     ),
                     const SizedBox(width: 12),
                     Expanded(child: Text(desc, style: const TextStyle(fontSize: 13))),
