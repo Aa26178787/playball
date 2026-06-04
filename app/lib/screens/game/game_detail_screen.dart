@@ -4805,6 +4805,20 @@ class _FieldBgPainter extends CustomPainter {
       ..close();
     canvas.drawPath(diamondPath, dirtPaint);
 
+    // dirt 자갈/모래 노이즈 (사실적 질감) — diamond 영역 clip 안
+    canvas.save();
+    canvas.clipPath(diamondPath);
+    final noiseRng = math.Random(42);
+    final noiseDark  = Paint()..color = const Color(0xFF6A4318).withOpacity(0.45);
+    final noiseLight = Paint()..color = const Color(0xFFDDB67A).withOpacity(0.35);
+    for (int i = 0; i < 90; i++) {
+      final x = w * (0.10 + noiseRng.nextDouble() * 0.80);
+      final y = h * (0.40 + noiseRng.nextDouble() * 0.45);
+      final r = 0.3 + noiseRng.nextDouble() * 0.7;
+      canvas.drawCircle(Offset(x, y), r, i % 3 == 0 ? noiseLight : noiseDark);
+    }
+    canvas.restore();
+
     // 내야 잔디 (perspective projection 적용 trapezoid)
     final igTop    = toPixel(const Offset(0.50, 0.49));
     final igLeft   = toPixel(const Offset(0.36, 0.62));
@@ -4867,23 +4881,30 @@ class _FieldBgPainter extends CustomPainter {
     canvas.drawLine(pHome, Offset(w * 0.0, h * 0.08), foulPaint);
     canvas.drawLine(pHome, Offset(w * 1.0, h * 0.08), foulPaint);
 
-    // ── Bases (대각선 시점에 맞춰 살짝 누운 마름모: height 0.65x) ──
+    // ── Bases (사실적 묘사: 두꺼운 그림자 + linear gradient + top highlight) ──
     void drawBase(Offset pos, bool occupied) {
-      final bs = 8.0;
+      final bs = 9.0;
       final bh = bs * 0.65; // 대각선 시점 높이 압축
-      // 그림자
+      final basePath = Path()
+        ..moveTo(pos.dx,      pos.dy - bh)
+        ..lineTo(pos.dx + bs, pos.dy)
+        ..lineTo(pos.dx,      pos.dy + bh)
+        ..lineTo(pos.dx - bs, pos.dy)
+        ..close();
+
+      // 짙은 그림자 (지면에 닿은 느낌)
       canvas.drawPath(
         Path()
-          ..moveTo(pos.dx,           pos.dy - bh + 1.5)
-          ..lineTo(pos.dx + bs * 1.1, pos.dy + 1.5)
-          ..lineTo(pos.dx,           pos.dy + bh + 1.5)
-          ..lineTo(pos.dx - bs * 1.1, pos.dy + 1.5)
+          ..moveTo(pos.dx,           pos.dy - bh + 2.5)
+          ..lineTo(pos.dx + bs * 1.2, pos.dy + 2.5)
+          ..lineTo(pos.dx,           pos.dy + bh + 2.5)
+          ..lineTo(pos.dx - bs * 1.2, pos.dy + 2.5)
           ..close(),
-        Paint()..color = Colors.black.withOpacity(0.22)
-              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+        Paint()..color = Colors.black.withOpacity(0.40)
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
       );
+
       if (occupied) {
-        // 주자: 노란 글로우
         canvas.drawPath(
           Path()
             ..moveTo(pos.dx,           pos.dy - bh * 2.6)
@@ -4891,42 +4912,52 @@ class _FieldBgPainter extends CustomPainter {
             ..lineTo(pos.dx,           pos.dy + bh * 2.6)
             ..lineTo(pos.dx - bs * 2.6, pos.dy)
             ..close(),
-          Paint()..color = Colors.yellow.withOpacity(0.45)
-                ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+          Paint()..color = Colors.yellow.withOpacity(0.50)
+                ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
         );
       }
-      // 베이스 본체 — 누운 마름모
-      final bp = Paint()
-        ..color = occupied ? const Color(0xFFFFE066) : Colors.white.withOpacity(0.95)
-        ..style = PaintingStyle.fill;
-      final path = Path()
-        ..moveTo(pos.dx,      pos.dy - bh)
-        ..lineTo(pos.dx + bs, pos.dy)
-        ..lineTo(pos.dx,      pos.dy + bh)
-        ..lineTo(pos.dx - bs, pos.dy)
-        ..close();
-      canvas.drawPath(path, bp);
+
+      // 본체 — vertical gradient (위 밝, 아래 어둠) → 3D 입체
+      final fillPaint = Paint()
+        ..shader = ui.Gradient.linear(
+          Offset(pos.dx, pos.dy - bh),
+          Offset(pos.dx, pos.dy + bh),
+          occupied
+              ? [const Color(0xFFFFF2A8), const Color(0xFFE6BD3F)]
+              : [const Color(0xFFFFFFFF), const Color(0xFFD8D8D2)],
+        );
+      canvas.drawPath(basePath, fillPaint);
+
+      // 상단 하이라이트 (반짝임)
+      canvas.drawPath(basePath, Paint()
+        ..shader = ui.Gradient.linear(
+          Offset(pos.dx, pos.dy - bh),
+          Offset(pos.dx, pos.dy),
+          [Colors.white.withOpacity(0.55), Colors.transparent],
+        ));
+
       // 외곽선
-      canvas.drawPath(path, Paint()
-        ..color = Colors.black.withOpacity(0.25)
-        ..strokeWidth = 0.8
+      canvas.drawPath(basePath, Paint()
+        ..color = Colors.black.withOpacity(0.45)
+        ..strokeWidth = 1.0
         ..style = PaintingStyle.stroke);
     }
     drawBase(p1B, base1);
     drawBase(p2B, base2);
     drawBase(p3B, base3);
 
-    // ── Home plate (대각선 시점: y 0.65x 압축) ──
+    // ── Home plate (사실적 묘사: 5각형 + linear gradient + top highlight) ──
+    // 짙은 그림자
     canvas.drawPath(
       Path()
-        ..moveTo(pHome.dx,      pHome.dy - 3.25 + 1.5)
-        ..lineTo(pHome.dx + 5,  pHome.dy - 1 + 1.5)
-        ..lineTo(pHome.dx + 4,  pHome.dy + 3 + 1.5)
-        ..lineTo(pHome.dx - 4,  pHome.dy + 3 + 1.5)
-        ..lineTo(pHome.dx - 5,  pHome.dy - 1 + 1.5)
+        ..moveTo(pHome.dx,      pHome.dy - 3.25 + 2.5)
+        ..lineTo(pHome.dx + 5,  pHome.dy - 1 + 2.5)
+        ..lineTo(pHome.dx + 4,  pHome.dy + 3 + 2.5)
+        ..lineTo(pHome.dx - 4,  pHome.dy + 3 + 2.5)
+        ..lineTo(pHome.dx - 5,  pHome.dy - 1 + 2.5)
         ..close(),
-      Paint()..color = Colors.black.withOpacity(0.22)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+      Paint()..color = Colors.black.withOpacity(0.40)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
     );
     final homePath = Path()
       ..moveTo(pHome.dx,      pHome.dy - 3.25)
@@ -4935,10 +4966,24 @@ class _FieldBgPainter extends CustomPainter {
       ..lineTo(pHome.dx - 4,  pHome.dy + 3)
       ..lineTo(pHome.dx - 5,  pHome.dy - 1)
       ..close();
-    canvas.drawPath(homePath, Paint()..color = Colors.white.withOpacity(0.95));
+    // vertical gradient (위 밝, 아래 어둠)
     canvas.drawPath(homePath, Paint()
-      ..color = Colors.black.withOpacity(0.25)
-      ..strokeWidth = 0.8
+      ..shader = ui.Gradient.linear(
+        Offset(pHome.dx, pHome.dy - 3.25),
+        Offset(pHome.dx, pHome.dy + 3),
+        [const Color(0xFFFFFFFF), const Color(0xFFDADAD2)],
+      ));
+    // 상단 하이라이트
+    canvas.drawPath(homePath, Paint()
+      ..shader = ui.Gradient.linear(
+        Offset(pHome.dx, pHome.dy - 3.25),
+        Offset(pHome.dx, pHome.dy),
+        [Colors.white.withOpacity(0.55), Colors.transparent],
+      ));
+    // 외곽선
+    canvas.drawPath(homePath, Paint()
+      ..color = Colors.black.withOpacity(0.50)
+      ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke);
 
     // 배터 박스 (홈 양옆 사각형 outline)
