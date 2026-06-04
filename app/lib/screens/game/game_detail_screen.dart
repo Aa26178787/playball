@@ -651,9 +651,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           SingleChildScrollView(
             child: Column(
               children: [
-                // 핀 시 상단 sticky panel 만큼 spacer (가려짐 방지)
+                // 핀 시 상단 sticky panel 만큼 spacer — field padding 60 + 230 + strip + buffer
                 if (_fieldPinned)
-                  SizedBox(height: _sameDayGames.isNotEmpty ? 420 : 330),
+                  SizedBox(height: _sameDayGames.isNotEmpty ? 460 : 360),
                 _buildGameHeader(game, roundedBottom: true, includeField: !_fieldPinned),
                 SizedBox(
                   // appBar height + safe area + bottom nav 제외
@@ -966,6 +966,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           const SizedBox(height: 5),
                           _buildRecentBar(homeRecent, true),
                         ],
+                        // 홈팀 승투/패투 (종료 + 무승부 아님)
+                        if (isDone && !((homeScore == awayScore))) ...[
+                          const SizedBox(height: 6),
+                          homeScore > awayScore
+                              ? _pitcherBadge(game['win_pitcher'] as String? ?? '', const Color(0xFF1976D2), '승')
+                              : _pitcherBadge(game['lose_pitcher'] as String? ?? '', const Color(0xFFC62828), '패'),
+                        ],
                       ],
                     ),
                   ),
@@ -1029,33 +1036,19 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           const SizedBox(height: 5),
                           _buildRecentBar(awayRecent, false),
                         ],
+                        // 원정팀 승투/패투 (종료 + 무승부 아님)
+                        if (isDone && !((homeScore == awayScore))) ...[
+                          const SizedBox(height: 6),
+                          awayScore > homeScore
+                              ? _pitcherBadge(game['win_pitcher'] as String? ?? '', const Color(0xFF1976D2), '승')
+                              : _pitcherBadge(game['lose_pitcher'] as String? ?? '', const Color(0xFFC62828), '패'),
+                        ],
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-
-            // ── 종료 승투/패투 row (MatchupHeader 아래, field 위) — Container 없이 bare ──
-            if (isDone && (game['win_pitcher'] != null || game['lose_pitcher'] != null)) ...[
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Row(children: [
-                  if (game['win_pitcher'] != null)
-                    Expanded(child: Align(
-                      alignment: Alignment.centerRight,
-                      child: _pitcherBadge(game['win_pitcher'] as String, const Color(0xFF1976D2), '승'),
-                    )),
-                  const SizedBox(width: 12),
-                  if (game['lose_pitcher'] != null)
-                    Expanded(child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: _pitcherBadge(game['lose_pitcher'] as String, const Color(0xFFC62828), '패'),
-                    )),
-                ]),
-              ),
-            ],
 
             if (includeField) const SizedBox(height: 16),
             // ── FieldSlot (확장 슬롯 + 상단 BSO overlay) ──
@@ -1073,8 +1066,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         ),
                         // 슬롯/배경 확장: padding 20/28 + SizedBox 230
                         Padding(
-                          // top 44: BSO overlay (bottom ~33) ↔ CF label (top ~35) 사이 ~7px 여유
-                          padding: const EdgeInsets.fromLTRB(16, 44, 16, 20),
+                          // top 60: BSO overlay (bottom ~33) ↔ CF label (top ~51) 사이 ~18px 여유
+                          padding: const EdgeInsets.fromLTRB(16, 60, 16, 20),
                           child: SizedBox(height: 230, width: double.infinity, child: fieldWidget),
                         ),
                         // BSO overlay — 진행중 + relay 데이터 시 필드 상단(중견수 위) center
