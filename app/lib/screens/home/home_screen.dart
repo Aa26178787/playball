@@ -2185,26 +2185,30 @@ class GameCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // ── 헤더: 날씨 + 구장 | 마이팀 + status ──
-                    Row(
-                  children: [
-                    _weatherChip(t),
-                    if (game.stadium != null) ...[
-                      const SizedBox(width: 6),
-                      _stadiumChip(context, t),
-                    ],
-                    const Spacer(),
-                    if (isMyTeam) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                        decoration: BoxDecoration(color: myColor, borderRadius: BorderRadius.circular(5)),
-                        child: const Text('마이팀',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
+                    // Container(color: cardBg) 헤더 전체 opaque bg → overlay 가림 (chip 사이 빈공간도)
+                    Container(
+                      color: cardBg,
+                      child: Row(
+                        children: [
+                          _weatherChip(t),
+                          if (game.stadium != null) ...[
+                            const SizedBox(width: 6),
+                            _stadiumChip(context, t),
+                          ],
+                          const Spacer(),
+                          if (isMyTeam) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                              decoration: BoxDecoration(color: myColor, borderRadius: BorderRadius.circular(5)),
+                              child: const Text('마이팀',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
+                            ),
+                            const SizedBox(width: 7),
+                          ],
+                          statusPill(),
+                        ],
                       ),
-                      const SizedBox(width: 7),
-                    ],
-                    statusPill(),
-                  ],
-                ),
+                    ),
                 const SizedBox(height: 13),
                 // ── 메인 grid: TeamSide | score | TeamSide ──
                 Row(
