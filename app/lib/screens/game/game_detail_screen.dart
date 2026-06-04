@@ -1926,6 +1926,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final relays = _relayAllData?['relays'] as List? ?? [];
     if (relays.isEmpty) return const SizedBox.shrink();
 
+    final homeCode = _gameData?['game']['home_team_code'] as String? ?? '';
+    final awayCode = _gameData?['game']['away_team_code'] as String? ?? '';
+
     // Group relay events by inning + half
     final Map<String, List> byHalf = {};
     for (final r in relays) {
@@ -1934,18 +1937,26 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       byHalf.putIfAbsent('$ing:$half', () => []).add(r);
     }
 
-    // Collect scoring half-innings
+    // Collect scoring half-innings with 누적 score
     final items = <Map<String, dynamic>>[];
+    int cumAway = 0;
+    int cumHome = 0;
     for (final inn in innings) {
       final num = inn['inning'] as int? ?? 0;
       final awayR = inn['away_runs'] as int? ?? 0;
       final homeR = inn['home_runs'] as int? ?? 0;
+      cumAway += awayR;
       if (awayR > 0) {
         items.add({'inning': num, 'half': 'top', 'runs': awayR, 'team': awayTeam,
+          'teamCode': awayCode,
+          'cumAway': cumAway, 'cumHome': cumHome,
           'relays': byHalf['$num:0'] ?? []});
       }
+      cumHome += homeR;
       if (homeR > 0) {
         items.add({'inning': num, 'half': 'bottom', 'runs': homeR, 'team': homeTeam,
+          'teamCode': homeCode,
+          'cumAway': cumAway, 'cumHome': cumHome,
           'relays': byHalf['$num:1'] ?? []});
       }
     }
@@ -1969,14 +1980,35 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       return (batter: '', result: raw);
     }
 
-    final halfCards = items.map((item) {
+    // 텍스트 추출: 첫 득점 play의 batter+result
+    String _extractPlayText(List halfRelays) {
+      for (final r in halfRelays) {
+        final rtype = r['type'] as int?;
+        if (rtype == 13 || rtype == 23) {
+          final raw = (r['title'] as String? ?? r['text'] as String? ?? '').trim();
+          if (raw.isEmpty) continue;
+          // raw = "batter : result" or just text
+          if (raw.contains(' : ')) {
+            final parts = raw.split(' : ');
+            return parts.length >= 2 ? '${parts[0].trim()} ${parts.sublist(1).join(' : ').trim()}' : raw;
+          }
+          return raw;
+        }
+      }
+      return '득점';
+    }
+
+    final halfCards = items.asMap().entries.map((entry) {
+      final idx = entry.key;
+      final item = entry.value;
+      final isLast = idx == items.length - 1;
       final ing = item['inning'] as int;
       final half = item['half'] as String;
-      final runs = item['runs'] as int;
-      final team = item['team'] as String;
+      final teamCode = item['teamCode'] as String;
+      final cumAway = item['cumAway'] as int;
+      final cumHome = item['cumHome'] as int;
       final halfRelays = item['relays'] as List;
       final halfLabel = half == 'top' ? '초' : '말';
-      final halfColor = half == 'top' ? Colors.blue : Colors.red;
 
       // Group events: each at-bat + its subsequent홈인 runners
       final plays = <({Map? atbat, List<Map> scorers})>[];
@@ -2101,80 +2133,56 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ));
       }
 
-      // Timeline row for this half-inning
-      // half == 'top' = 원정 = 우측, half == 'bottom' = 홈 = 좌측
+      // mockup row: [이닝chip][logo][txt][score badge]
+      // isHome ? row : row-reverse (홈 좌측, 원정 우측 정렬)
       final isHome = half == 'bottom';
-      final onSurface2 = Theme.of(context).colorScheme.onSurface;
+      final isDarkS = Theme.of(context).brightness == Brightness.dark;
+      final inkS  = isDarkS ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+      final ink2S = isDarkS ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
+      final ink3S = isDarkS ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+      final paper2S = isDarkS ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
 
-      final inningBadge = Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      final txt = _extractPlayText(halfRelays);
+      // 점수 형식: 홈:원정 누적 (예: '2:0')
+      final scoreText = '$cumHome:$cumAway';
+
+      final inningChip = Container(
+        width: 28, height: 22,
+        decoration: BoxDecoration(color: paper2S, borderRadius: BorderRadius.circular(5)),
+        alignment: Alignment.center,
+        child: Text('$ing$halfLabel',
+            style: TextStyle(fontSize: 10, color: ink3S, fontWeight: FontWeight.w700)),
+      );
+
+      final logo = TeamLogo(teamCode: teamCode, size: 20);
+
+      final txtWidget = Flexible(
+        child: Text(txt,
+            style: TextStyle(fontSize: 12, color: ink2S, fontWeight: FontWeight.w600, height: 1.3),
+            textAlign: isHome ? TextAlign.left : TextAlign.right,
+            maxLines: 2, overflow: TextOverflow.ellipsis),
+      );
+
+      final scoreBadge = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(color: paper2S, borderRadius: BorderRadius.circular(6)),
+        child: Text(scoreText,
+            style: TextStyle(fontSize: 12, color: inkS, fontWeight: FontWeight.w800,
+                fontFeatures: const [FontFeature.tabularFigures()])),
+      );
+
+      final rowChildren = isHome
+          ? [inningChip, const SizedBox(width: 8), logo, const SizedBox(width: 8), txtWidget, const SizedBox(width: 8), scoreBadge]
+          : [scoreBadge, const SizedBox(width: 8), txtWidget, const SizedBox(width: 8), logo, const SizedBox(width: 8), inningChip];
+
+      final isDarkRow = Theme.of(context).brightness == Brightness.dark;
+      final lineRow = isDarkRow ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: halfColor,
-          borderRadius: BorderRadius.circular(6),
+          border: isLast ? null : Border(bottom: BorderSide(color: lineRow, width: 1)),
         ),
-        child: Text(
-          '$ing회 $halfLabel',
-          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-        ),
-      );
-
-      final headerRow = Row(
-        mainAxisAlignment: isHome ? MainAxisAlignment.start : MainAxisAlignment.end,
-        children: [
-          if (!isHome) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text('+$runs점',
-                  style: const TextStyle(color: Colors.deepOrange, fontSize: 11, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(width: 8),
-            Text(team, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: onSurface2)),
-            const SizedBox(width: 8),
-            inningBadge,
-          ] else ...[
-            inningBadge,
-            const SizedBox(width: 8),
-            Text(team, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: onSurface2)),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text('+$runs점',
-                  style: const TextStyle(color: Colors.deepOrange, fontSize: 11, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ],
-      );
-
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              left: isHome ? BorderSide(color: halfColor.withValues(alpha: 0.4), width: 2) : BorderSide.none,
-              right: !isHome ? BorderSide(color: halfColor.withValues(alpha: 0.4), width: 2) : BorderSide.none,
-            ),
-          ),
-          padding: EdgeInsets.only(left: isHome ? 10 : 0, right: !isHome ? 10 : 0),
-          child: Column(
-            crossAxisAlignment: isHome ? CrossAxisAlignment.start : CrossAxisAlignment.end,
-            children: [
-              headerRow,
-              const SizedBox(height: 4),
-              if (playWidgets.isNotEmpty)
-                ...playWidgets
-              else
-                Text('상세 정보 없음', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-            ],
-          ),
-        ),
+        child: Row(children: rowChildren),
       );
     }).toList();
 
