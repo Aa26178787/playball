@@ -1842,6 +1842,30 @@ class GameCard extends StatelessWidget {
     );
   }
 
+  Widget _stadiumChip(BuildContext context, _Tok t) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => StadiumScreen(
+          initialIndex: game.stadiumId != null ? game.stadiumId! - 1 : null,
+        )),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: t.paper2,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.location_on, size: 10, color: t.sub),
+          const SizedBox(width: 4),
+          Text(game.stadium!,
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.ink3)),
+        ]),
+      ),
+    );
+  }
+
   Widget _weatherChip(_Tok t) {
     final w = game.weather;
     if (w == null) return const SizedBox.shrink();
@@ -2076,10 +2100,14 @@ class GameCard extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ── 헤더: 날씨 | 마이팀 + status ──
+                // ── 헤더: 날씨 + 구장 | 마이팀 + status ──
                 Row(
                   children: [
                     _weatherChip(t),
+                    if (game.stadium != null) ...[
+                      const SizedBox(width: 6),
+                      _stadiumChip(context, t),
+                    ],
                     const Spacer(),
                     if (isMyTeam) ...[
                       Container(
