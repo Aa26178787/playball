@@ -4519,12 +4519,16 @@ class _FullFieldView extends StatelessWidget {
       final h = constraints.maxHeight;
 
       Widget placed(Offset norm, Widget child, double chipW, double chipH) {
-        // 3D perspective projection 적용
+        // 3D perspective projection + depth-based size scaling
         final p = _perspective(norm);
+        final depth = (1 - norm.dy).clamp(0.0, 1.0);
+        final scale = 1.0 - depth * 0.30;  // 가까이 1.0, 멀리 ~0.70
+        final sw = chipW * scale;
+        final sh = chipH * scale;
         return Positioned(
-          left: (w * p.dx - chipW / 2).clamp(0, w - chipW),
-          top:  (h * p.dy - chipH / 2).clamp(0, h - chipH),
-          child: child,
+          left: (w * p.dx - sw / 2).clamp(0, w - sw),
+          top:  (h * p.dy - sh / 2).clamp(0, h - sh),
+          child: Transform.scale(scale: scale, child: child),
         );
       }
 
@@ -4658,11 +4662,20 @@ class _PlayerDot extends StatelessWidget {
               shape: BoxShape.circle,
               color: dotColor,
               border: Border.all(color: borderColor, width: 1.8),
-              boxShadow: [BoxShadow(
-                color: borderColor.withOpacity(0.5),
-                blurRadius: isOffense ? 6 : 4,
-                spreadRadius: 0.5,
-              )],
+              boxShadow: [
+                // 지면 그림자 (3D 깊이)
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.35),
+                  offset: const Offset(0, 2.5),
+                  blurRadius: 3.5,
+                ),
+                // 팀 컬러 glow
+                BoxShadow(
+                  color: borderColor.withOpacity(0.5),
+                  blurRadius: isOffense ? 6 : 4,
+                  spreadRadius: 0.5,
+                ),
+              ],
             ),
             child: ClipOval(
               child: imageUrl != null && imageUrl!.isNotEmpty
@@ -4800,32 +4813,49 @@ class _FieldBgPainter extends CustomPainter {
       ..close();
     canvas.drawPath(diamondPath, dirtPaint);
 
-    // 내야 잔디 (다이아몬드 중심 사각 잔디 area)
+    // 내야 잔디 (perspective projection 적용 trapezoid)
+    final igTop    = toPixel(const Offset(0.50, 0.49));
+    final igLeft   = toPixel(const Offset(0.36, 0.62));
+    final igBottom = toPixel(const Offset(0.50, 0.75));
+    final igRight  = toPixel(const Offset(0.64, 0.62));
     final infieldGrass = Paint()
       ..shader = ui.Gradient.radial(
         Offset(w * 0.50, h * 0.62), w * 0.18,
         [const Color(0xFF5FA851), const Color(0xFF4D8E42)],
       );
     final infieldGrassPath = Path()
-      ..moveTo(w * 0.50, h * 0.49)
-      ..lineTo(w * 0.36, h * 0.62)
-      ..lineTo(w * 0.50, h * 0.75)
-      ..lineTo(w * 0.64, h * 0.62)
+      ..moveTo(igTop.dx, igTop.dy)
+      ..lineTo(igLeft.dx, igLeft.dy)
+      ..lineTo(igBottom.dx, igBottom.dy)
+      ..lineTo(igRight.dx, igRight.dy)
       ..close();
     canvas.drawPath(infieldGrassPath, infieldGrass);
 
-    // 마운드 (작은 흙 원 + 약간 옅은 가장자리)
+    // 마운드 (perspective squashed ellipse)
+    final moundRect = Rect.fromCenter(
+      center: pMound, width: w * 0.09, height: w * 0.055,  // y squashed
+    );
     final moundPaint = Paint()
       ..shader = ui.Gradient.radial(
         pMound, w * 0.045,
         [const Color(0xFFB8843A), const Color(0xFFA06A2A)],
       );
-    canvas.drawCircle(pMound, w * 0.045, moundPaint);
-    // pitcher rubber (흰 직사각형)
+    canvas.drawOval(moundRect, moundPaint);
+    // 마운드 shadow underneath (depth)
+    final moundShadowPaint = Paint()
+      ..shader = ui.Gradient.radial(
+        Offset(pMound.dx, pMound.dy + 3), w * 0.05,
+        [Colors.black.withOpacity(0.18), Colors.transparent],
+      );
+    canvas.drawOval(
+      Rect.fromCenter(center: Offset(pMound.dx, pMound.dy + 3), width: w * 0.10, height: w * 0.04),
+      moundShadowPaint,
+    );
+    // pitcher rubber (perspective squashed)
     final rubberPaint = Paint()
       ..color = Colors.white.withOpacity(0.85);
     canvas.drawRect(
-      Rect.fromCenter(center: pMound, width: w * 0.04, height: 2),
+      Rect.fromCenter(center: pMound, width: w * 0.04, height: 1.5),
       rubberPaint,
     );
 
