@@ -1855,35 +1855,26 @@ class GameCard extends StatelessWidget {
   Widget _teamSide({
     required String code, required String name, required int? rank,
     required bool isHome, required bool isWinner,
-    required List<String> recent, required Color accent, required _Tok t,
+    required List<String> recent, required Color teamColorAccent, required _Tok t,
     required bool isDark,
   }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            if (isWinner)
-              Container(
-                width: 52, height: 52,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: accent, width: 2),
-                ),
-              ),
-            TeamLogo(teamCode: code, size: 46),
-          ],
-        ),
+        TeamLogo(teamCode: code, size: 46),
         const SizedBox(height: 7),
         Text(name,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: -0.15),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isWinner ? FontWeight.w900 : FontWeight.w800,
+              color: t.ink, letterSpacing: -0.15,
+            ),
             maxLines: 1, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 5),
         Text(rank != null ? '${rank}위' : (isHome ? '홈' : '원정'),
             style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.sub)),
         const SizedBox(height: 7),
-        _buildMini5(isHome ? recent.reversed.toList() : recent, accent, t, isDark),
+        _buildMini5(isHome ? recent.reversed.toList() : recent, teamColorAccent, t, isDark),
       ],
     );
   }
@@ -1906,9 +1897,22 @@ class GameCard extends StatelessWidget {
     final homeColor = teamColor(game.homeTeamCode);
     final awayColor = teamColor(game.awayTeamCode);
     final myColor = isMyTeam ? homeColor : awayColor;
-    final cardBg = isMyTeam ? myColor.withValues(alpha: isDark ? 0.14 : 0.06) : t.paper;
-    final cardBd = isMyTeam ? myColor.withValues(alpha: isDark ? 0.50 : 0.32) : t.line;
-    final accent = isMyTeam ? myColor : t.ink;
+
+    // 승팀 그라데이션: 승팀 쪽 paper 위에 팀색 알파 블렌드
+    Gradient? winGradient;
+    if (homeWon) {
+      final blend = Color.alphaBlend(homeColor.withValues(alpha: isDark ? 0.28 : 0.13), t.paper);
+      winGradient = LinearGradient(
+        begin: Alignment.centerLeft, end: Alignment.centerRight,
+        colors: [blend, t.paper], stops: const [0.0, 0.72],
+      );
+    } else if (awayWon) {
+      final blend = Color.alphaBlend(awayColor.withValues(alpha: isDark ? 0.28 : 0.13), t.paper);
+      winGradient = LinearGradient(
+        begin: Alignment.centerRight, end: Alignment.centerLeft,
+        colors: [blend, t.paper], stops: const [0.0, 0.72],
+      );
+    }
 
     // ── 상태 pill ──
     Widget statusPill() {
@@ -1972,10 +1976,11 @@ class GameCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: cardBg,
+        color: winGradient == null ? t.paper : null,
+        gradient: winGradient,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cardBd, width: 1),
-        boxShadow: (!isMyTeam && !isDark) ? [
+        border: Border.all(color: t.line, width: 1),
+        boxShadow: !isDark ? [
           BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 2, offset: const Offset(0, 1)),
         ] : null,
       ),
@@ -2014,7 +2019,7 @@ class GameCard extends StatelessWidget {
                     Expanded(child: _teamSide(
                       code: game.homeTeamCode, name: game.homeTeam, rank: homeRank,
                       isHome: true, isWinner: homeWon,
-                      recent: game.homeRecent5, accent: accent, t: t, isDark: isDark,
+                      recent: game.homeRecent5, teamColorAccent: homeColor, t: t, isDark: isDark,
                     )),
                     SizedBox(
                       width: 86,
@@ -2073,7 +2078,7 @@ class GameCard extends StatelessWidget {
                     Expanded(child: _teamSide(
                       code: game.awayTeamCode, name: game.awayTeam, rank: awayRank,
                       isHome: false, isWinner: awayWon,
-                      recent: game.awayRecent5, accent: accent, t: t, isDark: isDark,
+                      recent: game.awayRecent5, teamColorAccent: awayColor, t: t, isDark: isDark,
                     )),
                   ],
                 ),
