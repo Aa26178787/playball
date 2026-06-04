@@ -1937,19 +1937,20 @@ class GameCard extends StatelessWidget {
     final awayColor = teamColor(game.awayTeamCode);
     final myColor = isMyTeam ? homeColor : awayColor;
 
-    // 승팀 그라데이션: 승팀 쪽 paper 위에 팀색 알파 블렌드
+    // 승팀 그라데이션: 두 팀 토탈 득점 비율로 stops 조절
     Gradient? winGradient;
-    if (homeWon) {
-      final blend = Color.alphaBlend(homeColor.withValues(alpha: isDark ? 0.28 : 0.13), t.paper);
+    final totalScore = game.homeScore + game.awayScore;
+    if (homeWon || awayWon) {
+      final winScore = homeWon ? game.homeScore : game.awayScore;
+      final ratio = totalScore > 0
+          ? (winScore / totalScore).clamp(0.55, 0.95).toDouble()
+          : 0.72;
+      final winColor = homeWon ? homeColor : awayColor;
+      final blend = Color.alphaBlend(winColor.withValues(alpha: isDark ? 0.28 : 0.13), t.paper);
       winGradient = LinearGradient(
-        begin: Alignment.centerLeft, end: Alignment.centerRight,
-        colors: [blend, t.paper], stops: const [0.0, 0.72],
-      );
-    } else if (awayWon) {
-      final blend = Color.alphaBlend(awayColor.withValues(alpha: isDark ? 0.28 : 0.13), t.paper);
-      winGradient = LinearGradient(
-        begin: Alignment.centerRight, end: Alignment.centerLeft,
-        colors: [blend, t.paper], stops: const [0.0, 0.72],
+        begin: homeWon ? Alignment.centerLeft : Alignment.centerRight,
+        end:   homeWon ? Alignment.centerRight : Alignment.centerLeft,
+        colors: [blend, t.paper], stops: [0.0, ratio],
       );
     }
 
