@@ -626,12 +626,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         title: Text('${game['home_team']} vs ${game['away_team']}'),
         actions: [
           IconButton(
-            tooltip: _fieldPinned ? '필드뷰 고정 해제' : '필드뷰 상단 고정',
-            icon: Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined),
-            color: _fieldPinned ? const Color(0xFFE53935) : null,
-            onPressed: () => setState(() => _fieldPinned = !_fieldPinned),
-          ),
-          IconButton(
             icon: const Icon(Icons.share),
             onPressed: () => showModalBottomSheet(
               context: context,
@@ -652,7 +646,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ? Column(
                   children: [
                     // panel-spacer: 스코어보드/팀로고 등 헤더 영역을 panel로 가림 (panel actual height와 일치)
-                    SizedBox(height: _sameDayGames.isNotEmpty ? 410 : 330),
+                    SizedBox(height: _sameDayGames.isNotEmpty ? 440 : 340),
                     Expanded(
                       // gameHeader skip — 핀 시 panel 바로 아래 TabBarView (득점요약/이닝중계)만 표시
                       child: TabBarView(
@@ -1120,12 +1114,27 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                     const SizedBox(width: 6),
                                     _bsoOverlayGroup('O', ((_relayData?['current_state']?['out'] as int?) ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
                                     const SizedBox(width: 8),
-                                    _isRelayRefreshing
-                                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                        : GestureDetector(
-                                            onTap: _refreshRelayAll,
-                                            child: const Icon(Icons.refresh, size: 16, color: Colors.white),
-                                          ),
+                                    // refresh — 동일 size SizedBox로 wrap (spinner/icon shift 방지)
+                                    SizedBox(
+                                      width: 16, height: 16,
+                                      child: _isRelayRefreshing
+                                          ? const CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
+                                          : GestureDetector(
+                                              onTap: _refreshRelayAll,
+                                              child: const Icon(Icons.refresh, size: 16, color: Colors.white),
+                                            ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    // 핀 토글 — BSO overlay 오른쪽 끝
+                                    GestureDetector(
+                                      onTap: () => setState(() => _fieldPinned = !_fieldPinned),
+                                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                        Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                                            size: 14, color: _fieldPinned ? const Color(0xFFFFA000) : Colors.white),
+                                        const SizedBox(width: 3),
+                                        const Text('고정', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                                      ]),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1533,7 +1542,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     return Container(
       // panel-spacer와 동일 height + 하단 rounded (gameHeader ClipRRect bottom 16과 일치)
-      height: _sameDayGames.isNotEmpty ? 410 : 330,
+      height: _sameDayGames.isNotEmpty ? 440 : 340,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: paper,
@@ -1589,12 +1598,25 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                 const SizedBox(width: 6),
                                 _bsoOverlayGroup('O', ((_relayData?['current_state']?['out'] as int?) ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
                                 const SizedBox(width: 8),
-                                _isRelayRefreshing
-                                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                    : GestureDetector(
-                                        onTap: _refreshRelayAll,
-                                        child: const Icon(Icons.refresh, size: 16, color: Colors.white),
-                                      ),
+                                SizedBox(
+                                  width: 16, height: 16,
+                                  child: _isRelayRefreshing
+                                      ? const CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
+                                      : GestureDetector(
+                                          onTap: _refreshRelayAll,
+                                          child: const Icon(Icons.refresh, size: 16, color: Colors.white),
+                                        ),
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () => setState(() => _fieldPinned = !_fieldPinned),
+                                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                    Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                                        size: 14, color: _fieldPinned ? const Color(0xFFFFA000) : Colors.white),
+                                    const SizedBox(width: 3),
+                                    const Text('고정', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                                  ]),
+                                ),
                               ],
                             ),
                           ),
