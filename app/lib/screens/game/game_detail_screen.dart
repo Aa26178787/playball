@@ -668,9 +668,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildSameDayStrip() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final gradientColors = isDark
-        ? [const Color(0xFF0D2818), const Color(0xFF1B3A22)]
-        : [const Color(0xFF1B4332), const Color(0xFF2D6A4F)];
+    final ink   = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final paper2= isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
+    final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    const live  = Color(0xFFE53935);
 
     return LayoutBuilder(builder: (context, constraints) {
       final screenW = constraints.maxWidth > 0
@@ -678,19 +682,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           : MediaQuery.of(context).size.width;
       final cardW = screenW / 4;
 
-      return ClipRRect(
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-        child: Container(
-          height: 88,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter, end: Alignment.bottomCenter,
-              colors: gradientColors,
-            ),
-          ),
+      return Container(
+        color: paper,
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        child: SizedBox(
+          height: 70,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            padding: EdgeInsets.zero,
             itemCount: _sameDayGames.length,
             itemBuilder: (_, i) {
               final g = _sameDayGames[i] as Map;
@@ -721,18 +720,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         ),
                 child: Container(
                   width: cardW - 8,
-                  margin: const EdgeInsets.only(right: 6),
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    color: isCurrent
-                        ? Colors.white.withValues(alpha: 0.15)
-                        : Colors.transparent,
+                    color: isCurrent ? paper2 : paper,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isCurrent
-                          ? Colors.white.withValues(alpha: 0.7)
-                          : Colors.white.withValues(alpha: 0.2),
-                      width: isCurrent ? 2 : 1,
+                      color: isCurrent ? ink : line,
+                      width: isCurrent ? 1.5 : 1,
                     ),
                   ),
                   child: Column(
@@ -742,27 +737,28 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           TeamLogo(teamCode: awayCode, size: 22),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
+                          Text('vs', style: TextStyle(fontSize: 9, color: sub, fontWeight: FontWeight.w600)),
+                          const SizedBox(width: 4),
                           TeamLogo(teamCode: homeCode, size: 22),
                         ],
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 5),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (isLive) ...[
+                            Container(width: 5, height: 5,
+                                decoration: const BoxDecoration(color: live, shape: BoxShape.circle)),
+                            const SizedBox(width: 4),
+                          ],
                           Text(scoreText,
                               style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isLive ? const Color(0xFFFF6B6B) : Colors.white,
+                                fontSize: 13, fontWeight: FontWeight.w800,
+                                color: isLive ? live : ink,
+                                fontFeatures: const [FontFeature.tabularFigures()],
                               )),
-                          if (isLive) ...[
-                            const SizedBox(width: 2),
-                            Container(
-                              width: 5, height: 5,
-                              decoration: const BoxDecoration(color: Color(0xFFFF6B6B), shape: BoxShape.circle),
-                            ),
-                          ],
                         ],
                       ),
                     ],
@@ -854,110 +850,138 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       );
     }
 
-    // BSO dots helper (for live bottom bar)
+    // ── 토큰 ──────────────────────────────
+    final ink    = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink2   = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
+    final ink3   = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final sub    = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final paper  = isDark ? const Color(0xFF18181C) : Colors.white;
+    final paper2 = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
+    final line   = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final line2  = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
+    const live   = Color(0xFFE53935);
+
+    // BSO dot
     Widget bsoDot(bool on, Color c) => Container(
-      width: 9, height: 9,
+      width: 8, height: 8,
       margin: const EdgeInsets.symmetric(horizontal: 2),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: on ? c : Colors.white.withValues(alpha: 0.2),
-        boxShadow: on ? [BoxShadow(color: c.withValues(alpha: 0.6), blurRadius: 4, spreadRadius: 0.5)] : null,
+        color: on ? c : line2,
       ),
     );
     Widget bsoGroup(String lbl, int count, int max, Color c) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(lbl, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white60)),
+        Text(lbl, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: ink3)),
         const SizedBox(width: 3),
         ...List.generate(max, (i) => bsoDot(i < count, c)),
       ],
     );
-
-    final gradientColors = isDark
-        ? [const Color(0xFF0D2818), const Color(0xFF1B3A22)]
-        : [const Color(0xFF1B4332), const Color(0xFF2D6A4F)];
 
     String shortName(String n) => n.length > 3 ? n.substring(0, 3) : n;
 
     return ClipRRect(
       borderRadius: BorderRadius.vertical(bottom: Radius.circular(roundedBottom ? 16 : 0)),
       child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter, end: Alignment.bottomCenter,
-            colors: gradientColors,
-          ),
-        ),
+        color: paper,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ── 스코어보드 (최상단) ──────────────────────────
+            // ── ScoreBoardDark (mockup 다크 박스 유지) ──
             if (innings.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(9),
+                  borderRadius: BorderRadius.circular(14),
                   child: _buildFieldScoreOverlay(innings, game),
                 ),
               ),
 
-            // ── 스코어 바 ──────────────────────────────────
+            // ── MatchupHeader (paper/ink) ──
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // 홈팀
                   Expanded(
                     child: Column(
                       children: [
-                        TeamLogo(teamCode: homeCode, size: 40),
-                        const SizedBox(height: 3),
-                        Text(shortName(homeTeam), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                        TeamLogo(teamCode: homeCode, size: 44),
+                        const SizedBox(height: 6),
+                        Text(shortName(homeTeam),
+                            style: TextStyle(color: ink, fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
                         if (homeRank != null && homeRank > 0)
-                          Text('${homeRank}위', style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                          Text('${homeRank}위', style: TextStyle(color: sub, fontSize: 10, fontWeight: FontWeight.w600)),
                         if (homeWinRate != null) ...[
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 4),
                           _buildWinRatePill(homeWinRate),
                         ],
                         if (homeRecent.isNotEmpty) ...[
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 5),
                           _buildRecentBar(homeRecent, true),
                         ],
                       ],
                     ),
                   ),
-                  // 스코어 중앙
                   Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        isDone || isLive ? '$homeScore : $awayScore' : 'VS',
-                        style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text('$homeScore',
+                              style: TextStyle(color: ink, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.6, fontFeatures: const [FontFeature.tabularFigures()])),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: Text(':',
+                                style: TextStyle(color: line2, fontSize: 24, fontWeight: FontWeight.w400)),
+                          ),
+                          Text('$awayScore',
+                              style: TextStyle(color: ink, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.6, fontFeatures: const [FontFeature.tabularFigures()])),
+                        ],
                       ),
-                      Text(
-                        isLive
-                            ? '${game['current_inning']}회 ${game['inning_half'] ?? ''}'
-                            : isDone ? '종료'
-                            : status == '예정' || status == '라인업' ? (game['start_time'] as String? ?? '예정') : status,
-                        style: const TextStyle(color: Colors.white60, fontSize: 11),
-                      ),
+                      const SizedBox(height: 6),
+                      if (isLive)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: live.withValues(alpha: isDark ? 0.20 : 0.10),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Container(width: 5, height: 5,
+                                decoration: const BoxDecoration(color: live, shape: BoxShape.circle)),
+                            const SizedBox(width: 5),
+                            Text('${game['current_inning']}회 ${game['inning_half'] ?? ''}',
+                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: live)),
+                          ]),
+                        )
+                      else
+                        Text(
+                          isDone ? '경기 종료'
+                              : status == '예정' || status == '라인업' ? (game['start_time'] as String? ?? '예정') : status,
+                          style: TextStyle(color: ink3, fontSize: 11, fontWeight: FontWeight.w700),
+                        ),
                     ],
                   ),
-                  // 원정팀
                   Expanded(
                     child: Column(
                       children: [
-                        TeamLogo(teamCode: awayCode, size: 40),
-                        const SizedBox(height: 3),
-                        Text(shortName(awayTeam), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                        TeamLogo(teamCode: awayCode, size: 44),
+                        const SizedBox(height: 6),
+                        Text(shortName(awayTeam),
+                            style: TextStyle(color: ink, fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
                         if (awayRank != null && awayRank > 0)
-                          Text('${awayRank}위', style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                          Text('${awayRank}위', style: TextStyle(color: sub, fontSize: 10, fontWeight: FontWeight.w600)),
                         if (awayWinRate != null) ...[
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 4),
                           _buildWinRatePill(awayWinRate),
                         ],
                         if (awayRecent.isNotEmpty) ...[
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 5),
                           _buildRecentBar(awayRecent, false),
                         ],
                       ],
@@ -967,56 +991,73 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             ),
 
-            // ── 필드뷰 ──────────────────────────────────────
+            // ── 필드뷰 ─────
             if (fieldWidget != null)
               SizedBox(height: 190, child: fieldWidget),
 
-            // ── 하단 바 ─────────────────────────────────────
+            // ── 하단 바 (LIVE BSO / 승투패투 / 날씨) ──
             Container(
               padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
               child: Row(
                 children: [
                   if (isLive && _relayData?['current_state'] != null) ...[
-                    // LIVE 뱃지
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.green[600],
-                        borderRadius: BorderRadius.circular(4),
+                        color: live.withValues(alpha: isDark ? 0.20 : 0.10),
+                        borderRadius: BorderRadius.circular(999),
                       ),
-                      child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Container(width: 5, height: 5,
+                            decoration: const BoxDecoration(color: live, shape: BoxShape.circle)),
+                        const SizedBox(width: 4),
+                        const Text('LIVE', style: TextStyle(color: live, fontSize: 9, fontWeight: FontWeight.w800)),
+                      ]),
                     ),
                     const SizedBox(width: 10),
-                    // BSO
-                    bsoGroup('B', (_relayData!['current_state']['ball'] as int? ?? 0).clamp(0, 3), 3, Colors.green[300]!),
+                    bsoGroup('B', (_relayData!['current_state']['ball'] as int? ?? 0).clamp(0, 3), 3, const Color(0xFF22C55E)),
                     const SizedBox(width: 8),
-                    bsoGroup('S', (_relayData!['current_state']['strike'] as int? ?? 0).clamp(0, 2), 2, Colors.red[300]!),
+                    bsoGroup('S', (_relayData!['current_state']['strike'] as int? ?? 0).clamp(0, 2), 2, live),
                     const SizedBox(width: 8),
-                    bsoGroup('O', (_relayData!['current_state']['out'] as int? ?? 0).clamp(0, 2), 2, Colors.orange[300]!),
+                    bsoGroup('O', (_relayData!['current_state']['out'] as int? ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
                     const Spacer(),
-                    // 새로고침
                     _isRelayRefreshing
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white60))
+                        ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: ink3))
                         : GestureDetector(
                             onTap: _refreshRelayAll,
-                            child: const Icon(Icons.refresh, size: 20, color: Colors.white60),
+                            child: Icon(Icons.refresh, size: 20, color: ink3),
                           ),
                   ] else if (isDone && (game['win_pitcher'] != null || game['lose_pitcher'] != null)) ...[
-                    // 승투/패투
                     const Spacer(),
                     if (game['win_pitcher'] != null)
-                      _pitcherBadge(game['win_pitcher'] as String, game['win_pitcher_image'] as String?, Colors.lightBlueAccent, '승'),
+                      _pitcherBadge(game['win_pitcher'] as String, game['win_pitcher_image'] as String?, const Color(0xFF1976D2), '승'),
                     if (game['win_pitcher'] != null && game['lose_pitcher'] != null) const SizedBox(width: 20),
                     if (game['lose_pitcher'] != null)
-                      _pitcherBadge(game['lose_pitcher'] as String, game['lose_pitcher_image'] as String?, Colors.redAccent, '패'),
+                      _pitcherBadge(game['lose_pitcher'] as String, game['lose_pitcher_image'] as String?, const Color(0xFFC62828), '패'),
                     const Spacer(),
                   ] else if (_weatherData != null) ...[
-                    Expanded(child: Center(child: _buildWeatherRow(_weatherData!))),
+                    Expanded(
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(width: 6, height: 6,
+                                decoration: BoxDecoration(color: line2, shape: BoxShape.circle)),
+                            const SizedBox(width: 7),
+                            DefaultTextStyle(
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ink3),
+                              child: _buildWeatherRow(_weatherData!),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ] else
                     const SizedBox.shrink(),
                 ],
               ),
             ),
+            Container(height: 1, color: line),
           ],
         ),
       ),
@@ -1024,18 +1065,22 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildWinRatePill(double rate) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink2  = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
+    final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final paper2= isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.13),
-        borderRadius: BorderRadius.circular(4),
+        color: paper2,
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('승리확률 ', style: TextStyle(color: Colors.white38, fontSize: 8)),
+          Text('승리확률 ', style: TextStyle(color: sub, fontSize: 8, fontWeight: FontWeight.w600)),
           Text('${rate.toStringAsFixed(0)}%',
-              style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w700)),
+              style: TextStyle(color: ink2, fontSize: 10, fontWeight: FontWeight.w800)),
         ],
       ),
     );
@@ -1241,38 +1286,43 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildRecentBar(List<String> recent, bool isHome) {
     if (recent.isEmpty) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink   = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final line2 = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
+    final track = isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);
     final displayed = isHome ? recent.reversed.toList() : recent;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
-      children: displayed.asMap().entries.map((e) {
-        final idx = e.key;
-        final r = e.value;
-        final isLatest = isHome ? idx == displayed.length - 1 : idx == 0;
-        final c = r == 'W' ? Colors.blue : r == 'L' ? Colors.red : r == 'C' ? Colors.orange : Colors.grey;
+      children: displayed.map((r) {
+        Color bg, fg;
+        Color? bd;
+        if (r == 'W') {
+          bg = ink;
+          fg = isDark ? const Color(0xFF0F0F12) : Colors.white;
+          bd = Colors.transparent;
+        } else if (r == 'L') {
+          bg = Colors.transparent;
+          fg = sub;
+          bd = line2;
+        } else {
+          bg = track;
+          fg = ink3;
+          bd = Colors.transparent;
+        }
         return Padding(
-          padding: const EdgeInsets.only(right: 2),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: c.withOpacity(0.25),
-                  borderRadius: BorderRadius.circular(3),
-                  border: Border.all(color: c.withOpacity(0.7), width: 0.8),
-                ),
-                alignment: Alignment.center,
-                child: Text(r, style: TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-              if (isLatest)
-                const Positioned(
-                  top: -3,
-                  right: -1,
-                  child: CircleAvatar(radius: 2.5, backgroundColor: Colors.red),
-                ),
-            ],
+          padding: const EdgeInsets.only(right: 4),
+          child: Container(
+            width: 18, height: 18,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: bd, width: 1),
+            ),
+            alignment: Alignment.center,
+            child: Text(r, style: TextStyle(fontSize: 9, color: fg, fontWeight: FontWeight.w800)),
           ),
         );
       }).toList(),
@@ -1548,62 +1598,83 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           else if (relays.isEmpty)
             const Center(child: Text('중계 데이터가 없습니다'))
           else ...[
-            const Text('이닝별 중계',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 8),
-            ...sortedInnings.map((inningNum) {
-              final items = grouped[inningNum]!;
+            Builder(builder: (ctx) {
+              final isDark = Theme.of(ctx).brightness == Brightness.dark;
+              final ink   = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+              final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+              final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+              final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 12, left: 2),
+                    child: Text('이닝별 중계',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: ink, letterSpacing: -0.2)),
+                  ),
+                  ...sortedInnings.map((inningNum) {
+                    final items = grouped[inningNum]!;
+                    final topItems = items.where((r) => (r['inning_half']?.toString() ?? '0') == '0').toList();
+                    final botItems = items.where((r) => (r['inning_half']?.toString() ?? '0') == '1').toList();
 
-              final topItems = items.where((r) {
-                final h = r['inning_half']?.toString() ?? '0';
-                return h == '0';
-              }).toList();
-              final botItems = items.where((r) {
-                final h = r['inning_half']?.toString() ?? '0';
-                return h == '1';
-              }).toList();
-
-              return Theme(
-                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                child: Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ExpansionTile(
-                  initiallyExpanded: false,
-                  title: Text('$inningNum회',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 14)),
-                  children: [
-                    if (topItems.isNotEmpty) ...[
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                        color: Colors.blue.withOpacity(0.05),
-                        child: Text('$inningNum회초 $awayTeam 공격',
-                            style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue[700])),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: paper,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: line, width: 1),
                       ),
-                      ...groupByBatter(topItems).map((e) => _buildBatterRelayTile(e)),
-                    ],
-                    if (botItems.isNotEmpty) ...[
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                        color: Colors.red.withOpacity(0.05),
-                        child: Text('$inningNum회말 $homeTeam 공격',
-                            style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red[700])),
+                      clipBehavior: Clip.antiAlias,
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                          dividerColor: Colors.transparent,
+                          splashColor: Colors.transparent,
+                          highlightColor: Colors.transparent,
+                        ),
+                        child: ExpansionTile(
+                          initiallyExpanded: false,
+                          tilePadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
+                          title: Text('$inningNum회',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: ink, letterSpacing: -0.1)),
+                          iconColor: ink3,
+                          collapsedIconColor: ink3,
+                          children: [
+                            if (topItems.isNotEmpty) ...[
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.fromLTRB(15, 10, 15, 6),
+                                decoration: BoxDecoration(
+                                  border: Border(top: BorderSide(color: line, width: 1)),
+                                ),
+                                child: Text('$inningNum회초 $awayTeam 공격',
+                                    style: TextStyle(
+                                        fontSize: 12, fontWeight: FontWeight.w700,
+                                        color: Color(0xFF1976D2))),
+                              ),
+                              ...groupByBatter(topItems).map((e) => _buildBatterRelayTile(e)),
+                            ],
+                            if (botItems.isNotEmpty) ...[
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.fromLTRB(15, 10, 15, 6),
+                                decoration: BoxDecoration(
+                                  border: Border(top: BorderSide(color: line, width: 1)),
+                                ),
+                                child: Text('$inningNum회말 $homeTeam 공격',
+                                    style: TextStyle(
+                                        fontSize: 12, fontWeight: FontWeight.w700,
+                                        color: Color(0xFFC62828))),
+                              ),
+                              ...groupByBatter(botItems).map((e) => _buildBatterRelayTile(e)),
+                            ],
+                          ],
+                        ),
                       ),
-                      ...groupByBatter(botItems).map((e) => _buildBatterRelayTile(e)),
-                    ],
-                  ],
-                ),
-              ),
+                    );
+                  }),
+                ],
               );
-            }).toList(),
+            }),
           ],
         ],
       ),
