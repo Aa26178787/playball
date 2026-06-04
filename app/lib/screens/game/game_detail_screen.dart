@@ -647,7 +647,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   children: [
                     // panel-spacer: panel actual height와 일치 + paper bg (scaffold body 색 노출 방지)
                     Container(
-                      height: _sameDayGames.isNotEmpty ? 490 : 390,
+                      height: _sameDayGames.isNotEmpty ? 460 : 365,
                       color: Theme.of(context).brightness == Brightness.dark
                           ? const Color(0xFF18181C)
                           : Colors.white,
@@ -1571,7 +1571,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     return Container(
       // panel-spacer와 동일 height + 하단 rounded (gameHeader ClipRRect bottom 16과 일치)
-      height: _sameDayGames.isNotEmpty ? 490 : 390,
+      height: _sameDayGames.isNotEmpty ? 460 : 365,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: paper,
