@@ -145,25 +145,36 @@ def _parse_daily_pitcher(lines):
             continue
         try:
             date_str = f"2026-{vals[0].replace('.', '-')}"
-            result = vals[2] if vals[2] in ['승', '패', '세이브', '홀드', '블론'] else None
+            # KBO 페이지 컬럼: 일자/상대/구분/[결과]/평자/NP/이닝/TBF/H/HR/BB/SO/R/ER/ERA누계
+            # vals[2] = 구분('선발'/'구원'), vals[3] = 결과(승/패/...) 또는 평자
+            result = vals[3] if len(vals) > 3 and vals[3] in ['승', '패', '세이브', '홀드', '블론'] else None
             offset = 1 if result else 0
-            ip_raw = vals[3 + offset]
-            next_v = vals[4 + offset] if 4 + offset < len(vals) else None
+            # 평자(단일경기 ERA) = vals[3 + offset]
+            era = _safe_float(vals[3 + offset]) if 3 + offset < len(vals) else None
+            # NP = vals[4 + offset] (사용 안 함)
+            # 이닝 = vals[5 + offset] [+ vals[6 + offset]이 분수면 추가]
+            if 5 + offset >= len(vals):
+                continue
+            ip_raw = vals[5 + offset]
+            next_v = vals[6 + offset] if 6 + offset < len(vals) else None
             ip = _parse_innings(ip_raw, next_v)
             ip_offset = 1 if next_v in ['1/3', '2/3'] else 0
-            base = 4 + offset + ip_offset
+            # TBF skip
+            base = 6 + offset + ip_offset
+            if base + 6 >= len(vals):
+                continue
             records.append({
                 'game_date': date_str,
                 'opponent': vals[1],
                 'result': result,
                 'stat_type': 'pitcher',
-                'era': _safe_float(vals[3]) if result else _safe_float(vals[2 + offset]),
+                'era': era,
                 'ip': ip,
-                'h': _safe_int(vals[base]),
-                'hr': _safe_int(vals[base + 1]),
-                'bb': _safe_int(vals[base + 2]),
+                'h':  _safe_int(vals[base + 1]),
+                'hr': _safe_int(vals[base + 2]),
+                'bb': _safe_int(vals[base + 3]),
                 'so': _safe_int(vals[base + 4]),
-                'r': _safe_int(vals[base + 5]),
+                'r':  _safe_int(vals[base + 5]),
                 'er': _safe_int(vals[base + 6]),
             })
         except Exception:
