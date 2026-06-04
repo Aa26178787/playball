@@ -1001,10 +1001,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
                       padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                      // 외야 잔디 가장자리 색 단색 — _FullFieldView painter의 outer 색과 정확 일치
+                      // painter radial gradient corner t≈0.66 (mid stop ~#6BB05A) + stripe 0.05 black overlay
+                      // outer 단색 = painter edge 실제 색 매칭
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
-                        color: const Color(0xFF7BC068),
+                        color: const Color(0xFF65A754),
                       ),
                       child: SizedBox(height: 190, width: double.infinity, child: fieldWidget),
                     ),
