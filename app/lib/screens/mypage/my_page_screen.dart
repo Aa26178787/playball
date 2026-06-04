@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import '../../api/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -269,17 +270,39 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   Future<void> _pickAndUploadImage() async {
     final picker = ImagePicker();
-    // 1:1 정사각형 강제: maxWidth=maxHeight=512 + imageQuality 80
     final picked = await picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 80,
-      maxWidth: 512,
-      maxHeight: 512,
+      imageQuality: 90,
     );
     if (picked == null) return;
+    // ImageCropper 1:1 크롭 UI — 검은 이미지 fix (resize 후 검은 변환 방지)
+    final cropped = await ImageCropper().cropImage(
+      sourcePath: picked.path,
+      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      compressFormat: ImageCompressFormat.jpg,
+      compressQuality: 85,
+      maxWidth: 512,
+      maxHeight: 512,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: '프로필 이미지 크롭',
+          toolbarColor: const Color(0xFF111113),
+          toolbarWidgetColor: Colors.white,
+          activeControlsWidgetColor: const Color(0xFF111113),
+          initAspectRatio: CropAspectRatioPreset.square,
+          lockAspectRatio: true,
+          hideBottomControls: false,
+        ),
+        IOSUiSettings(
+          title: '프로필 이미지 크롭',
+          aspectRatioLockEnabled: true,
+        ),
+      ],
+    );
+    if (cropped == null) return;
     setState(() => _uploadingImage = true);
     try {
-      final url = await ApiService.uploadProfileImage(picked.path);
+      final url = await ApiService.uploadProfileImage(cropped.path);
       // 캐시 우회: URL에 timestamp query 붙여 새 cache key
       final bustedUrl = url.contains('?') ? '$url&t=${DateTime.now().millisecondsSinceEpoch}'
                                           : '$url?t=${DateTime.now().millisecondsSinceEpoch}';

@@ -64,6 +64,9 @@ dependencies:
   # 이미지 선택
   image_picker: ^1.1.2
 
+  # 이미지 크롭 (1:1 정사각 강제)
+  image_cropper: ^7.1.0
+
   # URL 열기
   url_launcher: ^6.3.1
 
