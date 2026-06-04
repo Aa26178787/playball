@@ -2180,7 +2180,8 @@ class GameCard extends StatelessWidget {
                   ),
                 ),
               Padding(
-                padding: const EdgeInsets.all(15),
+                // horizontal padding 제거: 선발/prediction Container가 카드 전체 너비 차지하도록 (negative margin assertion 회피)
+                padding: const EdgeInsets.symmetric(vertical: 15),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -2188,6 +2189,7 @@ class GameCard extends StatelessWidget {
                     // Container(color: cardBg) 헤더 전체 opaque bg → overlay 가림 (chip 사이 빈공간도)
                     Container(
                       color: cardBg,
+                      padding: const EdgeInsets.symmetric(horizontal: 15),
                       child: Row(
                         children: [
                           _weatherChip(t),
@@ -2211,7 +2213,9 @@ class GameCard extends StatelessWidget {
                     ),
                 const SizedBox(height: 13),
                 // ── 메인 grid: TeamSide | score | TeamSide ──
-                Row(
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                  child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(child: _teamSide(
@@ -2287,13 +2291,14 @@ class GameCard extends StatelessWidget {
                       teamId: game.awayTeamId, buildContext: context,
                     )),
                   ],
+                  ),
                 ),
                 // ── divider + 선발 + 다음 시리즈 (opaque cardBg로 overlay 가림) ──
-                // negative margin -15 + 내부 padding 15 → Padding(all 15) 양끝까지 확장 (overlay 가림)
+                // 부모 Padding horizontal 0 → Container 자체 카드 전체 너비, 내부 padding 15만 적용
                 if (hasPitchers || hasStarters || nextHomeSeries != null || nextAwaySeries != null)
                   Container(
                     color: cardBg,
-                    margin: const EdgeInsets.only(top: 13, left: -15, right: -15),
+                    margin: const EdgeInsets.only(top: 13),
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -2352,7 +2357,7 @@ class GameCard extends StatelessWidget {
                 if (showPrediction)
                   Container(
                     color: cardBg,
-                    margin: const EdgeInsets.only(top: 13, left: -15, right: -15),
+                    margin: const EdgeInsets.only(top: 13),
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
