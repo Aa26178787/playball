@@ -1081,9 +1081,18 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         ),
                         // 슬롯/배경 확장: padding 20/28 + SizedBox 230
                         Padding(
-                          // top 60: BSO overlay (bottom ~33) ↔ CF label (top ~51) 사이 ~18px 여유
                           padding: const EdgeInsets.fromLTRB(16, 60, 16, 20),
-                          child: SizedBox(height: 230, width: double.infinity, child: fieldWidget),
+                          child: SizedBox(
+                            height: 230, width: double.infinity,
+                            // Matrix4 perspective 3D — 카메라 30~45도 기울임
+                            child: Transform(
+                              alignment: Alignment.bottomCenter,
+                              transform: Matrix4.identity()
+                                ..setEntry(3, 2, 0.0015)  // perspective depth
+                                ..rotateX(0.50),  // ~29도 기울임
+                              child: fieldWidget,
+                            ),
+                          ),
                         ),
                         // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
                         Positioned(
@@ -4453,18 +4462,8 @@ class _FullFieldView extends StatelessWidget {
     required this.isDark, this.fieldView,
   });
 
-  // 3D perspective projection: 지면과 30~45도 각도 카메라 시점
-  // depth = (1-y)^1.3 → 외야 더 강하게 수렴, 내야 거의 그대로
-  static Offset _perspective(Offset src) {
-    final raw = (1 - src.dy).clamp(0.0, 1.0);
-    final depth = math.pow(raw, 1.3).toDouble();  // non-linear depth
-    final f = depth * 0.55;  // 30~45도: 강한 수렴
-    const vpX = 0.5;
-    const vpY = -0.10;
-    final newX = src.dx + (vpX - src.dx) * f;
-    final newY = src.dy + (vpY - src.dy) * f;
-    return Offset(newX, newY);
-  }
+  // Matrix4 perspective transform 사용 — 좌표 변환 X (no-op)
+  static Offset _perspective(Offset src) => src;
 
   // Normalized (x,y) coordinates on the field widget (0=left/top, 1=right/bottom)
   static const Map<String, Offset> _posCoords = {
@@ -4726,15 +4725,8 @@ class _FieldBgPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // Base positions (matches _FullFieldView._baseCoords) + 3D perspective projection (30~45도)
-    Offset proj(Offset src) {
-      final raw = (1 - src.dy).clamp(0.0, 1.0);
-      final d = math.pow(raw, 1.3).toDouble();
-      final f = d * 0.55;
-      const vpX = 0.5;
-      const vpY = -0.10;
-      return Offset(src.dx + (vpX - src.dx) * f, src.dy + (vpY - src.dy) * f);
-    }
+    // Matrix4 transform 사용 — 좌표 변환 X (no-op)
+    Offset proj(Offset src) => src;
     Offset toPixel(Offset src) {
       final p = proj(src);
       return Offset(w * p.dx, h * p.dy);
