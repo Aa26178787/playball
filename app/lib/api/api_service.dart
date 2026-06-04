@@ -855,9 +855,9 @@ class ApiService {
 
   static Future<String> uploadProfileImage(String filePath) async {
     final headers = await authHeaders();
-    // cropped 파일 확장자 명시 — 서버 ext check (.jpg/.png 등) 통과 보장
+    // cropped 파일 확장자 명시 — 원형 crop = png (transparent 모서리)
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(filePath, filename: 'profile.jpg'),
+      'file': await MultipartFile.fromFile(filePath, filename: 'profile.png'),
     });
     final res = await _dio.post('/user/profile-image',
         data: formData,

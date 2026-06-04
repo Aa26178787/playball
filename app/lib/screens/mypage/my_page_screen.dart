@@ -279,8 +279,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
     final cropped = await ImageCropper().cropImage(
       sourcePath: picked.path,
       aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-      compressFormat: ImageCompressFormat.jpg,
-      compressQuality: 85,
+      cropStyle: CropStyle.circle,  // 원형 crop 가이드 (내접원) — 1:1 + 원 표시
+      compressFormat: ImageCompressFormat.png,  // 원형 = 모서리 transparent → png 필요
+      compressQuality: 90,
       maxWidth: 512,
       maxHeight: 512,
       uiSettings: [
