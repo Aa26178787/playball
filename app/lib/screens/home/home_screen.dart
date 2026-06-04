@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:shimmer/shimmer.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
@@ -2182,7 +2183,11 @@ class GameCard extends StatelessWidget {
                   child: IgnorePointer(
                     child: Opacity(
                       opacity: isDark ? 0.13 : 0.11,
-                      child: TeamLogo(teamCode: homeWon ? game.homeTeamCode : game.awayTeamCode, size: 290),
+                      // ImageFiltered: 약간의 Gaussian blur
+                      child: ImageFiltered(
+                        imageFilter: ui.ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+                        child: TeamLogo(teamCode: homeWon ? game.homeTeamCode : game.awayTeamCode, size: 290),
+                      ),
                     ),
                   ),
                 ),
