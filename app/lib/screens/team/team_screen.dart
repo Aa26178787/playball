@@ -433,7 +433,10 @@ class _TeamScreenState extends State<TeamScreen>
                             ],
                           ]),
                           const SizedBox(height: 7),
-                          Row(children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
                             Text('$wins승 $losses패${draws > 0 ? ' $draws무' : ''}',
                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ink3,
                                     fontFeatures: const [FontFeature.tabularFigures()])),
@@ -442,9 +445,12 @@ class _TeamScreenState extends State<TeamScreen>
                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ink3,
                                     fontFeatures: const [FontFeature.tabularFigures()])),
                             Container(width: 1, height: 9, margin: const EdgeInsets.symmetric(horizontal: 8), color: line2),
-                            Text(winRatePct,
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ink,
-                                    fontFeatures: const [FontFeature.tabularFigures()])),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 1),
+                              child: Text(winRatePct,
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ink,
+                                      fontFeatures: const [FontFeature.tabularFigures()])),
+                            ),
                           ]),
                           const SizedBox(height: 7),
                           // PS bar — stacked 5 stages
@@ -468,10 +474,10 @@ class _TeamScreenState extends State<TeamScreen>
                             ),
                             const SizedBox(width: 4),
                             SizedBox(
-                              width: 44,
+                              width: 46,
                               child: Text('${ps.toStringAsFixed(1)}%',
                                   textAlign: TextAlign.right,
-                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
                                       color: ps >= 50 ? ink : ink3,
                                       fontFeatures: const [FontFeature.tabularFigures()])),
                             ),

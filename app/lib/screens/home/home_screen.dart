@@ -2244,7 +2244,7 @@ class _PredictionBarState extends State<_PredictionBar> {
                       style: TextStyle(
                         fontSize: 11, fontWeight: FontWeight.w800,
                         color: Colors.white.withValues(alpha: 0.95),
-                        shadows: GameCard._textShadow,
+                        shadows: const [Shadow(color: Colors.black38, blurRadius: 4)],
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -2261,7 +2261,7 @@ class _PredictionBarState extends State<_PredictionBar> {
                       style: TextStyle(
                         fontSize: 11, fontWeight: FontWeight.w800,
                         color: Colors.white.withValues(alpha: 0.95),
-                        shadows: GameCard._textShadow,
+                        shadows: const [Shadow(color: Colors.black38, blurRadius: 4)],
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
