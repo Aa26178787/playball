@@ -2033,14 +2033,10 @@ class GameCard extends StatelessWidget {
     final hasPitchers = isFinished && !isDraw && (game.winPitcher != null || game.losePitcher != null);
     final hasStarters = showStarters && (game.homeStarter != null || game.awayStarter != null);
 
-    // 카드 배경: 승팀 컬러 우선 → 마이팀 → paper
+    // 카드 배경: 마이팀이면 팀색 rgba, 아니면 paper (승팀 색 적용 X)
     final winnerColor = homeWon ? homeColor : (awayWon ? awayColor : null);
-    final cardBg = winnerColor != null
-        ? winnerColor.withValues(alpha: isDark ? 0.14 : 0.06)
-        : (isMyTeam ? myColor.withValues(alpha: isDark ? 0.14 : 0.06) : t.paper);
-    final cardBd = winnerColor != null
-        ? winnerColor.withValues(alpha: isDark ? 0.50 : 0.32)
-        : (isMyTeam ? myColor.withValues(alpha: isDark ? 0.50 : 0.32) : t.line);
+    final cardBg = isMyTeam ? myColor.withValues(alpha: isDark ? 0.14 : 0.06) : t.paper;
+    final cardBd = isMyTeam ? myColor.withValues(alpha: isDark ? 0.50 : 0.32) : t.line;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -2048,7 +2044,7 @@ class GameCard extends StatelessWidget {
         color: cardBg,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: cardBd, width: 1),
-        boxShadow: (winnerColor == null && !isMyTeam && !isDark) ? [
+        boxShadow: (!isMyTeam && !isDark) ? [
           BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 2, offset: const Offset(0, 1)),
         ] : null,
       ),
@@ -2057,7 +2053,25 @@ class GameCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
-          child: Padding(
+          child: Stack(
+            children: [
+              // ── 승팀 로고 배경 overlay (헤더+score 영역까지 cover, 상단/양옆 침범 OK) ──
+              if (winnerColor != null)
+                Positioned(
+                  top: -20, bottom: null, height: 220,
+                  left: homeWon ? -60 : null,
+                  right: awayWon ? -60 : null,
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: isDark ? 0.12 : 0.10,
+                      child: TeamLogo(
+                        teamCode: homeWon ? game.homeTeamCode : game.awayTeamCode,
+                        size: 220,
+                      ),
+                    ),
+                  ),
+                ),
+          Padding(
             padding: const EdgeInsets.all(15),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2080,27 +2094,8 @@ class GameCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 13),
-                // ── 메인 grid + 승팀 로고 배경 overlay (이 영역만) ──
-                ClipRect(
-                  child: Stack(
-                    clipBehavior: Clip.hardEdge,
-                    children: [
-                      if (winnerColor != null)
-                        Positioned(
-                          top: -30, bottom: -10,
-                          left: homeWon ? -55 : null,
-                          right: awayWon ? -55 : null,
-                          child: IgnorePointer(
-                            child: Opacity(
-                              opacity: isDark ? 0.12 : 0.10,
-                              child: TeamLogo(
-                                teamCode: homeWon ? game.homeTeamCode : game.awayTeamCode,
-                                size: 210,
-                              ),
-                            ),
-                          ),
-                        ),
-                      Row(
+                // ── 메인 grid: TeamSide | score | TeamSide ──
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(child: _teamSide(
@@ -2171,15 +2166,15 @@ class GameCard extends StatelessWidget {
                     )),
                   ],
                 ),
-                    ],
-                  ),
-                ),
-                // ── divider + 선발 + 다음 시리즈 (3-col grid) ──
-                if (hasPitchers || hasStarters || nextHomeSeries != null || nextAwaySeries != null) ...[
+                // ── divider + 선발 + 다음 시리즈 (opaque container로 overlay 가림) ──
+                if (hasPitchers || hasStarters || nextHomeSeries != null || nextAwaySeries != null)
                   Container(
-                    height: 1, color: t.line,
-                    margin: const EdgeInsets.fromLTRB(0, 13, 0, 11),
-                  ),
+                    color: cardBg,  // overlay 가려야 함 (Stack child layer 위)
+                    margin: const EdgeInsets.only(top: 13),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(height: 1, color: t.line, margin: const EdgeInsets.only(bottom: 11)),
                   // 선발/승투/패투 row
                   if (hasPitchers || hasStarters)
                     Padding(
@@ -2227,23 +2222,32 @@ class GameCard extends StatelessWidget {
                         Expanded(child: _centerNextSeriesCell(nextAwaySeries, t)),
                       ],
                     ),
-                ],
-                if (showPrediction) ...[
+                      ],
+                    ),
+                  ),
+                if (showPrediction)
                   Container(
-                    height: 1, color: t.line,
-                    margin: const EdgeInsets.fromLTRB(0, 13, 0, 11),
+                    color: cardBg,
+                    margin: const EdgeInsets.only(top: 13),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(height: 1, color: t.line, margin: const EdgeInsets.only(bottom: 11)),
+                        _PredictionBar(
+                          key: ValueKey(game.id),
+                          gameId: game.id,
+                          homeTeamId: game.homeTeamId!,
+                          awayTeamId: game.awayTeamId!,
+                          homeCode: game.homeTeamCode,
+                          awayCode: game.awayTeamCode,
+                        ),
+                      ],
+                    ),
                   ),
-                  _PredictionBar(
-                    key: ValueKey(game.id),
-                    gameId: game.id,
-                    homeTeamId: game.homeTeamId!,
-                    awayTeamId: game.awayTeamId!,
-                    homeCode: game.homeTeamCode,
-                    awayCode: game.awayTeamCode,
-                  ),
-                ],
               ],
             ),
+          ),
+            ],
           ),
         ),
       ),
