@@ -1951,29 +1951,8 @@ class GameCard extends StatelessWidget {
     int? teamId,
     BuildContext? buildContext,
   }) {
-    // logo + winner overlay (logo center에 정확 일치)
-    // SizedBox(46) 영역 고정. overlay는 OverflowBox로 parent constraint 우회 → 290 size paint
-    Widget logo = SizedBox(
-      width: 46, height: 46,
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.center,
-        children: [
-          if (isWinner)
-            IgnorePointer(
-              child: OverflowBox(
-                minWidth: 0, maxWidth: double.infinity,
-                minHeight: 0, maxHeight: double.infinity,
-                child: Opacity(
-                  opacity: isDark ? 0.13 : 0.11,
-                  child: TeamLogo(teamCode: code, size: 290),
-                ),
-              ),
-            ),
-          TeamLogo(teamCode: code, size: 46),
-        ],
-      ),
-    );
+    // logo만 (overlay는 outer Stack에서 처리 — header/footer 침범 방지)
+    Widget logo = TeamLogo(teamCode: code, size: 46);
     if (teamId != null && buildContext != null) {
       logo = GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -2185,13 +2164,29 @@ class GameCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
-          child: Padding(
-            padding: const EdgeInsets.all(15),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // ── 헤더: 날씨 + 구장 | 마이팀 + status ──
-                Row(
+          child: Stack(
+            children: [
+              // ── 승팀 overlay (score row 영역만, header/footer 침범 X) ──
+              if (winnerColor != null)
+                Positioned(
+                  // 카드 padding 15 + 헤더(~28) + gap 13 = 56부터, height 130 (score row 영역)
+                  top: 56, height: 130,
+                  left: homeWon ? -70 : null,
+                  right: awayWon ? -70 : null,
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: isDark ? 0.13 : 0.11,
+                      child: TeamLogo(teamCode: homeWon ? game.homeTeamCode : game.awayTeamCode, size: 290),
+                    ),
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.all(15),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // ── 헤더: 날씨 + 구장 | 마이팀 + status ──
+                    Row(
                   children: [
                     _weatherChip(t),
                     if (game.stadium != null) ...[
@@ -2370,6 +2365,8 @@ class GameCard extends StatelessWidget {
                   ),
               ],
             ),
+              ),
+            ],
           ),
         ),
       ),

@@ -116,7 +116,8 @@
       "Bash(grep -n \"TeamDetailScreen\\({super.key, required this.team\\\\|team\\\\['id'\\\\]\\\\|team\\\\['short_name'\\\\]\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\team\\\\team_detail_screen.dart\")",
       "Bash(grep -n \"_teamSide\\(\\\\$\\\\|_teamSide\\(\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")",
       "Bash(grep -n \"],\\\\$\\\\|Stack\\(\\\\|InkWell\\(\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")",
-      "Bash(grep -n \"width: 46,\\\\s*\\\\$\\\\|ps.toStringAsFixed\\(1\\)\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\team\\\\team_screen.dart\")"
+      "Bash(grep -n \"width: 46,\\\\s*\\\\$\\\\|ps.toStringAsFixed\\(1\\)\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\team\\\\team_screen.dart\")",
+      "Bash(grep -n \"child: Material\\(\\\\|child: InkWell\\(\\\\|child: Padding\\(\\\\$\\\\|EdgeInsets.all\\(15\\)\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")"
     ]
   }
 }
