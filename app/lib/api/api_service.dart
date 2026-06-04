@@ -857,7 +857,7 @@ class ApiService {
     final headers = await authHeaders();
     // cropped 파일 확장자 명시 — 원형 crop = png (transparent 모서리)
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(filePath, filename: 'profile.png'),
+      'file': await MultipartFile.fromFile(filePath, filename: 'profile.jpg'),
     });
     final res = await _dio.post('/user/profile-image',
         data: formData,
