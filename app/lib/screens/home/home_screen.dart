@@ -2197,9 +2197,9 @@ class GameCard extends StatelessWidget {
                   child: IgnorePointer(
                     child: Opacity(
                       opacity: isDark ? 0.13 : 0.11,
-                      // ImageFiltered: 약간의 Gaussian blur
+                      // ImageFiltered: 약한 Gaussian blur (subtle)
                       child: ImageFiltered(
-                        imageFilter: ui.ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+                        imageFilter: ui.ImageFilter.blur(sigmaX: 0.8, sigmaY: 0.8),
                         child: TeamLogo(teamCode: homeWon ? game.homeTeamCode : game.awayTeamCode, size: 290),
                       ),
                     ),
