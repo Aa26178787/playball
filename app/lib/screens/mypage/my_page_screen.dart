@@ -288,6 +288,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
           toolbarTitle: '프로필 이미지 크롭',
           toolbarColor: const Color(0xFF111113),
           toolbarWidgetColor: Colors.white,
+          statusBarColor: const Color(0xFF111113),  // 상단 status bar 침범 방지
+          backgroundColor: Colors.white,
           activeControlsWidgetColor: const Color(0xFF111113),
           initAspectRatio: CropAspectRatioPreset.square,
           lockAspectRatio: true,
