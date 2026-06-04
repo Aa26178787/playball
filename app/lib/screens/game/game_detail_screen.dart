@@ -1073,7 +1073,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         ),
                         // 슬롯/배경 확장: padding 20/28 + SizedBox 230
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 28, 16, 20),
+                          // top 44: BSO overlay (bottom ~33) ↔ CF label (top ~35) 사이 ~7px 여유
+                          padding: const EdgeInsets.fromLTRB(16, 44, 16, 20),
                           child: SizedBox(height: 230, width: double.infinity, child: fieldWidget),
                         ),
                         // BSO overlay — 진행중 + relay 데이터 시 필드 상단(중견수 위) center
