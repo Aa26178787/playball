@@ -2057,10 +2057,10 @@ class GameCard extends StatelessWidget {
     final hasPitchers = isFinished && !isDraw && (game.winPitcher != null || game.losePitcher != null);
     final hasStarters = showStarters && (game.homeStarter != null || game.awayStarter != null);
 
-    // 카드 배경: 마이팀이면 팀색 rgba, 아니면 paper (승팀 색 적용 X)
+    // 카드 배경: 항상 paper (마이팀 배경색 적용 X)
     final winnerColor = homeWon ? homeColor : (awayWon ? awayColor : null);
-    final cardBg = isMyTeam ? myColor.withValues(alpha: isDark ? 0.14 : 0.06) : t.paper;
-    final cardBd = isMyTeam ? myColor.withValues(alpha: isDark ? 0.50 : 0.32) : t.line;
+    final cardBg = t.paper;
+    final cardBd = t.line;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -2500,7 +2500,7 @@ class _PredictionBarState extends State<_PredictionBar> {
                     color: awayColor.withValues(alpha: isDark ? 0.55 : 0.78),
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text('$awayPctStr ${teamDisplayName(widget.awayCode)}',
+                    child: Text('${teamDisplayName(widget.awayCode)} $awayPctStr',
                         style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white,
                             fontFeatures: [FontFeature.tabularFigures()]),
                         overflow: TextOverflow.ellipsis),
