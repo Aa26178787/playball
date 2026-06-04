@@ -775,8 +775,9 @@ class _TodayGamesTabState extends State<TodayGamesTab>
 
   Widget _buildMonthStrip() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tk = _Tok.of(isDark);
     return SizedBox(
-      height: 28,
+      height: 32,
       child: Row(
         children: List.generate(8, (i) {
           final month = i + 3;
@@ -786,23 +787,18 @@ class _TodayGamesTabState extends State<TodayGamesTab>
               onTap: () => _scrollToMonthStart(month),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+                margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isActive ? const Color(0xFF1A237E) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: isActive
-                      ? [BoxShadow(color: const Color(0xFF1A237E).withOpacity(0.40), blurRadius: 8, offset: const Offset(0, 3))]
-                      : null,
+                  color: isActive ? tk.ink : Colors.transparent,
+                  borderRadius: BorderRadius.circular(14),
+                  border: isActive ? null : Border.all(color: tk.line2, width: 1),
                 ),
                 child: Center(
                   child: Text(
                     '$month월',
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: isActive
-                          ? Colors.white
-                          : (isDark ? Colors.grey[400]! : Colors.grey[500]!),
+                      fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: -0.2,
+                      color: isActive ? (isDark ? Colors.black : Colors.white) : tk.ink2,
                     ),
                   ),
                 ),
@@ -930,29 +926,28 @@ class _TodayGamesTabState extends State<TodayGamesTab>
 
   Widget _buildFilterChip(String label, bool isActive, VoidCallback onTap, {IconData? icon}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tk = _Tok.of(isDark);
+    final activeColor = tk.ink;
+    final fg = isActive ? (isDark ? Colors.black : Colors.white) : tk.ink3;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isActive ? AppColors.primary : (isDark ? AppColors.borderDark : AppColors.borderLight),
-            width: 1,
-          ),
+          color: isActive ? activeColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: isActive ? activeColor : tk.line2, width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 12, color: isActive ? Colors.amber : (isDark ? Colors.white38 : Colors.grey[500])),
+              Icon(icon, size: 12, color: fg),
               const SizedBox(width: 4),
             ],
             Text(label, style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w600,
-              color: isActive ? Colors.white : (isDark ? Colors.white54 : Colors.grey[600]),
+              fontSize: 12, fontWeight: FontWeight.w700, color: fg,
             )),
           ],
         ),
