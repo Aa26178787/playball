@@ -20,10 +20,19 @@ class _StadiumScreenState extends State<StadiumScreen> {
 
   static const _stadiums = [
     {
-      'name': '잠실야구장',
+      'name': '잠실야구장 (LG)',
       'city': '서울',
-      'teams': ['LG', 'OB'],
-      'teamNames': 'LG · 두산',
+      'teams': ['LG'],
+      'teamNames': 'LG',
+      'lat': 37.5121,
+      'lng': 127.0719,
+      'address': '서울 송파구 올림픽로 19-2',
+    },
+    {
+      'name': '잠실야구장 (두산)',
+      'city': '서울',
+      'teams': ['OB'],
+      'teamNames': '두산',
       'lat': 37.5121,
       'lng': 127.0719,
       'address': '서울 송파구 올림픽로 19-2',
@@ -60,9 +69,9 @@ class _StadiumScreenState extends State<StadiumScreen> {
       'city': '대전',
       'teams': ['HH'],
       'teamNames': '한화',
-      // DB stadiums.id=5 좌표 (대전광역시 중구 대종로 373)
-      'lat': 36.3174,
-      'lng': 127.4289,
+      // 한밭종합운동장 야구장(구) 옆 신축 — 동측 ~150m offset
+      'lat': 36.31920,
+      'lng': 127.43055,
       'address': '대전광역시 중구 대종로 373',
     },
     {
@@ -125,11 +134,11 @@ var map = new kakao.maps.Map(container, {
 });
 
 var stadiums = [
-  {lat:37.5121, lng:127.0719, name:'잠실야구장'},
+  {lat:37.5121, lng:127.0719, name:'잠실야구장 (LG/두산)'},
   {lat:37.4982, lng:126.8672, name:'고척스카이돔'},
   {lat:37.2997, lng:127.0095, name:'KT위즈파크'},
   {lat:37.4370, lng:126.6934, name:'SSG랜더스필드'},
-  {lat:36.3174, lng:127.4289, name:'대전한화생명볼파크'},
+  {lat:36.31920, lng:127.43055, name:'대전한화생명볼파크'},
   {lat:35.1685, lng:126.8890, name:'광주기아챔피언스필드'},
   {lat:35.8411, lng:128.6813, name:'삼성라이온즈파크'},
   {lat:35.2225, lng:128.5816, name:'창원NC파크'},
