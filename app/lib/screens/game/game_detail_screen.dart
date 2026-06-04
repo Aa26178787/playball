@@ -639,20 +639,29 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       ),
       body: Stack(
         children: [
-          NestedScrollView(
-            // scroll up 시 outer sliver 자동 reveal
-            floatHeaderSlivers: true,
-            headerSliverBuilder: (context, _) => [
-              SliverToBoxAdapter(child: _buildGameHeader(game, roundedBottom: true)),
-            ],
-            body: TabBarView(
-              controller: _tabController,
-              physics: const NeverScrollableScrollPhysics(),
+          // 한 페이지 스크롤: SingleChildScrollView + Column(header + TabBarView fixed-height)
+          // outer scroll = header + tab area 같이 위로/아래로. tab content 내부 scroll 별도.
+          SingleChildScrollView(
+            child: Column(
               children: [
-                _buildInningsTab(innings),
-                _buildLineupTab(),
-                _buildStatsTab(pitchers, batters),
-                _buildHighlightsTab(),
+                _buildGameHeader(game, roundedBottom: true),
+                SizedBox(
+                  // appBar height + safe area + bottom nav 제외
+                  height: MediaQuery.of(context).size.height
+                          - kToolbarHeight
+                          - MediaQuery.of(context).padding.top
+                          - 100,
+                  child: TabBarView(
+                    controller: _tabController,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      _buildInningsTab(innings),
+                      _buildLineupTab(),
+                      _buildStatsTab(pitchers, batters),
+                      _buildHighlightsTab(),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -1018,9 +1027,16 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 child: Row(children: [
                   if (game['win_pitcher'] != null)
-                    Expanded(child: _pitcherBadge(game['win_pitcher'] as String, const Color(0xFF1976D2), '승')),
+                    Expanded(child: Align(
+                      alignment: Alignment.centerRight,
+                      child: _pitcherBadge(game['win_pitcher'] as String, const Color(0xFF1976D2), '승'),
+                    )),
+                  const SizedBox(width: 12),
                   if (game['lose_pitcher'] != null)
-                    Expanded(child: _pitcherBadge(game['lose_pitcher'] as String, const Color(0xFFC62828), '패')),
+                    Expanded(child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: _pitcherBadge(game['lose_pitcher'] as String, const Color(0xFFC62828), '패'),
+                    )),
                 ]),
               ),
             ],
