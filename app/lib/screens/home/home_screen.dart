@@ -1933,19 +1933,23 @@ class GameCard extends StatelessWidget {
     BuildContext? buildContext,
   }) {
     // logo + winner overlay (logo center에 정확 일치)
-    Widget logo = Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        if (isWinner)
-          IgnorePointer(
-            child: Opacity(
-              opacity: isDark ? 0.13 : 0.11,
-              child: TeamLogo(teamCode: code, size: 290),
+    // SizedBox(46)로 Stack 영역 고정 → overlay overflow는 clipBehavior.none + Card boundary로 clip
+    Widget logo = SizedBox(
+      width: 46, height: 46,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          if (isWinner)
+            IgnorePointer(
+              child: Opacity(
+                opacity: isDark ? 0.13 : 0.11,
+                child: TeamLogo(teamCode: code, size: 290),
+              ),
             ),
-          ),
-        TeamLogo(teamCode: code, size: 46),
-      ],
+          TeamLogo(teamCode: code, size: 46),
+        ],
+      ),
     );
     if (teamId != null && buildContext != null) {
       logo = GestureDetector(

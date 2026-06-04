@@ -1980,22 +1980,33 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       return (batter: '', result: raw);
     }
 
-    // 텍스트 추출: 첫 득점 play의 batter+result
-    String _extractPlayText(List halfRelays) {
+    // 텍스트 추출: 모든 RBI 타석 + 홈인 정보 (line1 batter+result / line2 홈인)
+    List<String> _extractLines(List halfRelays) {
+      final lines = <String>[];
+      String? curAtBat;
       for (final r in halfRelays) {
         final rtype = r['type'] as int?;
         if (rtype == 13 || rtype == 23) {
+          if (curAtBat != null) lines.add(curAtBat);
           final raw = (r['title'] as String? ?? r['text'] as String? ?? '').trim();
-          if (raw.isEmpty) continue;
-          // raw = "batter : result" or just text
-          if (raw.contains(' : ')) {
-            final parts = raw.split(' : ');
-            return parts.length >= 2 ? '${parts[0].trim()} ${parts.sublist(1).join(' : ').trim()}' : raw;
+          if (raw.isEmpty) { curAtBat = null; continue; }
+          curAtBat = raw.contains(' : ')
+              ? raw.split(' : ').map((s) => s.trim()).join(' ')
+              : raw;
+        } else if (rtype == 14 || rtype == 24 || rtype == 31) {
+          final txt = (r['title'] as String? ?? r['text'] as String? ?? '').trim();
+          if (txt.contains('홈인') || txt.contains('득점')) {
+            if (curAtBat != null) {
+              lines.add('$curAtBat\n  └ $txt');
+              curAtBat = null;
+            } else {
+              lines.add(txt);
+            }
           }
-          return raw;
         }
       }
-      return '득점';
+      if (curAtBat != null) lines.add(curAtBat);
+      return lines.isEmpty ? ['득점'] : lines;
     }
 
     final halfCards = items.asMap().entries.map((entry) {
@@ -2142,7 +2153,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       final ink3S = isDarkS ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
       final paper2S = isDarkS ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
 
-      final txt = _extractPlayText(halfRelays);
+      final lines = _extractLines(halfRelays);
+      final txt = lines.join('\n');
       // 점수 형식: 홈:원정 누적 (예: '2:0')
       final scoreText = '$cumHome:$cumAway';
 
@@ -2160,7 +2172,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         child: Text(txt,
             style: TextStyle(fontSize: 12, color: ink2S, fontWeight: FontWeight.w600, height: 1.3),
             textAlign: isHome ? TextAlign.left : TextAlign.right,
-            maxLines: 2, overflow: TextOverflow.ellipsis),
+            maxLines: 10, overflow: TextOverflow.ellipsis),
       );
 
       final scoreBadge = Container(
@@ -4355,14 +4367,16 @@ class _FieldBgPainter extends CustomPainter {
     final pMound= Offset(w * 0.50, h * 0.62);
 
     // ── Outfield grass: radial gradient + 잔디 stripe (실제 mowing pattern) ──
+    // 외야수 뒤 여백까지 잔디 덮음 (전체 캔버스 cover after diamond 뒤)
     final arcCenter = Offset(w * 0.50, h * 0.95);
-    final arcR = w * 0.78;
+    final arcR = w * 1.10;  // 0.78 → 1.10 (외야수 뒤 여백 cover)
     final ofPath = Path()
-      ..addArc(Rect.fromCircle(center: arcCenter, radius: arcR),
-               -3.14 * 0.88, -3.14 * 1.24)
-      ..lineTo(w * 0.15, h * 0.05)
-      ..lineTo(w * 0.85, h * 0.05)
+      ..moveTo(0, 0)
+      ..lineTo(w, 0)
+      ..lineTo(w, h)
+      ..lineTo(0, h)
       ..close();
+    // 캔버스 전체를 잔디로 칠한 뒤 inner diamond 따로 dirt
 
     // 잔디 base (그라데이션: 가운데 어두운 / 가장자리 밝은)
     final grassBase = Paint()
@@ -4482,31 +4496,42 @@ class _FieldBgPainter extends CustomPainter {
     canvas.drawLine(pHome, Offset(w * 0.0, h * 0.08), foulPaint);
     canvas.drawLine(pHome, Offset(w * 1.0, h * 0.08), foulPaint);
 
-    // ── Bases (사실적 흰 사각형 + 그림자) ──
+    // ── Bases (대각선 시점에 맞춰 살짝 누운 마름모: height 0.65x) ──
     void drawBase(Offset pos, bool occupied) {
       final bs = 8.0;
+      final bh = bs * 0.65; // 대각선 시점 높이 압축
       // 그림자
-      canvas.drawRect(
-        Rect.fromCenter(center: Offset(pos.dx, pos.dy + 1.2), width: bs * 1.9, height: bs * 1.9),
+      canvas.drawPath(
+        Path()
+          ..moveTo(pos.dx,           pos.dy - bh + 1.5)
+          ..lineTo(pos.dx + bs * 1.1, pos.dy + 1.5)
+          ..lineTo(pos.dx,           pos.dy + bh + 1.5)
+          ..lineTo(pos.dx - bs * 1.1, pos.dy + 1.5)
+          ..close(),
         Paint()..color = Colors.black.withOpacity(0.22)
               ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
       );
       if (occupied) {
         // 주자: 노란 글로우
-        canvas.drawRect(
-          Rect.fromCenter(center: pos, width: bs * 2.6, height: bs * 2.6),
+        canvas.drawPath(
+          Path()
+            ..moveTo(pos.dx,           pos.dy - bh * 2.6)
+            ..lineTo(pos.dx + bs * 2.6, pos.dy)
+            ..lineTo(pos.dx,           pos.dy + bh * 2.6)
+            ..lineTo(pos.dx - bs * 2.6, pos.dy)
+            ..close(),
           Paint()..color = Colors.yellow.withOpacity(0.45)
                 ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
         );
       }
-      // 베이스 본체 (45도 회전 사각형 — 야구 베이스 마름모)
+      // 베이스 본체 — 누운 마름모
       final bp = Paint()
         ..color = occupied ? const Color(0xFFFFE066) : Colors.white.withOpacity(0.95)
         ..style = PaintingStyle.fill;
       final path = Path()
-        ..moveTo(pos.dx,      pos.dy - bs)
+        ..moveTo(pos.dx,      pos.dy - bh)
         ..lineTo(pos.dx + bs, pos.dy)
-        ..lineTo(pos.dx,      pos.dy + bs)
+        ..lineTo(pos.dx,      pos.dy + bh)
         ..lineTo(pos.dx - bs, pos.dy)
         ..close();
       canvas.drawPath(path, bp);
@@ -4520,24 +4545,24 @@ class _FieldBgPainter extends CustomPainter {
     drawBase(p2B, base2);
     drawBase(p3B, base3);
 
-    // ── Home plate (사실적 오각형 + 그림자) ──
+    // ── Home plate (대각선 시점: y 0.65x 압축) ──
     canvas.drawPath(
       Path()
-        ..moveTo(pHome.dx,      pHome.dy - 5 + 1.5)
-        ..lineTo(pHome.dx + 5,  pHome.dy - 1.5 + 1.5)
-        ..lineTo(pHome.dx + 4,  pHome.dy + 4.5 + 1.5)
-        ..lineTo(pHome.dx - 4,  pHome.dy + 4.5 + 1.5)
-        ..lineTo(pHome.dx - 5,  pHome.dy - 1.5 + 1.5)
+        ..moveTo(pHome.dx,      pHome.dy - 3.25 + 1.5)
+        ..lineTo(pHome.dx + 5,  pHome.dy - 1 + 1.5)
+        ..lineTo(pHome.dx + 4,  pHome.dy + 3 + 1.5)
+        ..lineTo(pHome.dx - 4,  pHome.dy + 3 + 1.5)
+        ..lineTo(pHome.dx - 5,  pHome.dy - 1 + 1.5)
         ..close(),
       Paint()..color = Colors.black.withOpacity(0.22)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
     );
     final homePath = Path()
-      ..moveTo(pHome.dx,      pHome.dy - 5)
-      ..lineTo(pHome.dx + 5,  pHome.dy - 1.5)
-      ..lineTo(pHome.dx + 4,  pHome.dy + 4.5)
-      ..lineTo(pHome.dx - 4,  pHome.dy + 4.5)
-      ..lineTo(pHome.dx - 5,  pHome.dy - 1.5)
+      ..moveTo(pHome.dx,      pHome.dy - 3.25)
+      ..lineTo(pHome.dx + 5,  pHome.dy - 1)
+      ..lineTo(pHome.dx + 4,  pHome.dy + 3)
+      ..lineTo(pHome.dx - 4,  pHome.dy + 3)
+      ..lineTo(pHome.dx - 5,  pHome.dy - 1)
       ..close();
     canvas.drawPath(homePath, Paint()..color = Colors.white.withOpacity(0.95));
     canvas.drawPath(homePath, Paint()
