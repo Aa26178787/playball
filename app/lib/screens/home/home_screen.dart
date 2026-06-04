@@ -1992,7 +1992,7 @@ class GameCard extends StatelessWidget {
     final showPrediction = (game.status == '예정' || game.status == '라인업') &&
         game.homeTeamId != null && game.awayTeamId != null;
     final isCancelled = game.status == '취소';
-    final isUpcoming = game.status == '예정' || isCancelled || game.status == '라인업';
+    final isUpcoming = !isFinished && !isLive && !isCancelled;
 
     final homeColor = teamColor(game.homeTeamCode);
     final awayColor = teamColor(game.awayTeamCode);
@@ -2079,18 +2079,18 @@ class GameCard extends StatelessWidget {
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
           child: Stack(
             children: [
-              // ── 승팀 로고 배경 overlay (헤더+score 영역까지 cover, 상단/양옆 침범 OK) ──
+              // ── 승팀 로고 배경 overlay (score row 영역, footer 침범 안 함) ──
               if (winnerColor != null)
                 Positioned(
-                  top: -20, bottom: null, height: 220,
-                  left: homeWon ? -60 : null,
-                  right: awayWon ? -60 : null,
+                  top: -10, bottom: null, height: 175,
+                  left: homeWon ? -50 : null,
+                  right: awayWon ? -50 : null,
                   child: IgnorePointer(
                     child: Opacity(
-                      opacity: isDark ? 0.12 : 0.10,
+                      opacity: isDark ? 0.13 : 0.11,
                       child: TeamLogo(
                         teamCode: homeWon ? game.homeTeamCode : game.awayTeamCode,
-                        size: 220,
+                        size: 240,
                       ),
                     ),
                   ),
@@ -2153,8 +2153,10 @@ class GameCard extends StatelessWidget {
                               children: [
                                 Text('${game.homeScore}',
                                     style: TextStyle(
-                                      fontSize: 28, fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.6, color: t.ink,
+                                      fontSize: homeWon ? 34 : 26,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.6,
+                                      color: homeWon ? t.ink : (isDraw ? t.ink : t.ink2.withValues(alpha: 0.55)),
                                       fontFeatures: const [FontFeature.tabularFigures()],
                                     )),
                                 Padding(
@@ -2166,8 +2168,10 @@ class GameCard extends StatelessWidget {
                                 ),
                                 Text('${game.awayScore}',
                                     style: TextStyle(
-                                      fontSize: 28, fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.6, color: t.ink,
+                                      fontSize: awayWon ? 34 : 26,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.6,
+                                      color: awayWon ? t.ink : (isDraw ? t.ink : t.ink2.withValues(alpha: 0.55)),
                                       fontFeatures: const [FontFeature.tabularFigures()],
                                     )),
                               ],
@@ -2194,10 +2198,9 @@ class GameCard extends StatelessWidget {
                     )),
                   ],
                 ),
-                // ── divider + 선발 + 다음 시리즈 (opaque container로 overlay 가림) ──
+                // ── divider + 선발 + 다음 시리즈 (footer 영역, overlay 안 침범) ──
                 if (hasPitchers || hasStarters || nextHomeSeries != null || nextAwaySeries != null)
                   Container(
-                    color: cardBg,  // overlay 가려야 함 (Stack child layer 위)
                     margin: const EdgeInsets.only(top: 13),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -2255,7 +2258,6 @@ class GameCard extends StatelessWidget {
                   ),
                 if (showPrediction)
                   Container(
-                    color: cardBg,
                     margin: const EdgeInsets.only(top: 13),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -2447,70 +2449,61 @@ class _PredictionBarState extends State<_PredictionBar> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final t = _Tok.of(isDark);
     final homeP = _homeProb ?? 0.5;
     final awayP = _awayProb ?? 0.5;
     final homePctStr = _loading ? '-' : '${(homeP * 100).round()}%';
     final awayPctStr = _loading ? '-' : '${(awayP * 100).round()}%';
 
+    final homeColor = teamColor(widget.homeCode);
+    final awayColor = teamColor(widget.awayCode);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 5),
+          padding: const EdgeInsets.only(bottom: 6),
           child: Row(
             children: [
               Text('AI 승리 예측',
-                  style: TextStyle(
-                    fontSize: 10, fontWeight: FontWeight.bold,
-                    color: Colors.white.withValues(alpha: 0.6),
-                  )),
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: t.ink3, letterSpacing: 0.2)),
               const Spacer(),
               Text('ML 모델',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.white.withValues(alpha: 0.45),
-                  )),
+                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: t.sub)),
             ],
           ),
         ),
-        // 좌(홈) - 우(원정) 분할 바 — GameCard 로고 배치(home 왼쪽 / away 오른쪽)와 매칭
+        // 좌(홈) - 우(원정) 분할 바
         ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(999),
           child: SizedBox(
-            height: 28,
+            height: 24,
             child: Row(
               children: [
                 Flexible(
                   flex: (homeP * 1000).round().clamp(50, 950),
                   child: Container(
-                    color: Colors.white.withValues(alpha: 0.32),
+                    color: homeColor.withValues(alpha: isDark ? 0.55 : 0.78),
                     alignment: Alignment.center,
-                    child: Text(
-                      '${teamDisplayName(widget.homeCode)} $homePctStr',
-                      style: TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w800,
-                        color: Colors.white.withValues(alpha: 0.95),
-                        shadows: const [Shadow(color: Colors.black38, blurRadius: 4)],
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text('${teamDisplayName(widget.homeCode)} $homePctStr',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white,
+                            fontFeatures: [FontFeature.tabularFigures()]),
+                        overflow: TextOverflow.ellipsis),
                   ),
                 ),
-                Container(width: 1, color: Colors.white.withValues(alpha: 0.4)),
+                Container(width: 1, color: t.paper),
                 Flexible(
                   flex: (awayP * 1000).round().clamp(50, 950),
                   child: Container(
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: awayColor.withValues(alpha: isDark ? 0.55 : 0.78),
                     alignment: Alignment.center,
-                    child: Text(
-                      '$awayPctStr ${teamDisplayName(widget.awayCode)}',
-                      style: TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w800,
-                        color: Colors.white.withValues(alpha: 0.95),
-                        shadows: const [Shadow(color: Colors.black38, blurRadius: 4)],
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text('$awayPctStr ${teamDisplayName(widget.awayCode)}',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white,
+                            fontFeatures: [FontFeature.tabularFigures()]),
+                        overflow: TextOverflow.ellipsis),
                   ),
                 ),
               ],
@@ -2518,14 +2511,9 @@ class _PredictionBarState extends State<_PredictionBar> {
           ),
         ),
         if (_homeStarter.isNotEmpty || _awayStarter.isNotEmpty) ...[
-          const SizedBox(height: 3),
-          Text(
-            '$_homeStarter vs $_awayStarter',
-            style: TextStyle(
-              fontSize: 9,
-              color: Colors.white.withValues(alpha: 0.5),
-            ),
-          ),
+          const SizedBox(height: 5),
+          Text('$_homeStarter vs $_awayStarter',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.sub)),
         ],
       ],
     );

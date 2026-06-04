@@ -696,7 +696,8 @@ def get_today_games():
             g.home_team_id, g.away_team_id,
             wp.name AS win_pitcher, wp.profile_image AS win_pitcher_image,
             lp.name AS lose_pitcher, lp.profile_image AS lose_pitcher_image,
-            home_sp.name AS home_starter, away_sp.name AS away_starter
+            home_sp.name AS home_starter, away_sp.name AS away_starter,
+            g.weather AS db_weather
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
@@ -743,19 +744,30 @@ def get_today_games():
         start_time = r[13]
 
         weather = None
-        if stadium_id and stadium_id not in weather_cache:
-            start_hour = None
-            if start_time:
-                try:
-                    total_sec = int(start_time.total_seconds())
-                    start_hour = (total_sec // 3600 + 9) % 24  # UTC→KST
-                except Exception:
-                    pass
-            weather_cache[stadium_id] = (
-                get_forecast_at(stadium_id, start_hour) if start_hour is not None
-                else get_weather(stadium_id)
-            )
-        weather = weather_cache.get(stadium_id)
+        status_val = r[2]
+        is_finished = status_val == '종료'
+        # 종료 경기: DB의 저장된 weather 우선 사용 (forecast 의미 X)
+        db_weather = r[22] if len(r) > 22 else None
+        if is_finished and db_weather:
+            import json as _json
+            try:
+                weather = _json.loads(db_weather) if isinstance(db_weather, str) else db_weather
+            except Exception:
+                weather = None
+        else:
+            if stadium_id and stadium_id not in weather_cache:
+                start_hour = None
+                if start_time:
+                    try:
+                        total_sec = int(start_time.total_seconds())
+                        start_hour = (total_sec // 3600 + 9) % 24  # UTC→KST
+                    except Exception:
+                        pass
+                weather_cache[stadium_id] = (
+                    get_forecast_at(stadium_id, start_hour) if start_hour is not None
+                    else get_weather(stadium_id)
+                )
+            weather = weather_cache.get(stadium_id)
 
         games.append({
             "id":             r[0],

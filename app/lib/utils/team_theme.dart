@@ -66,9 +66,9 @@ class TeamLogo extends StatelessWidget {
         ? logoUrl!
         : kTeamLogoUrls[teamCode];
 
-    // 고해상도 요청: size >= 80이면 Naver CDN type query 제거 → 원본 PNG fetch
+    // 고해상도 요청: size >= 80이면 Naver CDN f400_400로 upgrade (검증: 200 + 55KB)
     if (resolvedUrl != null && size >= 80) {
-      resolvedUrl = resolvedUrl.replaceAll(RegExp(r'\?type=f\d+_\d+'), '');
+      resolvedUrl = resolvedUrl.replaceAll('type=f92_88', 'type=f400_400');
     }
 
     if (resolvedUrl != null) {

@@ -111,7 +111,8 @@
       "Bash(grep -rln \"0xFF1A237E\\\\|AppColors\\\\\\\\.primary\\\\|0xFF7B8FFF\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\")",
       "Bash(grep -n \"child: Padding\\(\\\\$\\\\|EdgeInsets.all\\(15\\)\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")",
       "Bash(grep -n \"crossAxisAlignment: CrossAxisAlignment.center,\\\\$\\\\|// ── 메인 grid\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")",
-      "Bash(grep -n \"^class \\\\|^}$\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\game\\\\game_detail_screen.dart\")"
+      "Bash(grep -n \"^class \\\\|^}$\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\game\\\\game_detail_screen.dart\")",
+      "Bash(grep -n \"color: cardBg,\\\\$\\\\|height: 220\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")"
     ]
   }
 }

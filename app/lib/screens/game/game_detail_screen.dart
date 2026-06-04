@@ -990,19 +990,20 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             ),
 
             const SizedBox(height: 16),
-            // ── FieldSlot (mockup dashed 슬롯 컨테이너 안에 기존 _FullFieldView 삽입) ──
+            // ── FieldSlot (mockup dashed 슬롯 + ClipRRect로 필드뷰 빠져나감 방지) ──
             if (fieldWidget != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 child: CustomPaint(
                   painter: _DashedRectPainter(color: line2, radius: 16, dashLength: 6, gap: 4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                    decoration: BoxDecoration(
-                      color: isDark ? paper2 : const Color(0xFFFAFAFA),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                      decoration: BoxDecoration(
+                        color: isDark ? paper2 : const Color(0xFFFAFAFA),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: SizedBox(height: 190, width: double.infinity, child: fieldWidget),
                     ),
                   ),
