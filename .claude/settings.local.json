@@ -129,7 +129,8 @@
       "Bash(grep -oE '\\\\{[^{}]{0,500}\"pcode\":\"52415\"[^{}]{0,500}\\\\}' /tmp/relay.json)",
       "Bash(grep -oE '\"entry\":\\\\{[^}]{0,500}\\\\}' /tmp/relay.json)",
       "Bash(grep -oE '\"[a-zA-Z]{2,30}\":\\\\[\\\\{\"hittype\"[^]]{0,200}' /tmp/relay.json)",
-      "Bash(grep -oE '\"homeLineup\":\\\\{[^]]{0,200}' /tmp/relay.json)"
+      "Bash(grep -oE '\"homeLineup\":\\\\{[^]]{0,200}' /tmp/relay.json)",
+      "WebFetch(domain:cdn.topclass.chosun.com)"
     ]
   }
 }
