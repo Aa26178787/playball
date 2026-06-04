@@ -112,7 +112,9 @@
       "Bash(grep -n \"child: Padding\\(\\\\$\\\\|EdgeInsets.all\\(15\\)\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")",
       "Bash(grep -n \"crossAxisAlignment: CrossAxisAlignment.center,\\\\$\\\\|// ── 메인 grid\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")",
       "Bash(grep -n \"^class \\\\|^}$\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\game\\\\game_detail_screen.dart\")",
-      "Bash(grep -n \"color: cardBg,\\\\$\\\\|height: 220\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")"
+      "Bash(grep -n \"color: cardBg,\\\\$\\\\|height: 220\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")",
+      "Bash(grep -n \"TeamDetailScreen\\({super.key, required this.team\\\\|team\\\\['id'\\\\]\\\\|team\\\\['short_name'\\\\]\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\team\\\\team_detail_screen.dart\")",
+      "Bash(grep -n \"_teamSide\\(\\\\$\\\\|_teamSide\\(\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")"
     ]
   }
 }

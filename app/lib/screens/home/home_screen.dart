@@ -82,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const _navItems = [
     (icon: Icons.sports_baseball_outlined, activeIcon: Icons.sports_baseball, label: '경기'),
-    (icon: Icons.leaderboard_outlined,     activeIcon: Icons.leaderboard,     label: '순위'),
+    (icon: Icons.leaderboard_outlined,     activeIcon: Icons.leaderboard,     label: '팀'),
     (icon: Icons.person_outline,           activeIcon: Icons.person,          label: '선수'),
     (icon: Icons.calendar_month_outlined,  activeIcon: Icons.calendar_month,  label: '캘린더'),
     (icon: Icons.forum_outlined,           activeIcon: Icons.forum,           label: '커뮤니티'),
@@ -95,7 +95,18 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          IndexedStack(index: _currentIndex, children: _screens),
+          GestureDetector(
+            behavior: HitTestBehavior.deferToChild,
+            onHorizontalDragEnd: (details) {
+              final v = details.primaryVelocity ?? 0;
+              if (v < -250 && _currentIndex < _screens.length - 1) {
+                setState(() => _currentIndex++);
+              } else if (v > 250 && _currentIndex > 0) {
+                setState(() => _currentIndex--);
+              }
+            },
+            child: IndexedStack(index: _currentIndex, children: _screens),
+          ),
           // Floating NavBar — 시스템 내비게이션 바 위로 올림
           Positioned(
             left: 20,
@@ -1906,11 +1917,23 @@ class GameCard extends StatelessWidget {
     required List<String> recent,
     required Color accent,
     required _Tok t, required bool isDark,
+    int? teamId,
+    BuildContext? buildContext,
   }) {
+    Widget logo = TeamLogo(teamCode: code, size: 46);
+    if (teamId != null && buildContext != null) {
+      logo = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => Navigator.push(buildContext,
+            MaterialPageRoute(builder: (_) => TeamDetailScreen(
+                team: {'id': teamId, 'short_name': code, 'name': name}))),
+        child: logo,
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        TeamLogo(teamCode: code, size: 46),
+        logo,
         const SizedBox(height: 7),
         Text(name,
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: -0.15),
@@ -1963,18 +1986,41 @@ class GameCard extends StatelessWidget {
   }
 
   Widget _centerNextSeriesCell(Map<String, String>? ns, _Tok t) {
-    if (ns == null) return Text('-', style: TextStyle(fontSize: 10, color: t.line2));
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    if (ns == null) return Text('-', style: TextStyle(fontSize: 11, color: t.line2));
+    // date "YYYY-MM-DD" → "M/D"
+    String dateLabel = '';
+    final ds = ns['date'] ?? '';
+    if (ds.length >= 10) {
+      final parts = ds.split('-');
+      if (parts.length == 3) {
+        final m = int.tryParse(parts[1]);
+        final d = int.tryParse(parts[2]);
+        if (m != null && d != null) dateLabel = '$m/$d';
+      }
+    }
+    return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        TeamLogo(teamCode: ns['code'] ?? '', size: 15),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Text(ns['name'] ?? '',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.ink3),
-              overflow: TextOverflow.ellipsis, maxLines: 1),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TeamLogo(teamCode: ns['code'] ?? '', size: 15),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(ns['name'] ?? '',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.ink3),
+                  overflow: TextOverflow.ellipsis, maxLines: 1),
+            ),
+          ],
         ),
+        if (dateLabel.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(dateLabel,
+                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: t.sub,
+                    fontFeatures: const [FontFeature.tabularFigures()])),
+          ),
       ],
     );
   }
@@ -2079,18 +2125,21 @@ class GameCard extends StatelessWidget {
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
           child: Stack(
             children: [
-              // ── 승팀 로고 배경 overlay (score row 영역, footer 침범 안 함) ──
+              // ── 승팀 로고 배경 overlay (TeamSide logo center 일치, score row 영역) ──
               if (winnerColor != null)
                 Positioned(
-                  top: -10, bottom: null, height: 175,
-                  left: homeWon ? -50 : null,
-                  right: awayWon ? -50 : null,
+                  // TeamSide 안 logo top: padding(15) + header(~28) + 13 = ~56
+                  // logo 중심 = 56 + 23(logo46/2) = ~79
+                  // overlay 중심을 logo 중심에 맞춤: top = 79 - 145 = -66
+                  top: -66, height: 290,
+                  left: homeWon ? -85 : null,
+                  right: awayWon ? -85 : null,
                   child: IgnorePointer(
                     child: Opacity(
                       opacity: isDark ? 0.13 : 0.11,
                       child: TeamLogo(
                         teamCode: homeWon ? game.homeTeamCode : game.awayTeamCode,
-                        size: 240,
+                        size: 290,
                       ),
                     ),
                   ),
@@ -2130,6 +2179,7 @@ class GameCard extends StatelessWidget {
                       code: game.homeTeamCode, name: game.homeTeam, rank: homeRank,
                       isHome: true, isWinner: homeWon,
                       recent: game.homeRecent5, accent: accent, t: t, isDark: isDark,
+                      teamId: game.homeTeamId, buildContext: context,
                     )),
                     SizedBox(
                       width: 86,
@@ -2195,6 +2245,7 @@ class GameCard extends StatelessWidget {
                       code: game.awayTeamCode, name: game.awayTeam, rank: awayRank,
                       isHome: false, isWinner: awayWon,
                       recent: game.awayRecent5, accent: accent, t: t, isDark: isDark,
+                      teamId: game.awayTeamId, buildContext: context,
                     )),
                   ],
                 ),
