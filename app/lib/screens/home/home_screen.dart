@@ -1952,7 +1952,7 @@ class GameCard extends StatelessWidget {
     BuildContext? buildContext,
   }) {
     // logo + winner overlay (logo center에 정확 일치)
-    // SizedBox(46)로 Stack 영역 고정 → overlay overflow는 clipBehavior.none + Card boundary로 clip
+    // SizedBox(46) 영역 고정. overlay는 OverflowBox로 parent constraint 우회 → 290 size paint
     Widget logo = SizedBox(
       width: 46, height: 46,
       child: Stack(
@@ -1961,9 +1961,13 @@ class GameCard extends StatelessWidget {
         children: [
           if (isWinner)
             IgnorePointer(
-              child: Opacity(
-                opacity: isDark ? 0.13 : 0.11,
-                child: TeamLogo(teamCode: code, size: 290),
+              child: OverflowBox(
+                minWidth: 0, maxWidth: double.infinity,
+                minHeight: 0, maxHeight: double.infinity,
+                child: Opacity(
+                  opacity: isDark ? 0.13 : 0.11,
+                  child: TeamLogo(teamCode: code, size: 290),
+                ),
               ),
             ),
           TeamLogo(teamCode: code, size: 46),
