@@ -104,7 +104,8 @@
       "Bash(adb -s R3CX90J1HJK pull /sdcard/sc.png C:/Users/qq772/playball/sc.png)",
       "Bash(adb -s R3CX90J1HJK shell screencap -p /sdcard/sc.png)",
       "Bash(adb -s R3CX90J1HJK shell \"screencap -p /sdcard/sc.png\")",
-      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:d.get\\(k\\) for k in ['error','pageInfo']},ensure_ascii=False,indent=2\\)\\); items=d.get\\('items',[]\\); print\\(f'items: {len\\(items\\)}'\\); [print\\(' -', i['snippet']['title'][:60]\\) for i in items[:3]]\")"
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:d.get\\(k\\) for k in ['error','pageInfo']},ensure_ascii=False,indent=2\\)\\); items=d.get\\('items',[]\\); print\\(f'items: {len\\(items\\)}'\\); [print\\(' -', i['snippet']['title'][:60]\\) for i in items[:3]]\")",
+      "Bash(grep -n \"^class GameCard\\\\|^class _PredictionBar\\\\|^}$\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")"
     ]
   }
 }

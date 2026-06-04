@@ -350,8 +350,8 @@ class _TeamScreenState extends State<TeamScreen>
       ('한국시리즈', ks,  const Color(0xFFFFB300)),
       ('플레이오프', po,  const Color(0xFF1565C0)),
       ('준플레이오프', spo, const Color(0xFF1976D2)),
-      ('와카홈',    wc4, const Color(0xFF26A69A)),
-      ('와카원정',  wc5, const Color(0xFF66BB6A)),
+      ('와일드카드 홈',    wc4, const Color(0xFF26A69A)),
+      ('와일드카드 원정',  wc5, const Color(0xFF66BB6A)),
     ];
     final top2 = [...stages]..sort((a, b) => b.$2.compareTo(a.$2));
     final top2Picked = top2.where((s) => s.$2 > 0).take(2).toList();
@@ -466,10 +466,10 @@ class _TeamScreenState extends State<TeamScreen>
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 4),
                             SizedBox(
-                              width: 38,
-                              child: Text('${ps.toStringAsFixed(0)}%',
+                              width: 44,
+                              child: Text('${ps.toStringAsFixed(1)}%',
                                   textAlign: TextAlign.right,
                                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
                                       color: ps >= 50 ? ink : ink3,
@@ -487,7 +487,7 @@ class _TeamScreenState extends State<TeamScreen>
                                     Container(width: 6, height: 6,
                                         decoration: BoxDecoration(color: s.$3, shape: BoxShape.circle)),
                                     const SizedBox(width: 4),
-                                    Text('${s.$1} ${s.$2.toStringAsFixed(0)}%',
+                                    Text('${s.$1} ${s.$2.toStringAsFixed(1)}%',
                                         style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: ink3,
                                             fontFeatures: const [FontFeature.tabularFigures()])),
                                   ]),
