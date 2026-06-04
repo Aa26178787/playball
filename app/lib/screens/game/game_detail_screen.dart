@@ -49,6 +49,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   bool _isLoadingInFlight = false;
   bool _isRelayRefreshing = false;
   bool _scoringExpanded = true;
+  bool _fieldPinned = false;
   List _sameDayGames = [];
   int _lineupSubIndex = 0;
   int _statsSubIndex = 0;
@@ -641,9 +642,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         children: [
           NestedScrollView(
             headerSliverBuilder: (context, _) => [
-              SliverToBoxAdapter(child: _buildGameHeader(game, roundedBottom: _sameDayGames.isEmpty)),
+              SliverToBoxAdapter(child: _buildGameHeader(game, roundedBottom: _sameDayGames.isEmpty && !_fieldPinned, includeField: !_fieldPinned)),
               if (_sameDayGames.isNotEmpty)
                 SliverToBoxAdapter(child: _buildSameDayStrip()),
+              if (_fieldPinned)
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _PinnedFieldHeaderDelegate(
+                    child: _buildPinnedFieldPanel(game),
+                    height: 320,
+                  ),
+                ),
             ],
             body: TabBarView(
               controller: _tabController,
@@ -781,7 +790,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return (game[key] as int?) ?? 0;
   }
 
-  Widget _buildGameHeader(Map<String, dynamic> game, {bool roundedBottom = true}) {
+  Widget _buildGameHeader(Map<String, dynamic> game, {bool roundedBottom = true, bool includeField = true}) {
     final status = game['status'] as String? ?? '';
     final isLive = status == '진행';
     final isDone = status == '종료';
@@ -990,93 +999,118 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             ),
 
-            const SizedBox(height: 16),
-            // ── FieldSlot (mockup dashed 슬롯 + ClipRRect로 필드뷰 빠져나감 방지) ──
-            if (fieldWidget != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: CustomPaint(
-                  painter: _DashedRectPainter(color: line2, radius: 16, dashLength: 6, gap: 4),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Stack(
+            // _fieldPinned == true 시: 외부 SliverPersistentHeader에서 표시 (중복 방지)
+            if (includeField) ...[
+              const SizedBox(height: 16),
+              // ── FieldSlot (mockup dashed 슬롯 + ClipRRect로 필드뷰 빠져나감 방지) ──
+              if (fieldWidget != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: CustomPaint(
+                    painter: _DashedRectPainter(color: line2, radius: 16, dashLength: 6, gap: 4),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Stack(
+                        children: [
+                          const Positioned.fill(
+                            child: CustomPaint(painter: _GrassExtensionPainter()),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+                            child: SizedBox(height: 190, width: double.infinity, child: fieldWidget),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+              // ── LIVE BSO bar (진행중만) / 승투패투 (종료) — paper2 박스 ──
+              if (isLive && _relayData?['current_state'] != null) ...[
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: paper2, borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: line, width: 1),
+                    ),
+                    child: Row(
                       children: [
-                        // Layer 1: 잔디 확장 painter — inner painter와 같은 center/radius로 gradient/stripe 연결
-                        const Positioned.fill(
-                          child: CustomPaint(painter: _GrassExtensionPainter()),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: live.withValues(alpha: isDark ? 0.20 : 0.10),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Container(width: 5, height: 5,
+                                decoration: const BoxDecoration(color: live, shape: BoxShape.circle)),
+                            const SizedBox(width: 4),
+                            const Text('LIVE', style: TextStyle(color: live, fontSize: 11, fontWeight: FontWeight.w800)),
+                          ]),
                         ),
-                        // Layer 2: inner 필드 (다이아몬드 + 선수)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                          child: SizedBox(height: 190, width: double.infinity, child: fieldWidget),
+                        const SizedBox(width: 10),
+                        bsoGroup('B', (_relayData!['current_state']['ball'] as int? ?? 0).clamp(0, 3), 3, const Color(0xFF22C55E)),
+                        const SizedBox(width: 8),
+                        bsoGroup('S', (_relayData!['current_state']['strike'] as int? ?? 0).clamp(0, 2), 2, live),
+                        const SizedBox(width: 8),
+                        bsoGroup('O', (_relayData!['current_state']['out'] as int? ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
+                        const Spacer(),
+                        // pin 토글: 활성화 시 필드+BSO가 스크롤해도 상단에 sticky 고정
+                        GestureDetector(
+                          onTap: () => setState(() => _fieldPinned = !_fieldPinned),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Icon(
+                              _fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                              size: 18,
+                              color: _fieldPinned ? live : ink3,
+                            ),
+                          ),
                         ),
+                        const SizedBox(width: 6),
+                        _isRelayRefreshing
+                            ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: ink3))
+                            : GestureDetector(
+                                onTap: _refreshRelayAll,
+                                child: Icon(Icons.refresh, size: 18, color: ink3),
+                              ),
                       ],
                     ),
                   ),
                 ),
-              ),
-
-            // ── LIVE BSO bar (진행중만) / 승투패투 (종료) — paper2 박스 ──
-            if (isLive && _relayData?['current_state'] != null) ...[
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: paper2, borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: line, width: 1),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: live.withValues(alpha: isDark ? 0.20 : 0.10),
-                          borderRadius: BorderRadius.circular(999),
+              ] else if (isDone && (game['win_pitcher'] != null || game['lose_pitcher'] != null)) ...[
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: paper2, borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: line, width: 1),
+                    ),
+                    child: Row(children: [
+                      if (game['win_pitcher'] != null)
+                        Expanded(child: _pitcherBadge(game['win_pitcher'] as String, game['win_pitcher_image'] as String?, const Color(0xFF1976D2), '승')),
+                      if (game['lose_pitcher'] != null)
+                        Expanded(child: _pitcherBadge(game['lose_pitcher'] as String, game['lose_pitcher_image'] as String?, const Color(0xFFC62828), '패')),
+                      GestureDetector(
+                        onTap: () => setState(() => _fieldPinned = !_fieldPinned),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Icon(
+                            _fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                            size: 18,
+                            color: _fieldPinned ? live : ink3,
+                          ),
                         ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Container(width: 5, height: 5,
-                              decoration: const BoxDecoration(color: live, shape: BoxShape.circle)),
-                          const SizedBox(width: 4),
-                          const Text('LIVE', style: TextStyle(color: live, fontSize: 11, fontWeight: FontWeight.w800)),
-                        ]),
                       ),
-                      const SizedBox(width: 10),
-                      bsoGroup('B', (_relayData!['current_state']['ball'] as int? ?? 0).clamp(0, 3), 3, const Color(0xFF22C55E)),
-                      const SizedBox(width: 8),
-                      bsoGroup('S', (_relayData!['current_state']['strike'] as int? ?? 0).clamp(0, 2), 2, live),
-                      const SizedBox(width: 8),
-                      bsoGroup('O', (_relayData!['current_state']['out'] as int? ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
-                      const Spacer(),
-                      _isRelayRefreshing
-                          ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: ink3))
-                          : GestureDetector(
-                              onTap: _refreshRelayAll,
-                              child: Icon(Icons.refresh, size: 18, color: ink3),
-                            ),
-                    ],
+                    ]),
                   ),
                 ),
-              ),
-            ] else if (isDone && (game['win_pitcher'] != null || game['lose_pitcher'] != null)) ...[
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: paper2, borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: line, width: 1),
-                  ),
-                  child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-                    if (game['win_pitcher'] != null)
-                      _pitcherBadge(game['win_pitcher'] as String, game['win_pitcher_image'] as String?, const Color(0xFF1976D2), '승'),
-                    if (game['lose_pitcher'] != null)
-                      _pitcherBadge(game['lose_pitcher'] as String, game['lose_pitcher_image'] as String?, const Color(0xFFC62828), '패'),
-                  ]),
-                ),
-              ),
+              ],
             ],
 
             // ── WeatherLine ──
@@ -1403,6 +1437,202 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       if (pop != null) '강수 $pop%',
     ];
     return Text(parts.join('  '), style: const TextStyle(fontSize: 12));
+  }
+
+  // pinned 상태일 때 SliverPersistentHeader에서 표시할 field + BSO 패널
+  Widget _buildPinnedFieldPanel(Map<String, dynamic> game) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final status = game['status'] as String? ?? '';
+    final isLive = status == '진행';
+    final isDone = status == '종료';
+
+    final ink3   = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final paper  = isDark ? const Color(0xFF18181C) : Colors.white;
+    final paper2 = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
+    final line   = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final line2  = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
+    const live   = Color(0xFFE53935);
+
+    Widget? fieldWidget;
+    if (_relayData != null) {
+      final relayState = _relayData!['current_state'];
+      final fieldView  = _relayData!['field_view'] as Map<String, dynamic>?;
+      if (relayState != null) {
+        fieldWidget = _FullFieldView(
+          base1: relayState['base1'] == true,
+          base2: relayState['base2'] == true,
+          base3: relayState['base3'] == true,
+          fieldView: fieldView,
+          isDark: isDark,
+        );
+      }
+    } else if (_rosterData != null) {
+      final homeBatters = (_rosterData!['home']['batters'] as List? ?? []).cast<Map<String, dynamic>>();
+      final defense = homeBatters
+          .where((b) => b['is_starter'] == true && b['batting_order'] != null && b['batting_order'] != 0)
+          .map<Map<String, dynamic>>((b) => {
+                'name': b['name'] as String? ?? '',
+                'image': b['profile_image'],
+                'position': b['position'] as String? ?? '',
+                'pos_code': '',
+              }).toList();
+      fieldWidget = _FullFieldView(
+        base1: false, base2: false, base3: false,
+        fieldView: {'defense': defense, 'batter': null, 'pitcher': null, 'runners': null},
+        isDark: isDark,
+      );
+    } else {
+      fieldWidget = _FullFieldView(base1: false, base2: false, base3: false, fieldView: null, isDark: isDark);
+    }
+
+    Widget bsoDot(bool on, Color c) => Container(
+      width: 8, height: 8,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: on ? c : line2),
+    );
+    Widget bsoGroup(String lbl, int count, int max, Color c) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(lbl, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ink3)),
+        const SizedBox(width: 3),
+        ...List.generate(max, (i) => bsoDot(i < count, c)),
+      ],
+    );
+
+    return Material(
+      color: paper,
+      elevation: 3,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: CustomPaint(
+              painter: _DashedRectPainter(color: line2, radius: 16, dashLength: 6, gap: 4),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  children: [
+                    const Positioned.fill(child: CustomPaint(painter: _GrassExtensionPainter())),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+                      child: SizedBox(height: 190, width: double.infinity, child: fieldWidget),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (isLive && _relayData?['current_state'] != null) ...[
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: paper2, borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: line, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: live.withValues(alpha: isDark ? 0.20 : 0.10),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Container(width: 5, height: 5,
+                            decoration: const BoxDecoration(color: live, shape: BoxShape.circle)),
+                        const SizedBox(width: 4),
+                        const Text('LIVE', style: TextStyle(color: live, fontSize: 11, fontWeight: FontWeight.w800)),
+                      ]),
+                    ),
+                    const SizedBox(width: 10),
+                    bsoGroup('B', (_relayData!['current_state']['ball'] as int? ?? 0).clamp(0, 3), 3, const Color(0xFF22C55E)),
+                    const SizedBox(width: 8),
+                    bsoGroup('S', (_relayData!['current_state']['strike'] as int? ?? 0).clamp(0, 2), 2, live),
+                    const SizedBox(width: 8),
+                    bsoGroup('O', (_relayData!['current_state']['out'] as int? ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => setState(() => _fieldPinned = !_fieldPinned),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(
+                          _fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                          size: 18,
+                          color: _fieldPinned ? live : ink3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _isRelayRefreshing
+                        ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: ink3))
+                        : GestureDetector(
+                            onTap: _refreshRelayAll,
+                            child: Icon(Icons.refresh, size: 18, color: ink3),
+                          ),
+                  ],
+                ),
+              ),
+            ),
+          ] else if (isDone && (game['win_pitcher'] != null || game['lose_pitcher'] != null)) ...[
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: paper2, borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: line, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    if (game['win_pitcher'] != null)
+                      Expanded(child: _pitcherBadge(game['win_pitcher'] as String, game['win_pitcher_image'] as String?, const Color(0xFF1976D2), '승')),
+                    if (game['lose_pitcher'] != null)
+                      Expanded(child: _pitcherBadge(game['lose_pitcher'] as String, game['lose_pitcher_image'] as String?, const Color(0xFFC62828), '패')),
+                    GestureDetector(
+                      onTap: () => setState(() => _fieldPinned = !_fieldPinned),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(
+                          _fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                          size: 18,
+                          color: _fieldPinned ? live : ink3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ] else ...[
+            // 예정/라인업: pin 토글만 표시 (BSO 없음)
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: paper2, borderRadius: BorderRadius.circular(12), border: Border.all(color: line, width: 1)),
+                child: Row(
+                  children: [
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => setState(() => _fieldPinned = !_fieldPinned),
+                      child: Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined, size: 18, color: _fieldPinned ? live : ink3),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
   }
 
   Widget _buildFieldSection(Map game) {
@@ -4631,6 +4861,25 @@ class _FieldBgPainter extends CustomPainter {
   @override
   bool shouldRepaint(_FieldBgPainter old) =>
       old.base1 != base1 || old.base2 != base2 || old.base3 != base3 || old.isDark != isDark;
+}
+
+// pinned field 패널용 SliverPersistentHeader delegate
+class _PinnedFieldHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final double height;
+  const _PinnedFieldHeaderDelegate({required this.child, required this.height});
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return SizedBox(height: height, child: child);
+  }
+
+  @override
+  double get minExtent => height;
+  @override
+  double get maxExtent => height;
+  @override
+  bool shouldRebuild(_PinnedFieldHeaderDelegate old) => old.child != child || old.height != height;
 }
 
 // 잔디 확장 painter — outer slot 전체 grass + stripe (inner painter와 동일 center/radius 좌표 사용)
