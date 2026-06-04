@@ -650,21 +650,21 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             // scroll up 시 outer sliver 자동 reveal (필드뷰 접힘 → 다시 위로 스크롤 시 재등장)
             floatHeaderSlivers: true,
             headerSliverBuilder: (context, _) => [
-              SliverToBoxAdapter(child: _buildGameHeader(game, roundedBottom: _sameDayGames.isEmpty && !_fieldPinned, includeField: !_fieldPinned)),
-              if (_sameDayGames.isNotEmpty)
-                SliverToBoxAdapter(child: _buildSameDayStrip()),
+              // _sameDayGames strip은 _buildGameHeader 내부 (필드 ↓ 승패투 ↑) 이동
+              SliverToBoxAdapter(child: _buildGameHeader(game, roundedBottom: !_fieldPinned, includeField: !_fieldPinned)),
               if (_fieldPinned)
                 SliverPersistentHeader(
                   pinned: true,
                   delegate: _PinnedFieldHeaderDelegate(
                     child: _buildPinnedFieldPanel(game),
-                    height: 320,
+                    // field 230 + same_day strip ~130 + BSO/pitcher 60 + paddings
+                    height: _sameDayGames.isNotEmpty ? 450 : 320,
                   ),
                 ),
             ],
-            // _fieldPinned 시 body top padding 320 — pinned sliver 아래로 콘텐츠 배치 (가려짐 방지)
+            // _fieldPinned 시 body top padding — pinned sliver 아래로 콘텐츠 배치 (가려짐 방지)
             body: Padding(
-              padding: EdgeInsets.only(top: _fieldPinned ? 320 : 0),
+              padding: EdgeInsets.only(top: _fieldPinned ? (_sameDayGames.isNotEmpty ? 450 : 320) : 0),
               child: TabBarView(
                 controller: _tabController,
                 physics: const NeverScrollableScrollPhysics(),
@@ -700,22 +700,23 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     return Container(
       color: paper,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(bottom: 10, left: 2),
+            padding: const EdgeInsets.only(bottom: 8, left: 2),
             child: Text('다른 경기',
                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.3)),
           ),
+          // 1x4 한 줄 배치 (5경기 - 현재경기 = 4)
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 8, crossAxisSpacing: 8,
-              childAspectRatio: 2.6,
+              crossAxisCount: 4,
+              mainAxisSpacing: 6, crossAxisSpacing: 6,
+              childAspectRatio: 0.95,
             ),
             itemCount: _sameDayGames.length,
             itemBuilder: (_, i) {
@@ -741,10 +742,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     : () => Navigator.pushReplacement(context,
                         MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: g['id'] as int))),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                   decoration: BoxDecoration(
                     color: isCurrent ? paper2 : paper,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: isCurrent ? ink : line, width: isCurrent ? 1.5 : 1),
                   ),
                   child: Column(
@@ -753,26 +754,26 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          TeamLogo(teamCode: awayCode, size: 24),
-                          const SizedBox(width: 8),
-                          Text('vs', style: TextStyle(fontSize: 11, color: sub, fontWeight: FontWeight.w600)),
-                          const SizedBox(width: 8),
-                          TeamLogo(teamCode: homeCode, size: 24),
+                          TeamLogo(teamCode: awayCode, size: 18),
+                          const SizedBox(width: 3),
+                          Text('vs', style: TextStyle(fontSize: 9, color: sub, fontWeight: FontWeight.w600)),
+                          const SizedBox(width: 3),
+                          TeamLogo(teamCode: homeCode, size: 18),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (isLive) ...[
-                            Container(width: 5, height: 5,
+                            Container(width: 4, height: 4,
                                 decoration: const BoxDecoration(color: live, shape: BoxShape.circle)),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 3),
                           ],
                           Text(scoreText,
                               style: TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w800,
+                                fontSize: 11, fontWeight: FontWeight.w800,
                                 color: isLive ? live : ink,
                                 fontFeatures: const [FontFeature.tabularFigures()],
                               )),
@@ -1036,6 +1037,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     ),
                   ),
                 ),
+
+              // ── 다른 경기 (1x4) — 필드뷰 아래, 승패투 위 사이 ──
+              if (_sameDayGames.isNotEmpty) _buildSameDayStrip(),
 
               // ── LIVE BSO bar (진행중만) / 승투패투 (종료) — paper2 박스 ──
               if (isLive && _relayData?['current_state'] != null) ...[
@@ -1339,7 +1343,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _pitcherBadge(String name, String? imageUrl, Color color, String label) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    // Expanded child에서 가운데 정렬 — mainAxisAlignment.center
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
         CircleAvatar(
@@ -1514,6 +1520,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             ),
           ),
+          // 다른 경기 strip도 함께 fixed
+          if (_sameDayGames.isNotEmpty) _buildSameDayStrip(),
           if (isLive && _relayData?['current_state'] != null) ...[
             const SizedBox(height: 10),
             Padding(
