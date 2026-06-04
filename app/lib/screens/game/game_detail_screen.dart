@@ -1018,9 +1018,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 child: Row(children: [
                   if (game['win_pitcher'] != null)
-                    Expanded(child: _pitcherBadge(game['win_pitcher'] as String, game['win_pitcher_image'] as String?, const Color(0xFF1976D2), '승')),
+                    Expanded(child: _pitcherBadge(game['win_pitcher'] as String, const Color(0xFF1976D2), '승')),
                   if (game['lose_pitcher'] != null)
-                    Expanded(child: _pitcherBadge(game['lose_pitcher'] as String, game['lose_pitcher_image'] as String?, const Color(0xFFC62828), '패')),
+                    Expanded(child: _pitcherBadge(game['lose_pitcher'] as String, const Color(0xFFC62828), '패')),
                 ]),
               ),
             ],
@@ -1313,11 +1313,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (game['win_pitcher'] != null) ...[
-                  _pitcherBadge(game['win_pitcher'] as String, game['win_pitcher_image'] as String?, Colors.lightBlueAccent, '승'),
+                  _pitcherBadge(game['win_pitcher'] as String, Colors.lightBlueAccent, '승'),
                   if (game['lose_pitcher'] != null) const SizedBox(width: 16),
                 ],
                 if (game['lose_pitcher'] != null)
-                  _pitcherBadge(game['lose_pitcher'] as String, game['lose_pitcher_image'] as String?, Colors.redAccent, '패'),
+                  _pitcherBadge(game['lose_pitcher'] as String, Colors.redAccent, '패'),
               ],
             ),
           ],
@@ -1330,26 +1330,48 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     );
   }
 
-  Widget _pitcherBadge(String name, String? imageUrl, Color color, String label) {
+  // 그날 기록 lookup — pitchers list에서 name 매칭 → "5이닝 2자책 7K"
+  String _pitcherDayStats(String name) {
+    final pitchers = (_gameData?['pitchers'] as List?) ?? [];
+    for (final p in pitchers) {
+      if ((p['name'] as String? ?? '') != name) continue;
+      final ip = p['innings_pitched'];
+      final er = p['earned_runs'];
+      final so = p['strikeouts'];
+      final parts = <String>[];
+      if (ip != null && ip != 0) parts.add('${ip}이닝');
+      if (er != null) parts.add('${er}자책');
+      if (so != null && so > 0) parts.add('${so}K');
+      return parts.join(' ');
+    }
+    return '';
+  }
+
+  Widget _pitcherBadge(String name, Color color, String label) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
-    // Expanded child에서 가운데 정렬 — mainAxisAlignment.center
+    final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final stats = _pitcherDayStats(name);
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        CircleAvatar(
-          radius: 14,
-          backgroundColor: color.withValues(alpha: 0.25),
-          backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl) : null,
-          child: imageUrl == null ? Icon(Icons.person, size: 14, color: color) : null,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w800)),
         ),
-        const SizedBox(width: 5),
+        const SizedBox(width: 6),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w800)),
-            Text(name, style: TextStyle(color: ink, fontSize: 11, fontWeight: FontWeight.w700)),
+            Text(name, style: TextStyle(color: ink, fontSize: 12, fontWeight: FontWeight.w800)),
+            if (stats.isNotEmpty)
+              Text(stats, style: TextStyle(color: sub, fontSize: 10, fontWeight: FontWeight.w600)),
           ],
         ),
       ],
