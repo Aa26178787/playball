@@ -2186,9 +2186,8 @@ class GameCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // ── 헤더: 날씨 + 구장 | 마이팀 + status ──
-                    // Container(color: cardBg) 헤더 전체 opaque bg → overlay 가림 (chip 사이 빈공간도)
-                    Container(
-                      color: cardBg,
+                    // chip 자체 bg로 overlay 가림. Spacer/빈공간 transparent → overlay 보여도 됨
+                    Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 15),
                       child: Row(
                         children: [
