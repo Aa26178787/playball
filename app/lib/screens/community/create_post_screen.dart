@@ -310,7 +310,7 @@ class _MentionHelpRowState extends State<_MentionHelpRow> {
                         color: const Color(0xFF111113).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Text(e.$1, style: const TextStyle(fontSize: 10, color: Color(0xFF111113))),
+                      child: Text(e.$1, style: const TextStyle(fontSize: 11, color: Color(0xFF111113))),
                     ),
                     const SizedBox(width: 8),
                     Text(e.$2, style: const TextStyle(

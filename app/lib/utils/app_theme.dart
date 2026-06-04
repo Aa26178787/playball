@@ -38,6 +38,9 @@ class AppTheme {
     final isDark = br == Brightness.dark;
     return ThemeData(
       useMaterial3: true,
+      splashFactory: NoSplash.splashFactory,
+      highlightColor: Colors.transparent,
+      splashColor: Colors.transparent,
       fontFamily: 'Pretendard',
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
@@ -91,9 +94,9 @@ class AppTheme {
         elevation: 0,
         type: BottomNavigationBarType.fixed,
         selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w700, fontSize: 10),
+            fontWeight: FontWeight.w700, fontSize: 11),
         unselectedLabelStyle:
-            const TextStyle(fontWeight: FontWeight.normal, fontSize: 10),
+            const TextStyle(fontWeight: FontWeight.normal, fontSize: 11),
       ),
       dividerTheme: DividerThemeData(
         color: isDark ? AppColors.borderDark : AppColors.borderLight,

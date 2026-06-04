@@ -216,7 +216,7 @@ class _FloatingNavBar extends StatelessWidget {
                         Text(
                           item.label,
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
                             color: selected ? activeColor : inactiveColor,
                             fontFamily: 'Pretendard',
@@ -279,7 +279,7 @@ class _FloatingNavBar extends StatelessWidget {
             if (gameStr.isNotEmpty) ...[
               const SizedBox(width: 6),
               Text(gameStr,
-                  style: TextStyle(fontSize: 10, color: gameColor, fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontSize: 11, color: gameColor, fontWeight: FontWeight.w700)),
             ],
           ],
         ),
@@ -334,7 +334,7 @@ class _FloatingNavBar extends StatelessWidget {
               const SizedBox(width: 5),
               Text(gameStr,
                   style: TextStyle(
-                      fontSize: 10, color: gameColor, fontWeight: FontWeight.w600)),
+                      fontSize: 11, color: gameColor, fontWeight: FontWeight.w600)),
             ],
           ],
         ),
@@ -1151,7 +1151,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                       child: Text(
                         _unreadNotifCount > 9 ? '9+' : '$_unreadNotifCount',
                         style: const TextStyle(
-                            color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                            color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -1430,7 +1430,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                   decoration: BoxDecoration(color: rankBg, borderRadius: BorderRadius.circular(8)),
                   child: Text('${rank}위',
-                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -1447,7 +1447,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 if (streakText.isNotEmpty) ...[
                   const SizedBox(width: 4),
                   Text(streakText,
-                      style: TextStyle(fontSize: 10, color: streakColor, fontWeight: FontWeight.w700)),
+                      style: TextStyle(fontSize: 11, color: streakColor, fontWeight: FontWeight.w700)),
                 ],
               ],
             ),
@@ -1720,7 +1720,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                                   color: col.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: Text(type, style: TextStyle(fontSize: 10, color: col, fontWeight: FontWeight.w800)),
+                                child: Text(type, style: TextStyle(fontSize: 11, color: col, fontWeight: FontWeight.w800)),
                               ),
                               const SizedBox(width: 8),
                               Text(c['team_name'] ?? '', style: TextStyle(fontSize: 11, color: t.ink3, fontWeight: FontWeight.w600)),
@@ -1754,7 +1754,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       color: color.withValues(alpha: 0.12),
       borderRadius: BorderRadius.circular(999),
     ),
-    child: Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w800)),
+    child: Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w800)),
   );
 }
 
@@ -1779,7 +1779,7 @@ class GameCard extends StatelessWidget {
       border: Border.all(color: t.line2, width: 1),
     ),
     child: Text(name,
-        style: TextStyle(fontSize: 10, color: t.ink2, fontWeight: FontWeight.w700),
+        style: TextStyle(fontSize: 11, color: t.ink2, fontWeight: FontWeight.w700),
         overflow: TextOverflow.ellipsis),
   );
 
@@ -1797,13 +1797,13 @@ class GameCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('다음 ', style: TextStyle(fontSize: 9, color: t.sub)),
+        Text('다음 ', style: TextStyle(fontSize: 11, color: t.sub)),
         TeamLogo(teamCode: series['code'] ?? '', size: 15),
         const SizedBox(width: 3),
         Flexible(
           child: Text(
             '${series['name'] ?? ''}$dateLabel',
-            style: TextStyle(fontSize: 10, color: t.ink3, fontWeight: FontWeight.w600),
+            style: TextStyle(fontSize: 11, color: t.ink3, fontWeight: FontWeight.w600),
             overflow: TextOverflow.ellipsis, maxLines: 1,
           ),
         ),
@@ -1862,16 +1862,19 @@ class GameCard extends StatelessWidget {
         )),
       ),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: t.paper2,
           borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: t.line2, width: 1),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.location_on, size: 10, color: t.sub),
+          Icon(Icons.map_outlined, size: 11, color: t.ink3),
           const SizedBox(width: 4),
-          Text(game.stadium!,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.ink3)),
+          Text('지도 · ${game.stadium!}',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2)),
+          const SizedBox(width: 2),
+          Icon(Icons.chevron_right, size: 12, color: t.ink3),
         ]),
       ),
     );
@@ -1906,7 +1909,7 @@ class GameCard extends StatelessWidget {
         Container(width: 5, height: 5,
             decoration: BoxDecoration(color: t.line2, shape: BoxShape.circle)),
         const SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.ink3)),
+        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.ink3)),
       ]),
     );
   }
@@ -1940,7 +1943,7 @@ class GameCard extends StatelessWidget {
             maxLines: 1, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 5),
         Text(rank != null ? '${rank}위' : (isHome ? '홈' : '원정'),
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.sub)),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
         const SizedBox(height: 7),
         _buildMini5(isHome ? recent.reversed.toList() : recent, isWinner ? accent : t.ink, t, isDark),
       ],
@@ -1965,7 +1968,7 @@ class GameCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
             ),
             child: Text(pitcherLabel ?? '',
-                style: TextStyle(fontSize: 8, color: pitcherLabelColor ?? t.ink3, fontWeight: FontWeight.w800)),
+                style: TextStyle(fontSize: 11, color: pitcherLabelColor ?? t.ink3, fontWeight: FontWeight.w800)),
           ),
           const SizedBox(width: 4),
           Flexible(
@@ -2018,7 +2021,7 @@ class GameCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 2),
             child: Text(dateLabel,
-                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: t.sub,
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub,
                     fontFeatures: const [FontFeature.tabularFigures()])),
           ),
       ],
@@ -2060,7 +2063,7 @@ class GameCard extends StatelessWidget {
                 decoration: const BoxDecoration(color: _kLiveRed, shape: BoxShape.circle)),
             const SizedBox(width: 5),
             const Text('LIVE',
-                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _kLiveRed)),
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _kLiveRed)),
           ]),
         );
       }
@@ -2069,7 +2072,7 @@ class GameCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(999)),
           child: Text('취소',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: t.ink3)),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink3)),
         );
       }
       if (isFinished) {
@@ -2077,7 +2080,7 @@ class GameCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(999)),
           child: Text('경기 종료',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: t.ink3)),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink3)),
         );
       }
       if (game.status == '라인업') {
@@ -2088,14 +2091,14 @@ class GameCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
           ),
           child: const Text('라인업',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFFFFA000))),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFFFA000))),
         );
       }
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(999)),
         child: Text(game.startTime ?? game.status,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: t.ink2)),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2)),
       );
     }
 
@@ -2163,7 +2166,7 @@ class GameCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                         decoration: BoxDecoration(color: myColor, borderRadius: BorderRadius.circular(5)),
                         child: const Text('마이팀',
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white)),
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
                       ),
                       const SizedBox(width: 7),
                     ],
@@ -2276,7 +2279,7 @@ class GameCard extends StatelessWidget {
                             width: 78,
                             child: Text(hasPitchers ? '결과' : '선발',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: t.sub)),
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
                           ),
                           Expanded(child: _centerPitcherCell(
                             starter: hasStarters ? game.awayStarter : null,
@@ -2299,7 +2302,7 @@ class GameCard extends StatelessWidget {
                           width: 78,
                           child: Text('다음 시리즈',
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: t.sub)),
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
                         ),
                         Expanded(child: _centerNextSeriesCell(nextAwaySeries, t)),
                       ],
@@ -2349,7 +2352,7 @@ class GameCard extends StatelessWidget {
         color: col.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(label, style: TextStyle(fontSize: 9, color: col, fontWeight: FontWeight.w800)),
+      child: Text(label, style: TextStyle(fontSize: 11, color: col, fontWeight: FontWeight.w800)),
     );
     final nameText = Text(name,
         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2),
@@ -2376,13 +2379,13 @@ class GameCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('다음 ', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w500, color: t.sub)),
+        Text('다음 ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: t.sub)),
         TeamLogo(teamCode: series['code'] ?? '', size: 15),
         const SizedBox(width: 3),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 90),
           child: Text('${series['name'] ?? ''}$dateLabel',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.ink3),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.ink3),
               overflow: TextOverflow.ellipsis, maxLines: 1),
         ),
       ],
@@ -2394,7 +2397,7 @@ class GameCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: t.sub)),
+        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
         const SizedBox(height: 4),
         value,
       ],
@@ -2518,10 +2521,10 @@ class _PredictionBarState extends State<_PredictionBar> {
           child: Row(
             children: [
               Text('AI 승리 예측',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: t.ink3, letterSpacing: 0.2)),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: t.ink3, letterSpacing: 0.2)),
               const Spacer(),
               Text('ML 모델',
-                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: t.sub)),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
             ],
           ),
         ),
@@ -2564,7 +2567,7 @@ class _PredictionBarState extends State<_PredictionBar> {
         if (_homeStarter.isNotEmpty || _awayStarter.isNotEmpty) ...[
           const SizedBox(height: 5),
           Text('$_homeStarter vs $_awayStarter',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.sub)),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
         ],
       ],
     );

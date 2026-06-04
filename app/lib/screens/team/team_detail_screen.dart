@@ -357,7 +357,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                     Icon(icons[i], size: 18, color: selected ? color : Colors.grey),
                     const SizedBox(height: 1),
                     Text(labels[i], style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
                       color: selected ? color : Colors.grey,
                     )),
@@ -550,7 +550,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       children: [
         Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
         const SizedBox(height: 2),
-        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
       ],
     );
   }
@@ -1176,7 +1176,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(category,
-                            style: const TextStyle(fontSize: 10, color: Colors.blue, fontWeight: FontWeight.bold)),
+                            style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold)),
                       ),
                       const SizedBox(width: 6),
                     ],
@@ -1279,7 +1279,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                       reservedSize: 36,
                       interval: 0.25,
                       getTitlesWidget: (v, _) => Text(v.toStringAsFixed(2),
-                          style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                          style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                     ),
                   ),
                   bottomTitles: AxisTitles(
@@ -1544,7 +1544,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     return Column(
       children: [
         Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
       ],
     );
   }
@@ -1697,7 +1697,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(avg.toStringAsFixed(3),
-                      style: TextStyle(fontSize: 8, color: Colors.grey.shade600)),
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
                   const SizedBox(height: 2),
                   Container(
                     width: 26,
@@ -1709,7 +1709,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text('$order번',
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
                 ],
               );
             }).toList(),

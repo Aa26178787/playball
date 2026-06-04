@@ -298,7 +298,7 @@ class _TeamScreenState extends State<TeamScreen>
         )),
         const SizedBox(width: 10),
         Text('가을야구 진출선',
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: ink3)),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ink3)),
         const SizedBox(width: 10),
         Expanded(child: CustomPaint(
           painter: _DashedLinePainter(color: c),
@@ -309,7 +309,7 @@ class _TeamScreenState extends State<TeamScreen>
   }
 
   TextStyle get _hdrStyle => TextStyle(
-        fontSize: 10, fontWeight: FontWeight.w700,
+        fontSize: 11, fontWeight: FontWeight.w700,
         color: Colors.grey[500], letterSpacing: 0.6,
       );
 
@@ -494,7 +494,7 @@ class _TeamScreenState extends State<TeamScreen>
                                         decoration: BoxDecoration(color: s.$3, shape: BoxShape.circle)),
                                     const SizedBox(width: 4),
                                     Text('${s.$1} ${s.$2.toStringAsFixed(1)}%',
-                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: ink3,
+                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ink3,
                                             fontFeatures: const [FontFeature.tabularFigures()])),
                                   ]),
                               ],
@@ -605,7 +605,7 @@ class _TeamScreenState extends State<TeamScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: sub)),
+          Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: sub)),
           const SizedBox(height: 5),
           Text(value,
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ink2,
@@ -619,7 +619,7 @@ class _TeamScreenState extends State<TeamScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('최근 10경기', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: sub)),
+          Text('최근 10경기', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: sub)),
           const SizedBox(height: 6),
           Row(children: List.generate(10, (i) {
             final r = i < recent10.length ? recent10[i] : '';
@@ -687,24 +687,24 @@ class _TeamScreenState extends State<TeamScreen>
 
   Widget _buildMoveIndicator(int? mv, Color ink2, Color sub, Color line2) {
     if (mv == null) {
-      return Text('—', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: line2));
+      return Text('—', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: line2));
     }
     if (mv > 0) {
       return Text('▲ $mv',
-          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: ink2));
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ink2));
     }
     if (mv < 0) {
       return Text('▼ ${-mv}',
-          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: sub));
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: sub));
     }
-    return Text('—', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: line2));
+    return Text('—', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: line2));
   }
 
   Widget _badge(String text, {required Color bg, required Color fg}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(5)),
-      child: Text(text, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: fg)),
+      child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: fg)),
     );
   }
 
@@ -1001,7 +1001,7 @@ class _TeamScreenState extends State<TeamScreen>
                 alignment: Alignment.center,
                 child: Text(r,
                     style: const TextStyle(
-                        fontSize: 10, color: Colors.white, fontWeight: FontWeight.w900)),
+                        fontSize: 11, color: Colors.white, fontWeight: FontWeight.w900)),
               ),
               if (isLatest)
                 Positioned(
@@ -1172,7 +1172,7 @@ class _TeamScreenState extends State<TeamScreen>
       children: [
         Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
         const SizedBox(height: 2),
-        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
       ],
     );
   }
@@ -1340,7 +1340,7 @@ class _TeamScreenState extends State<TeamScreen>
             width: 44,
             child: Text(
               'PS ${ps.toStringAsFixed(1)}%',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800,
                   color: ps >= 90 ? teamColor : (ps >= 50 ? teamColor.withValues(alpha: 0.8) : Colors.grey)),
               textAlign: TextAlign.right,
             ),
@@ -1368,7 +1368,7 @@ class _TeamScreenState extends State<TeamScreen>
           children: [
             const Text('포스트시즌 진출 확률', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const Spacer(),
-            Text('Monte Carlo 100,000회', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+            Text('Monte Carlo 100,000회', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
           ],
         ),
         const SizedBox(height: 10),
@@ -1400,7 +1400,7 @@ class _TeamScreenState extends State<TeamScreen>
                               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                           const SizedBox(width: 6),
                           Text('Elo ${elo.toStringAsFixed(0)}',
-                              style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                              style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                           const Spacer(),
                           Text('PS ${ps.toStringAsFixed(1)}%',
                               style: TextStyle(
@@ -1450,7 +1450,7 @@ class _TeamScreenState extends State<TeamScreen>
         Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text('* Elo 레이팅 + 남은 schedule(홈/원정/상대 강도 반영) · 표기 임계값 10% (미만 단계는 막대에만 반영)',
-              style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+              style: TextStyle(fontSize: 11, color: Colors.grey[500])),
         ),
       ],
     );
@@ -1465,7 +1465,7 @@ class _TeamScreenState extends State<TeamScreen>
         border: Border.all(color: c.withValues(alpha: 0.4), width: 0.6),
       ),
       child: Text('$label ${pct.toStringAsFixed(1)}%',
-          style: TextStyle(fontSize: 10, color: c, fontWeight: FontWeight.w700)),
+          style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w700)),
     );
   }
 
@@ -1668,7 +1668,7 @@ class _TeamScreenState extends State<TeamScreen>
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: valueColor)),
           const SizedBox(height: 2),
           Text(label,
-              style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+              style: TextStyle(fontSize: 11, color: Colors.grey[500])),
         ],
       ),
     );
@@ -2039,7 +2039,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
                           fontFeatures: const [FontFeature.tabularFigures()],
                         )),
                     const SizedBox(height: 2),
-                    Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: tk.sub)),
+                    Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: tk.sub)),
                   ],
                 ),
               ],
@@ -2367,7 +2367,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                       boxShadow: [BoxShadow(color: medalColor.withValues(alpha: 0.4), blurRadius: 3)],
                     ),
                     alignment: Alignment.center,
-                    child: Text('$rank', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                    child: Text('$rank', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -2377,7 +2377,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                 style: TextStyle(fontSize: rank == 1 ? 13 : 11, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center, overflow: TextOverflow.ellipsis),
             Text(p['team'] ?? '',
-                style: TextStyle(fontSize: 9, color: Colors.grey[600]), textAlign: TextAlign.center),
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]), textAlign: TextAlign.center),
             const SizedBox(height: 2),
             Text(statValue(p),
                 style: TextStyle(fontSize: rank == 1 ? 16 : 14, fontWeight: FontWeight.bold, color: medalColor),
@@ -2606,7 +2606,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                   child: (profileImage == null || profileImage.isEmpty)
                       ? Text(teamDisplayName(teamCode).substring(0,
                               teamDisplayName(teamCode).length.clamp(0, 2)),
-                          style: TextStyle(color: tc, fontSize: 10, fontWeight: FontWeight.w800))
+                          style: TextStyle(color: tc, fontSize: 11, fontWeight: FontWeight.w800))
                       : null,
                 ),
                 const SizedBox(width: 12),
@@ -2636,7 +2636,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                         )),
                     const SizedBox(height: 2),
                     Text(label,
-                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: t.sub)),
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
                   ],
                 ),
               ],

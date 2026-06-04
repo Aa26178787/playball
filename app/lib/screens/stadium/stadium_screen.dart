@@ -631,7 +631,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                               color: color.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: Text('인증', style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+                            child: Text('인증', style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
                           ),
                       ],
                     ),

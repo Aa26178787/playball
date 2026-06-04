@@ -678,7 +678,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                                 : decimals == 2
                                     ? value.toStringAsFixed(2)
                                     : value.toInt().toString();
-                            return Text(text, style: TextStyle(fontSize: 9, color: Colors.grey[600]));
+                            return Text(text, style: TextStyle(fontSize: 11, color: Colors.grey[600]));
                           },
                         ),
                       ),
@@ -692,7 +692,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                             if (idx < 0 || idx >= labels.length) return const SizedBox.shrink();
                             return Padding(
                               padding: const EdgeInsets.only(top: 4),
-                              child: Text(labels[idx], style: TextStyle(fontSize: 9, color: Colors.grey[600])),
+                              child: Text(labels[idx], style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                             );
                           },
                         ),

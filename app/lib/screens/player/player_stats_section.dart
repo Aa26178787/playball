@@ -292,7 +292,7 @@ class PlayerStatsSection extends StatelessWidget {
                       Text(
                         item.$1,
                         style: TextStyle(
-                          fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w500,
+                          fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w500,
                         ),
                       ),
                       const SizedBox(height: 2),

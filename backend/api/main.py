@@ -92,6 +92,8 @@ app.include_router(password_reset.router, prefix="/auth/password", tags=["비밀
 app.include_router(search.router, prefix="/search", tags=["검색"])
 app.include_router(news.router)
 app.include_router(prediction.router)
+from api.routers import allstar
+app.include_router(allstar.router, prefix="/allstar", tags=["올스타"])
 app.mount("/static", StaticFiles(directory="/home/ubuntu/playball/backend/static"), name="static")
 
 

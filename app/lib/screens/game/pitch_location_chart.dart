@@ -166,7 +166,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(4)),
-                  child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               ],
               const Spacer(),
@@ -335,7 +335,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                 color: const Color(0xFF111113).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(teamLabel, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF111113))),
+              child: Text(teamLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF111113))),
             ),
             const SizedBox(width: 6),
           ],
@@ -651,7 +651,7 @@ class _HeatmapPainter extends CustomPainter {
     }
 
     // Count labels on cells
-    final textStyle = const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold);
+    final textStyle = const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold);
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
         final count = grid[r][c];
@@ -836,7 +836,7 @@ class _StrikeZonePainter extends CustomPainter {
           Paint()..color = Colors.white.withValues(alpha: 0.5)..style = PaintingStyle.stroke..strokeWidth = 1);
     }
 
-    final textStyle = const TextStyle(fontSize: 9, color: Colors.grey);
+    final textStyle = const TextStyle(fontSize: 11, color: Colors.grey);
     for (final z in [1.0, 2.0, 3.0, 4.0, 5.0]) {
       if (z > zMax) break;
       final y = _toCanvas(0, z, size).dy;

@@ -269,13 +269,26 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   Future<void> _pickAndUploadImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80, maxWidth: 512);
+    // 1:1 정사각형 강제: maxWidth=maxHeight=512 + imageQuality 80
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 512,
+      maxHeight: 512,
+    );
     if (picked == null) return;
     setState(() => _uploadingImage = true);
     try {
       final url = await ApiService.uploadProfileImage(picked.path);
+      // 캐시 우회: URL에 timestamp query 붙여 새 cache key
+      final bustedUrl = url.contains('?') ? '$url&t=${DateTime.now().millisecondsSinceEpoch}'
+                                          : '$url?t=${DateTime.now().millisecondsSinceEpoch}';
+      // imageCache 클리어 — 이전 URL 캐시 강제 제거
+      CachedNetworkImage.evictFromCache(url);
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
       setState(() {
-        _user?['profile_image'] = url;
+        _user?['profile_image'] = bustedUrl;
         _uploadingImage = false;
       });
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(

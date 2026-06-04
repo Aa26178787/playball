@@ -476,7 +476,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                           borderRadius: BorderRadius.circular(3),
                         ),
                         child: Text('#$number',
-                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   Positioned(
@@ -500,7 +500,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                           style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
                       const SizedBox(width: 3),
                       Text(statLabel,
-                          style: TextStyle(fontSize: 9, color: Colors.grey[500])),
+                          style: TextStyle(fontSize: 11, color: Colors.grey[500])),
                     ],
                   ),
                 ],
@@ -726,7 +726,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                     color: i == 0 ? const Color(0xFFFFD700) : i == 1 ? const Color(0xFFC0C0C0) : const Color(0xFFCD7F32),
                                     shape: BoxShape.circle,
                                   ),
-                                  child: Center(child: Text('${i + 1}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white))),
+                                  child: Center(child: Text('${i + 1}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white))),
                                 ),
                               ),
                           ],
@@ -765,7 +765,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                 : null,
                             child: (img == null || img.isEmpty)
                                 ? Text(teamDisplayName(code).characters.take(2).string,
-                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: teamColor(code)))
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: teamColor(code)))
                                 : null,
                           ),
                           if (i < 3)
@@ -776,7 +776,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                 color: i == 0 ? const Color(0xFFFFD700) : i == 1 ? const Color(0xFFC0C0C0) : const Color(0xFFCD7F32),
                                 shape: BoxShape.circle,
                               ),
-                              child: Center(child: Text('${i + 1}', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white))),
+                              child: Center(child: Text('${i + 1}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white))),
                             ),
                         ],
                       ),

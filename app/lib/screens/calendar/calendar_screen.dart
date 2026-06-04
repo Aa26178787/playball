@@ -715,7 +715,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 child: isFirst ? Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Text(title,
-                    style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                   ),
@@ -1044,7 +1044,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         Text(homeTeam,
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                             textAlign: TextAlign.center),
-                        Text('홈', style: TextStyle(fontSize: 10, color: Colors.grey[400])),
+                        Text('홈', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
                       ],
                     ),
                   ),
@@ -1072,7 +1072,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         Text(awayTeam,
                             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                             textAlign: TextAlign.center),
-                        Text('원정', style: TextStyle(fontSize: 10, color: Colors.grey[400])),
+                        Text('원정', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
                       ],
                     ),
                   ),
@@ -1132,7 +1132,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       if (homeStarter != null)
                         _starterChip(homeStarter, true),
                       if (homeStarter != null && awayStarter != null)
-                        const Text('vs', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                        const Text('vs', style: TextStyle(fontSize: 11, color: Colors.grey)),
                       if (awayStarter != null)
                         _starterChip(awayStarter, false),
                     ],
@@ -1330,7 +1330,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       child: Text(
         '${isHome ? '홈' : '원정'} $name',
-        style: const TextStyle(fontSize: 10, color: Colors.indigo),
+        style: const TextStyle(fontSize: 11, color: Colors.indigo),
       ),
     );
   }

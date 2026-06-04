@@ -392,7 +392,7 @@ class _PostCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(text,
-          style: TextStyle(fontSize: 10, color: color ?? Colors.grey[600], fontWeight: FontWeight.w600)),
+          style: TextStyle(fontSize: 11, color: color ?? Colors.grey[600], fontWeight: FontWeight.w600)),
     );
   }
 
@@ -689,7 +689,7 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text('인증',
-                                  style: TextStyle(fontSize: 10, color: activeColor, fontWeight: FontWeight.bold)),
+                                  style: TextStyle(fontSize: 11, color: activeColor, fontWeight: FontWeight.bold)),
                             ),
                         ],
                       ),

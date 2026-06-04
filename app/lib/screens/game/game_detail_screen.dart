@@ -467,7 +467,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 showTitles: true,
                 reservedSize: 28,
                 interval: 25,
-                getTitlesWidget: (v, _) => Text('${v.toInt()}%', style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                getTitlesWidget: (v, _) => Text('${v.toInt()}%', style: const TextStyle(fontSize: 11, color: Colors.grey)),
               )),
               rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -733,7 +733,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         children: [
                           TeamLogo(teamCode: awayCode, size: 24),
                           const SizedBox(width: 8),
-                          Text('vs', style: TextStyle(fontSize: 10, color: sub, fontWeight: FontWeight.w600)),
+                          Text('vs', style: TextStyle(fontSize: 11, color: sub, fontWeight: FontWeight.w600)),
                           const SizedBox(width: 8),
                           TeamLogo(teamCode: homeCode, size: 24),
                         ],
@@ -868,7 +868,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     Widget bsoGroup(String lbl, int count, int max, Color c) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(lbl, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: ink3)),
+        Text(lbl, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ink3)),
         const SizedBox(width: 3),
         ...List.generate(max, (i) => bsoDot(i < count, c)),
       ],
@@ -910,7 +910,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         Text(shortName(homeTeam),
                             style: TextStyle(color: ink, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
                         if (homeRank != null && homeRank > 0)
-                          Text('${homeRank}위', style: TextStyle(color: sub, fontSize: 10, fontWeight: FontWeight.w600)),
+                          Text('${homeRank}위', style: TextStyle(color: sub, fontSize: 11, fontWeight: FontWeight.w600)),
                         if (homeWinRate != null) ...[
                           const SizedBox(height: 4),
                           _buildWinRatePill(homeWinRate),
@@ -954,7 +954,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                 decoration: const BoxDecoration(color: live, shape: BoxShape.circle)),
                             const SizedBox(width: 5),
                             Text('${game['current_inning']}회 ${game['inning_half'] ?? ''}',
-                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: live)),
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: live)),
                           ]),
                         )
                       else
@@ -973,7 +973,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         Text(shortName(awayTeam),
                             style: TextStyle(color: ink, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
                         if (awayRank != null && awayRank > 0)
-                          Text('${awayRank}위', style: TextStyle(color: sub, fontSize: 10, fontWeight: FontWeight.w600)),
+                          Text('${awayRank}위', style: TextStyle(color: sub, fontSize: 11, fontWeight: FontWeight.w600)),
                         if (awayWinRate != null) ...[
                           const SizedBox(height: 4),
                           _buildWinRatePill(awayWinRate),
@@ -1033,7 +1033,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           Container(width: 5, height: 5,
                               decoration: const BoxDecoration(color: live, shape: BoxShape.circle)),
                           const SizedBox(width: 4),
-                          const Text('LIVE', style: TextStyle(color: live, fontSize: 9, fontWeight: FontWeight.w800)),
+                          const Text('LIVE', style: TextStyle(color: live, fontSize: 11, fontWeight: FontWeight.w800)),
                         ]),
                       ),
                       const SizedBox(width: 10),
@@ -1114,9 +1114,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('승리확률 ', style: TextStyle(color: sub, fontSize: 8, fontWeight: FontWeight.w600)),
+          Text('승리확률 ', style: TextStyle(color: sub, fontSize: 11, fontWeight: FontWeight.w600)),
           Text('${rate.toStringAsFixed(0)}%',
-              style: TextStyle(color: ink2, fontSize: 10, fontWeight: FontWeight.w800)),
+              style: TextStyle(color: ink2, fontSize: 11, fontWeight: FontWeight.w800)),
         ],
       ),
     );
@@ -1133,14 +1133,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final sbBg = isDark ? Colors.black : const Color(0xFF1B1B1F);
 
     // mockup styles
-    final hdrInning = TextStyle(color: Colors.white.withValues(alpha: 0.40), fontSize: 9, fontWeight: FontWeight.w600);
-    final hdrRHBE = TextStyle(color: Colors.white.withValues(alpha: 0.70), fontSize: 9, fontWeight: FontWeight.w700);
+    final hdrInning = TextStyle(color: Colors.white.withValues(alpha: 0.40), fontSize: 11, fontWeight: FontWeight.w600);
+    final hdrRHBE = TextStyle(color: Colors.white.withValues(alpha: 0.70), fontSize: 11, fontWeight: FontWeight.w700);
     const teamStyle = TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700);
     final dimVal = TextStyle(color: Colors.white.withValues(alpha: 0.25), fontSize: 11, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()]);
     final zeroVal = TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 11, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()]);
     const liveVal = TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()]);
     const rStyle = TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()]);
-    final secStyle = TextStyle(color: Colors.white.withValues(alpha: 0.60), fontSize: 10, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()]);
+    final secStyle = TextStyle(color: Colors.white.withValues(alpha: 0.60), fontSize: 11, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()]);
 
     const teamColW = 40.0;
     const rhbeW = 24.0;
@@ -1320,7 +1320,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold)),
+            Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
             Text(name, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
           ],
         ),
@@ -1366,7 +1366,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               border: Border.all(color: bd, width: 1),
             ),
             alignment: Alignment.center,
-            child: Text(r, style: TextStyle(fontSize: 9, color: fg, fontWeight: FontWeight.w800)),
+            child: Text(r, style: TextStyle(fontSize: 11, color: fg, fontWeight: FontWeight.w800)),
           ),
         );
       }).toList(),
@@ -1786,13 +1786,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink, letterSpacing: -0.1)),
               if (pitcherName != null)
                 Text('vs $pitcherName',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: sub)),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: sub)),
               if (result.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   decoration: BoxDecoration(color: resultBg, borderRadius: BorderRadius.circular(99)),
                   child: Text(result,
-                      style: TextStyle(fontSize: 10, color: resultFg, fontWeight: FontWeight.w700)),
+                      style: TextStyle(fontSize: 11, color: resultFg, fontWeight: FontWeight.w700)),
                 ),
               if (pitches.isNotEmpty)
                 GestureDetector(
@@ -1821,7 +1821,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.grid_on, size: 10, color: ink3),
                       const SizedBox(width: 4),
-                      Text('투구위치', style: TextStyle(fontSize: 10, color: ink3, fontWeight: FontWeight.w700)),
+                      Text('투구위치', style: TextStyle(fontSize: 11, color: ink3, fontWeight: FontWeight.w700)),
                     ]),
                   ),
                 ),
@@ -1843,10 +1843,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             return Padding(
               padding: const EdgeInsets.only(top: 3),
               child: Row(children: [
-                Text('↔ ', style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w700)),
+                Text('↔ ', style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w700)),
                 Expanded(
                   child: Text(title,
-                      style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600),
+                      style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis),
                 ),
               ]),
@@ -1886,7 +1886,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   width: 22,
                   child: Text('$pitchNum구',
                       textAlign: TextAlign.right,
-                      style: TextStyle(fontSize: 10, color: sub, fontWeight: FontWeight.w500)),
+                      style: TextStyle(fontSize: 11, color: sub, fontWeight: FontWeight.w500)),
                 ),
                 const SizedBox(width: 8),
                 Container(
@@ -1894,23 +1894,23 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   decoration: BoxDecoration(color: dotBg, shape: BoxShape.circle),
                   alignment: Alignment.center,
                   child: Text(pitchResult ?? '',
-                      style: TextStyle(fontSize: 9, color: dotFg, fontWeight: FontWeight.w800)),
+                      style: TextStyle(fontSize: 11, color: dotFg, fontWeight: FontWeight.w800)),
                 ),
                 const SizedBox(width: 8),
                 SizedBox(
                   width: 50,
                   child: Text(pitchResultText,
-                      style: TextStyle(fontSize: 10, color: ink3, fontWeight: FontWeight.w600)),
+                      style: TextStyle(fontSize: 11, color: ink3, fontWeight: FontWeight.w600)),
                 ),
                 if (stuff != null)
                   Expanded(
                     child: Text(stuff,
-                        style: TextStyle(fontSize: 10, color: ink2, fontWeight: FontWeight.w500)),
+                        style: TextStyle(fontSize: 11, color: ink2, fontWeight: FontWeight.w500)),
                   )
                 else const Spacer(),
                 if (speed != null)
                   Text('${speed}km/h',
-                      style: TextStyle(fontSize: 10, color: sub, fontWeight: FontWeight.w600)),
+                      style: TextStyle(fontSize: 11, color: sub, fontWeight: FontWeight.w600)),
               ]),
             );
           }),
@@ -2069,7 +2069,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         if (pitcher.isNotEmpty)
                           Text(
                             '투수: $pitcher',
-                            style: TextStyle(fontSize: 10, color: onSurface.withOpacity(0.48)),
+                            style: TextStyle(fontSize: 11, color: onSurface.withOpacity(0.48)),
                           ),
                       ],
                     ),
@@ -2111,7 +2111,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ),
         child: Text(
           '$ing회 $halfLabel',
-          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
         ),
       );
 
@@ -2407,7 +2407,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         Text(
                           mainLabels[i],
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
                             color: sel ? activeColor : inactiveColor,
                             fontFamily: 'Pretendard',
@@ -2620,7 +2620,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       ),
                       const SizedBox(width: 8),
                       Text('$ratio% ${speed}km',
-                          style: TextStyle(fontSize: 10, color: sub, fontWeight: FontWeight.w600,
+                          style: TextStyle(fontSize: 11, color: sub, fontWeight: FontWeight.w600,
                               fontFeatures: const [FontFeature.tabularFigures()])),
                     ],
                   ),
@@ -2708,7 +2708,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           borderRadius: BorderRadius.circular(99),
                         ),
                         child: Text(r,
-                            style: TextStyle(fontSize: 10, color: c, fontWeight: FontWeight.w700)),
+                            style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w700)),
                       );
                     })
                     .toList(),
@@ -2740,7 +2740,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label, style: TextStyle(fontSize: 10, color: sub, fontWeight: FontWeight.w600)),
+        Text(label, style: TextStyle(fontSize: 11, color: sub, fontWeight: FontWeight.w600)),
         const SizedBox(height: 2),
         Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink,
             fontFeatures: const [FontFeature.tabularFigures()], letterSpacing: -0.2)),
@@ -2880,7 +2880,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     ),
                     child: const Text('선발',
                         style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             color: Colors.orange,
                             fontWeight: FontWeight.bold)),
                   ),
@@ -2975,7 +2975,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         border: Border.all(color: color.withOpacity(0.6)),
       ),
       child: Text(label,
-          style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
+          style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
     );
   }
 
@@ -3276,13 +3276,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                             decoration: BoxDecoration(color: Colors.red[400], shape: BoxShape.circle)),
                         const SizedBox(width: 3),
                         Text('스트라이크 $strikePct% ($strikes)',
-                            style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                            style: TextStyle(fontSize: 11, color: Colors.grey[500])),
                         const SizedBox(width: 10),
                         Container(width: 7, height: 7,
                             decoration: BoxDecoration(color: Colors.blue[400], shape: BoxShape.circle)),
                         const SizedBox(width: 3),
                         Text('볼 ${100 - strikePct}% ($balls)',
-                            style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                            style: TextStyle(fontSize: 11, color: Colors.grey[500])),
                       ],
                     ),
                   ],
@@ -3333,10 +3333,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                   decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
                               const SizedBox(width: 3),
                               Text(korName,
-                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
                               const SizedBox(width: 3),
                               Text('$pct% ($count구)',
-                                  style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                                  style: TextStyle(fontSize: 11, color: Colors.grey[500])),
                             ],
                           );
                         }).toList(),
@@ -3469,7 +3469,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                   size: 13, color: Colors.orange),
                               Text('교체',
                                   style: TextStyle(
-                                      fontSize: 9, color: Colors.grey[500])),
+                                      fontSize: 11, color: Colors.grey[500])),
                             ],
                           ),
                         ),
@@ -3765,7 +3765,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: const Text('Shorts',
-                                style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
+                                style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
                           ),
                         ),
                     ],
