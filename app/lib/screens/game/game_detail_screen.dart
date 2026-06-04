@@ -1084,12 +1084,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           padding: const EdgeInsets.fromLTRB(16, 60, 16, 20),
                           child: SizedBox(
                             height: 230, width: double.infinity,
-                            // Matrix4 perspective 3D — 더 강한 카메라 ~45도 기울임
+                            // Matrix4 perspective 3D — 카메라 ~26도 기울임 (적당)
                             child: Transform(
                               alignment: Alignment.bottomCenter,
                               transform: Matrix4.identity()
-                                ..setEntry(3, 2, 0.0025)  // perspective depth ↑
-                                ..rotateX(0.80),  // ~46도 기울임
+                                ..setEntry(3, 2, 0.0012)
+                                ..rotateX(0.45),
                               child: fieldWidget,
                             ),
                           ),
@@ -4521,7 +4521,7 @@ class _FullFieldView extends StatelessWidget {
         // 3D perspective projection + depth-based size scaling
         final p = _perspective(norm);
         final depth = (1 - norm.dy).clamp(0.0, 1.0);
-        final scale = 1.0 - depth * 0.30;  // 가까이 1.0, 멀리 ~0.70
+        final scale = 1.0 - depth * 0.18;  // 가까이 1.0, 멀리 ~0.82 (적당)
         final sw = chipW * scale;
         final sh = chipH * scale;
         return Positioned(
