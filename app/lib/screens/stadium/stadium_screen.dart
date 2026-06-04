@@ -156,7 +156,7 @@ stadiums.forEach(function(s) {
 
 function moveTo(lat, lng) {
   map.setCenter(new kakao.maps.LatLng(lat, lng));
-  map.setLevel(4);
+  map.setLevel(5);  // 250m 축척 (level 5 = 약 250m)
 }
 function resetView() {
   map.setCenter(new kakao.maps.LatLng(36.5, 127.7));
