@@ -1084,12 +1084,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           padding: const EdgeInsets.fromLTRB(16, 60, 16, 20),
                           child: SizedBox(
                             height: 230, width: double.infinity,
-                            // Matrix4 perspective 3D — 카메라 30~45도 기울임
+                            // Matrix4 perspective 3D — 더 강한 카메라 ~45도 기울임
                             child: Transform(
                               alignment: Alignment.bottomCenter,
                               transform: Matrix4.identity()
-                                ..setEntry(3, 2, 0.0015)  // perspective depth
-                                ..rotateX(0.50),  // ~29도 기울임
+                                ..setEntry(3, 2, 0.0025)  // perspective depth ↑
+                                ..rotateX(0.80),  // ~46도 기울임
                               child: fieldWidget,
                             ),
                           ),
