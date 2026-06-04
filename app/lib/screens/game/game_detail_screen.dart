@@ -4798,17 +4798,19 @@ class _FieldBgPainter extends CustomPainter {
       ..close();
     canvas.drawPath(diamondPath, dirtPaint);
 
-    // 내야 잔디 (다이아몬드 중심 사각 잔디 area)
+    // 내야 잔디 (dirt 다이아몬드와 동일 비율 — width/height 1.45)
+    // dirt: pHome(0.5,0.82) p1B(0.79,0.62) p2B(0.5,0.42) p3B(0.21,0.62)
+    // grass scaled around center (0.5, 0.62), 0.45배
     final infieldGrass = Paint()
       ..shader = ui.Gradient.radial(
         Offset(w * 0.50, h * 0.62), w * 0.18,
         [const Color(0xFF5FA851), const Color(0xFF4D8E42)],
       );
     final infieldGrassPath = Path()
-      ..moveTo(w * 0.50, h * 0.49)
-      ..lineTo(w * 0.36, h * 0.62)
-      ..lineTo(w * 0.50, h * 0.75)
-      ..lineTo(w * 0.64, h * 0.62)
+      ..moveTo(w * 0.50, h * 0.53)  // top (height offset 0.09)
+      ..lineTo(w * 0.37, h * 0.62)  // left (width offset 0.13)
+      ..lineTo(w * 0.50, h * 0.71)  // bottom
+      ..lineTo(w * 0.63, h * 0.62)  // right
       ..close();
     canvas.drawPath(infieldGrassPath, infieldGrass);
 
@@ -4942,9 +4944,10 @@ class _GrassExtensionPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    final innerW = w - 32; // padding horizontal 16*2
-    // inner painter arcCenter (= inner_w*0.5, inner_h*0.95) absolute로 매핑
-    final arcCenter = Offset(w * 0.5, 20 + (h - 40) * 0.95);
+    // field outer Padding (16, 60, 16, 20) — inner painter 좌표를 outer absolute로 정확 매핑
+    final innerW = w - 32;       // horizontal 16*2
+    final innerH = h - 80;       // top 60 + bottom 20
+    final arcCenter = Offset(w * 0.5, 60 + innerH * 0.95);
     final arcR = innerW * 1.10;
 
     final fullPath = Path()
