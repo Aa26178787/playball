@@ -651,30 +651,19 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           _fieldPinned
               ? Column(
                   children: [
+                    // panel-spacer: 스코어보드/팀로고 등 헤더 영역을 panel로 가림
                     SizedBox(height: _sameDayGames.isNotEmpty ? 460 : 360),
                     Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            _buildGameHeader(game, roundedBottom: true, includeField: false),
-                            SizedBox(
-                              height: MediaQuery.of(context).size.height
-                                      - kToolbarHeight
-                                      - MediaQuery.of(context).padding.top
-                                      - 100,
-                              child: TabBarView(
-                                controller: _tabController,
-                                physics: const NeverScrollableScrollPhysics(),
-                                children: [
-                                  _buildInningsTab(innings),
-                                  _buildLineupTab(),
-                                  _buildStatsTab(pitchers, batters),
-                                  _buildHighlightsTab(),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                      // gameHeader skip — 핀 시 panel 바로 아래 TabBarView (득점요약/이닝중계)만 표시
+                      child: TabBarView(
+                        controller: _tabController,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: [
+                          _buildInningsTab(innings),
+                          _buildLineupTab(),
+                          _buildStatsTab(pitchers, batters),
+                          _buildHighlightsTab(),
+                        ],
                       ),
                     ),
                   ],
