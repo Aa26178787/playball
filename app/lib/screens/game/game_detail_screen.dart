@@ -657,14 +657,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   pinned: true,
                   delegate: _PinnedFieldHeaderDelegate(
                     child: _buildPinnedFieldPanel(game),
-                    // field 230 + same_day strip ~130 + BSO/pitcher 60 + paddings
-                    height: _sameDayGames.isNotEmpty ? 450 : 320,
+                    // field 230 + same_day strip ~88 + BSO/pitcher 60 + paddings
+                    height: _sameDayGames.isNotEmpty ? 410 : 320,
                   ),
                 ),
             ],
             // _fieldPinned 시 body top padding — pinned sliver 아래로 콘텐츠 배치 (가려짐 방지)
             body: Padding(
-              padding: EdgeInsets.only(top: _fieldPinned ? (_sameDayGames.isNotEmpty ? 450 : 320) : 0),
+              padding: EdgeInsets.only(top: _fieldPinned ? (_sameDayGames.isNotEmpty ? 410 : 320) : 0),
               child: TabBarView(
                 controller: _tabController,
                 physics: const NeverScrollableScrollPhysics(),
@@ -700,12 +700,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     return Container(
       color: paper,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(bottom: 8, left: 2),
+            padding: const EdgeInsets.only(bottom: 5, left: 2),
             child: Text('다른 경기',
                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.3)),
           ),
@@ -716,7 +716,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
               mainAxisSpacing: 6, crossAxisSpacing: 6,
-              childAspectRatio: 0.95,
+              childAspectRatio: 1.4,
             ),
             itemCount: _sameDayGames.length,
             itemBuilder: (_, i) {
@@ -742,7 +742,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     : () => Navigator.pushReplacement(context,
                         MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: g['id'] as int))),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
                   decoration: BoxDecoration(
                     color: isCurrent ? paper2 : paper,
                     borderRadius: BorderRadius.circular(10),
@@ -754,14 +754,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          TeamLogo(teamCode: awayCode, size: 18),
+                          TeamLogo(teamCode: awayCode, size: 16),
                           const SizedBox(width: 3),
                           Text('vs', style: TextStyle(fontSize: 9, color: sub, fontWeight: FontWeight.w600)),
                           const SizedBox(width: 3),
-                          TeamLogo(teamCode: homeCode, size: 18),
+                          TeamLogo(teamCode: homeCode, size: 16),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 3),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
