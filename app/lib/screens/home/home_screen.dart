@@ -2166,11 +2166,10 @@ class GameCard extends StatelessWidget {
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
           child: Stack(
             children: [
-              // ── 승팀 overlay (score row 영역만, header/footer 침범 X) ──
+              // ── 승팀 overlay (헤더~score 영역. chip/footer는 opaque bg로 paint 위로 가림) ──
               if (winnerColor != null)
                 Positioned(
-                  // 카드 padding 15 + 헤더(~28) + gap 13 = 56부터, height 130 (score row 영역)
-                  top: 56, height: 130,
+                  top: 0, height: 200,
                   left: homeWon ? -70 : null,
                   right: awayWon ? -70 : null,
                   child: IgnorePointer(
