@@ -646,35 +646,62 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       ),
       body: Stack(
         children: [
-          // 한 페이지 스크롤: SingleChildScrollView + Column(header + TabBarView fixed-height)
-          // outer scroll = header + tab area 같이 위로/아래로. tab content 내부 scroll 별도.
-          SingleChildScrollView(
-            child: Column(
-              children: [
-                // 핀 시 상단 sticky panel 만큼 spacer — field padding 60 + 230 + strip + buffer
-                if (_fieldPinned)
-                  SizedBox(height: _sameDayGames.isNotEmpty ? 460 : 360),
-                _buildGameHeader(game, roundedBottom: true, includeField: !_fieldPinned),
-                SizedBox(
-                  // appBar height + safe area + bottom nav 제외
-                  height: MediaQuery.of(context).size.height
-                          - kToolbarHeight
-                          - MediaQuery.of(context).padding.top
-                          - 100,
-                  child: TabBarView(
-                    controller: _tabController,
-                    physics: const NeverScrollableScrollPhysics(),
+          // 핀 시: Column[panel-spacer, Expanded(scrollable)]. 핀 영역 아래에서만 scroll.
+          // 핀 X: 일반 SingleChildScrollView 전체 scroll.
+          _fieldPinned
+              ? Column(
+                  children: [
+                    SizedBox(height: _sameDayGames.isNotEmpty ? 460 : 360),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            _buildGameHeader(game, roundedBottom: true, includeField: false),
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height
+                                      - kToolbarHeight
+                                      - MediaQuery.of(context).padding.top
+                                      - 100,
+                              child: TabBarView(
+                                controller: _tabController,
+                                physics: const NeverScrollableScrollPhysics(),
+                                children: [
+                                  _buildInningsTab(innings),
+                                  _buildLineupTab(),
+                                  _buildStatsTab(pitchers, batters),
+                                  _buildHighlightsTab(),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : SingleChildScrollView(
+                  child: Column(
                     children: [
-                      _buildInningsTab(innings),
-                      _buildLineupTab(),
-                      _buildStatsTab(pitchers, batters),
-                      _buildHighlightsTab(),
+                      _buildGameHeader(game, roundedBottom: true),
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height
+                                - kToolbarHeight
+                                - MediaQuery.of(context).padding.top
+                                - 100,
+                        child: TabBarView(
+                          controller: _tabController,
+                          physics: const NeverScrollableScrollPhysics(),
+                          children: [
+                            _buildInningsTab(innings),
+                            _buildLineupTab(),
+                            _buildStatsTab(pitchers, batters),
+                            _buildHighlightsTab(),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
           // 핀 활성화 시 상단 sticky panel (필드뷰 + 다른 경기)
           if (_fieldPinned)
             Positioned(
