@@ -1530,9 +1530,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     final isLive = (game['status'] as String? ?? '') == '진행';
 
-    return Material(
+    return Container(
       color: paper,
-      elevation: 3,
+      // elevation 3 to 0 — drop shadow가 panel 아래 검은 블럭처럼 보임 issue fix
+      // 필요 시 subtle border만 적용 (검은 그림자 X)
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
