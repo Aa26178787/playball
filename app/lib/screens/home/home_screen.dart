@@ -1977,11 +1977,11 @@ class GameCard extends StatelessWidget {
     final awayColor = teamColor(game.awayTeamCode);
     final myColor = isMyTeam ? homeColor : awayColor;
 
-    // 팀컬러 그라데이션: 홈→원정 직접 연결 (paper 없음)
+    // 그라데이션: 진행중/예정/라인업만 (종료/취소 = solid + 외곽선)
     Gradient? winGradient;
     final totalScore = game.homeScore + game.awayScore;
-    if (!isCancelled) {
-      final hasScore = (isFinished || isLive) && totalScore > 0;
+    if (!isCancelled && !isFinished) {
+      final hasScore = isLive && totalScore > 0;
       final homeRatio = hasScore ? (game.homeScore / totalScore).toDouble() : 0.5;
       final homeBlend = Color.alphaBlend(homeColor.withValues(alpha: isDark ? 0.28 : 0.13), t.paper);
       final awayBlend = Color.alphaBlend(awayColor.withValues(alpha: isDark ? 0.28 : 0.13), t.paper);
