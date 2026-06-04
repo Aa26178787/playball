@@ -657,14 +657,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   pinned: true,
                   delegate: _PinnedFieldHeaderDelegate(
                     child: _buildPinnedFieldPanel(game),
-                    // field 230 + same_day strip ~88 + BSO/pitcher 60 + paddings
-                    height: _sameDayGames.isNotEmpty ? 410 : 320,
+                    // field 230 + same_day strip ~88 + BSO/pitcher 60 + paddings + 6 buffer
+                    height: _sameDayGames.isNotEmpty ? 420 : 330,
                   ),
                 ),
             ],
             // _fieldPinned 시 body top padding — pinned sliver 아래로 콘텐츠 배치 (가려짐 방지)
             body: Padding(
-              padding: EdgeInsets.only(top: _fieldPinned ? (_sameDayGames.isNotEmpty ? 410 : 320) : 0),
+              padding: EdgeInsets.only(top: _fieldPinned ? (_sameDayGames.isNotEmpty ? 420 : 330) : 0),
               child: TabBarView(
                 controller: _tabController,
                 physics: const NeverScrollableScrollPhysics(),
