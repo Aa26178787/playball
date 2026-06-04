@@ -1682,6 +1682,15 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildBatterRelayTile(Map<String, dynamic> entry) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink   = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink2  = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
+    final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final paper2= isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
+    final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final line2 = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
+
     final batterName = entry['batter'] as String? ?? '';
     final pitcherName = entry['pitcher'] as String?;
     final pitches = entry['pitches'] as List? ?? [];
@@ -1694,154 +1703,116 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ? resultTitle.split(' : ').sublist(1).join(' : ').trim()
         : resultTitle;
 
-    Color resultColor = Colors.grey;
-    if (result.contains('안타') || result.contains('홈런') || result.contains('출루'))
-      resultColor = Colors.green;
-    if (result.contains('아웃') || result.contains('삼진'))
-      resultColor = Colors.red;
-    if (result.contains('볼넷') || result.contains('몸에 맞는 볼'))
-      resultColor = Colors.blue;
+    // result chip: out(red)/hit(green)/scoring(amber)/walk(blue)/default(ink3)
+    Color resultBg, resultFg;
+    if (result.contains('홈런')) {
+      resultFg = const Color(0xFFD97706);
+      resultBg = const Color(0xFFFBBF24).withValues(alpha: isDark ? 0.30 : 0.18);
+    } else if (result.contains('안타') || result.contains('출루')) {
+      resultFg = const Color(0xFF16A34A);
+      resultBg = const Color(0xFF4ADE80).withValues(alpha: isDark ? 0.20 : 0.12);
+    } else if (result.contains('아웃') || result.contains('삼진')) {
+      resultFg = const Color(0xFFE53935);
+      resultBg = const Color(0xFFF43F5E).withValues(alpha: isDark ? 0.20 : 0.12);
+    } else if (result.contains('볼넷') || result.contains('몸에 맞는')) {
+      resultFg = const Color(0xFF2563EB);
+      resultBg = const Color(0xFF60A5FA).withValues(alpha: isDark ? 0.20 : 0.12);
+    } else {
+      resultFg = ink3;
+      resultBg = paper2;
+    }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.15))),
+        border: Border(top: BorderSide(color: line, width: 1)),
       ),
+      padding: const EdgeInsets.fromLTRB(15, 10, 15, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 2),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Flexible(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(batterName,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            overflow: TextOverflow.ellipsis, maxLines: 1),
+          // 타석 헤더: 배터 + vs 투수 + result chip + 투구위치
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 7, runSpacing: 5,
+            children: [
+              Text(batterName,
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink, letterSpacing: -0.1)),
+              if (pitcherName != null)
+                Text('vs $pitcherName',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: sub)),
+              if (result.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(color: resultBg, borderRadius: BorderRadius.circular(99)),
+                  child: Text(result,
+                      style: TextStyle(fontSize: 10, color: resultFg, fontWeight: FontWeight.w700)),
+                ),
+              if (pitches.isNotEmpty)
+                GestureDetector(
+                  onTap: () {
+                    final inningNum = (pitches.first['inning'] as num?)?.toInt();
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+                      builder: (_) => PitchLocationSheet(
+                        gameId: widget.gameId,
+                        gameStatus: _gameData?['game']['status'] as String? ?? '종료',
+                        initialPitcher: pitcherName,
+                        initialBatter: batterName,
+                        initialInning: inningNum,
                       ),
-                      if (pitcherName != null) ...[
-                        Text(' vs ', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
-                        Flexible(
-                          child: Text(pitcherName,
-                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                              overflow: TextOverflow.ellipsis, maxLines: 1),
-                        ),
-                      ],
-                    ],
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: paper2, borderRadius: BorderRadius.circular(99),
+                      border: Border.all(color: line2, width: 1),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.grid_on, size: 10, color: ink3),
+                      const SizedBox(width: 4),
+                      Text('투구위치', style: TextStyle(fontSize: 10, color: ink3, fontWeight: FontWeight.w700)),
+                    ]),
                   ),
                 ),
-                const SizedBox(width: 6),
-                if (result.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: resultColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: resultColor.withValues(alpha: 0.4)),
-                    ),
-                    child: Text(result,
-                        style: TextStyle(
-                            fontSize: 11, color: resultColor, fontWeight: FontWeight.bold),
-                        overflow: TextOverflow.ellipsis, maxLines: 1),
-                  ),
-                if (pitches.isNotEmpty) ...[
-                  const SizedBox(width: 6),
-                  GestureDetector(
-                    onTap: () {
-                      final inningNum = (pitches.first['inning'] as num?)?.toInt();
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-                        builder: (_) => PitchLocationSheet(
-                          gameId: widget.gameId,
-                          gameStatus: _gameData?['game']['status'] as String? ?? '종료',
-                          initialPitcher: pitcherName,
-                          initialBatter: batterName,
-                          initialInning: inningNum,
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF111113).withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFF111113).withValues(alpha: 0.2)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.grid_on, size: 11, color: Color(0xFF111113)),
-                          SizedBox(width: 2),
-                          Text('투구위치', style: TextStyle(fontSize: 10, color: Color(0xFF111113))),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+            ],
           ),
-
+          // 이벤트 (도루/홈인/교체/방문 등)
+          if (events.isNotEmpty) const SizedBox(height: 6),
           ...events.map((r) {
             final rtype = r['type'] as int?;
             final title = r['title'] as String? ?? '';
-
-            IconData icon = Icons.info_outline;
-            Color color = Colors.grey;
-
-            if (rtype == 14 || rtype == 31) {
-              icon = Icons.directions_run;
-              color = Colors.orange;
-            } else if (rtype == 2 || rtype == 20) {
-              icon = Icons.swap_horiz;
-              color = Colors.purple;
-            } else if (rtype == 7 || rtype == 21) {
-              icon = Icons.group;
-              color = Colors.teal;
-            } else if (rtype == 22) {
-              icon = Icons.videocam;
-              color = Colors.indigo;
-            } else if (rtype == 23) {
-              icon = Icons.warning_amber;
-              color = Colors.amber;
-            } else if (rtype == 24) {
-              icon = Icons.swap_vert;
-              color = Colors.blueGrey;
-            } else if (rtype == 25) {
-              icon = Icons.pause_circle_outline;
-              color = Colors.red;
-            }
-
+            Color color = ink3;
+            if (rtype == 14 || rtype == 31) color = const Color(0xFFD97706);
+            else if (rtype == 2 || rtype == 20) color = const Color(0xFF7C3AED);
+            else if (rtype == 7 || rtype == 21) color = const Color(0xFF0D9488);
+            else if (rtype == 22) color = const Color(0xFF4F46E5);
+            else if (rtype == 23) color = const Color(0xFFCA8A04);
+            else if (rtype == 24) color = const Color(0xFF475569);
+            else if (rtype == 25) color = const Color(0xFFE53935);
             return Padding(
-              padding: const EdgeInsets.only(left: 8, right: 8, bottom: 3),
-              child: Row(
-                children: [
-                  Icon(icon, size: 13, color: color),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(title,
-                        style: TextStyle(fontSize: 11, color: color),
-                        overflow: TextOverflow.ellipsis),
-                  ),
-                ],
-              ),
+              padding: const EdgeInsets.only(top: 3),
+              child: Row(children: [
+                Text('↔ ', style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w700)),
+                Expanded(
+                  child: Text(title,
+                      style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis),
+                ),
+              ]),
             );
-          }).toList(),
-
-          ...pitches.asMap().entries.map((entry) {
-            final r = entry.value;
+          }),
+          // 투구별
+          if (pitches.isNotEmpty) const SizedBox(height: 7),
+          ...pitches.asMap().entries.map((e) {
+            final r = e.value;
             final pitchResult = r['pitch_result'] as String?;
             final speed = _speedToString(r['speed']);
             final stuff = r['stuff'] as String?;
-            final pitchNum = entry.key + 1;  // 타석 내 1구부터 (누적 pitch_num 사용 안 함)
+            final pitchNum = e.key + 1;
             final title = r['title'] as String?;
 
             String pitchResultText = '';
@@ -1850,55 +1821,52 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               if (parts.length >= 2) pitchResultText = parts[1];
             }
 
-            Color pitchColor = Colors.grey;
-            if (pitchResult == 'S') pitchColor = Colors.red;
-            if (pitchResult == 'T') pitchColor = Colors.red;
-            if (pitchResult == 'B') pitchColor = Colors.green;
-            if (pitchResult == 'F') pitchColor = Colors.orange;
-            if (pitchResult == 'H') pitchColor = Colors.blue;
-            if (pitchResult == 'X') pitchColor = Colors.blue;
+            // pitch dot 색: B=green, T/S=red, F=orange, H/X=blue
+            Color dotBg, dotFg;
+            switch (pitchResult) {
+              case 'B': dotBg = const Color(0xFF4ADE80); dotFg = const Color(0xFF14532D); break;
+              case 'T': dotBg = const Color(0xFFFB7185); dotFg = const Color(0xFF881337); break;
+              case 'S': dotBg = const Color(0xFFF43F5E); dotFg = const Color(0xFF881337); break;
+              case 'F': dotBg = const Color(0xFFFB923C); dotFg = const Color(0xFF7C2D12); break;
+              case 'H': case 'X': dotBg = const Color(0xFF60A5FA); dotFg = const Color(0xFF1E3A8A); break;
+              default: dotBg = line2; dotFg = ink3;
+            }
 
             return Padding(
-              padding: const EdgeInsets.only(left: 16, right: 8, bottom: 3),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 28,
-                    child: Text('${pitchNum}구',
-                        style: TextStyle(fontSize: 10, color: Colors.grey[400])),
-                  ),
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: pitchColor.withOpacity(0.2),
-                    ),
-                    child: Center(
-                      child: Text(pitchResult ?? '',
-                          style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: pitchColor)),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  SizedBox(
-                    width: 48,
-                    child: Text(pitchResultText,
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-                  ),
-                  if (stuff != null)
-                    Text(stuff, style: const TextStyle(fontSize: 12)),
-                  const SizedBox(width: 4),
-                  if (speed != null)
-                    Text('${speed}km/h',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[400])),
-                ],
-              ),
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(children: [
+                SizedBox(
+                  width: 22,
+                  child: Text('$pitchNum구',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(fontSize: 10, color: sub, fontWeight: FontWeight.w500)),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 22, height: 22,
+                  decoration: BoxDecoration(color: dotBg, shape: BoxShape.circle),
+                  alignment: Alignment.center,
+                  child: Text(pitchResult ?? '',
+                      style: TextStyle(fontSize: 9, color: dotFg, fontWeight: FontWeight.w800)),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 50,
+                  child: Text(pitchResultText,
+                      style: TextStyle(fontSize: 10, color: ink3, fontWeight: FontWeight.w600)),
+                ),
+                if (stuff != null)
+                  Expanded(
+                    child: Text(stuff,
+                        style: TextStyle(fontSize: 10, color: ink2, fontWeight: FontWeight.w500)),
+                  )
+                else const Spacer(),
+                if (speed != null)
+                  Text('${speed}km/h',
+                      style: TextStyle(fontSize: 10, color: sub, fontWeight: FontWeight.w600)),
+              ]),
             );
-          }).toList(),
-          const SizedBox(height: 4),
+          }),
         ],
       ),
     );
@@ -2276,19 +2244,19 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildGameFloatingNav() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final idx = _tabController.index;
-    final activeColor = isDark ? const Color(0xFFF4F4F5) : AppColors.primary;
-    final inactiveColor = isDark ? Colors.white38 : AppColors.textTertiary;
-    final pillBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
-    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
+    final activeColor = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final inactiveColor = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final pillBg = isDark ? const Color(0xFF18181C) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
 
     BoxDecoration pillDeco() => BoxDecoration(
       color: pillBg,
       borderRadius: BorderRadius.circular(28),
       boxShadow: [BoxShadow(
-        color: isDark ? Colors.black45 : Colors.black.withOpacity(0.12),
+        color: isDark ? Colors.black54 : Colors.black.withValues(alpha: 0.08),
         blurRadius: 16, offset: const Offset(0, 4),
       )],
-      border: Border.all(color: borderColor, width: 0.8),
+      border: Border.all(color: borderColor, width: 1),
     );
 
     List<String>? subLabels;
@@ -3620,24 +3588,31 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildHighlightsTab() {
+    final isDarkT = Theme.of(context).brightness == Brightness.dark;
+    final ink   = isDarkT ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink3  = isDarkT ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final sub   = isDarkT ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final paper = isDarkT ? const Color(0xFF18181C) : Colors.white;
+    final paper2= isDarkT ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
+    final line  = isDarkT ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     if (_highlightsLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
+      return Center(child: CircularProgressIndicator(color: ink, strokeWidth: 2.5));
     }
     if (_highlights.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.movie_outlined, size: 48, color: Colors.grey),
-            SizedBox(height: 8),
-            Text('하이라이트가 없습니다', style: TextStyle(color: Colors.grey)),
+            Icon(Icons.movie_outlined, size: 48, color: sub),
+            const SizedBox(height: 8),
+            Text('하이라이트가 없습니다', style: TextStyle(color: ink3, fontWeight: FontWeight.w600)),
           ],
         ),
       );
     }
     return ListView.builder(
       physics: const ClampingScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(12, 12, 12, 80 + MediaQuery.of(context).viewPadding.bottom),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 90 + MediaQuery.of(context).viewPadding.bottom),
       itemCount: _highlights.length,
       itemBuilder: (context2, idx) {
         final h = _highlights[idx] as Map<String, dynamic>;
@@ -3645,7 +3620,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         final url = h['url'] as String? ?? '';
         final thumbnail = h['thumbnail'] as String? ?? '';
         final isShorts = url.contains('/shorts/');
-        final isDark = Theme.of(context2).brightness == Brightness.dark;
 
         return GestureDetector(
           onTap: () async {
@@ -3654,72 +3628,68 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           child: Container(
             margin: const EdgeInsets.only(bottom: 10),
             decoration: BoxDecoration(
-              color: isDark ? Colors.grey[850] : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: const Offset(0, 2))],
+              color: paper,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: line, width: 1),
             ),
+            clipBehavior: Clip.antiAlias,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (thumbnail.isNotEmpty)
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CachedNetworkImage(
-                          imageUrl: thumbnail,
-                          width: double.infinity,
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CachedNetworkImage(
+                        imageUrl: thumbnail,
+                        width: double.infinity,
+                        height: isShorts ? 180 : 140,
+                        fit: isShorts ? BoxFit.contain : BoxFit.cover,
+                        placeholder: (_, __) => Container(
                           height: isShorts ? 180 : 140,
-                          fit: isShorts ? BoxFit.contain : BoxFit.cover,
-                          placeholder: (_, __) => Container(
-                            height: isShorts ? 180 : 140,
-                            color: isDark ? Colors.grey[800] : Colors.grey[200],
-                          ),
-                          errorWidget: (_, __, ___) => Container(
-                            height: isShorts ? 180 : 140,
-                            color: isDark ? Colors.grey[800] : Colors.grey[200],
-                            child: const Icon(Icons.broken_image, color: Colors.grey),
-                          ),
+                          color: paper2,
                         ),
-                        Container(
-                          width: 48, height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.play_arrow, color: Colors.white, size: 30),
+                        errorWidget: (_, __, ___) => Container(
+                          height: isShorts ? 180 : 140,
+                          color: paper2,
+                          child: Icon(Icons.broken_image, color: sub),
                         ),
-                        if (isShorts)
-                          Positioned(
-                            top: 8, right: 8,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text('Shorts', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                      Container(
+                        width: 48, height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.play_arrow, color: Colors.white, size: 28),
+                      ),
+                      if (isShorts)
+                        Positioned(
+                          top: 10, right: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE53935),
+                              borderRadius: BorderRadius.circular(999),
                             ),
+                            child: const Text('Shorts',
+                                style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
                   )
                 else
                   Container(
                     height: 80,
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[800] : Colors.grey[100],
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-                    ),
-                    child: const Center(child: Icon(Icons.play_circle_outline, color: Color(0xFF003087), size: 40)),
+                    color: paper2,
+                    child: Center(child: Icon(Icons.play_circle_outline, color: ink3, size: 36)),
                   ),
                 Padding(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(12),
                   child: Text(title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ink, letterSpacing: -0.1)),
                 ),
               ],
             ),
