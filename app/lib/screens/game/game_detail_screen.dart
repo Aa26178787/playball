@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -4345,10 +4346,7 @@ class _FieldBgPainter extends CustomPainter {
     final pHome = Offset(w * 0.50, h * 0.82);
     final pMound= Offset(w * 0.50, h * 0.62);
 
-    // Outfield grass (green arc — lighter zone over dark background)
-    final ofPaint = Paint()
-      ..color = Colors.green[500]!.withOpacity(0.38)
-      ..style = PaintingStyle.fill;
+    // ── Outfield grass: radial gradient + 잔디 stripe (실제 mowing pattern) ──
     final arcCenter = Offset(w * 0.50, h * 0.95);
     final arcR = w * 0.78;
     final ofPath = Path()
@@ -4357,12 +4355,72 @@ class _FieldBgPainter extends CustomPainter {
       ..lineTo(w * 0.15, h * 0.05)
       ..lineTo(w * 0.85, h * 0.05)
       ..close();
-    canvas.drawPath(ofPath, ofPaint);
 
-    // Infield dirt (diamond)
+    // 잔디 base (그라데이션: 가운데 어두운 / 가장자리 밝은)
+    final grassBase = Paint()
+      ..shader = ui.Gradient.radial(
+        arcCenter, arcR,
+        [
+          const Color(0xFF4A8C3E), // 가운데 진한 잔디
+          const Color(0xFF6BB05A), // 중간
+          const Color(0xFF7BC068), // 가장자리 밝은
+        ],
+        const [0.0, 0.6, 1.0],
+      );
+    canvas.save();
+    canvas.clipPath(ofPath);
+    canvas.drawPath(ofPath, grassBase);
+
+    // 잔디 stripe (mowing pattern) — fan-shape (홈에서 외야로 방사형)
+    final stripePaint = Paint()
+      ..color = Colors.black.withOpacity(0.06)
+      ..strokeWidth = 1;
+    for (double ang = -3.14 * 0.88; ang <= -3.14 * 0.12; ang += 3.14 * 0.04) {
+      final p1 = arcCenter;
+      final p2 = Offset(
+        arcCenter.dx + arcR * 1.2 * math.cos(ang),
+        arcCenter.dy + arcR * 1.2 * math.sin(ang),
+      );
+      final stripe = Path()
+        ..moveTo(p1.dx, p1.dy)
+        ..lineTo(p2.dx, p2.dy);
+      // 교차 stripe
+      final ang2 = ang + 3.14 * 0.02;
+      final p3 = Offset(
+        arcCenter.dx + arcR * 1.2 * math.cos(ang2),
+        arcCenter.dy + arcR * 1.2 * math.sin(ang2),
+      );
+      final fill = Path()
+        ..moveTo(p1.dx, p1.dy)
+        ..lineTo(p2.dx, p2.dy)
+        ..lineTo(p3.dx, p3.dy)
+        ..close();
+      canvas.drawPath(fill, Paint()..color = Colors.black.withOpacity(0.05));
+      canvas.drawPath(stripe, stripePaint);
+    }
+    canvas.restore();
+
+    // 잔디 외곽 (warning track) — 황토 띠
+    final warningPaint = Paint()
+      ..color = const Color(0xFFAD7B3F).withOpacity(0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8;
+    canvas.drawArc(Rect.fromCircle(center: arcCenter, radius: arcR),
+        -3.14 * 0.88, 3.14 * 0.76, false, warningPaint);
+
+    // ── Infield dirt (그라데이션: 가운데 진한, 가장자리 흐림) ──
+    final infieldRect = Rect.fromCenter(
+      center: Offset(w * 0.50, h * 0.62),
+      width: w * 0.7, height: h * 0.45,
+    );
     final dirtPaint = Paint()
-      ..color = const Color(0xFFC8923A).withOpacity(0.78)
-      ..style = PaintingStyle.fill;
+      ..shader = ui.Gradient.radial(
+        Offset(w * 0.50, h * 0.62), w * 0.34,
+        [
+          const Color(0xFFA66A2A), // 가운데 진한 황토
+          const Color(0xFFC8923A), // 가장자리 밝은
+        ],
+      );
     final diamondPath = Path()
       ..moveTo(pHome.dx, pHome.dy)
       ..lineTo(p1B.dx,   p1B.dy)
@@ -4371,45 +4429,72 @@ class _FieldBgPainter extends CustomPainter {
       ..close();
     canvas.drawPath(diamondPath, dirtPaint);
 
-    // Mound circle
-    final moundPaint = Paint()
-      ..color = const Color(0xFFC8923A).withOpacity(0.92)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(pMound, w * 0.035, moundPaint);
+    // 내야 잔디 (다이아몬드 중심 사각 잔디 area)
+    final infieldGrass = Paint()
+      ..shader = ui.Gradient.radial(
+        Offset(w * 0.50, h * 0.62), w * 0.18,
+        [const Color(0xFF5FA851), const Color(0xFF4D8E42)],
+      );
+    final infieldGrassPath = Path()
+      ..moveTo(w * 0.50, h * 0.49)
+      ..lineTo(w * 0.36, h * 0.62)
+      ..lineTo(w * 0.50, h * 0.75)
+      ..lineTo(w * 0.64, h * 0.62)
+      ..close();
+    canvas.drawPath(infieldGrassPath, infieldGrass);
 
-    // Baselines
+    // 마운드 (작은 흙 원 + 약간 옅은 가장자리)
+    final moundPaint = Paint()
+      ..shader = ui.Gradient.radial(
+        pMound, w * 0.045,
+        [const Color(0xFFB8843A), const Color(0xFFA06A2A)],
+      );
+    canvas.drawCircle(pMound, w * 0.045, moundPaint);
+    // pitcher rubber (흰 직사각형)
+    final rubberPaint = Paint()
+      ..color = Colors.white.withOpacity(0.85);
+    canvas.drawRect(
+      Rect.fromCenter(center: pMound, width: w * 0.04, height: 2),
+      rubberPaint,
+    );
+
+    // ── Baselines (흰 줄) ──
     final linePaint = Paint()
-      ..color = Colors.white.withOpacity(0.55)
-      ..strokeWidth = 1.5
+      ..color = Colors.white.withOpacity(0.85)
+      ..strokeWidth = 1.8
       ..style = PaintingStyle.stroke;
     canvas.drawLine(pHome, p1B, linePaint);
     canvas.drawLine(pHome, p3B, linePaint);
-    canvas.drawLine(p1B,   p2B, linePaint);
-    canvas.drawLine(p3B,   p2B, linePaint);
 
-    // Foul lines extended
+    // ── Foul lines extended ──
     final foulPaint = Paint()
-      ..color = Colors.white.withOpacity(0.32)
-      ..strokeWidth = 1.0
+      ..color = Colors.white.withOpacity(0.55)
+      ..strokeWidth = 1.4
       ..style = PaintingStyle.stroke;
     canvas.drawLine(pHome, Offset(w * 0.0, h * 0.08), foulPaint);
     canvas.drawLine(pHome, Offset(w * 1.0, h * 0.08), foulPaint);
 
-    // Bases
+    // ── Bases (사실적 흰 사각형 + 그림자) ──
     void drawBase(Offset pos, bool occupied) {
+      final bs = 8.0;
+      // 그림자
+      canvas.drawRect(
+        Rect.fromCenter(center: Offset(pos.dx, pos.dy + 1.2), width: bs * 1.9, height: bs * 1.9),
+        Paint()..color = Colors.black.withOpacity(0.22)
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+      );
       if (occupied) {
-        final glow = Paint()
-          ..color = Colors.yellow.withOpacity(0.4)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
+        // 주자: 노란 글로우
         canvas.drawRect(
-          Rect.fromCenter(center: pos, width: 12, height: 12),
-          glow,
+          Rect.fromCenter(center: pos, width: bs * 2.6, height: bs * 2.6),
+          Paint()..color = Colors.yellow.withOpacity(0.45)
+                ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
         );
       }
+      // 베이스 본체 (45도 회전 사각형 — 야구 베이스 마름모)
       final bp = Paint()
-        ..color = occupied ? Colors.yellow[500]! : (isDark ? Colors.grey[500]! : Colors.grey[300]!)
+        ..color = occupied ? const Color(0xFFFFE066) : Colors.white.withOpacity(0.95)
         ..style = PaintingStyle.fill;
-      final bs = 7.0;
       final path = Path()
         ..moveTo(pos.dx,      pos.dy - bs)
         ..lineTo(pos.dx + bs, pos.dy)
@@ -4417,22 +4502,54 @@ class _FieldBgPainter extends CustomPainter {
         ..lineTo(pos.dx - bs, pos.dy)
         ..close();
       canvas.drawPath(path, bp);
+      // 외곽선
+      canvas.drawPath(path, Paint()
+        ..color = Colors.black.withOpacity(0.25)
+        ..strokeWidth = 0.8
+        ..style = PaintingStyle.stroke);
     }
+    drawBase(p1B, base1);
+    drawBase(p2B, base2);
+    drawBase(p3B, base3);
 
-    drawBase(p1B,   base1);
-    drawBase(p2B,   base2);
-    drawBase(p3B,   base3);
-
-    // Home plate (white pentagon)
-    final hp = Paint()..color = Colors.white.withOpacity(0.8)..style = PaintingStyle.fill;
+    // ── Home plate (사실적 오각형 + 그림자) ──
+    canvas.drawPath(
+      Path()
+        ..moveTo(pHome.dx,      pHome.dy - 5 + 1.5)
+        ..lineTo(pHome.dx + 5,  pHome.dy - 1.5 + 1.5)
+        ..lineTo(pHome.dx + 4,  pHome.dy + 4.5 + 1.5)
+        ..lineTo(pHome.dx - 4,  pHome.dy + 4.5 + 1.5)
+        ..lineTo(pHome.dx - 5,  pHome.dy - 1.5 + 1.5)
+        ..close(),
+      Paint()..color = Colors.black.withOpacity(0.22)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+    );
     final homePath = Path()
       ..moveTo(pHome.dx,      pHome.dy - 5)
-      ..lineTo(pHome.dx + 4.5, pHome.dy - 1.5)
-      ..lineTo(pHome.dx + 3.5, pHome.dy + 4)
-      ..lineTo(pHome.dx - 3.5, pHome.dy + 4)
-      ..lineTo(pHome.dx - 4.5, pHome.dy - 1.5)
+      ..lineTo(pHome.dx + 5,  pHome.dy - 1.5)
+      ..lineTo(pHome.dx + 4,  pHome.dy + 4.5)
+      ..lineTo(pHome.dx - 4,  pHome.dy + 4.5)
+      ..lineTo(pHome.dx - 5,  pHome.dy - 1.5)
       ..close();
-    canvas.drawPath(homePath, hp);
+    canvas.drawPath(homePath, Paint()..color = Colors.white.withOpacity(0.95));
+    canvas.drawPath(homePath, Paint()
+      ..color = Colors.black.withOpacity(0.25)
+      ..strokeWidth = 0.8
+      ..style = PaintingStyle.stroke);
+
+    // 배터 박스 (홈 양옆 사각형 outline)
+    final batterBoxPaint = Paint()
+      ..color = Colors.white.withOpacity(0.35)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+    canvas.drawRect(
+      Rect.fromCenter(center: Offset(pHome.dx - 9, pHome.dy + 1), width: 6, height: 12),
+      batterBoxPaint,
+    );
+    canvas.drawRect(
+      Rect.fromCenter(center: Offset(pHome.dx + 9, pHome.dy + 1), width: 6, height: 12),
+      batterBoxPaint,
+    );
   }
 
   @override
