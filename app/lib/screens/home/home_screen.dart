@@ -1840,6 +1840,25 @@ class GameCard extends StatelessWidget {
         style: TextStyle(fontSize: 11, color: t.ink3, fontWeight: FontWeight.w600));
   }
 
+  // 다크 모드: 어두운 팀색(KT/NC/두산 등) lightness 부스트로 가시성 확보
+  // 라이트 모드: 너무 밝은 팀색 약간 어둡게 (대비 확보)
+  Color _adjustTeamColor(Color c, bool isDark) {
+    final hsl = HSLColor.fromColor(c);
+    if (isDark) {
+      // lightness < 0.45 인 색만 부스트 (밝은 색은 그대로)
+      if (hsl.lightness < 0.45) {
+        return hsl.withLightness((hsl.lightness + 0.30).clamp(0.0, 0.75)).toColor();
+      }
+      return c;
+    } else {
+      // 라이트: lightness > 0.6인 색만 약간 어둡게
+      if (hsl.lightness > 0.6) {
+        return hsl.withLightness((hsl.lightness - 0.10).clamp(0.0, 1.0)).toColor();
+      }
+      return c;
+    }
+  }
+
   Widget _buildMini5(List<String> recent, Color accent, _Tok t, bool isDark) {
     if (recent.isEmpty) return const SizedBox(height: 13);
     return Row(
@@ -1972,8 +1991,8 @@ class GameCard extends StatelessWidget {
         Text(rank != null ? '${rank}위' : (isHome ? '홈' : '원정'),
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
         const SizedBox(height: 7),
-        // 각 팀 mini5 W 박스 = 자기 팀 컬러 (승패 무관)
-        _buildMini5(isHome ? recent.reversed.toList() : recent, teamColor(code), t, isDark),
+        // 각 팀 mini5 W 박스 = 자기 팀 컬러 (라이트/다크 모드 보정)
+        _buildMini5(isHome ? recent.reversed.toList() : recent, _adjustTeamColor(teamColor(code), isDark), t, isDark),
       ],
     );
   }
