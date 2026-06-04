@@ -4741,11 +4741,11 @@ class _FieldBgPainter extends CustomPainter {
         ],
         const [0.0, 0.6, 1.0],
       );
-    // 외야 잔디 부채꼴 path (180도 from home upward + outer arc)
+    // 외야 잔디 부채꼴 path (90도 from home, foul line 안 영역만)
     final outfieldFanRect = Rect.fromCircle(center: pHome, radius: w * 0.95);
     final outfieldFanPath = Path()
       ..moveTo(pHome.dx, pHome.dy)
-      ..arcTo(outfieldFanRect, -3.14, 3.14, false)
+      ..arcTo(outfieldFanRect, -3.14 * 0.75, 3.14 * 0.5, false)
       ..lineTo(pHome.dx, pHome.dy)
       ..close();
     canvas.save();

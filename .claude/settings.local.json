@@ -130,7 +130,15 @@
       "Bash(grep -oE '\"entry\":\\\\{[^}]{0,500}\\\\}' /tmp/relay.json)",
       "Bash(grep -oE '\"[a-zA-Z]{2,30}\":\\\\[\\\\{\"hittype\"[^]]{0,200}' /tmp/relay.json)",
       "Bash(grep -oE '\"homeLineup\":\\\\{[^]]{0,200}' /tmp/relay.json)",
-      "WebFetch(domain:cdn.topclass.chosun.com)"
+      "WebFetch(domain:cdn.topclass.chosun.com)",
+      "Bash(adb -s \"adb-R3CX90J1HJK-iohcsy._adb-tls-connect._tcp\" exec-out -d 0 screencap -p)",
+      "Bash(adb -s \"adb-R3CX90J1HJK-iohcsy._adb-tls-connect._tcp\" shell \"screencap -p /sdcard/screen.png\")",
+      "Bash(adb -s \"adb-R3CX90J1HJK-iohcsy._adb-tls-connect._tcp\" pull /sdcard/screen.png C:/Users/qq772/Downloads/current_field.png)",
+      "Bash(adb -s \"adb-R3CX90J1HJK-iohcsy._adb-tls-connect._tcp\" shell \"screencap -p -d 0 /sdcard/screen.png\")",
+      "Bash(adb -s \"adb-R3CX90J1HJK-iohcsy._adb-tls-connect._tcp\" pull /sdcard/screen.png /c/Users/qq772/Downloads/current_field.png)",
+      "Bash(adb -s \"adb-R3CX90J1HJK-iohcsy._adb-tls-connect._tcp\" shell \"dumpsys SurfaceFlinger --display-id\")",
+      "Bash(adb -s \"adb-R3CX90J1HJK-iohcsy._adb-tls-connect._tcp\" shell \"screencap -p -d 4630946564756762243 /sdcard/screen.png\")",
+      "Bash(MSYS_NO_PATHCONV=1 adb -s \"adb-R3CX90J1HJK-iohcsy._adb-tls-connect._tcp\" pull \"/sdcard/screen.png\" \"C:/Users/qq772/Downloads/current_field.png\")"
     ]
   }
 }
