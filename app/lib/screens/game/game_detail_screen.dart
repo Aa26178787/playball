@@ -1000,12 +1000,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
-                      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
                       decoration: BoxDecoration(
                         color: isDark ? paper2 : const Color(0xFFFAFAFA),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: SizedBox(height: 215, width: double.infinity, child: fieldWidget),
+                      child: SizedBox(height: 240, width: double.infinity, child: fieldWidget),
                     ),
                   ),
                 ),

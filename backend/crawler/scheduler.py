@@ -2740,10 +2740,10 @@ def _send_pregame_notifications():
                 WHERE g.game_date = CURRENT_DATE
                   AND g.status IN ('예정', '라인업')
                   AND g.start_time IS NOT NULL
-                  AND g.start_time >= (CURRENT_TIME AT TIME ZONE 'Asia/Seoul')
+                  AND g.start_time >= ((CURRENT_TIME AT TIME ZONE 'Asia/Seoul')::time)
                                       + (%s * INTERVAL '1 minute')
                                       - INTERVAL '2 minutes 30 seconds'
-                  AND g.start_time <  (CURRENT_TIME AT TIME ZONE 'Asia/Seoul')
+                  AND g.start_time <  ((CURRENT_TIME AT TIME ZONE 'Asia/Seoul')::time)
                                       + (%s * INTERVAL '1 minute')
                                       + INTERVAL '2 minutes 30 seconds'
             """, (minutes, minutes))
