@@ -1082,17 +1082,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         // 슬롯/배경 확장: padding 20/28 + SizedBox 230
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 60, 16, 20),
-                          child: SizedBox(
-                            height: 230, width: double.infinity,
-                            // Matrix4 perspective 3D — 카메라 ~26도 기울임 (적당)
-                            child: Transform(
-                              alignment: Alignment.bottomCenter,
-                              transform: Matrix4.identity()
-                                ..setEntry(3, 2, 0.0012)
-                                ..rotateX(0.45),
-                              child: fieldWidget,
-                            ),
-                          ),
+                          // C안: 좌표 자체 bilinear quad mapping (Matrix4 제거)
+                          child: SizedBox(height: 230, width: double.infinity, child: fieldWidget),
                         ),
                         // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
                         Positioned(
@@ -4462,8 +4453,28 @@ class _FullFieldView extends StatelessWidget {
     required this.isDark, this.fieldView,
   });
 
-  // Matrix4 perspective transform 사용 — 좌표 변환 X (no-op)
-  static Offset _perspective(Offset src) => src;
+  // C안: bilinear quad mapping (4-point homography 근사)
+  // src unit square (0,0)(1,0)(1,1)(0,1) → dst trapezoid (외야 좁아지는 perspective)
+  static Offset _perspective(Offset src) {
+    // dst quad: top-left, top-right, bottom-right, bottom-left
+    const tl = Offset(0.22, 0.02);
+    const tr = Offset(0.78, 0.02);
+    const br = Offset(1.00, 1.00);
+    const bl = Offset(0.00, 1.00);
+    final x = src.dx;
+    final y = src.dy;
+    // top edge lerp
+    final topX = tl.dx + (tr.dx - tl.dx) * x;
+    final topY = tl.dy + (tr.dy - tl.dy) * x;
+    // bottom edge lerp
+    final botX = bl.dx + (br.dx - bl.dx) * x;
+    final botY = bl.dy + (br.dy - bl.dy) * x;
+    // vertical lerp between top/bot
+    return Offset(
+      topX + (botX - topX) * y,
+      topY + (botY - topY) * y,
+    );
+  }
 
   // Normalized (x,y) coordinates on the field widget (0=left/top, 1=right/bottom)
   static const Map<String, Offset> _posCoords = {
@@ -4725,8 +4736,23 @@ class _FieldBgPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // Matrix4 transform 사용 — 좌표 변환 X (no-op)
-    Offset proj(Offset src) => src;
+    // C안: bilinear quad mapping (4-point homography 근사)
+    Offset proj(Offset src) {
+      const tl = Offset(0.22, 0.02);
+      const tr = Offset(0.78, 0.02);
+      const br = Offset(1.00, 1.00);
+      const bl = Offset(0.00, 1.00);
+      final x = src.dx;
+      final y = src.dy;
+      final topX = tl.dx + (tr.dx - tl.dx) * x;
+      final topY = tl.dy + (tr.dy - tl.dy) * x;
+      final botX = bl.dx + (br.dx - bl.dx) * x;
+      final botY = bl.dy + (br.dy - bl.dy) * x;
+      return Offset(
+        topX + (botX - topX) * y,
+        topY + (botY - topY) * y,
+      );
+    }
     Offset toPixel(Offset src) {
       final p = proj(src);
       return Offset(w * p.dx, h * p.dy);
