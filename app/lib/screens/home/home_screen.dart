@@ -1972,7 +1972,8 @@ class GameCard extends StatelessWidget {
         Text(rank != null ? '${rank}위' : (isHome ? '홈' : '원정'),
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
         const SizedBox(height: 7),
-        _buildMini5(isHome ? recent.reversed.toList() : recent, isWinner ? accent : t.ink, t, isDark),
+        // 각 팀 mini5 W 박스 = 자기 팀 컬러 (승패 무관)
+        _buildMini5(isHome ? recent.reversed.toList() : recent, teamColor(code), t, isDark),
       ],
     );
   }
