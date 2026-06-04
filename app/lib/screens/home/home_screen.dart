@@ -1886,23 +1886,7 @@ class GameCard extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 승팀 outer ring (inset: -3 = 52 size around 46 logo)
-        SizedBox(
-          width: 52, height: 52,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              if (isWinner)
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: accent, width: 2),
-                  ),
-                ),
-              TeamLogo(teamCode: code, size: 46),
-            ],
-          ),
-        ),
+        TeamLogo(teamCode: code, size: 46),
         const SizedBox(height: 7),
         Text(name,
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: -0.15),
@@ -2049,39 +2033,27 @@ class GameCard extends StatelessWidget {
     final hasPitchers = isFinished && !isDraw && (game.winPitcher != null || game.losePitcher != null);
     final hasStarters = showStarters && (game.homeStarter != null || game.awayStarter != null);
 
+    // 카드 배경: 승팀 컬러 우선 → 마이팀 → paper
+    final winnerColor = homeWon ? homeColor : (awayWon ? awayColor : null);
+    final cardBg = winnerColor != null
+        ? winnerColor.withValues(alpha: isDark ? 0.14 : 0.06)
+        : (isMyTeam ? myColor.withValues(alpha: isDark ? 0.14 : 0.06) : t.paper);
+    final cardBd = winnerColor != null
+        ? winnerColor.withValues(alpha: isDark ? 0.50 : 0.32)
+        : (isMyTeam ? myColor.withValues(alpha: isDark ? 0.50 : 0.32) : t.line);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isMyTeam ? myColor.withValues(alpha: isDark ? 0.14 : 0.06) : t.paper,
+        color: cardBg,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isMyTeam ? myColor.withValues(alpha: isDark ? 0.50 : 0.32) : t.line,
-          width: 1,
-        ),
-        boxShadow: (!isMyTeam && !isDark) ? [
+        border: Border.all(color: cardBd, width: 1),
+        boxShadow: (winnerColor == null && !isMyTeam && !isDark) ? [
           BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 2, offset: const Offset(0, 1)),
         ] : null,
       ),
       clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          // ── 승팀 로고 배경 overlay (불투명도 낮춤, 크게) ──
-          if (homeWon || awayWon)
-            Positioned(
-              top: -20, bottom: -20,
-              left: homeWon ? -40 : null,
-              right: awayWon ? -40 : null,
-              child: IgnorePointer(
-                child: Opacity(
-                  opacity: isDark ? 0.10 : 0.08,
-                  child: TeamLogo(
-                    teamCode: homeWon ? game.homeTeamCode : game.awayTeamCode,
-                    size: 200,
-                  ),
-                ),
-              ),
-            ),
-          Material(
+      child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
@@ -2108,8 +2080,27 @@ class GameCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 13),
-                // ── 메인 grid: TeamSide | score | TeamSide ──
-                Row(
+                // ── 메인 grid + 승팀 로고 배경 overlay (이 영역만) ──
+                ClipRect(
+                  child: Stack(
+                    clipBehavior: Clip.hardEdge,
+                    children: [
+                      if (winnerColor != null)
+                        Positioned(
+                          top: -30, bottom: -10,
+                          left: homeWon ? -55 : null,
+                          right: awayWon ? -55 : null,
+                          child: IgnorePointer(
+                            child: Opacity(
+                              opacity: isDark ? 0.12 : 0.10,
+                              child: TeamLogo(
+                                teamCode: homeWon ? game.homeTeamCode : game.awayTeamCode,
+                                size: 210,
+                              ),
+                            ),
+                          ),
+                        ),
+                      Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(child: _teamSide(
@@ -2179,6 +2170,9 @@ class GameCard extends StatelessWidget {
                       recent: game.awayRecent5, accent: accent, t: t, isDark: isDark,
                     )),
                   ],
+                ),
+                    ],
+                  ),
                 ),
                 // ── divider + 선발 + 다음 시리즈 (3-col grid) ──
                 if (hasPitchers || hasStarters || nextHomeSeries != null || nextAwaySeries != null) ...[
@@ -2252,8 +2246,6 @@ class GameCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
-        ],
       ),
     );
   }

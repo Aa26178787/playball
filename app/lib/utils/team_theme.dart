@@ -62,9 +62,14 @@ class TeamLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = teamColor(teamCode);
     final abbr = teamDisplayName(teamCode);
-    final resolvedUrl = (logoUrl != null && logoUrl!.isNotEmpty)
+    var resolvedUrl = (logoUrl != null && logoUrl!.isNotEmpty)
         ? logoUrl!
         : kTeamLogoUrls[teamCode];
+
+    // 고해상도 요청: size >= 80이면 Naver CDN의 더 큰 type으로 upgrade
+    if (resolvedUrl != null && size >= 80) {
+      resolvedUrl = resolvedUrl.replaceAll('type=f92_88', 'type=f240_240');
+    }
 
     if (resolvedUrl != null) {
       return ClipOval(
