@@ -1001,19 +1001,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
                       padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                      // 외야 잔디 색으로 슬롯 배경 (gradient) — 안쪽 _FullFieldView grass와 자연스럽게 이어짐
+                      // 외야 잔디 가장자리 색 단색 — _FullFieldView painter의 outer 색과 정확 일치
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
-                        gradient: const RadialGradient(
-                          center: Alignment(0.0, 0.9),
-                          radius: 1.2,
-                          colors: [
-                            Color(0xFF4A8C3E), // 가운데 진한 잔디
-                            Color(0xFF6BB05A), // 중간
-                            Color(0xFF7BC068), // 가장자리 밝은
-                          ],
-                          stops: [0.0, 0.6, 1.0],
-                        ),
+                        color: const Color(0xFF7BC068),
                       ),
                       child: SizedBox(height: 190, width: double.infinity, child: fieldWidget),
                     ),
