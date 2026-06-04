@@ -1110,76 +1110,84 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildFieldScoreOverlay(List innings, Map<String, dynamic> game) {
+    // mockup ScoreBoardDark 정확 매칭
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final awayCode = game['away_team_code'] as String? ?? '';
     final homeCode = game['home_team_code'] as String? ?? '';
     final awayShort = teamDisplayName(awayCode);
     final homeShort = teamDisplayName(homeCode);
 
-    const hdrStyle  = TextStyle(color: Colors.white38, fontSize: 7.5, fontWeight: FontWeight.bold);
-    const teamStyle = TextStyle(color: Colors.white60, fontSize: 8, fontWeight: FontWeight.w600);
-    const valStyle  = TextStyle(color: Colors.white, fontSize: 9);
-    final  rStyle   = const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold);
-    const scoreStyle = TextStyle(color: Colors.orangeAccent, fontSize: 9, fontWeight: FontWeight.bold);
+    final sbBg = isDark ? Colors.black : const Color(0xFF1B1B1F);
 
-    // teamColW: fixed left column; rhbeW: fixed right section
-    const teamColW = 26.0;
+    // mockup styles
+    final hdrInning = TextStyle(color: Colors.white.withValues(alpha: 0.40), fontSize: 9, fontWeight: FontWeight.w600);
+    final hdrRHBE = TextStyle(color: Colors.white.withValues(alpha: 0.70), fontSize: 9, fontWeight: FontWeight.w700);
+    const teamStyle = TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700);
+    final dimVal = TextStyle(color: Colors.white.withValues(alpha: 0.25), fontSize: 11, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()]);
+    final zeroVal = TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 11, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()]);
+    const liveVal = TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()]);
+    const rStyle = TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()]);
+    final secStyle = TextStyle(color: Colors.white.withValues(alpha: 0.60), fontSize: 10, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()]);
 
-    Widget cell(Widget child) => Expanded(child: Center(child: child));
+    const teamColW = 40.0;
+    const rhbeW = 24.0;
+    const innN = 9;
 
-    Widget textCell(String t, TextStyle s) => cell(Text(t, style: s, textAlign: TextAlign.center));
+    Widget innExpanded(Widget child) => Expanded(child: Center(child: child));
 
-    // 이닝 데이터 row builder
     Widget dataRow(String teamLabel, List<int> inningRuns, int r, int h, int b, int e) {
-      return Row(children: [
-        SizedBox(width: teamColW,
-          child: Text(teamLabel, style: teamStyle, overflow: TextOverflow.ellipsis)),
-        ...inningRuns.map((v) => cell(
-          Text('$v', textAlign: TextAlign.center,
-              style: v > 0 ? scoreStyle : const TextStyle(color: Colors.white38, fontSize: 9)),
-        )),
-        // separator
-        Container(width: 1, height: 14, color: Colors.white.withValues(alpha: 0.18),
-            margin: const EdgeInsets.symmetric(horizontal: 3)),
-        SizedBox(width: 18, child: Center(child: Text('$r', style: rStyle, textAlign: TextAlign.center))),
-        SizedBox(width: 16, child: Center(child: Text('$h', style: valStyle, textAlign: TextAlign.center))),
-        SizedBox(width: 16, child: Center(child: Text('$b', style: valStyle, textAlign: TextAlign.center))),
-        SizedBox(width: 16, child: Center(child: Text('$e', style: valStyle, textAlign: TextAlign.center))),
-      ]);
+      // 미진행 이닝(played==false) 빈칸 + dim val
+      final cur = inningRuns.length;
+      return SizedBox(
+        height: 30,
+        child: Row(children: [
+          SizedBox(width: teamColW, child: Text(teamLabel, style: teamStyle, overflow: TextOverflow.ellipsis)),
+          for (int n = 1; n <= innN; n++) innExpanded(Builder(builder: (_) {
+            final played = n <= cur;
+            if (!played) return Text('', style: dimVal);
+            final v = inningRuns[n - 1];
+            return Text('$v', textAlign: TextAlign.center, style: v > 0 ? liveVal : zeroVal);
+          })),
+          SizedBox(width: rhbeW, child: Center(child: Text('$r', style: rStyle))),
+          SizedBox(width: rhbeW, child: Center(child: Text('$h', style: secStyle))),
+          SizedBox(width: rhbeW, child: Center(child: Text('$b', style: secStyle))),
+          SizedBox(width: rhbeW, child: Center(child: Text('$e', style: secStyle))),
+        ]),
+      );
     }
 
     final awayRuns = innings.map((i) => (i as Map)['away_runs'] as int? ?? 0).toList();
     final homeRuns = innings.map((i) => (i as Map)['home_runs'] as int? ?? 0).toList();
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 5, 8, 5),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.52),
-        borderRadius: BorderRadius.circular(9),
+        color: sbBg,
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 헤더 행
-          Row(children: [
-            SizedBox(width: teamColW), // 팀명 자리
-            ...innings.map((i) => textCell('${(i as Map)['inning']}', hdrStyle)),
-            Container(width: 1, height: 10, color: Colors.white.withValues(alpha: 0.18),
-                margin: const EdgeInsets.symmetric(horizontal: 3)),
-            SizedBox(width: 18, child: Center(child: const Text('R', style: hdrStyle))),
-            SizedBox(width: 16, child: Center(child: const Text('H', style: hdrStyle))),
-            SizedBox(width: 16, child: Center(child: const Text('B', style: hdrStyle))),
-            SizedBox(width: 16, child: Center(child: const Text('E', style: hdrStyle))),
-          ]),
-          const SizedBox(height: 3),
-          // 원정팀 행
+          // 헤더 row
+          SizedBox(
+            height: 18,
+            child: Row(children: [
+              const SizedBox(width: teamColW),
+              for (int n = 1; n <= innN; n++) innExpanded(Text('$n', style: hdrInning)),
+              SizedBox(width: rhbeW, child: Center(child: Text('R', style: hdrRHBE))),
+              SizedBox(width: rhbeW, child: Center(child: Text('H', style: hdrRHBE))),
+              SizedBox(width: rhbeW, child: Center(child: Text('B', style: hdrRHBE))),
+              SizedBox(width: rhbeW, child: Center(child: Text('E', style: hdrRHBE))),
+            ]),
+          ),
+          Container(height: 1, color: Colors.white.withValues(alpha: 0.12), margin: const EdgeInsets.only(bottom: 3)),
+          // 어웨이 → 홈
           dataRow(awayShort, awayRuns,
             _liveScore(game, 'away_score'),
             game['away_hits']  as int? ?? 0,
             game['away_walks'] as int? ?? 0,
             game['away_errors'] as int? ?? 0,
           ),
-          const SizedBox(height: 2),
-          // 홈팀 행
           dataRow(homeShort, homeRuns,
             _liveScore(game, 'home_score'),
             game['home_hits']  as int? ?? 0,
