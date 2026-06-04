@@ -641,6 +641,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       body: Stack(
         children: [
           NestedScrollView(
+            // scroll up 시 outer sliver 자동 reveal (필드뷰 접힘 → 다시 위로 스크롤 시 재등장)
+            floatHeaderSlivers: true,
             headerSliverBuilder: (context, _) => [
               SliverToBoxAdapter(child: _buildGameHeader(game, roundedBottom: _sameDayGames.isEmpty && !_fieldPinned, includeField: !_fieldPinned)),
               if (_sameDayGames.isNotEmpty)
@@ -654,15 +656,19 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   ),
                 ),
             ],
-            body: TabBarView(
-              controller: _tabController,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                _buildInningsTab(innings),
-                _buildLineupTab(),
-                _buildStatsTab(pitchers, batters),
-                _buildHighlightsTab(),
-              ],
+            // _fieldPinned 시 body top padding 320 — pinned sliver 아래로 콘텐츠 배치 (가려짐 방지)
+            body: Padding(
+              padding: EdgeInsets.only(top: _fieldPinned ? 320 : 0),
+              child: TabBarView(
+                controller: _tabController,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  _buildInningsTab(innings),
+                  _buildLineupTab(),
+                  _buildStatsTab(pitchers, batters),
+                  _buildHighlightsTab(),
+                ],
+              ),
             ),
           ),
           Positioned(
@@ -2466,7 +2472,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         decoration: BoxDecoration(
           border: isLast ? null : Border(bottom: BorderSide(color: lineRow, width: 1)),
         ),
-        child: Row(children: rowChildren),
+        // away: mainAxisAlignment.end로 오른쪽 가장자리부터 cluster 시작
+        child: Row(
+          mainAxisAlignment: isHome ? MainAxisAlignment.start : MainAxisAlignment.end,
+          children: rowChildren,
+        ),
       );
     }).toList();
 
