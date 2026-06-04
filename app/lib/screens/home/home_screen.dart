@@ -1932,6 +1932,7 @@ class GameCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: t.paper2,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: t.line2, width: 1),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Container(width: 5, height: 5,
@@ -1998,12 +1999,12 @@ class GameCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
             ),
             child: Text(pitcherLabel ?? '',
-                style: TextStyle(fontSize: 11, color: pitcherLabelColor ?? t.ink3, fontWeight: FontWeight.w800)),
+                style: TextStyle(fontSize: 13, color: pitcherLabelColor ?? t.ink3, fontWeight: FontWeight.w800)),
           ),
           const SizedBox(width: 4),
           Flexible(
             child: Text(pitcher,
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: t.ink2),
                 overflow: TextOverflow.ellipsis, maxLines: 1),
           ),
         ],
@@ -2012,14 +2013,14 @@ class GameCard extends StatelessWidget {
     if (starter != null && starter.isNotEmpty) {
       return Text(starter,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: t.ink2),
           overflow: TextOverflow.ellipsis, maxLines: 1);
     }
-    return Text('-', style: TextStyle(fontSize: 11, color: t.line2));
+    return Text('-', style: TextStyle(fontSize: 13, color: t.line2));
   }
 
   Widget _centerNextSeriesCell(Map<String, String>? ns, _Tok t) {
-    if (ns == null) return Text('-', style: TextStyle(fontSize: 11, color: t.line2));
+    if (ns == null) return Text('-', style: TextStyle(fontSize: 13, color: t.line2));
     // date "YYYY-MM-DD" → "M/D"
     String dateLabel = '';
     final ds = ns['date'] ?? '';
@@ -2038,11 +2039,11 @@ class GameCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            TeamLogo(teamCode: ns['code'] ?? '', size: 15),
+            TeamLogo(teamCode: ns['code'] ?? '', size: 17),
             const SizedBox(width: 4),
             Flexible(
               child: Text(ns['name'] ?? '',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.ink3),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: t.ink3),
                   overflow: TextOverflow.ellipsis, maxLines: 1),
             ),
           ],
@@ -2051,7 +2052,7 @@ class GameCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 2),
             child: Text(dateLabel,
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: t.sub,
                     fontFeatures: const [FontFeature.tabularFigures()])),
           ),
       ],
@@ -2094,6 +2095,7 @@ class GameCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: _kLiveRed.withValues(alpha: isDark ? 0.20 : 0.10),
             borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: _kLiveRed.withValues(alpha: 0.45), width: 1),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 5, height: 5,
@@ -2107,7 +2109,8 @@ class GameCard extends StatelessWidget {
       if (isCancelled) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(999)),
+          decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: t.line2, width: 1)),
           child: Text('취소',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink3)),
         );
@@ -2115,7 +2118,8 @@ class GameCard extends StatelessWidget {
       if (isFinished) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(999)),
+          decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: t.line2, width: 1)),
           child: Text('경기 종료',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink3)),
         );
@@ -2126,6 +2130,7 @@ class GameCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFFFFA000).withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFFFA000).withValues(alpha: 0.45), width: 1),
           ),
           child: const Text('라인업 확정',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFFFA000))),
@@ -2134,7 +2139,8 @@ class GameCard extends StatelessWidget {
       // 예정 + 그 외 상태: 상태 텍스트만 (시작시간 X — 시간은 score 자리에 표시)
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(999)),
+        decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: t.line2, width: 1)),
         child: Text(game.status.isEmpty ? '예정' : game.status,
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2)),
       );
@@ -2145,16 +2151,17 @@ class GameCard extends StatelessWidget {
     final hasStarters = showStarters && (game.homeStarter != null || game.awayStarter != null);
 
     // 카드 배경: 항상 paper (마이팀 배경색 적용 X)
+    // 마이팀: 외곽선만 팀컬러로 강조
     final winnerColor = homeWon ? homeColor : (awayWon ? awayColor : null);
     final cardBg = t.paper;
-    final cardBd = t.line;
+    final cardBd = isMyTeam ? myColor : t.line;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: cardBd, width: 1),
+        border: Border.all(color: cardBd, width: isMyTeam ? 2 : 1),
         boxShadow: (!isMyTeam && !isDark) ? [
           BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 2, offset: const Offset(0, 1)),
         ] : null,

@@ -1097,15 +1097,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       color: paper2, borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: line, width: 1),
                     ),
+                    // win/lose Expanded 균등 + 좌우 대칭 spacer (pin 토글과 동일 폭)
                     child: Row(children: [
+                      const SizedBox(width: 26),  // 우측 pin 대칭용 spacer
                       if (game['win_pitcher'] != null)
                         Expanded(child: _pitcherBadge(game['win_pitcher'] as String, game['win_pitcher_image'] as String?, const Color(0xFF1976D2), '승')),
                       if (game['lose_pitcher'] != null)
                         Expanded(child: _pitcherBadge(game['lose_pitcher'] as String, game['lose_pitcher_image'] as String?, const Color(0xFFC62828), '패')),
-                      GestureDetector(
-                        onTap: () => setState(() => _fieldPinned = !_fieldPinned),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                      SizedBox(
+                        width: 26,
+                        child: GestureDetector(
+                          onTap: () => setState(() => _fieldPinned = !_fieldPinned),
                           child: Icon(
                             _fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
                             size: 18,
@@ -1596,14 +1598,15 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 ),
                 child: Row(
                   children: [
+                    const SizedBox(width: 26),
                     if (game['win_pitcher'] != null)
                       Expanded(child: _pitcherBadge(game['win_pitcher'] as String, game['win_pitcher_image'] as String?, const Color(0xFF1976D2), '승')),
                     if (game['lose_pitcher'] != null)
                       Expanded(child: _pitcherBadge(game['lose_pitcher'] as String, game['lose_pitcher_image'] as String?, const Color(0xFFC62828), '패')),
-                    GestureDetector(
-                      onTap: () => setState(() => _fieldPinned = !_fieldPinned),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                    SizedBox(
+                      width: 26,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _fieldPinned = !_fieldPinned),
                         child: Icon(
                           _fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
                           size: 18,
