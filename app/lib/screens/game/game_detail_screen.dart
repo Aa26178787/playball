@@ -4777,40 +4777,50 @@ class _FieldBgPainter extends CustomPainter {
     canvas.drawArc(Rect.fromCircle(center: arcCenter, radius: arcR),
         -3.14 * 0.88, 3.14 * 0.76, false, warningPaint);
 
-    // ── Infield dirt (그라데이션: 가운데 진한, 가장자리 흐림) ──
-    final infieldRect = Rect.fromCenter(
-      center: Offset(w * 0.50, h * 0.62),
-      width: w * 0.7, height: h * 0.45,
-    );
+    // ── 실제 야구장 구성: 부채꼴 dirt (90도 from 홈) + 내야 잔디 다이아몬드 ──
+    // 1. dirt sector — pHome 중심 부채꼴 (-135도 ~ -45도 = 90도 sweep, 외야 경계까지)
     final dirtPaint = Paint()
       ..shader = ui.Gradient.radial(
-        Offset(w * 0.50, h * 0.62), w * 0.34,
+        pHome, w * 0.55,
         [
-          const Color(0xFFA66A2A), // 가운데 진한 황토
-          const Color(0xFFC8923A), // 가장자리 밝은
+          const Color(0xFFC8923A), // 홈 근처 밝은 황토
+          const Color(0xFFA66A2A), // 외야 경계쪽 진한
         ],
+        const [0.0, 1.0],
       );
-    final diamondPath = Path()
+    final dirtSectorRect = Rect.fromCircle(center: pHome, radius: w * 0.62);
+    final dirtSectorPath = Path()
       ..moveTo(pHome.dx, pHome.dy)
-      ..lineTo(p1B.dx,   p1B.dy)
-      ..lineTo(p2B.dx,   p2B.dy)
-      ..lineTo(p3B.dx,   p3B.dy)
+      ..arcTo(dirtSectorRect, -3.14 * 0.75, 3.14 * 0.5, false)
+      ..lineTo(pHome.dx, pHome.dy)
       ..close();
-    canvas.drawPath(diamondPath, dirtPaint);
+    canvas.drawPath(dirtSectorPath, dirtPaint);
 
-    // 내야 잔디 (dirt 다이아몬드와 동일 비율 — width/height 1.45)
-    // dirt: pHome(0.5,0.82) p1B(0.79,0.62) p2B(0.5,0.42) p3B(0.21,0.62)
-    // grass scaled around center (0.5, 0.62), 0.45배
+    // 2. 베이스 path strip — 다이아몬드 외곽 흰 dirt 경계 (sliding pit 표시)
+    final pathStripPaint = Paint()
+      ..color = const Color(0xFFB87A2E).withOpacity(0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6;
+    final basePathOuter = Path()
+      ..moveTo(pHome.dx, pHome.dy)
+      ..lineTo(p1B.dx, p1B.dy)
+      ..lineTo(p2B.dx, p2B.dy)
+      ..lineTo(p3B.dx, p3B.dy)
+      ..close();
+    canvas.drawPath(basePathOuter, pathStripPaint);
+
+    // 3. 내야 잔디 다이아몬드 (dirt sector 위 overlay — 베이스 path 안쪽 잔디 영역)
+    // dirt diamond과 동일 비율 (1.45), 0.55x scale
     final infieldGrass = Paint()
       ..shader = ui.Gradient.radial(
-        Offset(w * 0.50, h * 0.62), w * 0.18,
+        Offset(w * 0.50, h * 0.62), w * 0.20,
         [const Color(0xFF5FA851), const Color(0xFF4D8E42)],
       );
     final infieldGrassPath = Path()
-      ..moveTo(w * 0.50, h * 0.53)  // top (height offset 0.09)
-      ..lineTo(w * 0.37, h * 0.62)  // left (width offset 0.13)
-      ..lineTo(w * 0.50, h * 0.71)  // bottom
-      ..lineTo(w * 0.63, h * 0.62)  // right
+      ..moveTo(w * 0.50, h * 0.51)  // top (height offset 0.11)
+      ..lineTo(w * 0.34, h * 0.62)  // left (width offset 0.16)
+      ..lineTo(w * 0.50, h * 0.73)  // bottom
+      ..lineTo(w * 0.66, h * 0.62)  // right
       ..close();
     canvas.drawPath(infieldGrassPath, infieldGrass);
 
