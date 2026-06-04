@@ -783,6 +783,7 @@ def get_today_games():
             "away_team_code": r[10],
             "stadium":        r[11],
             "stadium_id":     stadium_id,
+            "start_time":     str(start_time)[:5] if start_time else None,
             "weather":        weather,
             "home_team_id":   r[14],
             "away_team_id":   r[15],
