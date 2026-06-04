@@ -2055,6 +2055,8 @@ def _update_lineup_fallback():
         for (db_game_id, naver_game_id) in games:
             save_game_roster(db_game_id, naver_game_id)
             time.sleep(0.5)
+        # roster 저장 후 starter position 안전망 sweep
+        _fixup_starter_positions()
 
 
 def _update_roster_changes_pregame():
