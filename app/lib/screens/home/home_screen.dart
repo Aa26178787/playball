@@ -1617,10 +1617,15 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           final awayId = g['away_team_id'] as int? ?? 0;
           final isMyTeam = _favoriteTeamIds.contains(homeId) ||
               _favoriteTeamIds.contains(awayId);
+          // 마이팀이 home/away 중 어느 쪽인지 결정 → 올바른 팀색 전달
+          final myTeamIsHome = _favoriteTeamIds.contains(homeId);
+          final myTeamIsAway = _favoriteTeamIds.contains(awayId);
           return GameCard(
             key: ValueKey(g['id']),
             game: Game.fromJson(g),
             isMyTeam: isMyTeam && !_myTeamOnly,
+            myTeamIsHome: myTeamIsHome,
+            myTeamIsAway: myTeamIsAway,
             homeRank: rankMap[homeId],
             awayRank: rankMap[awayId],
             nextHomeSeries: _nextSeries(homeId, awayId),
@@ -1764,12 +1769,16 @@ class _TodayGamesTabState extends State<TodayGamesTab>
 class GameCard extends StatelessWidget {
   final Game game;
   final bool isMyTeam;
+  final bool myTeamIsHome;
+  final bool myTeamIsAway;
   final int? homeRank;
   final int? awayRank;
   final Map<String, String>? nextHomeSeries;
   final Map<String, String>? nextAwaySeries;
 
-  const GameCard({super.key, required this.game, this.isMyTeam = false, this.homeRank, this.awayRank, this.nextHomeSeries, this.nextAwaySeries});
+  const GameCard({super.key, required this.game, this.isMyTeam = false,
+      this.myTeamIsHome = false, this.myTeamIsAway = false,
+      this.homeRank, this.awayRank, this.nextHomeSeries, this.nextAwaySeries});
 
   Widget _starterChip(String name, _Tok t) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -1923,7 +1932,21 @@ class GameCard extends StatelessWidget {
     int? teamId,
     BuildContext? buildContext,
   }) {
-    Widget logo = TeamLogo(teamCode: code, size: 46);
+    // logo + winner overlay (logo center에 정확 일치)
+    Widget logo = Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        if (isWinner)
+          IgnorePointer(
+            child: Opacity(
+              opacity: isDark ? 0.13 : 0.11,
+              child: TeamLogo(teamCode: code, size: 290),
+            ),
+          ),
+        TeamLogo(teamCode: code, size: 46),
+      ],
+    );
     if (teamId != null && buildContext != null) {
       logo = GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -2045,7 +2068,8 @@ class GameCard extends StatelessWidget {
 
     final homeColor = teamColor(game.homeTeamCode);
     final awayColor = teamColor(game.awayTeamCode);
-    final myColor = isMyTeam ? homeColor : awayColor;
+    // 마이팀 색: 한화가 home이면 homeColor, away면 awayColor (둘 다 마이팀인 경우 홈 우선)
+    final myColor = myTeamIsHome ? homeColor : (myTeamIsAway ? awayColor : homeColor);
     // accent: 마이팀이면 팀색, 아니면 ink (승팀 강조용)
     final accent = isMyTeam ? myColor : t.ink;
 
@@ -2126,28 +2150,7 @@ class GameCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
-          child: Stack(
-            children: [
-              // ── 승팀 로고 배경 overlay (TeamSide logo center 일치, score row 영역) ──
-              if (winnerColor != null)
-                Positioned(
-                  // TeamSide 안 logo top: padding(15) + header(~28) + 13 = ~56
-                  // logo 중심 = 56 + 23(logo46/2) = ~79
-                  // overlay 중심을 logo 중심에 맞춤: top = 79 - 145 = -66
-                  top: -66, height: 290,
-                  left: homeWon ? -85 : null,
-                  right: awayWon ? -85 : null,
-                  child: IgnorePointer(
-                    child: Opacity(
-                      opacity: isDark ? 0.13 : 0.11,
-                      child: TeamLogo(
-                        teamCode: homeWon ? game.homeTeamCode : game.awayTeamCode,
-                        size: 290,
-                      ),
-                    ),
-                  ),
-                ),
-          Padding(
+          child: Padding(
             padding: const EdgeInsets.all(15),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -2330,8 +2333,6 @@ class GameCard extends StatelessWidget {
                   ),
               ],
             ),
-          ),
-            ],
           ),
         ),
       ),

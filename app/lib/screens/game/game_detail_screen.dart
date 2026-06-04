@@ -1307,6 +1307,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _pitcherBadge(String name, String? imageUrl, Color color, String label) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1320,8 +1322,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
-            Text(name, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+            Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w800)),
+            Text(name, style: TextStyle(color: ink, fontSize: 11, fontWeight: FontWeight.w700)),
           ],
         ),
       ],
