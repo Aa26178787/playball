@@ -134,6 +134,8 @@ def crawl_transactions():
     cur = conn.cursor()
     today = date.today()
 
+    from datetime import timedelta
+    cutoff = today - timedelta(days=7)
     for q in queries:
         articles = fetch_rss(q)
         for art in articles:
@@ -143,10 +145,18 @@ def crawl_transactions():
             ttype = _classify_transaction(title)
             if not ttype:
                 continue
+            # 기사 발행일 7일 이상 지났으면 skip — 오래된 뉴스 재알림 방지 (강백호 FA 사례)
+            pub = art.get('published_at')
+            if pub:
+                pub_date = pub.date() if hasattr(pub, 'date') else None
+                if pub_date and pub_date < cutoff:
+                    continue
             matched = _match_player_in_title(title, players_cache)
             if not matched:
                 continue
             pid, pname = matched
+            # event_date = 기사 발행일 우선, 없으면 today
+            evt_date = pub.date() if pub and hasattr(pub, 'date') else today
             try:
                 cur.execute("""
                     INSERT INTO player_transactions
@@ -154,7 +164,7 @@ def crawl_transactions():
                     VALUES (%s, %s, %s, %s, %s)
                     ON CONFLICT (player_id, transaction_type, event_date) DO NOTHING
                     RETURNING id
-                """, (pid, pname, ttype, title[:500], today))
+                """, (pid, pname, ttype, title[:500], evt_date))
                 if cur.fetchone():
                     inserted += 1
             except Exception as e:
