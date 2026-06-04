@@ -16,7 +16,8 @@ const Map<String, String> kTeamLogoUrls = {
 
 // 큰 사이즈 (size >= 200, overlay 용도) 고해상도 위키피디아 로고 — 500px PNG
 const Map<String, String> kTeamOverlayLogoUrls = {
-  'LG': 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a7/LG_Twins_2017_logo.svg/500px-LG_Twins_2017_logo.svg.png',
+  // LG en wiki fair-use SVG는 500px thumb 일부 환경에서 실패 → commons insignia 500px 사용
+  'LG': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/LG_Twins_insignia.svg/500px-LG_Twins_insignia.svg.png',
   'KT': 'https://upload.wikimedia.org/wikipedia/en/thumb/e/e5/KT_Wiz.svg/500px-KT_Wiz.svg.png',
   'SK': 'https://upload.wikimedia.org/wikipedia/en/thumb/8/86/SSG_Landers.png/500px-SSG_Landers.png',
   'NC': 'https://upload.wikimedia.org/wikipedia/en/thumb/5/54/NC_Dinos_Emblem.svg/500px-NC_Dinos_Emblem.svg.png',
@@ -93,22 +94,22 @@ class TeamLogo extends StatelessWidget {
     if (resolvedUrl != null) {
       // 큰 사이즈일수록 고품질 보간 (FilterQuality.high = bicubic)
       final fq = size >= 80 ? FilterQuality.high : FilterQuality.medium;
-      return ClipOval(
-        child: CachedNetworkImage(
-          imageUrl: resolvedUrl,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          filterQuality: fq,
-          // memCacheWidth/Height: 메모리 캐시도 큰 사이즈 보장 (display 2x for retina)
-          memCacheWidth: (size * 2).toInt().clamp(100, 800),
-          memCacheHeight: (size * 2).toInt().clamp(100, 800),
-          fadeInDuration: Duration.zero,
-          fadeOutDuration: Duration.zero,
-          errorWidget: (ctx, url, err) => _avatar(color, abbr),
-          placeholder: (ctx, url) => _avatar(color, abbr),
-        ),
+      // overlay (size >= 200): 원형 clip X + contain (로고 비율 유지)
+      final isOverlay = size >= 200;
+      final img = CachedNetworkImage(
+        imageUrl: resolvedUrl,
+        width: size,
+        height: size,
+        fit: isOverlay ? BoxFit.contain : BoxFit.cover,
+        filterQuality: fq,
+        memCacheWidth: (size * 2).toInt().clamp(100, 800),
+        memCacheHeight: (size * 2).toInt().clamp(100, 800),
+        fadeInDuration: Duration.zero,
+        fadeOutDuration: Duration.zero,
+        errorWidget: (ctx, url, err) => _avatar(color, abbr),
+        placeholder: (ctx, url) => _avatar(color, abbr),
       );
+      return isOverlay ? img : ClipOval(child: img);
     }
     return _avatar(color, abbr);
   }

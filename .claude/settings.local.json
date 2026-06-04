@@ -118,7 +118,9 @@
       "Bash(grep -n \"],\\\\$\\\\|Stack\\(\\\\|InkWell\\(\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")",
       "Bash(grep -n \"width: 46,\\\\s*\\\\$\\\\|ps.toStringAsFixed\\(1\\)\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\team\\\\team_screen.dart\")",
       "Bash(grep -n \"child: Material\\(\\\\|child: InkWell\\(\\\\|child: Padding\\(\\\\$\\\\|EdgeInsets.all\\(15\\)\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")",
-      "WebFetch(domain:en.wikipedia.org)"
+      "WebFetch(domain:en.wikipedia.org)",
+      "WebFetch(domain:upload.wikimedia.org)",
+      "WebFetch(domain:ko.wikipedia.org)"
     ]
   }
 }
