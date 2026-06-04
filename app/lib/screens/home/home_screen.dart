@@ -1937,20 +1937,17 @@ class GameCard extends StatelessWidget {
     final awayColor = teamColor(game.awayTeamCode);
     final myColor = isMyTeam ? homeColor : awayColor;
 
-    // 승팀 그라데이션: 두 팀 토탈 득점 비율로 stops 조절
+    // 팀컬러 그라데이션: 홈/어웨이 양쪽 모두, 득점 비율로 침투
     Gradient? winGradient;
     final totalScore = game.homeScore + game.awayScore;
-    if (homeWon || awayWon) {
-      final winScore = homeWon ? game.homeScore : game.awayScore;
-      final ratio = totalScore > 0
-          ? (winScore / totalScore).clamp(0.55, 0.95).toDouble()
-          : 0.72;
-      final winColor = homeWon ? homeColor : awayColor;
-      final blend = Color.alphaBlend(winColor.withValues(alpha: isDark ? 0.28 : 0.13), t.paper);
+    if ((isFinished || isLive) && !isCancelled) {
+      final homeRatio = totalScore > 0 ? (game.homeScore / totalScore).toDouble() : 0.5;
+      final homeBlend = Color.alphaBlend(homeColor.withValues(alpha: isDark ? 0.28 : 0.13), t.paper);
+      final awayBlend = Color.alphaBlend(awayColor.withValues(alpha: isDark ? 0.28 : 0.13), t.paper);
       winGradient = LinearGradient(
-        begin: homeWon ? Alignment.centerLeft : Alignment.centerRight,
-        end:   homeWon ? Alignment.centerRight : Alignment.centerLeft,
-        colors: [blend, t.paper], stops: [0.0, ratio],
+        begin: Alignment.centerLeft, end: Alignment.centerRight,
+        colors: [homeBlend, t.paper, awayBlend],
+        stops: [0.0, homeRatio, 1.0],
       );
     }
 
