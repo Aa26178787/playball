@@ -830,9 +830,16 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 duration: const Duration(milliseconds: 150),
                 margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isActive ? tk.ink : Colors.transparent,
+                  // 비활성: paper bg + 약한 그림자 (외곽선 대체)
+                  color: isActive ? tk.ink : tk.paper,
                   borderRadius: BorderRadius.circular(14),
-                  border: isActive ? null : Border.all(color: tk.line2, width: 1),
+                  boxShadow: isActive ? null : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
                 child: Center(
                   child: Text(
@@ -903,9 +910,16 @@ class _TodayGamesTabState extends State<TodayGamesTab>
               width: _itemW - 6,
               margin: const EdgeInsets.symmetric(horizontal: 3),
               decoration: BoxDecoration(
-                color: isSelected ? tk.ink : Colors.transparent,
+                // 비선택: paper bg + 약한 그림자 (외곽선 대체)
+                color: isSelected ? tk.ink : tk.paper,
                 borderRadius: BorderRadius.circular(14),
-                border: isSelected ? null : Border.all(color: tk.line2, width: 1),
+                boxShadow: isSelected ? null : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
