@@ -916,8 +916,28 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   child: _buildFieldScoreOverlay(innings, game),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
             ] else const SizedBox(height: 14),
+
+            // ── WeatherLine (스코어보드 ↓ 팀로고 ↑ 사이) ──
+            if (_weatherData != null) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(width: 7, height: 7,
+                        decoration: BoxDecoration(color: line2, shape: BoxShape.circle)),
+                    const SizedBox(width: 8),
+                    DefaultTextStyle(
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ink3),
+                      child: _buildWeatherRow(_weatherData!),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
 
             // ── MatchupHeader (paper/ink) ──
             Padding(
@@ -1107,25 +1127,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ],
             ],
 
-            // ── WeatherLine ──
-            if (_weatherData != null) ...[
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(width: 7, height: 7,
-                        decoration: BoxDecoration(color: line2, shape: BoxShape.circle)),
-                    const SizedBox(width: 8),
-                    DefaultTextStyle(
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ink3),
-                      child: _buildWeatherRow(_weatherData!),
-                    ),
-                  ],
-                ),
-              ),
-            ],
             const SizedBox(height: 14),
             Container(height: 1, color: line),
           ],
