@@ -646,7 +646,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ? Column(
                   children: [
                     // panel-spacer: 스코어보드/팀로고 등 헤더 영역을 panel로 가림 (panel actual height와 일치)
-                    SizedBox(height: _sameDayGames.isNotEmpty ? 440 : 340),
+                    SizedBox(height: _sameDayGames.isNotEmpty ? 490 : 390),
                     Expanded(
                       // gameHeader skip — 핀 시 panel 바로 아래 TabBarView (득점요약/이닝중계)만 표시
                       child: TabBarView(
@@ -1114,7 +1114,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                     const SizedBox(width: 6),
                                     _bsoOverlayGroup('O', ((_relayData?['current_state']?['out'] as int?) ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
                                     const SizedBox(width: 8),
-                                    // refresh — 동일 size SizedBox로 wrap (spinner/icon shift 방지)
                                     SizedBox(
                                       width: 16, height: 16,
                                       child: _isRelayRefreshing
@@ -1124,22 +1123,31 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                               child: const Icon(Icons.refresh, size: 16, color: Colors.white),
                                             ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    // 핀 토글 — BSO overlay 오른쪽 끝
-                                    GestureDetector(
-                                      onTap: () => setState(() => _fieldPinned = !_fieldPinned),
-                                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                        Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                                            size: 14, color: _fieldPinned ? const Color(0xFFFFA000) : Colors.white),
-                                        const SizedBox(width: 3),
-                                        const Text('고정', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
-                                      ]),
-                                    ),
                                   ],
                                 ),
                               ),
                             ),
                           ),
+                        // 고정 토글 — BSO overlay 오른쪽 별도
+                        Positioned(
+                          top: 8, right: 12,
+                          child: GestureDetector(
+                            onTap: () => setState(() => _fieldPinned = !_fieldPinned),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.55),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                                    size: 14, color: _fieldPinned ? const Color(0xFFFFA000) : Colors.white),
+                                const SizedBox(width: 3),
+                                const Text('고정', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                              ]),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1539,10 +1547,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
 
     final isLive = (game['status'] as String? ?? '') == '진행';
+    final homeCode = game['home_team_code'] as String? ?? '';
+    final awayCode = game['away_team_code'] as String? ?? '';
+    final homeTeam = game['home_team'] as String? ?? '';
+    final awayTeam = game['away_team'] as String? ?? '';
+    final homeScore = _liveScore(game, 'home_score');
+    final awayScore = _liveScore(game, 'away_score');
+    final ink = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
 
     return Container(
       // panel-spacer와 동일 height + 하단 rounded (gameHeader ClipRRect bottom 16과 일치)
-      height: _sameDayGames.isNotEmpty ? 440 : 340,
+      height: _sameDayGames.isNotEmpty ? 490 : 390,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: paper,
@@ -1551,7 +1566,41 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
+          // ── mini-scoreboard: 홈로고 | 스코어 | 원정로고 ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Row(
+              children: [
+                Expanded(child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TeamLogo(teamCode: homeCode, size: 28),
+                    const SizedBox(width: 6),
+                    Flexible(child: Text(homeTeam,
+                        style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+                        overflow: TextOverflow.ellipsis, maxLines: 1)),
+                  ],
+                )),
+                Text('$homeScore : $awayScore',
+                    style: TextStyle(color: ink, fontSize: 20, fontWeight: FontWeight.w800,
+                        fontFeatures: const [FontFeature.tabularFigures()])),
+                Expanded(child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Flexible(child: Text(awayTeam,
+                        textAlign: TextAlign.end,
+                        style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+                        overflow: TextOverflow.ellipsis, maxLines: 1)),
+                    const SizedBox(width: 6),
+                    TeamLogo(teamCode: awayCode, size: 28),
+                  ],
+                )),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: CustomPaint(
@@ -1562,7 +1611,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   children: [
                     const Positioned.fill(child: CustomPaint(painter: _GrassExtensionPainter())),
                     Padding(
-                      // inline field padding과 동일 (BSO overlay ↔ CF 라벨 ~18px gap)
                       padding: const EdgeInsets.fromLTRB(16, 60, 16, 20),
                       child: SizedBox(height: 230, width: double.infinity, child: fieldWidget),
                     ),
@@ -1607,21 +1655,31 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                           child: const Icon(Icons.refresh, size: 16, color: Colors.white),
                                         ),
                                 ),
-                                const SizedBox(width: 8),
-                                GestureDetector(
-                                  onTap: () => setState(() => _fieldPinned = !_fieldPinned),
-                                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                    Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                                        size: 14, color: _fieldPinned ? const Color(0xFFFFA000) : Colors.white),
-                                    const SizedBox(width: 3),
-                                    const Text('고정', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
-                                  ]),
-                                ),
                               ],
                             ),
                           ),
                         ),
                       ),
+                    // 고정 토글 — BSO overlay 오른쪽 별도
+                    Positioned(
+                      top: 8, right: 12,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _fieldPinned = !_fieldPinned),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                                size: 14, color: _fieldPinned ? const Color(0xFFFFA000) : Colors.white),
+                            const SizedBox(width: 3),
+                            const Text('고정', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                          ]),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -4390,13 +4448,14 @@ class _FullFieldView extends StatelessWidget {
     required this.isDark, this.fieldView,
   });
 
-  // 3D perspective projection: vanishing point near top-center
-  // 외야(멀리) → vp로 수렴 (trapezoid), 내야(가까이) → 거의 그대로
+  // 3D perspective projection: 지면과 30~45도 각도 카메라 시점
+  // depth = (1-y)^1.3 → 외야 더 강하게 수렴, 내야 거의 그대로
   static Offset _perspective(Offset src) {
-    final depth = (1 - src.dy).clamp(0.0, 1.0);  // y=1 가까이, y=0 멀리
-    final f = depth * 0.35;
+    final raw = (1 - src.dy).clamp(0.0, 1.0);
+    final depth = math.pow(raw, 1.3).toDouble();  // non-linear depth
+    final f = depth * 0.55;  // 30~45도: 강한 수렴
     const vpX = 0.5;
-    const vpY = -0.05;
+    const vpY = -0.10;
     final newX = src.dx + (vpX - src.dx) * f;
     final newY = src.dy + (vpY - src.dy) * f;
     return Offset(newX, newY);
@@ -4649,12 +4708,13 @@ class _FieldBgPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // Base positions (matches _FullFieldView._baseCoords) + 3D perspective projection
+    // Base positions (matches _FullFieldView._baseCoords) + 3D perspective projection (30~45도)
     Offset proj(Offset src) {
-      final d = (1 - src.dy).clamp(0.0, 1.0);
-      final f = d * 0.35;
+      final raw = (1 - src.dy).clamp(0.0, 1.0);
+      final d = math.pow(raw, 1.3).toDouble();
+      final f = d * 0.55;
       const vpX = 0.5;
-      const vpY = -0.05;
+      const vpY = -0.10;
       return Offset(src.dx + (vpX - src.dx) * f, src.dy + (vpY - src.dy) * f);
     }
     Offset toPixel(Offset src) {
@@ -4693,34 +4753,6 @@ class _FieldBgPainter extends CustomPainter {
     canvas.save();
     canvas.clipPath(ofPath);
     canvas.drawPath(ofPath, grassBase);
-
-    // 잔디 stripe (mowing pattern) — fan-shape (홈에서 외야로 방사형)
-    final stripePaint = Paint()
-      ..color = Colors.black.withOpacity(0.06)
-      ..strokeWidth = 1;
-    for (double ang = -3.14 * 0.88; ang <= -3.14 * 0.12; ang += 3.14 * 0.04) {
-      final p1 = arcCenter;
-      final p2 = Offset(
-        arcCenter.dx + arcR * 1.2 * math.cos(ang),
-        arcCenter.dy + arcR * 1.2 * math.sin(ang),
-      );
-      final stripe = Path()
-        ..moveTo(p1.dx, p1.dy)
-        ..lineTo(p2.dx, p2.dy);
-      // 교차 stripe
-      final ang2 = ang + 3.14 * 0.02;
-      final p3 = Offset(
-        arcCenter.dx + arcR * 1.2 * math.cos(ang2),
-        arcCenter.dy + arcR * 1.2 * math.sin(ang2),
-      );
-      final fill = Path()
-        ..moveTo(p1.dx, p1.dy)
-        ..lineTo(p2.dx, p2.dy)
-        ..lineTo(p3.dx, p3.dy)
-        ..close();
-      canvas.drawPath(fill, Paint()..color = Colors.black.withOpacity(0.05));
-      canvas.drawPath(stripe, stripePaint);
-    }
     canvas.restore();
 
     // 잔디 외곽 (warning track) — 황토 띠
@@ -4925,33 +4957,6 @@ class _GrassExtensionPainter extends CustomPainter {
     canvas.save();
     canvas.clipPath(fullPath);
     canvas.drawPath(fullPath, grassBase);
-
-    // stripe (mowing pattern) — inner painter와 동일 (각도/색)
-    final stripePaint = Paint()
-      ..color = Colors.black.withOpacity(0.06)
-      ..strokeWidth = 1;
-    for (double ang = -3.14 * 0.88; ang <= -3.14 * 0.12; ang += 3.14 * 0.04) {
-      final p1 = arcCenter;
-      final p2 = Offset(
-        arcCenter.dx + arcR * 1.2 * math.cos(ang),
-        arcCenter.dy + arcR * 1.2 * math.sin(ang),
-      );
-      final ang2 = ang + 3.14 * 0.02;
-      final p3 = Offset(
-        arcCenter.dx + arcR * 1.2 * math.cos(ang2),
-        arcCenter.dy + arcR * 1.2 * math.sin(ang2),
-      );
-      final fill = Path()
-        ..moveTo(p1.dx, p1.dy)
-        ..lineTo(p2.dx, p2.dy)
-        ..lineTo(p3.dx, p3.dy)
-        ..close();
-      canvas.drawPath(fill, Paint()..color = Colors.black.withOpacity(0.05));
-      final stripe = Path()
-        ..moveTo(p1.dx, p1.dy)
-        ..lineTo(p2.dx, p2.dy);
-      canvas.drawPath(stripe, stripePaint);
-    }
     canvas.restore();
   }
 
