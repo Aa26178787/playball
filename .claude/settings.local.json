@@ -108,7 +108,8 @@
       "Bash(grep -n \"^class GameCard\\\\|^class _PredictionBar\\\\|^}$\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")",
       "Bash(grep -n \"득점 요약\\\\|_buildScoringSection\\\\|scoringSummary\\\\|\\\\\\\\\\\\\\\\n초\\\\|\\\\\\\\\\\\\\\\n말\\\\|초/말\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\game\\\\game_detail_screen.dart\")",
       "Bash(grep -rn \"0xFF1A237E\\\\|AppColors\\\\\\\\.primary\\\\|0xFF7B8FFF\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\")",
-      "Bash(grep -rln \"0xFF1A237E\\\\|AppColors\\\\\\\\.primary\\\\|0xFF7B8FFF\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\")"
+      "Bash(grep -rln \"0xFF1A237E\\\\|AppColors\\\\\\\\.primary\\\\|0xFF7B8FFF\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\")",
+      "Bash(grep -n \"child: Padding\\(\\\\$\\\\|EdgeInsets.all\\(15\\)\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")"
     ]
   }
 }

@@ -1879,26 +1879,39 @@ class GameCard extends StatelessWidget {
   Widget _teamSide({
     required String code, required String name, required int? rank,
     required bool isHome, required bool isWinner,
-    required List<String> recent, required Color teamColorAccent, required _Tok t,
-    required bool isDark,
+    required List<String> recent,
+    required Color accent,
+    required _Tok t, required bool isDark,
   }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        TeamLogo(teamCode: code, size: 46),
+        // 승팀 outer ring (inset: -3 = 52 size around 46 logo)
+        SizedBox(
+          width: 52, height: 52,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (isWinner)
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: accent, width: 2),
+                  ),
+                ),
+              TeamLogo(teamCode: code, size: 46),
+            ],
+          ),
+        ),
         const SizedBox(height: 7),
         Text(name,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: isWinner ? FontWeight.w900 : FontWeight.w800,
-              color: t.ink, letterSpacing: -0.15,
-            ),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: -0.15),
             maxLines: 1, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 5),
         Text(rank != null ? '${rank}위' : (isHome ? '홈' : '원정'),
             style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.sub)),
         const SizedBox(height: 7),
-        _buildMini5(isHome ? recent.reversed.toList() : recent, teamColorAccent, t, isDark),
+        _buildMini5(isHome ? recent.reversed.toList() : recent, isWinner ? accent : t.ink, t, isDark),
       ],
     );
   }
@@ -1976,22 +1989,8 @@ class GameCard extends StatelessWidget {
     final homeColor = teamColor(game.homeTeamCode);
     final awayColor = teamColor(game.awayTeamCode);
     final myColor = isMyTeam ? homeColor : awayColor;
-
-    // 그라데이션: 진행중/예정/라인업만 (종료/취소 = solid + 외곽선)
-    Gradient? winGradient;
-    final totalScore = game.homeScore + game.awayScore;
-    if (!isCancelled && !isFinished) {
-      final hasScore = isLive && totalScore > 0;
-      final homeRatio = hasScore ? (game.homeScore / totalScore).toDouble() : 0.5;
-      final homeBlend = Color.alphaBlend(homeColor.withValues(alpha: isDark ? 0.28 : 0.13), t.paper);
-      final awayBlend = Color.alphaBlend(awayColor.withValues(alpha: isDark ? 0.28 : 0.13), t.paper);
-      final midColor = Color.lerp(homeBlend, awayBlend, 0.5)!;
-      winGradient = LinearGradient(
-        begin: Alignment.centerLeft, end: Alignment.centerRight,
-        colors: [homeBlend, midColor, awayBlend],
-        stops: [0.0, homeRatio, 1.0],
-      );
-    }
+    // accent: 마이팀이면 팀색, 아니면 ink (승팀 강조용)
+    final accent = isMyTeam ? myColor : t.ink;
 
     // ── 상태 pill ──
     Widget statusPill() {
@@ -2053,16 +2052,36 @@ class GameCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: winGradient == null ? t.paper : null,
-        gradient: winGradient,
+        color: isMyTeam ? myColor.withValues(alpha: isDark ? 0.14 : 0.06) : t.paper,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: t.line, width: 1),
-        boxShadow: !isDark ? [
+        border: Border.all(
+          color: isMyTeam ? myColor.withValues(alpha: isDark ? 0.50 : 0.32) : t.line,
+          width: 1,
+        ),
+        boxShadow: (!isMyTeam && !isDark) ? [
           BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 2, offset: const Offset(0, 1)),
         ] : null,
       ),
       clipBehavior: Clip.antiAlias,
-      child: Material(
+      child: Stack(
+        children: [
+          // ── 승팀 로고 배경 overlay (불투명도 낮춤, 크게) ──
+          if (homeWon || awayWon)
+            Positioned(
+              top: -20, bottom: -20,
+              left: homeWon ? -40 : null,
+              right: awayWon ? -40 : null,
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity: isDark ? 0.10 : 0.08,
+                  child: TeamLogo(
+                    teamCode: homeWon ? game.homeTeamCode : game.awayTeamCode,
+                    size: 200,
+                  ),
+                ),
+              ),
+            ),
+          Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
@@ -2096,7 +2115,7 @@ class GameCard extends StatelessWidget {
                     Expanded(child: _teamSide(
                       code: game.homeTeamCode, name: game.homeTeam, rank: homeRank,
                       isHome: true, isWinner: homeWon,
-                      recent: game.homeRecent5, teamColorAccent: homeColor, t: t, isDark: isDark,
+                      recent: game.homeRecent5, accent: accent, t: t, isDark: isDark,
                     )),
                     SizedBox(
                       width: 86,
@@ -2120,10 +2139,8 @@ class GameCard extends StatelessWidget {
                               children: [
                                 Text('${game.homeScore}',
                                     style: TextStyle(
-                                      fontSize: homeWon ? 32 : 28,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -0.6,
-                                      color: homeWon ? t.ink : (isDraw ? t.ink : t.ink2.withValues(alpha: 0.7)),
+                                      fontSize: 28, fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.6, color: t.ink,
                                       fontFeatures: const [FontFeature.tabularFigures()],
                                     )),
                                 Padding(
@@ -2135,14 +2152,18 @@ class GameCard extends StatelessWidget {
                                 ),
                                 Text('${game.awayScore}',
                                     style: TextStyle(
-                                      fontSize: awayWon ? 32 : 28,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -0.6,
-                                      color: awayWon ? t.ink : (isDraw ? t.ink : t.ink2.withValues(alpha: 0.7)),
+                                      fontSize: 28, fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.6, color: t.ink,
                                       fontFeatures: const [FontFeature.tabularFigures()],
                                     )),
                               ],
                             ),
+                          if (isLive) ...[
+                            const SizedBox(height: 6),
+                            Text('${game.currentInning ?? 0}회 ${game.inningHalf ?? ''}',
+                                style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: _kLiveRed),
+                                textAlign: TextAlign.center),
+                          ],
                           if (isFinished && isDraw) ...[
                             const SizedBox(height: 6),
                             Text('무승부',
@@ -2155,7 +2176,7 @@ class GameCard extends StatelessWidget {
                     Expanded(child: _teamSide(
                       code: game.awayTeamCode, name: game.awayTeam, rank: awayRank,
                       isHome: false, isWinner: awayWon,
-                      recent: game.awayRecent5, teamColorAccent: awayColor, t: t, isDark: isDark,
+                      recent: game.awayRecent5, accent: accent, t: t, isDark: isDark,
                     )),
                   ],
                 ),
@@ -2231,6 +2252,8 @@ class GameCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
+        ],
       ),
     );
   }
