@@ -60,8 +60,9 @@ class _StadiumScreenState extends State<StadiumScreen> {
       'city': '대전',
       'teams': ['HH'],
       'teamNames': '한화',
-      'lat': 36.31716,
-      'lng': 127.42915,
+      // 한밭종합운동장 야구장 바로 옆 신축 (북쪽 약 150m)
+      'lat': 36.31836,
+      'lng': 127.42907,
       'address': '대전 중구 대종로 373',
     },
     {
@@ -128,7 +129,7 @@ var stadiums = [
   {lat:37.4982, lng:126.8672, name:'고척스카이돔'},
   {lat:37.2997, lng:127.0095, name:'KT위즈파크'},
   {lat:37.4370, lng:126.6934, name:'SSG랜더스필드'},
-  {lat:36.31716, lng:127.42915, name:'대전한화생명볼파크'},
+  {lat:36.31836, lng:127.42907, name:'대전한화생명볼파크'},
   {lat:35.1685, lng:126.8890, name:'광주기아챔피언스필드'},
   {lat:35.8411, lng:128.6813, name:'삼성라이온즈파크'},
   {lat:35.2225, lng:128.5816, name:'창원NC파크'},
