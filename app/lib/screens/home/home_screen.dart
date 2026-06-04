@@ -2082,42 +2082,52 @@ class GameCard extends StatelessWidget {
                     )),
                   ],
                 ),
-                // ── divider + 선발 / 다음 ──
+                // ── 정보 strip (좌우 대칭: 홈 좌 / 원정 우) ──
                 if (showStrip) ...[
                   Container(
                     height: 1, color: t.line,
                     margin: const EdgeInsets.fromLTRB(0, 13, 0, 11),
                   ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // 선발/승투
-                      Expanded(child: _strippedLabel(
-                        label: hasPitchers ? '결과' : '선발',
-                        value: hasPitchers
-                            ? _buildPitcherValue(t, homeWon, awayWon)
-                            : _buildStarterValue(t, game.homeStarter, game.awayStarter),
-                        t: t,
-                      )),
+                      // 승투/패투 row (종료 시)
+                      if (hasPitchers) ...[
+                        Row(
+                          children: [
+                            _symmetricPitcher(t, homeWon, true),
+                            const Spacer(),
+                            _symmetricPitcher(t, homeWon, false),
+                          ],
+                        ),
+                        const SizedBox(height: 7),
+                      ],
+                      // 선발 row
+                      if (hasStarters) ...[
+                        Row(
+                          children: [
+                            if (game.homeStarter != null) _starterChip(game.homeStarter!, t)
+                            else const SizedBox.shrink(),
+                            const Spacer(),
+                            if (game.awayStarter != null) _starterChip(game.awayStarter!, t)
+                            else const SizedBox.shrink(),
+                          ],
+                        ),
+                        const SizedBox(height: 7),
+                      ],
+                      // 다음 시리즈 row
                       if (hasNext)
-                        Builder(builder: (_) {
-                          final ns = nextHomeSeries ?? nextAwaySeries!;
-                          return Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('다음 ',
-                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: t.sub)),
-                              TeamLogo(teamCode: ns['code'] ?? '', size: 18),
-                              const SizedBox(width: 4),
-                              ConstrainedBox(
-                                constraints: const BoxConstraints(maxWidth: 100),
-                                child: Text('vs ${ns['name'] ?? ''}',
-                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.ink3),
-                                    overflow: TextOverflow.ellipsis),
-                              ),
-                            ],
-                          );
-                        }),
+                        Row(
+                          children: [
+                            if (nextHomeSeries != null)
+                              _nextSeriesInline(nextHomeSeries!, t)
+                            else const SizedBox.shrink(),
+                            const Spacer(),
+                            if (nextAwaySeries != null)
+                              _nextSeriesInline(nextAwaySeries!, t)
+                            else const SizedBox.shrink(),
+                          ],
+                        ),
                     ],
                   ),
                 ],
@@ -2140,6 +2150,60 @@ class GameCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _symmetricPitcher(_Tok t, bool homeWon, bool isLeftSide) {
+    // 좌측 = 홈, 우측 = 원정
+    final isHomeSide = isLeftSide;
+    final isWinSide = isHomeSide == homeWon;
+    final name = isWinSide ? game.winPitcher : game.losePitcher;
+    if (name == null) return const SizedBox.shrink();
+    final label = isWinSide ? '승' : '패';
+    final col = isWinSide ? const Color(0xFF1976D2) : const Color(0xFFC62828);
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: col.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(label, style: TextStyle(fontSize: 9, color: col, fontWeight: FontWeight.w800)),
+    );
+    final nameText = Text(name,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2),
+        overflow: TextOverflow.ellipsis, maxLines: 1);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: isLeftSide
+          ? [badge, const SizedBox(width: 4), nameText]
+          : [nameText, const SizedBox(width: 4), badge],
+    );
+  }
+
+  Widget _nextSeriesInline(Map<String, String> series, _Tok t) {
+    final dateStr = series['date'] ?? '';
+    String dateLabel = '';
+    if (dateStr.length >= 10) {
+      final parts = dateStr.split('-');
+      if (parts.length == 3) {
+        final m = int.tryParse(parts[1]) ?? 0;
+        final d = int.tryParse(parts[2]) ?? 0;
+        if (m > 0 && d > 0) dateLabel = ' $m/$d~';
+      }
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('다음 ', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w500, color: t.sub)),
+        TeamLogo(teamCode: series['code'] ?? '', size: 15),
+        const SizedBox(width: 3),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 90),
+          child: Text('${series['name'] ?? ''}$dateLabel',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.ink3),
+              overflow: TextOverflow.ellipsis, maxLines: 1),
+        ),
+      ],
     );
   }
 
