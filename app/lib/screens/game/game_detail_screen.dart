@@ -999,15 +999,18 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   painter: _DashedRectPainter(color: line2, radius: 16, dashLength: 6, gap: 4),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                      // painter radial gradient corner t≈0.66 (mid stop ~#6BB05A) + stripe 0.05 black overlay
-                      // outer 단색 = painter edge 실제 색 매칭
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        color: const Color(0xFF65A754),
-                      ),
-                      child: SizedBox(height: 190, width: double.infinity, child: fieldWidget),
+                    child: Stack(
+                      children: [
+                        // Layer 1: 잔디 확장 painter — inner painter와 같은 center/radius로 gradient/stripe 연결
+                        const Positioned.fill(
+                          child: CustomPaint(painter: _GrassExtensionPainter()),
+                        ),
+                        // Layer 2: inner 필드 (다이아몬드 + 선수)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+                          child: SizedBox(height: 190, width: double.infinity, child: fieldWidget),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -4628,6 +4631,74 @@ class _FieldBgPainter extends CustomPainter {
   @override
   bool shouldRepaint(_FieldBgPainter old) =>
       old.base1 != base1 || old.base2 != base2 || old.base3 != base3 || old.isDark != isDark;
+}
+
+// 잔디 확장 painter — outer slot 전체 grass + stripe (inner painter와 동일 center/radius 좌표 사용)
+// 슬롯 padding (16/20) 영역 너머까지 gradient/stripe 자연스럽게 이어짐
+class _GrassExtensionPainter extends CustomPainter {
+  const _GrassExtensionPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final innerW = w - 32; // padding horizontal 16*2
+    // inner painter arcCenter (= inner_w*0.5, inner_h*0.95) absolute로 매핑
+    final arcCenter = Offset(w * 0.5, 20 + (h - 40) * 0.95);
+    final arcR = innerW * 1.10;
+
+    final fullPath = Path()
+      ..moveTo(0, 0)
+      ..lineTo(w, 0)
+      ..lineTo(w, h)
+      ..lineTo(0, h)
+      ..close();
+
+    final grassBase = Paint()
+      ..shader = ui.Gradient.radial(
+        arcCenter, arcR,
+        [
+          const Color(0xFF4A8C3E),
+          const Color(0xFF6BB05A),
+          const Color(0xFF7BC068),
+        ],
+        const [0.0, 0.6, 1.0],
+      );
+    canvas.save();
+    canvas.clipPath(fullPath);
+    canvas.drawPath(fullPath, grassBase);
+
+    // stripe (mowing pattern) — inner painter와 동일 (각도/색)
+    final stripePaint = Paint()
+      ..color = Colors.black.withOpacity(0.06)
+      ..strokeWidth = 1;
+    for (double ang = -3.14 * 0.88; ang <= -3.14 * 0.12; ang += 3.14 * 0.04) {
+      final p1 = arcCenter;
+      final p2 = Offset(
+        arcCenter.dx + arcR * 1.2 * math.cos(ang),
+        arcCenter.dy + arcR * 1.2 * math.sin(ang),
+      );
+      final ang2 = ang + 3.14 * 0.02;
+      final p3 = Offset(
+        arcCenter.dx + arcR * 1.2 * math.cos(ang2),
+        arcCenter.dy + arcR * 1.2 * math.sin(ang2),
+      );
+      final fill = Path()
+        ..moveTo(p1.dx, p1.dy)
+        ..lineTo(p2.dx, p2.dy)
+        ..lineTo(p3.dx, p3.dy)
+        ..close();
+      canvas.drawPath(fill, Paint()..color = Colors.black.withOpacity(0.05));
+      final stripe = Path()
+        ..moveTo(p1.dx, p1.dy)
+        ..lineTo(p2.dx, p2.dy);
+      canvas.drawPath(stripe, stripePaint);
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_GrassExtensionPainter old) => false;
 }
 
 class _DashedRectPainter extends CustomPainter {
