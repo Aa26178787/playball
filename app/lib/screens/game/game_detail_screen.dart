@@ -4260,10 +4260,10 @@ class _FullFieldView extends StatelessWidget {
               ),
             ),
           ),
-          // player widgets는 inner padded 영역 안 (chip 잘림 방지)
+          // player widgets는 슬롯 전체 영역 안 (placed의 clamp로 chip boundary 강제)
           Positioned.fill(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(36, 22, 36, 28),
+              padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [

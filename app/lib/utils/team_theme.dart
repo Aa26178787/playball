@@ -72,12 +72,18 @@ class TeamLogo extends StatelessWidget {
     }
 
     if (resolvedUrl != null) {
+      // 큰 사이즈일수록 고품질 보간 (FilterQuality.high = bicubic)
+      final fq = size >= 80 ? FilterQuality.high : FilterQuality.medium;
       return ClipOval(
         child: CachedNetworkImage(
           imageUrl: resolvedUrl,
           width: size,
           height: size,
           fit: BoxFit.cover,
+          filterQuality: fq,
+          // memCacheWidth/Height: 메모리 캐시도 큰 사이즈 보장 (display 2x for retina)
+          memCacheWidth: (size * 2).toInt().clamp(100, 800),
+          memCacheHeight: (size * 2).toInt().clamp(100, 800),
           fadeInDuration: Duration.zero,
           fadeOutDuration: Duration.zero,
           errorWidget: (ctx, url, err) => _avatar(color, abbr),
