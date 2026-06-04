@@ -135,26 +135,26 @@ class _FloatingNavBar extends StatelessWidget {
   final List<Map<String, dynamic>> myTeamItems;
   final void Function(Map<String, dynamic>)? onMyTeamTap;
 
-  BoxDecoration _pillDecoration() => BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: isDark ? Colors.black45 : Colors.black.withOpacity(0.12),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(
-          color: isDark ? AppColors.borderDark : AppColors.borderLight,
-          width: 0.8,
+  BoxDecoration _pillDecoration() {
+    final tk = _Tok.of(isDark);
+    return BoxDecoration(
+      color: tk.paper,
+      borderRadius: BorderRadius.circular(30),
+      boxShadow: [
+        BoxShadow(
+          color: isDark ? Colors.black45 : Colors.black.withValues(alpha: 0.08),
+          blurRadius: 16, offset: const Offset(0, 4),
         ),
-      );
+      ],
+      border: Border.all(color: tk.line, width: 1),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = isDark ? const Color(0xFF7B8FFF) : AppColors.primary;
-    final inactiveColor = isDark ? Colors.white38 : AppColors.textTertiary;
+    final tk = _Tok.of(isDark);
+    final activeColor = tk.ink;
+    final inactiveColor = tk.sub;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1852,8 +1852,14 @@ class GameCard extends StatelessWidget {
     required bool isHome, required bool isWinner,
     required List<String> recent, required Color teamColorAccent, required _Tok t,
     required bool isDark,
+    String? starter,                          // 선발 (예정/진행)
+    String? pitcher, String? pitcherLabel,    // 승투/패투 (종료)
+    Color? pitcherLabelColor,
+    Map<String, String>? nextSeries,
   }) {
+    final align = isHome ? CrossAxisAlignment.start : CrossAxisAlignment.end;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
         TeamLogo(teamCode: code, size: 46),
@@ -1870,9 +1876,47 @@ class GameCard extends StatelessWidget {
             style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.sub)),
         const SizedBox(height: 7),
         _buildMini5(isHome ? recent.reversed.toList() : recent, teamColorAccent, t, isDark),
+        // ── 선발/승투/패투 inline ──
+        if (pitcher != null || starter != null) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: isHome ? Alignment.centerLeft : Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: pitcher != null
+                  ? (isHome
+                      ? [_pitcherBadge(pitcherLabel!, pitcherLabelColor!), const SizedBox(width: 4),
+                          _pitcherName(pitcher, t)]
+                      : [_pitcherName(pitcher, t), const SizedBox(width: 4),
+                          _pitcherBadge(pitcherLabel!, pitcherLabelColor!)])
+                  : [_starterChip(starter!, t)],
+            ),
+          ),
+        ],
+        // ── 다음 시리즈 inline ──
+        if (nextSeries != null) ...[
+          const SizedBox(height: 6),
+          Align(
+            alignment: isHome ? Alignment.centerLeft : Alignment.centerRight,
+            child: _nextSeriesInline(nextSeries, t),
+          ),
+        ],
       ],
     );
   }
+
+  Widget _pitcherBadge(String label, Color col) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+    decoration: BoxDecoration(
+      color: col.withValues(alpha: 0.15),
+      borderRadius: BorderRadius.circular(4),
+    ),
+    child: Text(label, style: TextStyle(fontSize: 9, color: col, fontWeight: FontWeight.w800)),
+  );
+
+  Widget _pitcherName(String name, _Tok t) => Text(name,
+      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2),
+      overflow: TextOverflow.ellipsis, maxLines: 1);
 
   @override
   Widget build(BuildContext context) {
@@ -1962,11 +2006,9 @@ class GameCard extends StatelessWidget {
       );
     }
 
-    // ── 정보 strip ──
+    // ── 정보 (TeamSide에 inline 통합) ──
     final hasPitchers = isFinished && !isDraw && (game.winPitcher != null || game.losePitcher != null);
     final hasStarters = showStarters && (game.homeStarter != null || game.awayStarter != null);
-    final hasNext = nextHomeSeries != null || nextAwaySeries != null;
-    final showStrip = hasPitchers || hasStarters || hasNext;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -2015,6 +2057,13 @@ class GameCard extends StatelessWidget {
                       code: game.homeTeamCode, name: game.homeTeam, rank: homeRank,
                       isHome: true, isWinner: homeWon,
                       recent: game.homeRecent5, teamColorAccent: homeColor, t: t, isDark: isDark,
+                      starter: hasStarters ? game.homeStarter : null,
+                      pitcher: hasPitchers ? (homeWon ? game.winPitcher : game.losePitcher) : null,
+                      pitcherLabel: hasPitchers ? (homeWon ? '승' : '패') : null,
+                      pitcherLabelColor: hasPitchers
+                          ? (homeWon ? const Color(0xFF1976D2) : const Color(0xFFC62828))
+                          : null,
+                      nextSeries: nextHomeSeries,
                     )),
                     SizedBox(
                       width: 86,
@@ -2074,58 +2123,16 @@ class GameCard extends StatelessWidget {
                       code: game.awayTeamCode, name: game.awayTeam, rank: awayRank,
                       isHome: false, isWinner: awayWon,
                       recent: game.awayRecent5, teamColorAccent: awayColor, t: t, isDark: isDark,
+                      starter: hasStarters ? game.awayStarter : null,
+                      pitcher: hasPitchers ? (awayWon ? game.winPitcher : game.losePitcher) : null,
+                      pitcherLabel: hasPitchers ? (awayWon ? '승' : '패') : null,
+                      pitcherLabelColor: hasPitchers
+                          ? (awayWon ? const Color(0xFF1976D2) : const Color(0xFFC62828))
+                          : null,
+                      nextSeries: nextAwaySeries,
                     )),
                   ],
                 ),
-                // ── 정보 strip (좌우 대칭: 홈 좌 / 원정 우) ──
-                if (showStrip) ...[
-                  Container(
-                    height: 1, color: t.line,
-                    margin: const EdgeInsets.fromLTRB(0, 13, 0, 11),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // 승투/패투 row (종료 시)
-                      if (hasPitchers) ...[
-                        Row(
-                          children: [
-                            _symmetricPitcher(t, homeWon, true),
-                            const Spacer(),
-                            _symmetricPitcher(t, homeWon, false),
-                          ],
-                        ),
-                        const SizedBox(height: 7),
-                      ],
-                      // 선발 row
-                      if (hasStarters) ...[
-                        Row(
-                          children: [
-                            if (game.homeStarter != null) _starterChip(game.homeStarter!, t)
-                            else const SizedBox.shrink(),
-                            const Spacer(),
-                            if (game.awayStarter != null) _starterChip(game.awayStarter!, t)
-                            else const SizedBox.shrink(),
-                          ],
-                        ),
-                        const SizedBox(height: 7),
-                      ],
-                      // 다음 시리즈 row
-                      if (hasNext)
-                        Row(
-                          children: [
-                            if (nextHomeSeries != null)
-                              _nextSeriesInline(nextHomeSeries!, t)
-                            else const SizedBox.shrink(),
-                            const Spacer(),
-                            if (nextAwaySeries != null)
-                              _nextSeriesInline(nextAwaySeries!, t)
-                            else const SizedBox.shrink(),
-                          ],
-                        ),
-                    ],
-                  ),
-                ],
                 if (showPrediction) ...[
                   Container(
                     height: 1, color: t.line,
