@@ -2076,6 +2076,7 @@ class GameCard extends StatelessWidget {
     // ── 상태 pill ──
     Widget statusPill() {
       if (isLive) {
+        // 라이브: LIVE dot + 'N회 초/말'
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
@@ -2086,8 +2087,8 @@ class GameCard extends StatelessWidget {
             Container(width: 5, height: 5,
                 decoration: const BoxDecoration(color: _kLiveRed, shape: BoxShape.circle)),
             const SizedBox(width: 5),
-            const Text('LIVE',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _kLiveRed)),
+            Text('${game.currentInning ?? 0}회 ${game.inningHalf ?? ''}',
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _kLiveRed)),
           ]),
         );
       }
@@ -2118,10 +2119,11 @@ class GameCard extends StatelessWidget {
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFFFA000))),
         );
       }
+      // 예정 + 그 외 상태: 상태 텍스트만 (시작시간 X — 시간은 score 자리에 표시)
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(999)),
-        child: Text(game.startTime ?? game.status,
+        child: Text(game.status.isEmpty ? '예정' : game.status,
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2)),
       );
     }
