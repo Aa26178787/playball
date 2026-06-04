@@ -667,29 +667,34 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildSameDayStrip() {
+    // mockup MiniGames — 2-col grid
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink   = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
-    final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final paper2= isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
     final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     const live  = Color(0xFFE53935);
 
-    return LayoutBuilder(builder: (context, constraints) {
-      final screenW = constraints.maxWidth > 0
-          ? constraints.maxWidth
-          : MediaQuery.of(context).size.width;
-      final cardW = screenW / 4;
-
-      return Container(
-        color: paper,
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-        child: SizedBox(
-          height: 70,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.zero,
+    return Container(
+      color: paper,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10, left: 2),
+            child: Text('다른 경기',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.3)),
+          ),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 8, crossAxisSpacing: 8,
+              childAspectRatio: 2.6,
+            ),
             itemCount: _sameDayGames.length,
             itemBuilder: (_, i) {
               final g = _sameDayGames[i] as Map;
@@ -710,25 +715,15 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               }
 
               return GestureDetector(
-                onTap: isCurrent
-                    ? null
-                    : () => Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => GameDetailScreen(gameId: g['id'] as int),
-                          ),
-                        ),
+                onTap: isCurrent ? null
+                    : () => Navigator.pushReplacement(context,
+                        MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: g['id'] as int))),
                 child: Container(
-                  width: cardW - 8,
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 11),
                   decoration: BoxDecoration(
                     color: isCurrent ? paper2 : paper,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isCurrent ? ink : line,
-                      width: isCurrent ? 1.5 : 1,
-                    ),
+                    border: Border.all(color: isCurrent ? ink : line, width: isCurrent ? 1.5 : 1),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -736,14 +731,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          TeamLogo(teamCode: awayCode, size: 22),
-                          const SizedBox(width: 4),
-                          Text('vs', style: TextStyle(fontSize: 9, color: sub, fontWeight: FontWeight.w600)),
-                          const SizedBox(width: 4),
-                          TeamLogo(teamCode: homeCode, size: 22),
+                          TeamLogo(teamCode: awayCode, size: 24),
+                          const SizedBox(width: 8),
+                          Text('vs', style: TextStyle(fontSize: 10, color: sub, fontWeight: FontWeight.w600)),
+                          const SizedBox(width: 8),
+                          TeamLogo(teamCode: homeCode, size: 24),
                         ],
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
@@ -767,9 +762,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               );
             },
           ),
-        ),
-      );
-    });
+        ],
+      ),
+    );
   }
 
   // 진행중 게임: _relayData.current_state 우선 사용 (Naver 직조회 — DB(30s 사이클)보다 fresh)
@@ -907,10 +902,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   Expanded(
                     child: Column(
                       children: [
-                        TeamLogo(teamCode: homeCode, size: 44),
+                        TeamLogo(teamCode: homeCode, size: 56),
                         const SizedBox(height: 6),
                         Text(shortName(homeTeam),
-                            style: TextStyle(color: ink, fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
+                            style: TextStyle(color: ink, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
                         if (homeRank != null && homeRank > 0)
                           Text('${homeRank}위', style: TextStyle(color: sub, fontSize: 10, fontWeight: FontWeight.w600)),
                         if (homeWinRate != null) ...[
@@ -970,10 +965,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   Expanded(
                     child: Column(
                       children: [
-                        TeamLogo(teamCode: awayCode, size: 44),
+                        TeamLogo(teamCode: awayCode, size: 56),
                         const SizedBox(height: 6),
                         Text(shortName(awayTeam),
-                            style: TextStyle(color: ink, fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
+                            style: TextStyle(color: ink, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
                         if (awayRank != null && awayRank > 0)
                           Text('${awayRank}위', style: TextStyle(color: sub, fontSize: 10, fontWeight: FontWeight.w600)),
                         if (awayWinRate != null) ...[
