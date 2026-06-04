@@ -651,8 +651,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           _fieldPinned
               ? Column(
                   children: [
-                    // panel-spacer: 스코어보드/팀로고 등 헤더 영역을 panel로 가림
-                    SizedBox(height: _sameDayGames.isNotEmpty ? 460 : 360),
+                    // panel-spacer: 스코어보드/팀로고 등 헤더 영역을 panel로 가림 (panel actual height와 일치)
+                    SizedBox(height: _sameDayGames.isNotEmpty ? 410 : 330),
                     Expanded(
                       // gameHeader skip — 핀 시 panel 바로 아래 TabBarView (득점요약/이닝중계)만 표시
                       child: TabBarView(
@@ -1533,7 +1533,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return Container(
       color: paper,
       // panel-spacer와 동일 height 강제 — 빈 공간 발생 시 scaffold body 검은 띠 노출 방지
-      height: _sameDayGames.isNotEmpty ? 460 : 360,
+      height: _sameDayGames.isNotEmpty ? 410 : 330,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
