@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-// 모든 사이즈에서 위키피디아 500px PNG 사용 — Naver f92_88 작은 사이즈 깨짐 fix
-// 한 번 다운로드 후 모든 표시 사이즈 재사용 (memCacheWidth로 사이즈별 decode)
+// 일반 사이즈 (size < 200): Naver CDN f92_88 (기존 원본)
 const Map<String, String> kTeamLogoUrls = {
-  'LG': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/LG_Twins_insignia.svg/500px-LG_Twins_insignia.svg.png',
+  'LG': 'https://sports-phinf.pstatic.net/team/kbo/default/LG.png?type=f92_88',
+  'KT': 'https://sports-phinf.pstatic.net/team/kbo/default/KT.png?type=f92_88',
+  'SK': 'https://sports-phinf.pstatic.net/team/kbo/default/SK.png?type=f92_88',
+  'NC': 'https://sports-phinf.pstatic.net/team/kbo/default/NC.png?type=f92_88',
+  'OB': 'https://sports-phinf.pstatic.net/team/kbo/default/OB.png?type=f92_88',
+  'HT': 'https://sports-phinf.pstatic.net/team/kbo/default/HT.png?type=f92_88',
+  'LT': 'https://sports-phinf.pstatic.net/team/kbo/default/LT.png?type=f92_88',
+  'SS': 'https://sports-phinf.pstatic.net/team/kbo/default/SS.png?type=f92_88',
+  'HH': 'https://sports-phinf.pstatic.net/team/kbo/default/HH.png?type=f92_88',
+  'WO': 'https://sports-phinf.pstatic.net/team/kbo/default/WO.png?type=f92_88',
+};
+
+// overlay (size >= 200): 위키피디아 500px PNG — 고화질
+// LG: en wiki 2017 logo (최신 트윈스 로고)
+const Map<String, String> kTeamOverlayLogoUrls = {
+  'LG': 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a7/LG_Twins_2017_logo.svg/500px-LG_Twins_2017_logo.svg.png',
   'KT': 'https://upload.wikimedia.org/wikipedia/en/thumb/e/e5/KT_Wiz.svg/500px-KT_Wiz.svg.png',
   'SK': 'https://upload.wikimedia.org/wikipedia/en/thumb/8/86/SSG_Landers.png/500px-SSG_Landers.png',
   'NC': 'https://upload.wikimedia.org/wikipedia/en/thumb/5/54/NC_Dinos_Emblem.svg/500px-NC_Dinos_Emblem.svg.png',
@@ -64,21 +78,32 @@ class TeamLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = teamColor(teamCode);
     final abbr = teamDisplayName(teamCode);
-    final resolvedUrl = (logoUrl != null && logoUrl!.isNotEmpty)
+    var resolvedUrl = (logoUrl != null && logoUrl!.isNotEmpty)
         ? logoUrl!
         : kTeamLogoUrls[teamCode];
 
+    // overlay (size >= 200): 위키피디아 고화질 URL swap (logoUrl override 없을 때만)
+    if (size >= 200 && (logoUrl == null || logoUrl!.isEmpty)) {
+      final overlayUrl = kTeamOverlayLogoUrls[teamCode];
+      if (overlayUrl != null) resolvedUrl = overlayUrl;
+    }
+    // 고해상도 요청: size >= 80이면 Naver CDN f400_400로 upgrade
+    else if (resolvedUrl != null && size >= 80) {
+      resolvedUrl = resolvedUrl.replaceAll('type=f92_88', 'type=f400_400');
+    }
+
     if (resolvedUrl != null) {
-      // overlay (size >= 200): 원형 clip X + contain (로고 비율 유지)
+      // 큰 사이즈일수록 고품질 보간
+      final fq = size >= 80 ? FilterQuality.high : FilterQuality.medium;
       final isOverlay = size >= 200;
       final img = CachedNetworkImage(
         imageUrl: resolvedUrl,
         width: size,
         height: size,
         fit: isOverlay ? BoxFit.contain : BoxFit.cover,
-        filterQuality: FilterQuality.high,
-        memCacheWidth: (size * 2).toInt().clamp(80, 800),
-        memCacheHeight: (size * 2).toInt().clamp(80, 800),
+        filterQuality: fq,
+        memCacheWidth: (size * 2).toInt().clamp(100, 800),
+        memCacheHeight: (size * 2).toInt().clamp(100, 800),
         fadeInDuration: Duration.zero,
         fadeOutDuration: Duration.zero,
         errorWidget: (ctx, url, err) => _avatar(color, abbr),
