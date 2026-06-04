@@ -884,18 +884,21 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             // ── ScoreBoardDark (mockup 다크 박스 유지) ──
-            if (innings.isNotEmpty)
+            if (innings.isNotEmpty) ...[
+              const SizedBox(height: 14),
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   child: _buildFieldScoreOverlay(innings, game),
                 ),
               ),
+              const SizedBox(height: 16),
+            ] else const SizedBox(height: 14),
 
             // ── MatchupHeader (paper/ink) ──
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -986,72 +989,97 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             ),
 
-            // ── 필드뷰 ─────
+            const SizedBox(height: 16),
+            // ── FieldSlot (사용자 명시: 기존 코드 유지) ──
             if (fieldWidget != null)
-              SizedBox(height: 190, child: fieldWidget),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: SizedBox(height: 190, child: fieldWidget),
+              ),
 
-            // ── 하단 바 (LIVE BSO / 승투패투 / 날씨) ──
-            Container(
-              padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
-              child: Row(
-                children: [
-                  if (isLive && _relayData?['current_state'] != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: live.withValues(alpha: isDark ? 0.20 : 0.10),
-                        borderRadius: BorderRadius.circular(999),
+            // ── LIVE BSO bar (진행중만) / 승투패투 (종료) — paper2 박스 ──
+            if (isLive && _relayData?['current_state'] != null) ...[
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: paper2, borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: line, width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: live.withValues(alpha: isDark ? 0.20 : 0.10),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Container(width: 5, height: 5,
+                              decoration: const BoxDecoration(color: live, shape: BoxShape.circle)),
+                          const SizedBox(width: 4),
+                          const Text('LIVE', style: TextStyle(color: live, fontSize: 9, fontWeight: FontWeight.w800)),
+                        ]),
                       ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Container(width: 5, height: 5,
-                            decoration: const BoxDecoration(color: live, shape: BoxShape.circle)),
-                        const SizedBox(width: 4),
-                        const Text('LIVE', style: TextStyle(color: live, fontSize: 9, fontWeight: FontWeight.w800)),
-                      ]),
-                    ),
-                    const SizedBox(width: 10),
-                    bsoGroup('B', (_relayData!['current_state']['ball'] as int? ?? 0).clamp(0, 3), 3, const Color(0xFF22C55E)),
-                    const SizedBox(width: 8),
-                    bsoGroup('S', (_relayData!['current_state']['strike'] as int? ?? 0).clamp(0, 2), 2, live),
-                    const SizedBox(width: 8),
-                    bsoGroup('O', (_relayData!['current_state']['out'] as int? ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
-                    const Spacer(),
-                    _isRelayRefreshing
-                        ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: ink3))
-                        : GestureDetector(
-                            onTap: _refreshRelayAll,
-                            child: Icon(Icons.refresh, size: 20, color: ink3),
-                          ),
-                  ] else if (isDone && (game['win_pitcher'] != null || game['lose_pitcher'] != null)) ...[
-                    const Spacer(),
+                      const SizedBox(width: 10),
+                      bsoGroup('B', (_relayData!['current_state']['ball'] as int? ?? 0).clamp(0, 3), 3, const Color(0xFF22C55E)),
+                      const SizedBox(width: 8),
+                      bsoGroup('S', (_relayData!['current_state']['strike'] as int? ?? 0).clamp(0, 2), 2, live),
+                      const SizedBox(width: 8),
+                      bsoGroup('O', (_relayData!['current_state']['out'] as int? ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
+                      const Spacer(),
+                      _isRelayRefreshing
+                          ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: ink3))
+                          : GestureDetector(
+                              onTap: _refreshRelayAll,
+                              child: Icon(Icons.refresh, size: 18, color: ink3),
+                            ),
+                    ],
+                  ),
+                ),
+              ),
+            ] else if (isDone && (game['win_pitcher'] != null || game['lose_pitcher'] != null)) ...[
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: paper2, borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: line, width: 1),
+                  ),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
                     if (game['win_pitcher'] != null)
                       _pitcherBadge(game['win_pitcher'] as String, game['win_pitcher_image'] as String?, const Color(0xFF1976D2), '승'),
-                    if (game['win_pitcher'] != null && game['lose_pitcher'] != null) const SizedBox(width: 20),
                     if (game['lose_pitcher'] != null)
                       _pitcherBadge(game['lose_pitcher'] as String, game['lose_pitcher_image'] as String?, const Color(0xFFC62828), '패'),
-                    const Spacer(),
-                  ] else if (_weatherData != null) ...[
-                    Expanded(
-                      child: Center(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(width: 6, height: 6,
-                                decoration: BoxDecoration(color: line2, shape: BoxShape.circle)),
-                            const SizedBox(width: 7),
-                            DefaultTextStyle(
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ink3),
-                              child: _buildWeatherRow(_weatherData!),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ] else
-                    const SizedBox.shrink(),
-                ],
+                  ]),
+                ),
               ),
-            ),
+            ],
+
+            // ── WeatherLine ──
+            if (_weatherData != null) ...[
+              const SizedBox(height: 14),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(width: 7, height: 7,
+                        decoration: BoxDecoration(color: line2, shape: BoxShape.circle)),
+                    const SizedBox(width: 8),
+                    DefaultTextStyle(
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ink3),
+                      child: _buildWeatherRow(_weatherData!),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
             Container(height: 1, color: line),
           ],
         ),
@@ -1576,13 +1604,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return SingleChildScrollView(
       controller: _inningScrollController,
       physics: const ClampingScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(16, 16, 16, navBottom),
+      padding: EdgeInsets.fromLTRB(18, 14, 18, navBottom),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (innings.isNotEmpty && _relayAllData != null) ...[
             _buildScoringSection(innings, awayTeam, homeTeam),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
           ],
 
           if (_relayAllData == null)
