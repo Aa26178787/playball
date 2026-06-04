@@ -1004,7 +1004,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         color: isDark ? paper2 : const Color(0xFFFAFAFA),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: SizedBox(height: 250, width: double.infinity, child: fieldWidget),
+                      child: SizedBox(height: 280, width: double.infinity, child: fieldWidget),
                     ),
                   ),
                 ),
@@ -4260,10 +4260,10 @@ class _FullFieldView extends StatelessWidget {
               ),
             ),
           ),
-          // player widgets는 inner padded 영역 안
+          // player widgets는 inner padded 영역 안 (chip 잘림 방지)
           Positioned.fill(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+              padding: const EdgeInsets.fromLTRB(36, 22, 36, 28),
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [

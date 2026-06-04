@@ -2085,10 +2085,11 @@ class GameCard extends StatelessWidget {
     final t = _Tok.of(isDark);
     final isFinished = game.status == '종료';
     final isDraw = game.isDraw ?? false;
-    final homeWon = isFinished && !isDraw && game.homeScore > game.awayScore;
-    final awayWon = isFinished && !isDraw && game.awayScore > game.homeScore;
     final isLive = game.status == '진행';
     final isCancelled = game.status == '취소';
+    // 진행중도 winner 강조 (이기는 팀 크게/지는 팀 작게+불투명)
+    final homeWon = (isFinished || isLive) && !isDraw && game.homeScore > game.awayScore;
+    final awayWon = (isFinished || isLive) && !isDraw && game.awayScore > game.homeScore;
     final isUpcoming = !isFinished && !isLive && !isCancelled;
     final showStarters = isUpcoming || isLive;
     final showPrediction = (game.status == '예정' || game.status == '라인업') &&
