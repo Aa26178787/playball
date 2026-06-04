@@ -19,7 +19,7 @@ class MentionText extends StatelessWidget {
     super.key,
     required this.text,
     this.style,
-    this.mentionColor = const Color(0xFF1A237E),
+    this.mentionColor = const Color(0xFF111113),
   });
 
   static final _pattern = RegExp(

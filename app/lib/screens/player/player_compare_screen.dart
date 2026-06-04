@@ -195,7 +195,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
         children: [
           // 헤더: 양 선수 프로필
           Container(
-            color: const Color(0xFF1A237E),
+            color: const Color(0xFF111113),
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
             child: Row(
               children: [
@@ -277,7 +277,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
     TextStyle boldStyle(bool highlight) => TextStyle(
           fontSize: 14,
           fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
-          color: highlight ? const Color(0xFF1A237E) : Colors.black87,
+          color: highlight ? const Color(0xFF111113) : Colors.black87,
         );
 
     return Container(

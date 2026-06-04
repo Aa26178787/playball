@@ -168,15 +168,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A237E).withOpacity(0.06),
+        color: const Color(0xFF111113).withOpacity(0.06),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
-          const Icon(Icons.stadium, size: 15, color: Color(0xFF1A237E)),
+          const Icon(Icons.stadium, size: 15, color: Color(0xFF111113)),
           const SizedBox(width: 6),
           Text('직관 승률',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF111113))),
           const SizedBox(width: 10),
           _visitStatChip('${wins}승', Colors.blue),
           const SizedBox(width: 4),
@@ -209,10 +209,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A237E).withOpacity(0.12),
+                color: const Color(0xFF111113).withOpacity(0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text('랭킹', style: TextStyle(fontSize: 11, color: Color(0xFF1A237E), fontWeight: FontWeight.bold)),
+              child: const Text('랭킹', style: TextStyle(fontSize: 11, color: Color(0xFF111113), fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -346,7 +346,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  Icon(Icons.emoji_events, color: Color(0xFF1A237E), size: 18),
+                  Icon(Icons.emoji_events, color: Color(0xFF111113), size: 18),
                   SizedBox(width: 6),
                   Text('직관승률 랭킹', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   SizedBox(width: 6),
@@ -395,7 +395,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
-                                  color: rank <= 3 ? medalColor : const Color(0xFF1A237E))),
+                                  color: rank <= 3 ? medalColor : const Color(0xFF111113))),
                         );
                       },
                     ),
@@ -463,11 +463,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
       appBar: AppBar(
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: const Text('캘린더', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+        title: const Text('캘린더', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF111113))),
         actions: [
           if (_favoriteTeamIds.isNotEmpty)
             IconButton(
-              icon: Icon(_myTeamOnly ? Icons.star : Icons.star_border, color: _myTeamOnly ? const Color(0xFF1A237E) : null),
+              icon: Icon(_myTeamOnly ? Icons.star : Icons.star_border, color: _myTeamOnly ? const Color(0xFF111113) : null),
               tooltip: '마이팀만 보기',
               onPressed: () => setState(() => _myTeamOnly = !_myTeamOnly),
             ),
@@ -484,7 +484,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 bottom: (ApiService.myTeamData.value.isNotEmpty ? 142.0 : 90.0) + MediaQuery.of(context).viewPadding.bottom,
               ),
               child: FloatingActionButton(
-                backgroundColor: const Color(0xFF1A237E),
+                backgroundColor: const Color(0xFF111113),
                 onPressed: () => _showAddMenu(selected),
                 child: const Icon(Icons.add, color: Colors.white),
               ),
@@ -627,7 +627,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       height: 46,
                       margin: const EdgeInsets.all(1),
                       decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFF1A237E) : isToday ? const Color(0xFFE8EAF6) : null,
+                        color: isSelected ? const Color(0xFF111113) : isToday ? const Color(0xFFE8EAF6) : null,
                         borderRadius: BorderRadius.circular(8),
                         border: visitColor != null && !isSelected
                             ? Border.all(color: visitColor.withOpacity(0.6), width: 1.5)
@@ -862,7 +862,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
             ),
             ListTile(
-              leading: const CircleAvatar(backgroundColor: Color(0xFF1A237E), child: Icon(Icons.event, color: Colors.white, size: 20)),
+              leading: const CircleAvatar(backgroundColor: Color(0xFF111113), child: Icon(Icons.event, color: Colors.white, size: 20)),
               title: const Text('일정 추가', style: TextStyle(fontWeight: FontWeight.w600)),
               subtitle: Text('${date.month}/${date.day} 개인 일정 등록'),
               onTap: () { Navigator.pop(context); _showAddEventDialog(date); },
@@ -1023,7 +1023,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         const SizedBox(width: 6),
                         GestureDetector(
                           onTap: () => _addToCalendar(game),
-                          child: const Icon(Icons.calendar_today, size: 18, color: Color(0xFF1A237E)),
+                          child: const Icon(Icons.calendar_today, size: 18, color: Color(0xFF111113)),
                         ),
                       ],
                     ],

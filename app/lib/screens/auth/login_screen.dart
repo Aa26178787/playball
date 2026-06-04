@@ -87,11 +87,11 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.sports_baseball, size: 80, color: Color(0xFF1A237E)),
+              const Icon(Icons.sports_baseball, size: 80, color: Color(0xFF111113)),
               const SizedBox(height: 8),
               const Text(
                 'PlayBall',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF1A237E)),
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF111113)),
               ),
               const SizedBox(height: 48),
 
@@ -125,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Checkbox(
                     value: _autoLogin,
                     onChanged: (v) => setState(() => _autoLogin = v ?? false),
-                    activeColor: const Color(0xFF1A237E),
+                    activeColor: const Color(0xFF111113),
                   ),
                   const Text('자동 로그인', style: TextStyle(fontSize: 14)),
                   if (_hasSavedCredentials) ...[
@@ -155,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: ElevatedButton(
                   onPressed: isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1A237E),
+                    backgroundColor: const Color(0xFF111113),
                     foregroundColor: Colors.white,
                   ),
                   child: isLoading

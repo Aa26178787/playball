@@ -71,7 +71,7 @@ class _CommunityScreenState extends State<CommunityScreen>
                 MaterialPageRoute(builder: (_) => const CreatePostScreen()));
             if (created == true) _latestKey.currentState?._load();
           },
-          backgroundColor: const Color(0xFF1A237E),
+          backgroundColor: const Color(0xFF111113),
           child: const Icon(Icons.edit, color: Colors.white),
         ),
       ),
@@ -246,7 +246,7 @@ class _PostListTabState extends State<_PostListTab>
                 child: ChoiceChip(
                   label: Text(c),
                   selected: selected,
-                  selectedColor: const Color(0xFF1A237E),
+                  selectedColor: const Color(0xFF111113),
                   labelStyle: TextStyle(
                     color: selected ? Colors.white : Colors.black87,
                     fontSize: 12,
@@ -346,10 +346,10 @@ class _TeamTabState extends State<_TeamTab> {
                   margin: const EdgeInsets.only(right: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: selected ? const Color(0xFF1A237E) : Colors.grey[100],
+                    color: selected ? const Color(0xFF111113) : Colors.grey[100],
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: selected ? const Color(0xFF1A237E) : Colors.grey[300]!),
+                      color: selected ? const Color(0xFF111113) : Colors.grey[300]!),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -458,7 +458,7 @@ class _PostCard extends StatelessWidget {
                       children: [
                         Row(children: [
                           if (post['team_name'] != null)
-                            _tagChip(post['team_name'], color: const Color(0xFF1A237E)),
+                            _tagChip(post['team_name'], color: const Color(0xFF111113)),
                           _tagChip(post['category'] ?? ''),
                         ]),
                         const SizedBox(height: 6),
@@ -479,7 +479,7 @@ class _PostCard extends StatelessWidget {
                   children: [
                     Row(children: [
                       if (post['team_name'] != null)
-                        _tagChip(post['team_name'], color: const Color(0xFF1A237E)),
+                        _tagChip(post['team_name'], color: const Color(0xFF111113)),
                       _tagChip(post['category'] ?? ''),
                     ]),
                     const SizedBox(height: 6),
@@ -591,7 +591,7 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
   Widget build(BuildContext context) {
     super.build(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activeColor = const Color(0xFF1A237E);
+    final activeColor = const Color(0xFF111113);
     final navBottom = (ApiService.myTeamData.value.isNotEmpty ? 142.0 : 90.0)
         + MediaQuery.of(context).viewPadding.bottom + 56; // FAB 없으므로 nav only
 
@@ -812,7 +812,7 @@ class _FoodSubmitSheetState extends State<_FoodSubmitSheet> {
 
   @override
   Widget build(BuildContext context) {
-    const color = Color(0xFF1A237E);
+    const color = Color(0xFF111113);
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SizedBox(

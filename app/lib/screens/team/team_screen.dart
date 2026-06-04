@@ -123,9 +123,9 @@ class _TeamScreenState extends State<TeamScreen>
         surfaceTintColor: Colors.transparent,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: const Color(0xFF1A237E),
+          indicatorColor: const Color(0xFF111113),
           indicatorWeight: 2.5,
-          labelColor: const Color(0xFF1A237E),
+          labelColor: const Color(0xFF111113),
           unselectedLabelColor: Colors.grey,
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
@@ -1523,7 +1523,7 @@ class _TeamScreenState extends State<TeamScreen>
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: isFav
-            ? const BorderSide(color: Color(0xFF1A237E), width: 1.5)
+            ? const BorderSide(color: Color(0xFF111113), width: 1.5)
             : BorderSide.none,
       ),
       child: InkWell(
@@ -1563,7 +1563,7 @@ class _TeamScreenState extends State<TeamScreen>
                   ),
                   if (isFav) ...[
                     const SizedBox(width: 6),
-                    const Icon(Icons.star, size: 16, color: Color(0xFF1A237E)),
+                    const Icon(Icons.star, size: 16, color: Color(0xFF111113)),
                   ],
                 ],
               ),
@@ -1777,7 +1777,7 @@ Widget _buildSegmentControl(bool isDark, List<String> labels, TabController ctrl
                   fontSize: 13,
                   fontFamily: 'Pretendard',
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                  color: selected ? const Color(0xFF1A237E) : Colors.grey,
+                  color: selected ? const Color(0xFF111113) : Colors.grey,
                 ),
               ),
             ),
@@ -2053,7 +2053,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
     }
     if (_error) {
       return Center(

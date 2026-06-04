@@ -355,7 +355,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 margin: const EdgeInsets.only(right: 6),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: sel ? const Color(0xFF1A237E) : Colors.grey.withValues(alpha: 0.12),
+                  color: sel ? const Color(0xFF111113) : Colors.grey.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Text('전체',
@@ -413,7 +413,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
-                color: sel ? const Color(0xFF1A237E) : Colors.grey.withValues(alpha: 0.12),
+                color: sel ? const Color(0xFF111113) : Colors.grey.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
@@ -608,7 +608,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Widget _buildPopularityTab() {
     if (_popularLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final items = _popularShowTeam ? _popularTeams : _popularPlayers;
@@ -625,7 +625,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                     duration: const Duration(milliseconds: 150),
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
-                      color: !_popularShowTeam ? const Color(0xFF1A237E) : Colors.grey.withValues(alpha: 0.12),
+                      color: !_popularShowTeam ? const Color(0xFF111113) : Colors.grey.withValues(alpha: 0.12),
                       borderRadius: const BorderRadius.horizontal(left: Radius.circular(10)),
                     ),
                     child: Text('선수',
@@ -643,7 +643,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                     duration: const Duration(milliseconds: 150),
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
-                      color: _popularShowTeam ? const Color(0xFF1A237E) : Colors.grey.withValues(alpha: 0.12),
+                      color: _popularShowTeam ? const Color(0xFF111113) : Colors.grey.withValues(alpha: 0.12),
                       borderRadius: const BorderRadius.horizontal(right: Radius.circular(10)),
                     ),
                     child: Text('구단',
@@ -838,9 +838,9 @@ class _PlayerScreenState extends State<PlayerScreen>
             ? null
             : TabBar(
                 controller: _tabController,
-                indicatorColor: const Color(0xFF1A237E),
+                indicatorColor: const Color(0xFF111113),
                 indicatorWeight: 2.5,
-                labelColor: const Color(0xFF1A237E),
+                labelColor: const Color(0xFF111113),
                 unselectedLabelColor: Colors.grey,
                 labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                 unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),

@@ -112,7 +112,7 @@ class _SearchScreenState extends State<SearchScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5))
           : !_searched
               ? _buildHistory()
               : _players.isEmpty && _teams.isEmpty

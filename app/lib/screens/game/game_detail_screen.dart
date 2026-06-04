@@ -430,7 +430,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
 
     final lastWr = spots.last.y;
-    final homeColor = const Color(0xFF1A237E);
+    final homeColor = const Color(0xFF111113);
     final awayColor = const Color(0xFFC62828);
 
     return Column(
@@ -538,7 +538,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           Text(homeTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text('${home.toStringAsFixed(1)}%',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111113))),
         ])),
         const Column(children: [
           Icon(Icons.sports_baseball, size: 16, color: Colors.grey),
@@ -1130,7 +1130,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final awayRank = _rankMap[game['away_team_id'] as int?];
     return Container(
       padding: const EdgeInsets.all(20),
-      color: const Color(0xFF1A237E),
+      color: const Color(0xFF111113),
       child: Column(
         children: [
           Row(
@@ -1700,16 +1700,16 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1A237E).withValues(alpha: 0.08),
+                        color: const Color(0xFF111113).withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFF1A237E).withValues(alpha: 0.2)),
+                        border: Border.all(color: const Color(0xFF111113).withValues(alpha: 0.2)),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.grid_on, size: 11, color: Color(0xFF1A237E)),
+                          Icon(Icons.grid_on, size: 11, color: Color(0xFF111113)),
                           SizedBox(width: 2),
-                          Text('투구위치', style: TextStyle(fontSize: 10, color: Color(0xFF1A237E))),
+                          Text('투구위치', style: TextStyle(fontSize: 10, color: Color(0xFF111113))),
                         ],
                       ),
                     ),
@@ -2126,7 +2126,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: isHeader ? const Color(0xFF1A237E) : Colors.transparent,
+        color: isHeader ? const Color(0xFF111113) : Colors.transparent,
         border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.3))),
       ),
       child: Row(
@@ -2169,7 +2169,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     color: isHeader
                         ? Colors.white
                         : isBold
-                            ? const Color(0xFF1A237E)
+                            ? const Color(0xFF111113)
                             : null,
                   ),
                 ),
@@ -2205,7 +2205,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildGameFloatingNav() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final idx = _tabController.index;
-    final activeColor = isDark ? const Color(0xFF7B8FFF) : AppColors.primary;
+    final activeColor = isDark ? const Color(0xFFF4F4F5) : AppColors.primary;
     final inactiveColor = isDark ? Colors.white38 : AppColors.textTertiary;
     final pillBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
     final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
@@ -2331,7 +2331,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       return const Center(child: Text('경기 시작 후 확인할 수 있습니다'));
     }
     if (_previewData == null) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
     }
 
     final homeTeam = _gameData!['game']['home_team'];
@@ -2353,9 +2353,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A237E).withOpacity(0.05),
+                color: const Color(0xFF111113).withOpacity(0.05),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF1A237E).withOpacity(0.2)),
+                border: Border.all(color: const Color(0xFF111113).withOpacity(0.2)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -2374,7 +2374,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
-                          color: Color(0xFF1A237E))),
+                          color: Color(0xFF111113))),
                   Column(
                     children: [
                       Text(awayTeam, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -2499,7 +2499,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                             child: LinearProgressIndicator(
                               value: (pk['ratio'] as num? ?? 0) / 100,
                               backgroundColor: Colors.grey[200],
-                              valueColor: const AlwaysStoppedAnimation(Color(0xFF1A237E)),
+                              valueColor: const AlwaysStoppedAnimation(Color(0xFF111113)),
                               minHeight: 8,
                             ),
                           ),
@@ -2622,7 +2622,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildRosterTab() {
     if (_rosterData == null) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
     }
 
     final homeTeam = _gameData!['game']['home_team'];
@@ -2633,9 +2633,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         children: [
           TabBar(
-            indicatorColor: const Color(0xFF1A237E),
+            indicatorColor: const Color(0xFF111113),
             indicatorWeight: 2.5,
-            labelColor: const Color(0xFF1A237E),
+            labelColor: const Color(0xFF111113),
             unselectedLabelColor: Colors.grey,
             labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
@@ -2809,7 +2809,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A237E),
+        color: const Color(0xFF111113),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(title,
@@ -2872,7 +2872,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           const SizedBox(width: 6),
           CircleAvatar(
             radius: 12,
-            backgroundColor: const Color(0xFF1A237E),
+            backgroundColor: const Color(0xFF111113),
             child: Text('${(b['batting_order'] as num).toInt()}',
                 style: const TextStyle(
                     fontSize: 11,
@@ -2943,9 +2943,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               margin: const EdgeInsets.all(12),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A237E).withOpacity(0.1),
+                color: const Color(0xFF111113).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF1A237E).withOpacity(0.2)),
+                border: Border.all(color: const Color(0xFF111113).withOpacity(0.2)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -2960,9 +2960,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             ),
           TabBar(
-            indicatorColor: const Color(0xFF1A237E),
+            indicatorColor: const Color(0xFF111113),
             indicatorWeight: 2.5,
-            labelColor: const Color(0xFF1A237E),
+            labelColor: const Color(0xFF111113),
             unselectedLabelColor: Colors.grey,
             labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
@@ -3236,9 +3236,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         children: [
           TabBar(
-            indicatorColor: const Color(0xFF1A237E),
+            indicatorColor: const Color(0xFF111113),
             indicatorWeight: 2.5,
-            labelColor: const Color(0xFF1A237E),
+            labelColor: const Color(0xFF111113),
             unselectedLabelColor: Colors.grey,
             labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
@@ -3322,7 +3322,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   isFirst
                       ? CircleAvatar(
                           radius: 12,
-                          backgroundColor: const Color(0xFF1A237E),
+                          backgroundColor: const Color(0xFF111113),
                           child: Text('$order',
                               style: const TextStyle(
                                   fontSize: 11,
@@ -3389,7 +3389,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildRecordDetailTab() {
     if (_recordDetailData == null) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
     }
 
     final keyStats = _recordDetailData!['key_stats'] as Map<String, dynamic>? ?? {};
@@ -3415,7 +3415,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             },
             children: [
               TableRow(
-                decoration: const BoxDecoration(color: Color(0xFF1A237E)),
+                decoration: const BoxDecoration(color: Color(0xFF111113)),
                 children: [
                   _tableCell('항목', isHeader: true),
                   _tableCell(homeTeam, isHeader: true),
@@ -3441,7 +3441,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             },
             children: [
               TableRow(
-                decoration: const BoxDecoration(color: Color(0xFF1A237E)),
+                decoration: const BoxDecoration(color: Color(0xFF111113)),
                 children: [
                   _tableCell('항목', isHeader: true),
                   _tableCell(homeTeam, isHeader: true),
@@ -3476,14 +3476,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1A237E).withOpacity(0.1),
+                        color: const Color(0xFF111113).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(type,
                           style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF1A237E))),
+                              color: Color(0xFF111113))),
                     ),
                     const SizedBox(width: 12),
                     Expanded(child: Text(desc, style: const TextStyle(fontSize: 13))),
@@ -3550,7 +3550,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildHighlightsTab() {
     if (_highlightsLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5));
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
     }
     if (_highlights.isEmpty) {
       return const Center(
@@ -3758,8 +3758,8 @@ class _GameShareSheetState extends State<_GameShareSheet> {
                   icon: const Icon(Icons.text_fields, size: 16),
                   label: const Text('텍스트 공유'),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF1A237E)),
-                    foregroundColor: const Color(0xFF1A237E),
+                    side: const BorderSide(color: Color(0xFF111113)),
+                    foregroundColor: const Color(0xFF111113),
                   ),
                 ),
               ),
@@ -3773,7 +3773,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
                       : const Icon(Icons.image, size: 16),
                   label: const Text('이미지 공유'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1A237E),
+                    backgroundColor: const Color(0xFF111113),
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -3814,7 +3814,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1A237E), Color(0xFF283593)],
+          colors: [Color(0xFF111113), Color(0xFF283593)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

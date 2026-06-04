@@ -176,7 +176,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                   margin: const EdgeInsets.only(right: 12),
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _heatmap ? const Color(0xFF1A237E) : Colors.grey[200],
+                    color: _heatmap ? const Color(0xFF111113) : Colors.grey[200],
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -305,7 +305,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
       padding: const EdgeInsets.only(left: 16, top: 6, bottom: 2),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF1A237E))),
+        child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF111113))),
       ),
     );
   }
@@ -332,10 +332,10 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A237E).withValues(alpha: 0.1),
+                color: const Color(0xFF111113).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(teamLabel, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+              child: Text(teamLabel, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF111113))),
             ),
             const SizedBox(width: 6),
           ],
@@ -353,7 +353,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                         _selectedInning = null;
                         _selectedBatter = null;
                       }),
-                      child: _chip(p, sel, const Color(0xFF1A237E)),
+                      child: _chip(p, sel, const Color(0xFF111113)),
                     ),
                   );
                 }).toList(),
@@ -470,7 +470,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
               child: Row(
                 children: _resultLabels.entries.map((e) {
                   final sel = _filter == e.key;
-                  final color = e.key == 'all' ? const Color(0xFF1A237E) : (_resultColors[e.key] ?? Colors.grey);
+                  final color = e.key == 'all' ? const Color(0xFF111113) : (_resultColors[e.key] ?? Colors.grey);
                   return Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: GestureDetector(

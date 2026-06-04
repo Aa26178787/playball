@@ -282,7 +282,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Checkbox(
                   value: _agreedTerms,
                   onChanged: (v) => setState(() => _agreedTerms = v ?? false),
-                  activeColor: const Color(0xFF1A237E),
+                  activeColor: const Color(0xFF111113),
                 ),
                 const Expanded(
                   child: Text(
@@ -325,7 +325,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: ElevatedButton(
                   onPressed: (auth.isLoading || !_canRegister) ? null : _register,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1A237E),
+                    backgroundColor: const Color(0xFF111113),
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: Colors.grey[300],
                   ),
@@ -343,7 +343,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   ButtonStyle _smallBtn() => ElevatedButton.styleFrom(
-    backgroundColor: const Color(0xFF1A237E),
+    backgroundColor: const Color(0xFF111113),
     foregroundColor: Colors.white,
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
     textStyle: const TextStyle(fontSize: 13),

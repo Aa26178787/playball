@@ -303,7 +303,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
@@ -360,7 +360,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 children: [
                   CircleAvatar(
                     radius: 36,
-                    backgroundColor: const Color(0xFF1A237E),
+                    backgroundColor: const Color(0xFF111113),
                     backgroundImage: _user?['profile_image'] != null
                         ? CachedNetworkImageProvider(_user!['profile_image'])
                         : null,
@@ -383,7 +383,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(3),
                         decoration: const BoxDecoration(
-                          color: Color(0xFF1A237E),
+                          color: Color(0xFF111113),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
@@ -446,7 +446,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   if (ok == true) _load();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1A237E),
+                  backgroundColor: const Color(0xFF111113),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   textStyle: const TextStyle(fontSize: 12),

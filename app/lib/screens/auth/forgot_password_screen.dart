@@ -95,7 +95,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ElevatedButton(
           onPressed: () => Navigator.pop(context),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1A237E),
+            backgroundColor: const Color(0xFF111113),
             foregroundColor: Colors.white,
             minimumSize: const Size.fromHeight(48),
           ),
@@ -209,18 +209,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       children: [
         CircleAvatar(
           radius: 14,
-          backgroundColor: active ? const Color(0xFF1A237E) : Colors.grey[300],
+          backgroundColor: active ? const Color(0xFF111113) : Colors.grey[300],
           child: Text('${step + 1}',
               style: TextStyle(color: active ? Colors.white : Colors.grey, fontSize: 12)),
         ),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 11, color: active ? const Color(0xFF1A237E) : Colors.grey)),
+        Text(label, style: TextStyle(fontSize: 11, color: active ? const Color(0xFF111113) : Colors.grey)),
       ],
     );
   }
 
   ButtonStyle _btnStyle([Color? color]) => ElevatedButton.styleFrom(
-    backgroundColor: color ?? const Color(0xFF1A237E),
+    backgroundColor: color ?? const Color(0xFF111113),
     foregroundColor: Colors.white,
     minimumSize: const Size.fromHeight(48),
   );

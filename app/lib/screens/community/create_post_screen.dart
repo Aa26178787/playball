@@ -97,7 +97,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('인증하기', style: TextStyle(color: Color(0xFF1A237E))),
+                child: const Text('인증하기', style: TextStyle(color: Color(0xFF111113))),
               ),
             ],
           ),
@@ -238,8 +238,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   icon: const Icon(Icons.image_outlined, size: 18),
                   label: const Text('이미지 첨부'),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF1A237E)),
-                    foregroundColor: const Color(0xFF1A237E),
+                    side: const BorderSide(color: Color(0xFF111113)),
+                    foregroundColor: const Color(0xFF111113),
                   ),
                 ),
                 if (_uploadedImageUrl != null)
@@ -280,11 +280,11 @@ class _MentionHelpRowState extends State<_MentionHelpRow> {
           onTap: () => setState(() => _expanded = !_expanded),
           child: Row(
             children: [
-              const Icon(Icons.alternate_email, size: 14, color: Color(0xFF1A237E)),
+              const Icon(Icons.alternate_email, size: 14, color: Color(0xFF111113)),
               const SizedBox(width: 4),
-              const Text('@ 링크 명령어 보기', style: TextStyle(fontSize: 12, color: Color(0xFF1A237E))),
+              const Text('@ 링크 명령어 보기', style: TextStyle(fontSize: 12, color: Color(0xFF111113))),
               Icon(_expanded ? Icons.expand_less : Icons.expand_more,
-                  size: 14, color: const Color(0xFF1A237E)),
+                  size: 14, color: const Color(0xFF111113)),
             ],
           ),
         ),
@@ -293,9 +293,9 @@ class _MentionHelpRowState extends State<_MentionHelpRow> {
             margin: const EdgeInsets.only(top: 6),
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A237E).withValues(alpha: 0.04),
+              color: const Color(0xFF111113).withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF1A237E).withValues(alpha: 0.15)),
+              border: Border.all(color: const Color(0xFF111113).withValues(alpha: 0.15)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -307,10 +307,10 @@ class _MentionHelpRowState extends State<_MentionHelpRow> {
                       width: 32,
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1A237E).withValues(alpha: 0.1),
+                        color: const Color(0xFF111113).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Text(e.$1, style: const TextStyle(fontSize: 10, color: Color(0xFF1A237E))),
+                      child: Text(e.$1, style: const TextStyle(fontSize: 10, color: Color(0xFF111113))),
                     ),
                     const SizedBox(width: 8),
                     Text(e.$2, style: const TextStyle(

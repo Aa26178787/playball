@@ -1112,7 +1112,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           children: [
             Icon(Icons.sports_baseball,
                 size: 18,
-                color: isDark ? const Color(0xFF7B8FFF) : AppColors.primary),
+                color: isDark ? const Color(0xFFF4F4F5) : AppColors.primary),
             const SizedBox(width: 7),
             Text('PlayBall',
                 style: TextStyle(
@@ -1546,8 +1546,8 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                     icon: const Icon(Icons.refresh, size: 16),
                     label: const Text('다시 시도'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF1A237E),
-                      side: const BorderSide(color: Color(0xFF1A237E)),
+                      foregroundColor: const Color(0xFF111113),
+                      side: const BorderSide(color: Color(0xFF111113)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     ),
                   ),
@@ -1579,8 +1579,8 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                       icon: const Icon(Icons.sports_baseball, size: 16),
                       label: const Text('전체 경기 보기'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF1A237E),
-                        side: const BorderSide(color: Color(0xFF1A237E)),
+                        foregroundColor: const Color(0xFF111113),
+                        side: const BorderSide(color: Color(0xFF111113)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       ),
                     ),

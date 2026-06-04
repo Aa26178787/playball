@@ -206,7 +206,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             : null,
         actions: [
           _favLoading
-              ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1A237E))))
+              ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF111113))))
               : IconButton(
                   icon: Icon(_isFav ? Icons.star : Icons.star_border, color: Colors.amber),
                   onPressed: _toggleFav,
@@ -342,7 +342,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   ),
                   const SizedBox(height: 8),
                   if (searching)
-                    const Expanded(child: Center(child: CircularProgressIndicator(color: Color(0xFF1A237E), strokeWidth: 2.5)))
+                    const Expanded(child: Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5)))
                   else if (matchupData != null)
                     _buildMatchupResult(matchupData!, player['name'] as String)
                   else
@@ -427,7 +427,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
   Widget _statBox(String label, String value) {
     return Column(children: [
-      Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+      Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111113))),
       Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
     ]);
   }
@@ -469,7 +469,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   Widget _buildHeader(Map<String, dynamic> player) {
     return Container(
       padding: const EdgeInsets.all(20),
-      color: const Color(0xFF1A237E),
+      color: const Color(0xFF111113),
       child: Row(
         children: [
           CircleAvatar(
@@ -596,7 +596,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
     final chartColor = isLowStat
         ? const Color(0xFFB71C1C)
-        : isHitter ? const Color(0xFF1A237E) : const Color(0xFF1565C0);
+        : isHitter ? const Color(0xFF111113) : const Color(0xFF1565C0);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
@@ -827,14 +827,14 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final ops  = obp + slg;
 
     return Card(
-      color: const Color(0xFF1A237E).withValues(alpha: 0.05),
+      color: const Color(0xFF111113).withValues(alpha: 0.05),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('최근 5경기 요약',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1A237E))),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF111113))),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -862,14 +862,14 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final whip = realIp > 0 ? (totalH + totalBb) / realIp : 0.0;
 
     return Card(
-      color: const Color(0xFF1A237E).withValues(alpha: 0.05),
+      color: const Color(0xFF111113).withValues(alpha: 0.05),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('최근 5경기 요약',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1A237E))),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF111113))),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -902,7 +902,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     return Column(
       children: [
         Text(value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A237E))),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF111113))),
         const SizedBox(height: 2),
         Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
       ],
@@ -978,7 +978,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
               style: TextStyle(
                 fontSize: isFirst ? 12 : 12,
                 fontWeight: isHeader ? FontWeight.w700 : FontWeight.normal,
-                color: isHeader ? const Color(0xFF1A237E) : null,
+                color: isHeader ? const Color(0xFF111113) : null,
               ),
               textAlign: isFirst ? TextAlign.left : TextAlign.center,
               overflow: TextOverflow.ellipsis,
@@ -1056,7 +1056,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   Widget _sectionLabel(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1A237E))),
+      child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111113))),
     );
   }
 

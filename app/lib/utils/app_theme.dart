@@ -2,21 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class AppColors {
-  static const primary = Color(0xFF1A237E);
-  static const primaryLight = Color(0xFF3949AB);
+  // hi-fi mockup ink 톤 (네이비 → 검정)
+  static const primary = Color(0xFF111113);
+  static const primaryLight = Color(0xFF3F3F46);
+  // dark mode primary (alt: 흰 톤 강조)
+  static const primaryDark = Color(0xFFF4F4F5);
 
-  static const scaffoldLight = Color(0xFFF4F6FA);
-  static const scaffoldDark = Color(0xFF0F0F0F);
+  static const scaffoldLight = Color(0xFFFAFAFB);
+  static const scaffoldDark = Color(0xFF111113);
   static const surfaceLight = Color(0xFFFFFFFF);
-  static const surfaceDark = Color(0xFF1C1C1E);
-  static const surface2Dark = Color(0xFF252528);
+  static const surfaceDark = Color(0xFF18181C);
+  static const surface2Dark = Color(0xFF1F1F24);
 
-  static const borderLight = Color(0xFFE8EAED);
-  static const borderDark = Color(0xFF2C2C2E);
+  static const borderLight = Color(0xFFEDEDF0);
+  static const borderDark = Color(0xFF26262C);
 
-  static const textPrimary = Color(0xFF0D0D0D);
-  static const textSecondary = Color(0xFF6C757D);
-  static const textTertiary = Color(0xFFADB5BD);
+  static const textPrimary = Color(0xFF111113);
+  static const textSecondary = Color(0xFF6B6B73);
+  static const textTertiary = Color(0xFF9A9AA2);
 
   static const live = Color(0xFF22C55E);
   static const win = Color(0xFF3B82F6);
@@ -83,7 +86,7 @@ class AppTheme {
         backgroundColor:
             isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
         selectedItemColor:
-            isDark ? const Color(0xFF7B8FFF) : AppColors.primary,
+            isDark ? AppColors.primaryDark : AppColors.primary,
         unselectedItemColor: AppColors.textTertiary,
         elevation: 0,
         type: BottomNavigationBarType.fixed,
@@ -100,8 +103,8 @@ class AppTheme {
       tabBarTheme: TabBarThemeData(
         dividerColor: isDark ? AppColors.borderDark : AppColors.borderLight,
         indicatorColor:
-            isDark ? const Color(0xFF7B8FFF) : AppColors.primary,
-        labelColor: isDark ? const Color(0xFF7B8FFF) : AppColors.primary,
+            isDark ? AppColors.primaryDark : AppColors.primary,
+        labelColor: isDark ? AppColors.primaryDark : AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
         labelStyle: const TextStyle(
             fontWeight: FontWeight.w700, fontSize: 13, fontFamily: 'Pretendard'),
@@ -147,7 +150,7 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: isDark ? const Color(0xFF7B8FFF) : AppColors.primary,
+          foregroundColor: isDark ? AppColors.primaryDark : AppColors.primary,
           textStyle: const TextStyle(
               fontWeight: FontWeight.w600, fontFamily: 'Pretendard'),
         ),

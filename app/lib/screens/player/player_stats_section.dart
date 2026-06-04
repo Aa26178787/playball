@@ -61,7 +61,7 @@ class PlayerStatsSection extends StatelessWidget {
           Text(
             '${stats['season'] ?? ''}시즌 기록',
             style: const TextStyle(
-              fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1A237E),
+              fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF111113),
             ),
           ),
           GestureDetector(
@@ -69,7 +69,7 @@ class PlayerStatsSection extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
-                color: useEng ? const Color(0xFF1A237E) : Colors.grey[200],
+                color: useEng ? const Color(0xFF111113) : Colors.grey[200],
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
@@ -310,7 +310,7 @@ class PlayerStatsSection extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF1A237E)),
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF111113)),
       ),
     );
   }
