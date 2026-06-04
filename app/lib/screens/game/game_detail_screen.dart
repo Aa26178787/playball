@@ -4390,6 +4390,18 @@ class _FullFieldView extends StatelessWidget {
     required this.isDark, this.fieldView,
   });
 
+  // 3D perspective projection: vanishing point near top-center
+  // 외야(멀리) → vp로 수렴 (trapezoid), 내야(가까이) → 거의 그대로
+  static Offset _perspective(Offset src) {
+    final depth = (1 - src.dy).clamp(0.0, 1.0);  // y=1 가까이, y=0 멀리
+    final f = depth * 0.35;
+    const vpX = 0.5;
+    const vpY = -0.05;
+    final newX = src.dx + (vpX - src.dx) * f;
+    final newY = src.dy + (vpY - src.dy) * f;
+    return Offset(newX, newY);
+  }
+
   // Normalized (x,y) coordinates on the field widget (0=left/top, 1=right/bottom)
   static const Map<String, Offset> _posCoords = {
     'CF': Offset(0.50, 0.09),
@@ -4443,9 +4455,11 @@ class _FullFieldView extends StatelessWidget {
       final h = constraints.maxHeight;
 
       Widget placed(Offset norm, Widget child, double chipW, double chipH) {
+        // 3D perspective projection 적용
+        final p = _perspective(norm);
         return Positioned(
-          left: (w * norm.dx - chipW / 2).clamp(0, w - chipW),
-          top:  (h * norm.dy - chipH / 2).clamp(0, h - chipH),
+          left: (w * p.dx - chipW / 2).clamp(0, w - chipW),
+          top:  (h * p.dy - chipH / 2).clamp(0, h - chipH),
           child: child,
         );
       }
@@ -4635,12 +4649,23 @@ class _FieldBgPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // Base positions (matches _FullFieldView._baseCoords)
-    final p2B   = Offset(w * 0.50, h * 0.42);
-    final p3B   = Offset(w * 0.21, h * 0.62);
-    final p1B   = Offset(w * 0.79, h * 0.62);
-    final pHome = Offset(w * 0.50, h * 0.82);
-    final pMound= Offset(w * 0.50, h * 0.62);
+    // Base positions (matches _FullFieldView._baseCoords) + 3D perspective projection
+    Offset proj(Offset src) {
+      final d = (1 - src.dy).clamp(0.0, 1.0);
+      final f = d * 0.35;
+      const vpX = 0.5;
+      const vpY = -0.05;
+      return Offset(src.dx + (vpX - src.dx) * f, src.dy + (vpY - src.dy) * f);
+    }
+    Offset toPixel(Offset src) {
+      final p = proj(src);
+      return Offset(w * p.dx, h * p.dy);
+    }
+    final p2B   = toPixel(const Offset(0.50, 0.42));
+    final p3B   = toPixel(const Offset(0.21, 0.62));
+    final p1B   = toPixel(const Offset(0.79, 0.62));
+    final pHome = toPixel(const Offset(0.50, 0.82));
+    final pMound= toPixel(const Offset(0.50, 0.62));
 
     // ── Outfield grass: radial gradient + 잔디 stripe (실제 mowing pattern) ──
     // 외야수 뒤 여백까지 잔디 덮음 (전체 캔버스 cover after diamond 뒤)
