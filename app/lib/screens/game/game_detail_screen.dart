@@ -4453,26 +4453,18 @@ class _FullFieldView extends StatelessWidget {
     required this.isDark, this.fieldView,
   });
 
-  // C안: bilinear quad mapping (4-point homography 근사)
-  // src unit square (0,0)(1,0)(1,1)(0,1) → dst trapezoid (외야 좁아지는 perspective)
+  // C안: 진짜 homography (3x3 perspective matrix)
+  // dst quad tl(0.30,0)/tr(0.70,0)/br(1,1)/bl(0,1) 미리 계산 coefficient
+  // 외야 y 압축 + horizontal trapezoid (진짜 카드 기울임)
   static Offset _perspective(Offset src) {
-    // dst quad: top-left, top-right, bottom-right, bottom-left
-    const tl = Offset(0.22, 0.02);
-    const tr = Offset(0.78, 0.02);
-    const br = Offset(1.00, 1.00);
-    const bl = Offset(0.00, 1.00);
-    final x = src.dx;
-    final y = src.dy;
-    // top edge lerp
-    final topX = tl.dx + (tr.dx - tl.dx) * x;
-    final topY = tl.dy + (tr.dy - tl.dy) * x;
-    // bottom edge lerp
-    final botX = bl.dx + (br.dx - bl.dx) * x;
-    final botY = bl.dy + (br.dy - bl.dy) * x;
-    // vertical lerp between top/bot
+    const a11 = 0.40, a12 = -0.30, a13 = 0.30;
+    const a21 = 0.00, a22 = 0.40, a23 = 0.00;
+    const a31 = 0.00, a32 = -0.60;
+    final x = src.dx, y = src.dy;
+    final w = a31 * x + a32 * y + 1;
     return Offset(
-      topX + (botX - topX) * y,
-      topY + (botY - topY) * y,
+      (a11 * x + a12 * y + a13) / w,
+      (a21 * x + a22 * y + a23) / w,
     );
   }
 
@@ -4736,21 +4728,16 @@ class _FieldBgPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // C안: bilinear quad mapping (4-point homography 근사)
+    // C안: 진짜 homography (3x3 perspective matrix) — same coefficients as _FullFieldView._perspective
     Offset proj(Offset src) {
-      const tl = Offset(0.22, 0.02);
-      const tr = Offset(0.78, 0.02);
-      const br = Offset(1.00, 1.00);
-      const bl = Offset(0.00, 1.00);
-      final x = src.dx;
-      final y = src.dy;
-      final topX = tl.dx + (tr.dx - tl.dx) * x;
-      final topY = tl.dy + (tr.dy - tl.dy) * x;
-      final botX = bl.dx + (br.dx - bl.dx) * x;
-      final botY = bl.dy + (br.dy - bl.dy) * x;
+      const a11 = 0.40, a12 = -0.30, a13 = 0.30;
+      const a21 = 0.00, a22 = 0.40, a23 = 0.00;
+      const a31 = 0.00, a32 = -0.60;
+      final x = src.dx, y = src.dy;
+      final wd = a31 * x + a32 * y + 1;
       return Offset(
-        topX + (botX - topX) * y,
-        topY + (botY - topY) * y,
+        (a11 * x + a12 * y + a13) / wd,
+        (a21 * x + a22 * y + a23) / wd,
       );
     }
     Offset toPixel(Offset src) {
