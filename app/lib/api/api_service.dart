@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+enum _RefreshResult { success, authFailed, networkError }
+
 class ApiService {
   static final favoriteTeamsChanged = ValueNotifier<int>(0);
   static final myTeamData = ValueNotifier<List<Map<String, dynamic>>>([]);
@@ -59,42 +61,69 @@ class ApiService {
     ));
 
     // Auth interceptor: 401 시 refresh 후 재시도
+    // - refresh 실패 OR refresh 응답 401/403만 → logout
+    // - retry fetch 실패 (network/5xx) → logout 안 함 (다음 요청에서 다시 refresh 시도)
     _dio.interceptors.add(InterceptorsWrapper(
       onError: (err, handler) async {
         if (err.response?.statusCode == 401) {
-          final refreshed = await _tryRefresh();
-          if (refreshed) {
+          final result = await _tryRefresh();
+          if (result == _RefreshResult.success) {
             final opts = err.requestOptions;
             final token = await getToken();
             opts.headers['Authorization'] = 'Bearer $token';
             try {
               final res = await _dio.fetch(opts);
               return handler.resolve(res);
-            } catch (_) {}
+            } catch (_) {
+              // 재시도 실패 = network/5xx 가능성 → 로그아웃 X, 에러만 propagate
+              return handler.next(err);
+            }
+          } else if (result == _RefreshResult.authFailed) {
+            // refresh token 무효 → 강제 로그아웃
+            await onLogout();
           }
-          await onLogout();
+          // _RefreshResult.networkError → 로그아웃 X, 에러만 propagate
         }
         return handler.next(err);
       },
     ));
   }
 
-  static Future<bool> tryRefreshToken() => _tryRefresh();
+  static Future<bool> tryRefreshToken() async => (await _tryRefresh()) == _RefreshResult.success;
 
-  static Future<bool> _tryRefresh() async {
+  // 동시 refresh 요청 dedup용 in-flight Future
+  static Future<_RefreshResult>? _refreshFuture;
+
+  static Future<_RefreshResult> _tryRefresh() {
+    // 진행중인 refresh 있으면 그 결과 공유 (race condition + refresh token rotation 방지)
+    return _refreshFuture ??= _doRefresh()
+      ..whenComplete(() => _refreshFuture = null);
+  }
+
+  static Future<_RefreshResult> _doRefresh() async {
     final refreshToken = await _secure.read(key: 'refresh_token');
-    if (refreshToken == null) return false;
+    if (refreshToken == null) return _RefreshResult.authFailed;
     try {
-      final res = await Dio(BaseOptions(baseUrl: baseUrl)).post(
+      final res = await Dio(BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 8),
+        receiveTimeout: const Duration(seconds: 8),
+      )).post(
         '/auth/refresh',
         data: {'refresh_token': refreshToken},
       );
       final data = res.data as Map<String, dynamic>;
+      _cachedToken = data['access_token'] as String;
       await _secure.write(key: 'access_token', value: data['access_token'] as String);
       await _secure.write(key: 'refresh_token', value: data['refresh_token'] as String);
-      return true;
+      return _RefreshResult.success;
+    } on DioException catch (e) {
+      // 401/403 = refresh token 무효, 5xx/network = 일시적 오류
+      final status = e.response?.statusCode ?? 0;
+      if (status == 401 || status == 403) return _RefreshResult.authFailed;
+      return _RefreshResult.networkError;
     } catch (_) {
-      return false;
+      return _RefreshResult.networkError;
     }
   }
 

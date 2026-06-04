@@ -120,7 +120,8 @@
       "Bash(grep -n \"child: Material\\(\\\\|child: InkWell\\(\\\\|child: Padding\\(\\\\$\\\\|EdgeInsets.all\\(15\\)\" \"C:\\\\Users\\\\qq772\\\\playball\\\\app\\\\lib\\\\screens\\\\home\\\\home_screen.dart\")",
       "WebFetch(domain:en.wikipedia.org)",
       "WebFetch(domain:upload.wikimedia.org)",
-      "WebFetch(domain:ko.wikipedia.org)"
+      "WebFetch(domain:ko.wikipedia.org)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('count:', len\\(d.get\\('games', []\\)\\)\\); [print\\(g.get\\('id'\\), g.get\\('status'\\), g.get\\('home_team'\\), g.get\\('home_score'\\), '-', g.get\\('away_score'\\), g.get\\('away_team'\\)\\) for g in d.get\\('games', []\\)]\")"
     ]
   }
 }
