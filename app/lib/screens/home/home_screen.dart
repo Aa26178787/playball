@@ -1937,7 +1937,7 @@ class GameCard extends StatelessWidget {
     final awayColor = teamColor(game.awayTeamCode);
     final myColor = isMyTeam ? homeColor : awayColor;
 
-    // 팀컬러 그라데이션: 홈/어웨이 양쪽 모두 (취소 제외)
+    // 팀컬러 그라데이션: 홈→원정 직접 연결 (paper 없음)
     Gradient? winGradient;
     final totalScore = game.homeScore + game.awayScore;
     if (!isCancelled) {
@@ -1945,9 +1945,10 @@ class GameCard extends StatelessWidget {
       final homeRatio = hasScore ? (game.homeScore / totalScore).toDouble() : 0.5;
       final homeBlend = Color.alphaBlend(homeColor.withValues(alpha: isDark ? 0.28 : 0.13), t.paper);
       final awayBlend = Color.alphaBlend(awayColor.withValues(alpha: isDark ? 0.28 : 0.13), t.paper);
+      final midColor = Color.lerp(homeBlend, awayBlend, 0.5)!;
       winGradient = LinearGradient(
         begin: Alignment.centerLeft, end: Alignment.centerRight,
-        colors: [homeBlend, t.paper, awayBlend],
+        colors: [homeBlend, midColor, awayBlend],
         stops: [0.0, homeRatio, 1.0],
       );
     }
