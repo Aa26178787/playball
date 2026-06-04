@@ -1532,8 +1532,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     return Container(
       color: paper,
-      // elevation 3 to 0 — drop shadow가 panel 아래 검은 블럭처럼 보임 issue fix
-      // 필요 시 subtle border만 적용 (검은 그림자 X)
+      // panel-spacer와 동일 height 강제 — 빈 공간 발생 시 scaffold body 검은 띠 노출 방지
+      height: _sameDayGames.isNotEmpty ? 460 : 360,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
