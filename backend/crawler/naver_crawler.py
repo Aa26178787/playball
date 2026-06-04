@@ -1123,6 +1123,9 @@ def update_live_game_players(db_game_id, naver_game_id):
                 if not player_id:
                     continue
 
+                # homeLineup batter → posName / homeEntry batter → pos (다른 키)
+                pos_raw = b.get('posName') or b.get('pos') or ''
+                pos_converted = convert_position(pos_raw)
                 cur.execute("""
                     INSERT INTO game_batters (
                         game_id, player_id, team_side, batting_order,
@@ -1138,7 +1141,7 @@ def update_live_game_players(db_game_id, naver_game_id):
                         walks = EXCLUDED.walks
                 """, (
                     db_game_id, player_id, side,
-                    b.get('batOrder', 0), convert_position(b.get('posName', '')),
+                    b.get('batOrder', 0), pos_converted,
                     b.get('ab', 0), b.get('hit', 0),
                     b.get('rbi', 0) if 'rbi' in b else 0,
                     b.get('hr', 0), float(b.get('seasonHra', 0) or 0),
@@ -1160,7 +1163,7 @@ def update_live_game_players(db_game_id, naver_game_id):
                 """, (
                     db_game_id, player_id, side,
                     b.get('batOrder', 0),
-                    convert_position(b.get('posName', '')),
+                    pos_converted,
                     is_starter
                 ))
 

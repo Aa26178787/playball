@@ -121,7 +121,15 @@
       "WebFetch(domain:en.wikipedia.org)",
       "WebFetch(domain:upload.wikimedia.org)",
       "WebFetch(domain:ko.wikipedia.org)",
-      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('count:', len\\(d.get\\('games', []\\)\\)\\); [print\\(g.get\\('id'\\), g.get\\('status'\\), g.get\\('home_team'\\), g.get\\('home_score'\\), '-', g.get\\('away_score'\\), g.get\\('away_team'\\)\\) for g in d.get\\('games', []\\)]\")"
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('count:', len\\(d.get\\('games', []\\)\\)\\); [print\\(g.get\\('id'\\), g.get\\('status'\\), g.get\\('home_team'\\), g.get\\('home_score'\\), '-', g.get\\('away_score'\\), g.get\\('away_team'\\)\\) for g in d.get\\('games', []\\)]\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(list\\(d.get\\('result',{}\\).keys\\(\\)\\)[:20]\\)\")",
+      "Bash(grep -oE '\"lineUp[A-Za-z]*\":\\\\[?\\\\{?[^}]{0,200}')",
+      "Bash(grep -oE '이재현[^\"]{0,50}')",
+      "Bash(grep -oE '[^\"]{0,100}이재현[^\"]{0,150}')",
+      "Bash(grep -oE '\\\\{[^{}]{0,500}\"pcode\":\"52415\"[^{}]{0,500}\\\\}' /tmp/relay.json)",
+      "Bash(grep -oE '\"entry\":\\\\{[^}]{0,500}\\\\}' /tmp/relay.json)",
+      "Bash(grep -oE '\"[a-zA-Z]{2,30}\":\\\\[\\\\{\"hittype\"[^]]{0,200}' /tmp/relay.json)",
+      "Bash(grep -oE '\"homeLineup\":\\\\{[^]]{0,200}' /tmp/relay.json)"
     ]
   }
 }
