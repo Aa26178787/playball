@@ -14,6 +14,20 @@ const Map<String, String> kTeamLogoUrls = {
   'WO': 'https://sports-phinf.pstatic.net/team/kbo/default/WO.png?type=f92_88',
 };
 
+// 큰 사이즈 (size >= 200, overlay 용도) 고해상도 위키피디아 로고 — 500px PNG
+const Map<String, String> kTeamOverlayLogoUrls = {
+  'LG': 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a7/LG_Twins_2017_logo.svg/500px-LG_Twins_2017_logo.svg.png',
+  'KT': 'https://upload.wikimedia.org/wikipedia/en/thumb/e/e5/KT_Wiz.svg/500px-KT_Wiz.svg.png',
+  'SK': 'https://upload.wikimedia.org/wikipedia/en/thumb/8/86/SSG_Landers.png/500px-SSG_Landers.png',
+  'NC': 'https://upload.wikimedia.org/wikipedia/en/thumb/5/54/NC_Dinos_Emblem.svg/500px-NC_Dinos_Emblem.svg.png',
+  'OB': 'https://upload.wikimedia.org/wikipedia/en/thumb/9/98/Doosan_Bears.svg/500px-Doosan_Bears.svg.png',
+  'HT': 'https://upload.wikimedia.org/wikipedia/en/thumb/e/e0/Kia_Tigers_2017_New_Team_Logo.png/500px-Kia_Tigers_2017_New_Team_Logo.png',
+  'LT': 'https://upload.wikimedia.org/wikipedia/en/thumb/e/ef/Lotte_Giants_logo.svg/500px-Lotte_Giants_logo.svg.png',
+  'SS': 'https://upload.wikimedia.org/wikipedia/en/thumb/0/0e/Samsung_Lions.svg/500px-Samsung_Lions.svg.png',
+  'HH': 'https://upload.wikimedia.org/wikipedia/en/thumb/a/af/Hanwha_Eagles_2025.svg/500px-Hanwha_Eagles_2025.svg.png',
+  'WO': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4f/Kiwoom_Heroes.png/500px-Kiwoom_Heroes.png',
+};
+
 const Map<String, Color> kTeamColors = {
   'LG': Color(0xFFC30452),
   'KT': Color(0xFF1A1A1A),
@@ -66,8 +80,13 @@ class TeamLogo extends StatelessWidget {
         ? logoUrl!
         : kTeamLogoUrls[teamCode];
 
+    // size >= 200 (overlay): 위키피디아 500px 고화질 PNG 사용 (logoUrl override 없을 때만)
+    if (size >= 200 && (logoUrl == null || logoUrl!.isEmpty)) {
+      final overlayUrl = kTeamOverlayLogoUrls[teamCode];
+      if (overlayUrl != null) resolvedUrl = overlayUrl;
+    }
     // 고해상도 요청: size >= 80이면 Naver CDN f400_400로 upgrade (검증: 200 + 55KB)
-    if (resolvedUrl != null && size >= 80) {
+    else if (resolvedUrl != null && size >= 80) {
       resolvedUrl = resolvedUrl.replaceAll('type=f92_88', 'type=f400_400');
     }
 
