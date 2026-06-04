@@ -1000,12 +1000,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
-                      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
                       decoration: BoxDecoration(
                         color: isDark ? paper2 : const Color(0xFFFAFAFA),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: SizedBox(height: 240, width: double.infinity, child: fieldWidget),
+                      child: SizedBox(height: 250, width: double.infinity, child: fieldWidget),
                     ),
                   ),
                 ),
@@ -4249,9 +4248,11 @@ class _FullFieldView extends StatelessWidget {
         );
       }
 
+      // 배경은 슬롯 전체 채우고, player widgets는 inset (가장자리 여유)
       return Stack(
         clipBehavior: Clip.none,
         children: [
+          // 배경: 슬롯 전체 채움
           Positioned.fill(
             child: CustomPaint(
               painter: _FieldBgPainter(
@@ -4259,24 +4260,35 @@ class _FullFieldView extends StatelessWidget {
               ),
             ),
           ),
-          ...defenseWidgets,
-          if (base1 || runner1 != null) runnerWidget(runner1, 'base1', base1),
-          if (base2 || runner2 != null) runnerWidget(runner2, 'base2', base2),
-          if (base3 || runner3 != null) runnerWidget(runner3, 'base3', base3),
-          if (batter != null)
-            placed(
-              _baseCoords['batter']!,
-              _PlayerDot(
-                name: batter['name'] as String? ?? '',
-                imageUrl: batter['image'] as String?,
-                label: '타자',
-                isOffense: true,
-                isDark: isDark,
-                size: 26,
-                isBatter: true,
+          // player widgets는 inner padded 영역 안
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  ...defenseWidgets,
+                  if (base1 || runner1 != null) runnerWidget(runner1, 'base1', base1),
+                  if (base2 || runner2 != null) runnerWidget(runner2, 'base2', base2),
+                  if (base3 || runner3 != null) runnerWidget(runner3, 'base3', base3),
+                  if (batter != null)
+                    placed(
+                      _baseCoords['batter']!,
+                      _PlayerDot(
+                        name: batter['name'] as String? ?? '',
+                        imageUrl: batter['image'] as String?,
+                        label: '타자',
+                        isOffense: true,
+                        isDark: isDark,
+                        size: 26,
+                        isBatter: true,
+                      ),
+                      68, 40,
+                    ),
+                ],
               ),
-              68, 40,
             ),
+          ),
         ],
       );
     });

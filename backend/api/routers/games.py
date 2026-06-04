@@ -713,14 +713,15 @@ def get_today_games():
             WHERE gp.result = '패'
         ) lp ON lp.game_id = g.id
         LEFT JOIN (
-            SELECT gp.game_id, p.name
-            FROM game_pitchers gp JOIN players p ON gp.player_id = p.id
-            WHERE gp.pitching_order = 1 AND gp.team_side = 'home'
+            -- 선발투수: game_rosters의 is_starter pitcher 우선 (경기 전), 종료 후 game_pitchers fallback
+            SELECT gr.game_id, p.name
+            FROM game_rosters gr JOIN players p ON gr.player_id = p.id
+            WHERE gr.roster_type = 'pitcher' AND gr.is_starter = TRUE AND gr.team_side = 'home'
         ) home_sp ON home_sp.game_id = g.id
         LEFT JOIN (
-            SELECT gp.game_id, p.name
-            FROM game_pitchers gp JOIN players p ON gp.player_id = p.id
-            WHERE gp.pitching_order = 1 AND gp.team_side = 'away'
+            SELECT gr.game_id, p.name
+            FROM game_rosters gr JOIN players p ON gr.player_id = p.id
+            WHERE gr.roster_type = 'pitcher' AND gr.is_starter = TRUE AND gr.team_side = 'away'
         ) away_sp ON away_sp.game_id = g.id
         WHERE g.game_date = (NOW() AT TIME ZONE 'Asia/Seoul')::date
         ORDER BY g.id
