@@ -443,6 +443,26 @@ class ApiService {
         options: Options(headers: headers));
   }
 
+  static Future<void> deleteNotification(int notifId) async {
+    final headers = await authHeaders();
+    await _dio.delete('/user/notifications/$notifId',
+        options: Options(headers: headers));
+  }
+
+  static Future<int> deleteReadNotifications() async {
+    final headers = await authHeaders();
+    final res = await _dio.delete('/user/notifications/read',
+        options: Options(headers: headers));
+    return (res.data['deleted'] as num?)?.toInt() ?? 0;
+  }
+
+  static Future<int> deleteAllNotifications() async {
+    final headers = await authHeaders();
+    final res = await _dio.delete('/user/notifications',
+        options: Options(headers: headers));
+    return (res.data['deleted'] as num?)?.toInt() ?? 0;
+  }
+
   static Future<Map<String, dynamic>> getStadiumRecord() async {
     final headers = await authHeaders();
     final res = await _dio.get('/user/stadium-record',

@@ -593,6 +593,52 @@ def read_notification(notif_id: int, current_user: dict = Depends(get_current_us
     return {"message": "읽음"}
 
 
+@router.delete('/notifications/{notif_id}')
+def delete_notification(notif_id: int, current_user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute(
+        "DELETE FROM user_notifications WHERE id = %s AND user_id = %s",
+        (notif_id, current_user['user_id'])
+    )
+    conn.commit(); cur.close(); conn.close()
+    return {"message": "삭제 완료"}
+
+
+@router.delete('/notifications/read')
+def delete_read_notifications(current_user: dict = Depends(get_current_user)):
+    """읽은 알림 일괄 삭제."""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute(
+        "DELETE FROM user_notifications WHERE user_id = %s AND is_read = TRUE",
+        (current_user['user_id'],)
+    )
+    deleted = cur.rowcount
+    conn.commit(); cur.close(); conn.close()
+    return {"deleted": deleted}
+
+
+@router.delete('/notifications')
+def delete_all_notifications(current_user: dict = Depends(get_current_user)):
+    """모든 알림 삭제."""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute(
+        "DELETE FROM user_notifications WHERE user_id = %s",
+        (current_user['user_id'],)
+    )
+    deleted = cur.rowcount
+    conn.commit(); cur.close(); conn.close()
+    return {"deleted": deleted}
+
+
 # ===== 직관 기록 =====
 
 @router.get('/stadium-record')

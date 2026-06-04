@@ -2013,70 +2013,76 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       }
 
       // Timeline row for this half-inning
+      // half == 'top' = 원정 = 우측, half == 'bottom' = 홈 = 좌측
+      final isHome = half == 'bottom';
       final onSurface2 = Theme.of(context).colorScheme.onSurface;
+
+      final inningBadge = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: halfColor,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          '$ing회 $halfLabel',
+          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+        ),
+      );
+
+      final headerRow = Row(
+        mainAxisAlignment: isHome ? MainAxisAlignment.start : MainAxisAlignment.end,
+        children: [
+          if (!isHome) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text('+$runs점',
+                  style: const TextStyle(color: Colors.deepOrange, fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(width: 8),
+            Text(team, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: onSurface2)),
+            const SizedBox(width: 8),
+            inningBadge,
+          ] else ...[
+            inningBadge,
+            const SizedBox(width: 8),
+            Text(team, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: onSurface2)),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text('+$runs점',
+                  style: const TextStyle(color: Colors.deepOrange, fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ],
+      );
+
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              left: isHome ? BorderSide(color: halfColor.withValues(alpha: 0.4), width: 2) : BorderSide.none,
+              right: !isHome ? BorderSide(color: halfColor.withValues(alpha: 0.4), width: 2) : BorderSide.none,
+            ),
+          ),
+          padding: EdgeInsets.only(left: isHome ? 10 : 0, right: !isHome ? 10 : 0),
+          child: Column(
+            crossAxisAlignment: isHome ? CrossAxisAlignment.start : CrossAxisAlignment.end,
             children: [
-              // Left: inning label
-              SizedBox(
-                width: 36,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 32,
-                      padding: const EdgeInsets.symmetric(vertical: 3),
-                      decoration: BoxDecoration(
-                        color: halfColor,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '$ing회\n$halfLabel',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, height: 1.3),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Center: vertical line
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Container(width: 1.5, color: halfColor.withValues(alpha: 0.3)),
-              ),
-              // Right: events
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // team + runs badge
-                    Row(children: [
-                      Text(team,
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: onSurface2)),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text('+$runs점',
-                            style: const TextStyle(color: Colors.deepOrange, fontSize: 11, fontWeight: FontWeight.bold)),
-                      ),
-                    ]),
-                    const SizedBox(height: 4),
-                    if (playWidgets.isNotEmpty)
-                      ...playWidgets
-                    else
-                      Text('상세 정보 없음', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                  ],
-                ),
-              ),
+              headerRow,
+              const SizedBox(height: 4),
+              if (playWidgets.isNotEmpty)
+                ...playWidgets
+              else
+                Text('상세 정보 없음', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
             ],
           ),
         ),

@@ -159,44 +159,20 @@ class _FloatingNavBar extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ── 마이팀 pill (즐겨찾기 있을 때만) ──
+        // ── 마이팀 개별 floating chips (즐겨찾기 있을 때만) ──
         if (myTeamItems.isNotEmpty) ...[
-          Container(
-            height: 44,
-            decoration: _pillDecoration(),
-            clipBehavior: Clip.antiAlias,
-            child: Stack(
-              children: [
-                ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  itemCount: myTeamItems.length,
-                  itemBuilder: (_, i) => _buildChip(myTeamItems[i]),
-                ),
-                // 좌측 solid overlay
-                IgnorePointer(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      width: 16,
-                      color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-                    ),
-                  ),
-                ),
-                // 우측 solid overlay
-                IgnorePointer(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Container(
-                      width: 16,
-                      color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-                    ),
-                  ),
-                ),
-              ],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: myTeamItems.map((item) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _buildFloatingChip(item),
+              )).toList(),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
         ],
         // ── 탭 pill ──
         Container(
@@ -244,6 +220,59 @@ class _FloatingNavBar extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFloatingChip(Map<String, dynamic> item) {
+    final tk = _Tok.of(isDark);
+    final code = item['code'] as String? ?? '';
+    final name = item['name'] as String? ?? '';
+    final gameStr = item['gameStr'] as String? ?? '';
+    final gameStatus = item['gameStatus'] as String? ?? '';
+    final won = item['won'] as bool? ?? false;
+    final lost = item['lost'] as bool? ?? false;
+
+    Color gameColor;
+    if (gameStatus == '진행') {
+      gameColor = const Color(0xFF22C55E);
+    } else if (gameStatus == '종료') {
+      gameColor = won ? const Color(0xFF3B82F6) : (lost ? const Color(0xFFEF4444) : tk.sub);
+    } else {
+      gameColor = tk.sub;
+    }
+
+    return GestureDetector(
+      onTap: () => onMyTeamTap?.call(item),
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: tk.paper,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: tk.line, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: isDark ? Colors.black54 : Colors.black.withValues(alpha: 0.08),
+              blurRadius: 12, offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            TeamLogo(teamCode: code, size: 18),
+            const SizedBox(width: 6),
+            Text(name,
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: tk.ink)),
+            if (gameStr.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              Text(gameStr,
+                  style: TextStyle(fontSize: 10, color: gameColor, fontWeight: FontWeight.w700)),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -1852,14 +1881,8 @@ class GameCard extends StatelessWidget {
     required bool isHome, required bool isWinner,
     required List<String> recent, required Color teamColorAccent, required _Tok t,
     required bool isDark,
-    String? starter,                          // 선발 (예정/진행)
-    String? pitcher, String? pitcherLabel,    // 승투/패투 (종료)
-    Color? pitcherLabelColor,
-    Map<String, String>? nextSeries,
   }) {
-    final align = isHome ? CrossAxisAlignment.start : CrossAxisAlignment.end;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
         TeamLogo(teamCode: code, size: 46),
@@ -1876,47 +1899,64 @@ class GameCard extends StatelessWidget {
             style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.sub)),
         const SizedBox(height: 7),
         _buildMini5(isHome ? recent.reversed.toList() : recent, teamColorAccent, t, isDark),
-        // ── 선발/승투/패투 inline ──
-        if (pitcher != null || starter != null) ...[
-          const SizedBox(height: 8),
-          Align(
-            alignment: isHome ? Alignment.centerLeft : Alignment.centerRight,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: pitcher != null
-                  ? (isHome
-                      ? [_pitcherBadge(pitcherLabel!, pitcherLabelColor!), const SizedBox(width: 4),
-                          _pitcherName(pitcher, t)]
-                      : [_pitcherName(pitcher, t), const SizedBox(width: 4),
-                          _pitcherBadge(pitcherLabel!, pitcherLabelColor!)])
-                  : [_starterChip(starter!, t)],
-            ),
-          ),
-        ],
-        // ── 다음 시리즈 inline ──
-        if (nextSeries != null) ...[
-          const SizedBox(height: 6),
-          Align(
-            alignment: isHome ? Alignment.centerLeft : Alignment.centerRight,
-            child: _nextSeriesInline(nextSeries, t),
-          ),
-        ],
       ],
     );
   }
 
-  Widget _pitcherBadge(String label, Color col) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-    decoration: BoxDecoration(
-      color: col.withValues(alpha: 0.15),
-      borderRadius: BorderRadius.circular(4),
-    ),
-    child: Text(label, style: TextStyle(fontSize: 9, color: col, fontWeight: FontWeight.w800)),
-  );
+  // 선발/승투/패투 — 가운데 정렬 단일 텍스트
+  Widget _centerPitcherCell({
+    required String? starter,
+    required String? pitcher, required String? pitcherLabel, required Color? pitcherLabelColor,
+    required _Tok t,
+  }) {
+    if (pitcher != null && pitcher.isNotEmpty) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: (pitcherLabelColor ?? t.ink3).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Text(pitcherLabel ?? '',
+                style: TextStyle(fontSize: 8, color: pitcherLabelColor ?? t.ink3, fontWeight: FontWeight.w800)),
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(pitcher,
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2),
+                overflow: TextOverflow.ellipsis, maxLines: 1),
+          ),
+        ],
+      );
+    }
+    if (starter != null && starter.isNotEmpty) {
+      return Text(starter,
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2),
+          overflow: TextOverflow.ellipsis, maxLines: 1);
+    }
+    return Text('-', style: TextStyle(fontSize: 11, color: t.line2));
+  }
 
-  Widget _pitcherName(String name, _Tok t) => Text(name,
-      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2),
-      overflow: TextOverflow.ellipsis, maxLines: 1);
+  Widget _centerNextSeriesCell(Map<String, String>? ns, _Tok t) {
+    if (ns == null) return Text('-', style: TextStyle(fontSize: 10, color: t.line2));
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TeamLogo(teamCode: ns['code'] ?? '', size: 15),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(ns['name'] ?? '',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: t.ink3),
+              overflow: TextOverflow.ellipsis, maxLines: 1),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2057,13 +2097,6 @@ class GameCard extends StatelessWidget {
                       code: game.homeTeamCode, name: game.homeTeam, rank: homeRank,
                       isHome: true, isWinner: homeWon,
                       recent: game.homeRecent5, teamColorAccent: homeColor, t: t, isDark: isDark,
-                      starter: hasStarters ? game.homeStarter : null,
-                      pitcher: hasPitchers ? (homeWon ? game.winPitcher : game.losePitcher) : null,
-                      pitcherLabel: hasPitchers ? (homeWon ? '승' : '패') : null,
-                      pitcherLabelColor: hasPitchers
-                          ? (homeWon ? const Color(0xFF1976D2) : const Color(0xFFC62828))
-                          : null,
-                      nextSeries: nextHomeSeries,
                     )),
                     SizedBox(
                       width: 86,
@@ -2123,16 +2156,63 @@ class GameCard extends StatelessWidget {
                       code: game.awayTeamCode, name: game.awayTeam, rank: awayRank,
                       isHome: false, isWinner: awayWon,
                       recent: game.awayRecent5, teamColorAccent: awayColor, t: t, isDark: isDark,
-                      starter: hasStarters ? game.awayStarter : null,
-                      pitcher: hasPitchers ? (awayWon ? game.winPitcher : game.losePitcher) : null,
-                      pitcherLabel: hasPitchers ? (awayWon ? '승' : '패') : null,
-                      pitcherLabelColor: hasPitchers
-                          ? (awayWon ? const Color(0xFF1976D2) : const Color(0xFFC62828))
-                          : null,
-                      nextSeries: nextAwaySeries,
                     )),
                   ],
                 ),
+                // ── divider + 선발 + 다음 시리즈 (3-col grid) ──
+                if (hasPitchers || hasStarters || nextHomeSeries != null || nextAwaySeries != null) ...[
+                  Container(
+                    height: 1, color: t.line,
+                    margin: const EdgeInsets.fromLTRB(0, 13, 0, 11),
+                  ),
+                  // 선발/승투/패투 row
+                  if (hasPitchers || hasStarters)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Expanded(child: _centerPitcherCell(
+                            starter: hasStarters ? game.homeStarter : null,
+                            pitcher: hasPitchers ? (homeWon ? game.winPitcher : game.losePitcher) : null,
+                            pitcherLabel: hasPitchers ? (homeWon ? '승' : '패') : null,
+                            pitcherLabelColor: hasPitchers
+                                ? (homeWon ? const Color(0xFF1976D2) : const Color(0xFFC62828))
+                                : null,
+                            t: t,
+                          )),
+                          SizedBox(
+                            width: 78,
+                            child: Text(hasPitchers ? '결과' : '선발',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: t.sub)),
+                          ),
+                          Expanded(child: _centerPitcherCell(
+                            starter: hasStarters ? game.awayStarter : null,
+                            pitcher: hasPitchers ? (awayWon ? game.winPitcher : game.losePitcher) : null,
+                            pitcherLabel: hasPitchers ? (awayWon ? '승' : '패') : null,
+                            pitcherLabelColor: hasPitchers
+                                ? (awayWon ? const Color(0xFF1976D2) : const Color(0xFFC62828))
+                                : null,
+                            t: t,
+                          )),
+                        ],
+                      ),
+                    ),
+                  // 다음 시리즈 row
+                  if (nextHomeSeries != null || nextAwaySeries != null)
+                    Row(
+                      children: [
+                        Expanded(child: _centerNextSeriesCell(nextHomeSeries, t)),
+                        SizedBox(
+                          width: 78,
+                          child: Text('다음 시리즈',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: t.sub)),
+                        ),
+                        Expanded(child: _centerNextSeriesCell(nextAwaySeries, t)),
+                      ],
+                    ),
+                ],
                 if (showPrediction) ...[
                   Container(
                     height: 1, color: t.line,

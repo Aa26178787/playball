@@ -3,7 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../api/api_service.dart';
+import '../../utils/team_theme.dart';
 import '../mypage/phone_verify_screen.dart';
+
+const _kTeams = [
+  (id: 1,  code: 'KT', name: 'KT'),
+  (id: 2,  code: 'HT', name: 'KIA'),
+  (id: 4,  code: 'LT', name: '롯데'),
+  (id: 5,  code: 'HH', name: '한화'),
+  (id: 6,  code: 'NC', name: 'NC'),
+  (id: 7,  code: 'OB', name: '두산'),
+  (id: 8,  code: 'WO', name: '키움'),
+  (id: 9,  code: 'LG', name: 'LG'),
+  (id: 10, code: 'SK', name: 'SSG'),
+  (id: 11, code: 'SS', name: '삼성'),
+];
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -16,6 +30,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   String _category = '자유';
+  int? _selectedTeamId;
   bool _isLoading = false;
   File? _imageFile;
   bool _imageUploading = false;
@@ -51,6 +66,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('제목과 내용을 입력해주세요')));
       return;
     }
+    if (_category == '팀별' && _selectedTeamId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('팀을 선택해주세요')));
+      return;
+    }
     if (_imageUploading) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('이미지 업로드 중...')));
       return;
@@ -62,6 +81,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         _titleController.text.trim(),
         _contentController.text.trim(),
         _category,
+        teamId: _category == '팀별' ? _selectedTeamId : null,
         imageUrl: _uploadedImageUrl,
       );
       if (mounted) Navigator.pop(context, true);
@@ -118,8 +138,54 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               items: ['자유', '팀별', '분석', '유머']
                   .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                   .toList(),
-              onChanged: (v) => setState(() => _category = v!),
+              onChanged: (v) => setState(() {
+                _category = v!;
+                if (_category != '팀별') _selectedTeamId = null;
+              }),
             ),
+            if (_category == '팀별') ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 56,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _kTeams.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final t = _kTeams[i];
+                    final sel = _selectedTeamId == t.id;
+                    final tc = teamColor(t.code);
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedTeamId = t.id),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: sel ? tc.withValues(alpha: 0.14) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: sel ? tc : Colors.grey.shade300,
+                            width: sel ? 1.6 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TeamLogo(teamCode: t.code, size: 22),
+                            const SizedBox(width: 6),
+                            Text(t.name,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: sel ? FontWeight.w800 : FontWeight.w600,
+                                  color: sel ? tc : Colors.black87,
+                                )),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             TextField(
               controller: _titleController,

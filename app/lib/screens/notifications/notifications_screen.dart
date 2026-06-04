@@ -39,6 +39,39 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
   }
 
+  Future<void> _deleteRead() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('읽은 알림 삭제'),
+        content: const Text('읽은 알림을 모두 삭제하시겠습니까?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('삭제')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      final n = await ApiService.deleteReadNotifications();
+      if (mounted) {
+        setState(() => _notifications.removeWhere((x) => (x['is_read'] as bool) == true));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$n개 삭제')));
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('삭제 실패')));
+    }
+  }
+
+  Future<void> _deleteOne(int id) async {
+    try {
+      await ApiService.deleteNotification(id);
+      if (mounted) setState(() => _notifications.removeWhere((x) => x['id'] == id));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('삭제 실패')));
+    }
+  }
+
   Future<void> _onTap(Map n) async {
     if (!(n['is_read'] as bool)) {
       await ApiService.readNotification(n['id'] as int);
@@ -85,14 +118,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     final hasUnread = _notifications.any((n) => !(n['is_read'] as bool));
+    final hasRead = _notifications.any((n) => (n['is_read'] as bool));
     return Scaffold(
       appBar: AppBar(
         title: const Text('알림'),
         actions: [
           if (hasUnread)
-            TextButton(
-              onPressed: _readAll,
-              child: const Text('모두 읽음'),
+            TextButton(onPressed: _readAll, child: const Text('모두 읽음')),
+          if (hasRead)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (v) {
+                if (v == 'delete_read') _deleteRead();
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'delete_read', child: Text('읽은 알림 삭제')),
+              ],
             ),
         ],
       ),
@@ -145,11 +186,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     itemBuilder: (_, i) {
                       final n = _notifications[i] as Map;
                       final unread = !(n['is_read'] as bool);
-                      return InkWell(
+                      return Dismissible(
+                        key: ValueKey('notif_${n['id']}'),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          color: const Color(0xFFE53935),
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: const Icon(Icons.delete_outline, color: Colors.white),
+                        ),
+                        onDismissed: (_) => _deleteOne(n['id'] as int),
+                        child: InkWell(
                         onTap: () => _onTap(n),
                         child: Container(
                           color: unread
-                              ? const Color(0xFF1A237E).withValues(alpha: 0.04)
+                              ? Colors.black.withValues(alpha: 0.04)
                               : null,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 12),
@@ -181,7 +232,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                             width: 8,
                                             height: 8,
                                             decoration: const BoxDecoration(
-                                              color: Color(0xFF1A237E),
+                                              color: Colors.black,
                                               shape: BoxShape.circle,
                                             ),
                                           ),
@@ -207,6 +258,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     size: 18, color: Colors.grey),
                             ],
                           ),
+                        ),
                         ),
                       );
                     },
