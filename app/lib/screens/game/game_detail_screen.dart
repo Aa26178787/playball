@@ -4647,20 +4647,11 @@ class _PlayerDot extends StatelessWidget {
               shape: BoxShape.circle,
               color: dotColor,
               border: Border.all(color: borderColor, width: 1.8),
-              boxShadow: [
-                // 지면 그림자 (3D 깊이)
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.35),
-                  offset: const Offset(0, 2.5),
-                  blurRadius: 3.5,
-                ),
-                // 팀 컬러 glow
-                BoxShadow(
-                  color: borderColor.withOpacity(0.5),
-                  blurRadius: isOffense ? 6 : 4,
-                  spreadRadius: 0.5,
-                ),
-              ],
+              boxShadow: [BoxShadow(
+                color: borderColor.withOpacity(0.5),
+                blurRadius: isOffense ? 6 : 4,
+                spreadRadius: 0.5,
+              )],
             ),
             child: ClipOval(
               child: imageUrl != null && imageUrl!.isNotEmpty
@@ -4735,31 +4726,47 @@ class _FieldBgPainter extends CustomPainter {
       ..close();
     // 캔버스 전체를 잔디로 칠한 뒤 inner diamond 따로 dirt
 
-    // 잔디 base (3D depth: 가까이 밝, 멀리 어둡 — atmospheric perspective)
+    // 잔디 base (그라데이션: 가운데 어두운 / 가장자리 밝은)
     final grassBase = Paint()
       ..shader = ui.Gradient.radial(
         arcCenter, arcR,
         [
-          const Color(0xFF7BC068), // 가까이 (홈 근처) 밝
-          const Color(0xFF5A9E4C), // 중간
-          const Color(0xFF35702C), // 멀리 (외야 뒤) 어두움
+          const Color(0xFF4A8C3E), // 가운데 진한 잔디
+          const Color(0xFF6BB05A), // 중간
+          const Color(0xFF7BC068), // 가장자리 밝은
         ],
-        const [0.0, 0.55, 1.0],
+        const [0.0, 0.6, 1.0],
       );
     canvas.save();
     canvas.clipPath(ofPath);
     canvas.drawPath(ofPath, grassBase);
-    // 상단 vignette — 멀리 가장자리 더 어둡게 (depth)
-    final vignettePaint = Paint()
-      ..shader = ui.Gradient.linear(
-        Offset(w * 0.5, 0),
-        Offset(w * 0.5, h * 0.55),
-        [
-          Colors.black.withOpacity(0.25),
-          Colors.transparent,
-        ],
+
+    // 잔디 stripe (mowing pattern) — fan-shape (홈에서 외야로 방사형)
+    final stripePaint = Paint()
+      ..color = Colors.black.withOpacity(0.06)
+      ..strokeWidth = 1;
+    for (double ang = -3.14 * 0.88; ang <= -3.14 * 0.12; ang += 3.14 * 0.04) {
+      final p1 = arcCenter;
+      final p2 = Offset(
+        arcCenter.dx + arcR * 1.2 * math.cos(ang),
+        arcCenter.dy + arcR * 1.2 * math.sin(ang),
       );
-    canvas.drawRect(Rect.fromLTWH(0, 0, w, h * 0.55), vignettePaint);
+      final stripe = Path()
+        ..moveTo(p1.dx, p1.dy)
+        ..lineTo(p2.dx, p2.dy);
+      final ang2 = ang + 3.14 * 0.02;
+      final p3 = Offset(
+        arcCenter.dx + arcR * 1.2 * math.cos(ang2),
+        arcCenter.dy + arcR * 1.2 * math.sin(ang2),
+      );
+      final fill = Path()
+        ..moveTo(p1.dx, p1.dy)
+        ..lineTo(p2.dx, p2.dy)
+        ..lineTo(p3.dx, p3.dy)
+        ..close();
+      canvas.drawPath(fill, Paint()..color = Colors.black.withOpacity(0.05));
+      canvas.drawPath(stripe, stripePaint);
+    }
     canvas.restore();
 
     // 잔디 외곽 (warning track) — 황토 띠
@@ -4791,63 +4798,31 @@ class _FieldBgPainter extends CustomPainter {
       ..close();
     canvas.drawPath(diamondPath, dirtPaint);
 
-    // dirt 자갈/모래 노이즈 (사실적 질감) — diamond 영역 clip 안
-    canvas.save();
-    canvas.clipPath(diamondPath);
-    final noiseRng = math.Random(42);
-    final noiseDark  = Paint()..color = const Color(0xFF6A4318).withOpacity(0.45);
-    final noiseLight = Paint()..color = const Color(0xFFDDB67A).withOpacity(0.35);
-    for (int i = 0; i < 90; i++) {
-      final x = w * (0.10 + noiseRng.nextDouble() * 0.80);
-      final y = h * (0.40 + noiseRng.nextDouble() * 0.45);
-      final r = 0.3 + noiseRng.nextDouble() * 0.7;
-      canvas.drawCircle(Offset(x, y), r, i % 3 == 0 ? noiseLight : noiseDark);
-    }
-    canvas.restore();
-
-    // 내야 잔디 (perspective projection 적용 trapezoid)
-    final igTop    = toPixel(const Offset(0.50, 0.49));
-    final igLeft   = toPixel(const Offset(0.36, 0.62));
-    final igBottom = toPixel(const Offset(0.50, 0.75));
-    final igRight  = toPixel(const Offset(0.64, 0.62));
+    // 내야 잔디 (다이아몬드 중심 사각 잔디 area)
     final infieldGrass = Paint()
       ..shader = ui.Gradient.radial(
         Offset(w * 0.50, h * 0.62), w * 0.18,
         [const Color(0xFF5FA851), const Color(0xFF4D8E42)],
       );
     final infieldGrassPath = Path()
-      ..moveTo(igTop.dx, igTop.dy)
-      ..lineTo(igLeft.dx, igLeft.dy)
-      ..lineTo(igBottom.dx, igBottom.dy)
-      ..lineTo(igRight.dx, igRight.dy)
+      ..moveTo(w * 0.50, h * 0.49)
+      ..lineTo(w * 0.36, h * 0.62)
+      ..lineTo(w * 0.50, h * 0.75)
+      ..lineTo(w * 0.64, h * 0.62)
       ..close();
     canvas.drawPath(infieldGrassPath, infieldGrass);
 
-    // 마운드 (perspective squashed ellipse)
-    final moundRect = Rect.fromCenter(
-      center: pMound, width: w * 0.09, height: w * 0.055,  // y squashed
-    );
+    // 마운드 (작은 흙 원)
     final moundPaint = Paint()
       ..shader = ui.Gradient.radial(
         pMound, w * 0.045,
         [const Color(0xFFB8843A), const Color(0xFFA06A2A)],
       );
-    canvas.drawOval(moundRect, moundPaint);
-    // 마운드 shadow underneath (depth)
-    final moundShadowPaint = Paint()
-      ..shader = ui.Gradient.radial(
-        Offset(pMound.dx, pMound.dy + 3), w * 0.05,
-        [Colors.black.withOpacity(0.18), Colors.transparent],
-      );
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(pMound.dx, pMound.dy + 3), width: w * 0.10, height: w * 0.04),
-      moundShadowPaint,
-    );
-    // pitcher rubber (perspective squashed)
+    canvas.drawCircle(pMound, w * 0.045, moundPaint);
     final rubberPaint = Paint()
       ..color = Colors.white.withOpacity(0.85);
     canvas.drawRect(
-      Rect.fromCenter(center: pMound, width: w * 0.04, height: 1.5),
+      Rect.fromCenter(center: pMound, width: w * 0.04, height: 2),
       rubberPaint,
     );
 
@@ -4867,29 +4842,21 @@ class _FieldBgPainter extends CustomPainter {
     canvas.drawLine(pHome, Offset(w * 0.0, h * 0.08), foulPaint);
     canvas.drawLine(pHome, Offset(w * 1.0, h * 0.08), foulPaint);
 
-    // ── Bases (사실적 묘사: 두꺼운 그림자 + linear gradient + top highlight) ──
+    // ── Bases (대각선 시점에 맞춰 살짝 누운 마름모: height 0.65x) ──
     void drawBase(Offset pos, bool occupied) {
-      final bs = 9.0;
-      final bh = bs * 0.65; // 대각선 시점 높이 압축
-      final basePath = Path()
-        ..moveTo(pos.dx,      pos.dy - bh)
-        ..lineTo(pos.dx + bs, pos.dy)
-        ..lineTo(pos.dx,      pos.dy + bh)
-        ..lineTo(pos.dx - bs, pos.dy)
-        ..close();
-
-      // 짙은 그림자 (지면에 닿은 느낌)
+      final bs = 8.0;
+      final bh = bs * 0.65;
+      // 그림자
       canvas.drawPath(
         Path()
-          ..moveTo(pos.dx,           pos.dy - bh + 2.5)
-          ..lineTo(pos.dx + bs * 1.2, pos.dy + 2.5)
-          ..lineTo(pos.dx,           pos.dy + bh + 2.5)
-          ..lineTo(pos.dx - bs * 1.2, pos.dy + 2.5)
+          ..moveTo(pos.dx,           pos.dy - bh + 1.5)
+          ..lineTo(pos.dx + bs * 1.1, pos.dy + 1.5)
+          ..lineTo(pos.dx,           pos.dy + bh + 1.5)
+          ..lineTo(pos.dx - bs * 1.1, pos.dy + 1.5)
           ..close(),
-        Paint()..color = Colors.black.withOpacity(0.40)
-              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
+        Paint()..color = Colors.black.withOpacity(0.22)
+              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
       );
-
       if (occupied) {
         canvas.drawPath(
           Path()
@@ -4898,52 +4865,40 @@ class _FieldBgPainter extends CustomPainter {
             ..lineTo(pos.dx,           pos.dy + bh * 2.6)
             ..lineTo(pos.dx - bs * 2.6, pos.dy)
             ..close(),
-          Paint()..color = Colors.yellow.withOpacity(0.50)
-                ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
+          Paint()..color = Colors.yellow.withOpacity(0.45)
+                ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
         );
       }
-
-      // 본체 — vertical gradient (위 밝, 아래 어둠) → 3D 입체
-      final fillPaint = Paint()
-        ..shader = ui.Gradient.linear(
-          Offset(pos.dx, pos.dy - bh),
-          Offset(pos.dx, pos.dy + bh),
-          occupied
-              ? [const Color(0xFFFFF2A8), const Color(0xFFE6BD3F)]
-              : [const Color(0xFFFFFFFF), const Color(0xFFD8D8D2)],
-        );
-      canvas.drawPath(basePath, fillPaint);
-
-      // 상단 하이라이트 (반짝임)
-      canvas.drawPath(basePath, Paint()
-        ..shader = ui.Gradient.linear(
-          Offset(pos.dx, pos.dy - bh),
-          Offset(pos.dx, pos.dy),
-          [Colors.white.withOpacity(0.55), Colors.transparent],
-        ));
-
-      // 외곽선
-      canvas.drawPath(basePath, Paint()
-        ..color = Colors.black.withOpacity(0.45)
-        ..strokeWidth = 1.0
+      final bp = Paint()
+        ..color = occupied ? const Color(0xFFFFE066) : Colors.white.withOpacity(0.95)
+        ..style = PaintingStyle.fill;
+      final path = Path()
+        ..moveTo(pos.dx,      pos.dy - bh)
+        ..lineTo(pos.dx + bs, pos.dy)
+        ..lineTo(pos.dx,      pos.dy + bh)
+        ..lineTo(pos.dx - bs, pos.dy)
+        ..close();
+      canvas.drawPath(path, bp);
+      canvas.drawPath(path, Paint()
+        ..color = Colors.black.withOpacity(0.25)
+        ..strokeWidth = 0.8
         ..style = PaintingStyle.stroke);
     }
     drawBase(p1B, base1);
     drawBase(p2B, base2);
     drawBase(p3B, base3);
 
-    // ── Home plate (사실적 묘사: 5각형 + linear gradient + top highlight) ──
-    // 짙은 그림자
+    // ── Home plate (대각선 시점: y 0.65x 압축) ──
     canvas.drawPath(
       Path()
-        ..moveTo(pHome.dx,      pHome.dy - 3.25 + 2.5)
-        ..lineTo(pHome.dx + 5,  pHome.dy - 1 + 2.5)
-        ..lineTo(pHome.dx + 4,  pHome.dy + 3 + 2.5)
-        ..lineTo(pHome.dx - 4,  pHome.dy + 3 + 2.5)
-        ..lineTo(pHome.dx - 5,  pHome.dy - 1 + 2.5)
+        ..moveTo(pHome.dx,      pHome.dy - 3.25 + 1.5)
+        ..lineTo(pHome.dx + 5,  pHome.dy - 1 + 1.5)
+        ..lineTo(pHome.dx + 4,  pHome.dy + 3 + 1.5)
+        ..lineTo(pHome.dx - 4,  pHome.dy + 3 + 1.5)
+        ..lineTo(pHome.dx - 5,  pHome.dy - 1 + 1.5)
         ..close(),
-      Paint()..color = Colors.black.withOpacity(0.40)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
+      Paint()..color = Colors.black.withOpacity(0.22)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
     );
     final homePath = Path()
       ..moveTo(pHome.dx,      pHome.dy - 3.25)
@@ -4952,24 +4907,10 @@ class _FieldBgPainter extends CustomPainter {
       ..lineTo(pHome.dx - 4,  pHome.dy + 3)
       ..lineTo(pHome.dx - 5,  pHome.dy - 1)
       ..close();
-    // vertical gradient (위 밝, 아래 어둠)
+    canvas.drawPath(homePath, Paint()..color = Colors.white.withOpacity(0.95));
     canvas.drawPath(homePath, Paint()
-      ..shader = ui.Gradient.linear(
-        Offset(pHome.dx, pHome.dy - 3.25),
-        Offset(pHome.dx, pHome.dy + 3),
-        [const Color(0xFFFFFFFF), const Color(0xFFDADAD2)],
-      ));
-    // 상단 하이라이트
-    canvas.drawPath(homePath, Paint()
-      ..shader = ui.Gradient.linear(
-        Offset(pHome.dx, pHome.dy - 3.25),
-        Offset(pHome.dx, pHome.dy),
-        [Colors.white.withOpacity(0.55), Colors.transparent],
-      ));
-    // 외곽선
-    canvas.drawPath(homePath, Paint()
-      ..color = Colors.black.withOpacity(0.50)
-      ..strokeWidth = 1.0
+      ..color = Colors.black.withOpacity(0.25)
+      ..strokeWidth = 0.8
       ..style = PaintingStyle.stroke);
 
     // 배터 박스 (홈 양옆 사각형 outline)
@@ -5017,22 +4958,42 @@ class _GrassExtensionPainter extends CustomPainter {
       ..shader = ui.Gradient.radial(
         arcCenter, arcR,
         [
+          const Color(0xFF4A8C3E),
+          const Color(0xFF6BB05A),
           const Color(0xFF7BC068),
-          const Color(0xFF5A9E4C),
-          const Color(0xFF35702C),
         ],
-        const [0.0, 0.55, 1.0],
+        const [0.0, 0.6, 1.0],
       );
     canvas.save();
     canvas.clipPath(fullPath);
     canvas.drawPath(fullPath, grassBase);
-    // 상단 vignette (depth)
-    final vignette = Paint()
-      ..shader = ui.Gradient.linear(
-        Offset(w * 0.5, 0), Offset(w * 0.5, h * 0.55),
-        [Colors.black.withOpacity(0.25), Colors.transparent],
+
+    // stripe (mowing pattern) — inner painter와 동일 (각도/색)
+    final stripePaint = Paint()
+      ..color = Colors.black.withOpacity(0.06)
+      ..strokeWidth = 1;
+    for (double ang = -3.14 * 0.88; ang <= -3.14 * 0.12; ang += 3.14 * 0.04) {
+      final p1 = arcCenter;
+      final p2 = Offset(
+        arcCenter.dx + arcR * 1.2 * math.cos(ang),
+        arcCenter.dy + arcR * 1.2 * math.sin(ang),
       );
-    canvas.drawRect(Rect.fromLTWH(0, 0, w, h * 0.55), vignette);
+      final ang2 = ang + 3.14 * 0.02;
+      final p3 = Offset(
+        arcCenter.dx + arcR * 1.2 * math.cos(ang2),
+        arcCenter.dy + arcR * 1.2 * math.sin(ang2),
+      );
+      final fill = Path()
+        ..moveTo(p1.dx, p1.dy)
+        ..lineTo(p2.dx, p2.dy)
+        ..lineTo(p3.dx, p3.dy)
+        ..close();
+      canvas.drawPath(fill, Paint()..color = Colors.black.withOpacity(0.05));
+      final stripe = Path()
+        ..moveTo(p1.dx, p1.dy)
+        ..lineTo(p2.dx, p2.dy);
+      canvas.drawPath(stripe, stripePaint);
+    }
     canvas.restore();
   }
 
