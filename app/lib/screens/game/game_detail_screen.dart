@@ -645,8 +645,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           _fieldPinned
               ? Column(
                   children: [
-                    // panel-spacer: 스코어보드/팀로고 등 헤더 영역을 panel로 가림 (panel actual height와 일치)
-                    SizedBox(height: _sameDayGames.isNotEmpty ? 490 : 390),
+                    // panel-spacer: panel actual height와 일치 + paper bg (scaffold body 색 노출 방지)
+                    Container(
+                      height: _sameDayGames.isNotEmpty ? 490 : 390,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF18181C)
+                          : Colors.white,
+                    ),
                     Expanded(
                       // gameHeader skip — 핀 시 panel 바로 아래 TabBarView (득점요약/이닝중계)만 표시
                       child: TabBarView(
@@ -4739,20 +4744,31 @@ class _FieldBgPainter extends CustomPainter {
       ..close();
     // 캔버스 전체를 잔디로 칠한 뒤 inner diamond 따로 dirt
 
-    // 잔디 base (그라데이션: 가운데 어두운 / 가장자리 밝은)
+    // 잔디 base (3D depth: 가까이 밝, 멀리 어둡 — atmospheric perspective)
     final grassBase = Paint()
       ..shader = ui.Gradient.radial(
         arcCenter, arcR,
         [
-          const Color(0xFF4A8C3E), // 가운데 진한 잔디
-          const Color(0xFF6BB05A), // 중간
-          const Color(0xFF7BC068), // 가장자리 밝은
+          const Color(0xFF7BC068), // 가까이 (홈 근처) 밝
+          const Color(0xFF5A9E4C), // 중간
+          const Color(0xFF35702C), // 멀리 (외야 뒤) 어두움
         ],
-        const [0.0, 0.6, 1.0],
+        const [0.0, 0.55, 1.0],
       );
     canvas.save();
     canvas.clipPath(ofPath);
     canvas.drawPath(ofPath, grassBase);
+    // 상단 vignette — 멀리 가장자리 더 어둡게 (depth)
+    final vignettePaint = Paint()
+      ..shader = ui.Gradient.linear(
+        Offset(w * 0.5, 0),
+        Offset(w * 0.5, h * 0.55),
+        [
+          Colors.black.withOpacity(0.25),
+          Colors.transparent,
+        ],
+      );
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, h * 0.55), vignettePaint);
     canvas.restore();
 
     // 잔디 외곽 (warning track) — 황토 띠
@@ -4948,15 +4964,22 @@ class _GrassExtensionPainter extends CustomPainter {
       ..shader = ui.Gradient.radial(
         arcCenter, arcR,
         [
-          const Color(0xFF4A8C3E),
-          const Color(0xFF6BB05A),
           const Color(0xFF7BC068),
+          const Color(0xFF5A9E4C),
+          const Color(0xFF35702C),
         ],
-        const [0.0, 0.6, 1.0],
+        const [0.0, 0.55, 1.0],
       );
     canvas.save();
     canvas.clipPath(fullPath);
     canvas.drawPath(fullPath, grassBase);
+    // 상단 vignette (depth)
+    final vignette = Paint()
+      ..shader = ui.Gradient.linear(
+        Offset(w * 0.5, 0), Offset(w * 0.5, h * 0.55),
+        [Colors.black.withOpacity(0.25), Colors.transparent],
+      );
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, h * 0.55), vignette);
     canvas.restore();
   }
 
