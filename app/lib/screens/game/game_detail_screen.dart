@@ -1000,11 +1000,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
+                      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
                       decoration: BoxDecoration(
                         color: isDark ? paper2 : const Color(0xFFFAFAFA),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: SizedBox(height: 220, width: double.infinity, child: fieldWidget),
+                      child: SizedBox(height: 215, width: double.infinity, child: fieldWidget),
                     ),
                   ),
                 ),
@@ -1376,8 +1377,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildWeatherRow(Map<String, dynamic> w) {
+    // 부모 DefaultTextStyle (paper 톤 ink3) 따라가도록 color 제거
     if (w['indoor'] == true) {
-      return const Text('실내 구장', style: TextStyle(color: Colors.white54, fontSize: 12));
+      return const Text('실내 구장', style: TextStyle(fontSize: 12));
     }
     final emoji = w['emoji'] ?? '';
     final temp = w['temp'];
@@ -1395,10 +1397,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       if (windSpeed != null && (windSpeed as num) > 0) '풍속 ${windSpeed}m/s',
       if (pop != null) '강수 $pop%',
     ];
-    return Text(
-      parts.join('  '),
-      style: const TextStyle(color: Colors.white60, fontSize: 12),
-    );
+    return Text(parts.join('  '), style: const TextStyle(fontSize: 12));
   }
 
   Widget _buildFieldSection(Map game) {

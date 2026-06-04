@@ -2088,11 +2088,15 @@ class GameCard extends StatelessWidget {
     final homeWon = isFinished && !isDraw && game.homeScore > game.awayScore;
     final awayWon = isFinished && !isDraw && game.awayScore > game.homeScore;
     final isLive = game.status == '진행';
-    final showStarters = game.status == '예정' || game.status == '라인업' || isLive;
+    final showStarters = isUpcoming || isLive;
     final showPrediction = (game.status == '예정' || game.status == '라인업') &&
         game.homeTeamId != null && game.awayTeamId != null;
     final isCancelled = game.status == '취소';
     final isUpcoming = !isFinished && !isLive && !isCancelled;
+    // 선발투수가 모두 발표됐다면 '라인업' 상태로 자동 분기 (backend status='예정'이어도)
+    final autoLineup = isUpcoming && game.status != '라인업'
+        && game.homeStarter != null && game.homeStarter!.isNotEmpty
+        && game.awayStarter != null && game.awayStarter!.isNotEmpty;
 
     final homeColor = teamColor(game.homeTeamCode);
     final awayColor = teamColor(game.awayTeamCode);
@@ -2136,14 +2140,14 @@ class GameCard extends StatelessWidget {
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink3)),
         );
       }
-      if (game.status == '라인업') {
+      if (game.status == '라인업' || autoLineup) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: const Color(0xFFFFA000).withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(999),
           ),
-          child: const Text('라인업',
+          child: const Text('라인업 확정',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFFFA000))),
         );
       }
