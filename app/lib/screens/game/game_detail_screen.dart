@@ -626,6 +626,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         title: Text('${game['home_team']} vs ${game['away_team']}'),
         actions: [
           IconButton(
+            tooltip: _fieldPinned ? '필드뷰 고정 해제' : '필드뷰 상단 고정',
+            icon: Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined),
+            color: _fieldPinned ? const Color(0xFFE53935) : null,
+            onPressed: () => setState(() => _fieldPinned = !_fieldPinned),
+          ),
+          IconButton(
             icon: const Icon(Icons.share),
             onPressed: () => showModalBottomSheet(
               context: context,
@@ -1064,19 +1070,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         const SizedBox(width: 8),
                         bsoGroup('O', (_relayData!['current_state']['out'] as int? ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
                         const Spacer(),
-                        // pin 토글: 활성화 시 필드+BSO가 스크롤해도 상단에 sticky 고정
-                        GestureDetector(
-                          onTap: () => setState(() => _fieldPinned = !_fieldPinned),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Icon(
-                              _fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                              size: 18,
-                              color: _fieldPinned ? live : ink3,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
+                        // pin 토글은 AppBar action으로 이동 — inline 제거
                         _isRelayRefreshing
                             ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: ink3))
                             : GestureDetector(
@@ -1097,24 +1091,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       color: paper2, borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: line, width: 1),
                     ),
-                    // win/lose Expanded 균등 + 좌우 대칭 spacer (pin 토글과 동일 폭)
+                    // Expanded 균등 배치 (pin 토글은 AppBar로 이동)
                     child: Row(children: [
-                      const SizedBox(width: 26),  // 우측 pin 대칭용 spacer
                       if (game['win_pitcher'] != null)
                         Expanded(child: _pitcherBadge(game['win_pitcher'] as String, game['win_pitcher_image'] as String?, const Color(0xFF1976D2), '승')),
                       if (game['lose_pitcher'] != null)
                         Expanded(child: _pitcherBadge(game['lose_pitcher'] as String, game['lose_pitcher_image'] as String?, const Color(0xFFC62828), '패')),
-                      SizedBox(
-                        width: 26,
-                        child: GestureDetector(
-                          onTap: () => setState(() => _fieldPinned = !_fieldPinned),
-                          child: Icon(
-                            _fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                            size: 18,
-                            color: _fieldPinned ? live : ink3,
-                          ),
-                        ),
-                      ),
                     ]),
                   ),
                 ),
@@ -1564,18 +1546,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     const SizedBox(width: 8),
                     bsoGroup('O', (_relayData!['current_state']['out'] as int? ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
                     const Spacer(),
-                    GestureDetector(
-                      onTap: () => setState(() => _fieldPinned = !_fieldPinned),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Icon(
-                          _fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                          size: 18,
-                          color: _fieldPinned ? live : ink3,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
                     _isRelayRefreshing
                         ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: ink3))
                         : GestureDetector(
@@ -1596,43 +1566,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   color: paper2, borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: line, width: 1),
                 ),
+                // pin 토글 AppBar action으로 이동 — Expanded 균등 배치
                 child: Row(
                   children: [
-                    const SizedBox(width: 26),
                     if (game['win_pitcher'] != null)
                       Expanded(child: _pitcherBadge(game['win_pitcher'] as String, game['win_pitcher_image'] as String?, const Color(0xFF1976D2), '승')),
                     if (game['lose_pitcher'] != null)
                       Expanded(child: _pitcherBadge(game['lose_pitcher'] as String, game['lose_pitcher_image'] as String?, const Color(0xFFC62828), '패')),
-                    SizedBox(
-                      width: 26,
-                      child: GestureDetector(
-                        onTap: () => setState(() => _fieldPinned = !_fieldPinned),
-                        child: Icon(
-                          _fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                          size: 18,
-                          color: _fieldPinned ? live : ink3,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ] else ...[
-            // 예정/라인업: pin 토글만 표시 (BSO 없음)
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(color: paper2, borderRadius: BorderRadius.circular(12), border: Border.all(color: line, width: 1)),
-                child: Row(
-                  children: [
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => setState(() => _fieldPinned = !_fieldPinned),
-                      child: Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined, size: 18, color: _fieldPinned ? live : ink3),
-                    ),
                   ],
                 ),
               ),

@@ -165,9 +165,11 @@ stadiums.forEach(function(s) {
 });
 
 function moveTo(lat, lng) {
+  // 순서: setLevel 먼저 → setCenter (KakaoMap convention) + redundant setLevel for race
+  map.setLevel(5);
   map.setCenter(new kakao.maps.LatLng(lat, lng));
-  // setLevel을 setTimeout으로 호출 — 과거 경기 진입 시 축척 적용 안 되는 버그 fix
-  setTimeout(function() { map.setLevel(5); }, 100);
+  setTimeout(function() { map.setLevel(5); map.relayout && map.relayout(); }, 250);
+  setTimeout(function() { map.setLevel(5); }, 700);
 }
 function resetView() {
   map.setCenter(new kakao.maps.LatLng(36.5, 127.7));

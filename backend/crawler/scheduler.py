@@ -1541,11 +1541,31 @@ def smart_update():
 
         # 마일스톤 27분 후는 post_finished_done 블록에서 이미 schedule됨
 
-        # 경기 종료 즉시 결과 요약 알림 (재시작 안전: 종료 경기 중 미발송만)
+        # 경기 종료 결과 요약 알림 — game_pitchers.result 채워질 때까지 대기
+        # 종료 직후 naver_crawler가 result 채우는 시점 차이로 win/loss 빈 상태 발송 방지
         for gid, curr in curr_details.items():
             if curr.get('status') != '종료':
                 continue
             if _already_notified(gid, 'game_end'):
+                continue
+            # 승투/세이브/홀드/패전 result 채워졌는지 확인 — 비어있으면 다음 사이클로 미룸
+            try:
+                ck = get_connection()
+                if not ck:
+                    continue
+                ckc = ck.cursor()
+                ckc.execute(
+                    "SELECT COUNT(*) FROM game_pitchers WHERE game_id = %s AND result IN ('승','패','세이브','홀드')",
+                    (gid,),
+                )
+                result_count = ckc.fetchone()[0]
+                ckc.close()
+                ck.close()
+                if result_count < 1:
+                    print(f"[FCM] game_summary 대기 game={gid} (result 미충원)")
+                    continue
+            except Exception as ck_err:
+                print(f"[FCM] game_summary result 확인 오류 game={gid}: {ck_err}")
                 continue
             # 마킹 먼저 (중복 호출 방지)
             _mark_notified(gid, 'game_end')
