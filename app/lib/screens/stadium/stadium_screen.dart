@@ -56,12 +56,12 @@ class _StadiumScreenState extends State<StadiumScreen> {
       'address': '인천 미추홀구 매소홀로 618',
     },
     {
-      'name': '한화생명이글스파크',
+      'name': '대전한화생명볼파크',
       'city': '대전',
       'teams': ['HH'],
       'teamNames': '한화',
-      'lat': 36.3169,
-      'lng': 127.4289,
+      'lat': 36.3171,
+      'lng': 127.4204,
       'address': '대전 중구 대종로 373',
     },
     {
@@ -128,7 +128,7 @@ var stadiums = [
   {lat:37.4982, lng:126.8672, name:'고척스카이돔'},
   {lat:37.2997, lng:127.0095, name:'KT위즈파크'},
   {lat:37.4370, lng:126.6934, name:'SSG랜더스필드'},
-  {lat:36.3169, lng:127.4289, name:'한화생명이글스파크'},
+  {lat:36.3171, lng:127.4204, name:'대전한화생명볼파크'},
   {lat:35.1685, lng:126.8890, name:'광주기아챔피언스필드'},
   {lat:35.8411, lng:128.6813, name:'삼성라이온즈파크'},
   {lat:35.2225, lng:128.5816, name:'창원NC파크'},
@@ -156,7 +156,8 @@ stadiums.forEach(function(s) {
 
 function moveTo(lat, lng) {
   map.setCenter(new kakao.maps.LatLng(lat, lng));
-  map.setLevel(5);  // 250m 축척 (level 5 = 약 250m)
+  // setLevel을 setTimeout으로 호출 — 과거 경기 진입 시 축척 적용 안 되는 버그 fix
+  setTimeout(function() { map.setLevel(5); }, 100);
 }
 function resetView() {
   map.setCenter(new kakao.maps.LatLng(36.5, 127.7));
@@ -205,7 +206,7 @@ function resetView() {
                     setState(() => _mapReady = true);
                     final idx = widget.initialIndex;
                     if (idx != null && idx >= 0 && idx < _stadiums.length) {
-                      Future.delayed(const Duration(milliseconds: 300), () {
+                      Future.delayed(const Duration(milliseconds: 600), () {
                         if (mounted) _focusStadium(idx);
                       });
                     }
