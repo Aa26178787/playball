@@ -2088,11 +2088,11 @@ class GameCard extends StatelessWidget {
     final homeWon = isFinished && !isDraw && game.homeScore > game.awayScore;
     final awayWon = isFinished && !isDraw && game.awayScore > game.homeScore;
     final isLive = game.status == '진행';
+    final isCancelled = game.status == '취소';
+    final isUpcoming = !isFinished && !isLive && !isCancelled;
     final showStarters = isUpcoming || isLive;
     final showPrediction = (game.status == '예정' || game.status == '라인업') &&
         game.homeTeamId != null && game.awayTeamId != null;
-    final isCancelled = game.status == '취소';
-    final isUpcoming = !isFinished && !isLive && !isCancelled;
     // 선발투수가 모두 발표됐다면 '라인업' 상태로 자동 분기 (backend status='예정'이어도)
     final autoLineup = isUpcoming && game.status != '라인업'
         && game.homeStarter != null && game.homeStarter!.isNotEmpty
