@@ -1330,17 +1330,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     );
   }
 
-  // 그날 기록 lookup — pitchers list에서 name 매칭 → "5이닝 2자책 7K"
+  // 그날 기록 lookup — pitchers list에서 name 매칭 → "5이닝 2실점 7K"
   String _pitcherDayStats(String name) {
     final pitchers = (_gameData?['pitchers'] as List?) ?? [];
     for (final p in pitchers) {
       if ((p['name'] as String? ?? '') != name) continue;
       final ip = p['innings_pitched'];
-      final er = p['earned_runs'];
+      final r = p['runs_allowed'];
       final so = p['strikeouts'];
       final parts = <String>[];
       if (ip != null && ip != 0) parts.add('${ip}이닝');
-      if (er != null) parts.add('${er}자책');
+      if (r != null) parts.add('${r}실점');
       if (so != null && so > 0) parts.add('${so}K');
       return parts.join(' ');
     }
