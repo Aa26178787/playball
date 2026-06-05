@@ -4169,9 +4169,6 @@ class _FullFieldView extends StatelessWidget {
     required this.isDark, this.fieldView,
   });
 
-  // 3D rollback — no-op (원래 2D top-down 좌표 그대로)
-  static Offset _perspective(Offset src) => src;
-
   // Normalized (x,y) coordinates on the field widget (0=left/top, 1=right/bottom)
   // SVG 300x310 좌표계 (mockup과 동일) — placed() 에서 painter transform 적용
   static const Map<String, Offset> _posCoords = {
@@ -4429,11 +4426,11 @@ const double _kMB1X      = 208, _kMB1Y      = 208;   // 1루
 const double _kMB2X      = 150, _kMB2Y      = 150;   // 2루
 const double _kMB3X      = 92,  _kMB3Y      = 208;   // 3루
 const double _kPMX       = 150, _kPMY       = 208;   // 투수판
-const double _kR_OUT     = 212;
-const double _kR_DIRT    = 132;
-const double _kR_HOME    = 30;
-const double _kR_BASE    = 17;
-const double _kR_MOUND   = 18;
+const double _kROut     = 212;
+const double _kRDirt    = 132;
+const double _kRHome    = 30;
+const double _kRBase    = 17;
+const double _kRMound   = 18;
 
 class _FieldBgPainter extends CustomPainter {
   final bool base1, base2, base3, isDark;
@@ -4539,7 +4536,7 @@ class _FieldBgPainter extends CustomPainter {
     const stripeColors = [Color(0xFF54944A), Color(0xFF4C8A42)];
     for (int i = 0; i < 9; i++) {
       canvas.drawPath(
-        _sector(-45 + i * 10.0, -45 + (i + 1) * 10.0, _kR_OUT),
+        _sector(-45 + i * 10.0, -45 + (i + 1) * 10.0, _kROut),
         Paint()..color = stripeColors[i % 2],
       );
     }
@@ -4547,9 +4544,9 @@ class _FieldBgPainter extends CustomPainter {
     // 3. 내야 흙 부채꼴
     final dirtRect = Rect.fromCenter(
       center: Offset(_kHX, _kHY),
-      width: _kR_DIRT * 2, height: _kR_DIRT * 2,
+      width: _kRDirt * 2, height: _kRDirt * 2,
     );
-    canvas.drawPath(_sector(-45, 45, _kR_DIRT), _dirtPaint(dirtRect));
+    canvas.drawPath(_sector(-45, 45, _kRDirt), _dirtPaint(dirtRect));
 
     // 4. 내야 잔디 다이아몬드 (정사각)
     canvas.drawPath(
@@ -4584,21 +4581,21 @@ class _FieldBgPainter extends CustomPainter {
         ..strokeWidth = 13
         ..strokeJoin = StrokeJoin.round,
     );
-    canvas.drawCircle(Offset(_kMB1X, _kMB1Y), _kR_BASE,
+    canvas.drawCircle(Offset(_kMB1X, _kMB1Y), _kRBase,
         Paint()..color = const Color(0xFFBD9763));
-    canvas.drawCircle(Offset(_kMB3X, _kMB3Y), _kR_BASE,
+    canvas.drawCircle(Offset(_kMB3X, _kMB3Y), _kRBase,
         Paint()..color = const Color(0xFFBD9763));
     canvas.restore();
 
     // 6. 2루 흙 서클 (내야 흙 부채꼴 클리핑)
     canvas.save();
-    canvas.clipPath(_sector(-45, 45, _kR_DIRT));
-    canvas.drawCircle(Offset(_kMB2X, _kMB2Y), _kR_BASE,
+    canvas.clipPath(_sector(-45, 45, _kRDirt));
+    canvas.drawCircle(Offset(_kMB2X, _kMB2Y), _kRBase,
         Paint()..color = const Color(0xFFBD9763));
     canvas.restore();
 
     // 7. 투수 마운드 + rubber
-    canvas.drawCircle(Offset(_kPMX, _kPMY), _kR_MOUND,
+    canvas.drawCircle(Offset(_kPMX, _kPMY), _kRMound,
         Paint()..color = const Color(0xFFBD9763));
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -4621,7 +4618,7 @@ class _FieldBgPainter extends CustomPainter {
     _drawBase(canvas, _kMB3X, _kMB3Y, base3);
 
     // 10. 홈 흙 서클
-    canvas.drawCircle(Offset(_kHVX, _kHVY), _kR_HOME,
+    canvas.drawCircle(Offset(_kHVX, _kHVY), _kRHome,
         Paint()..color = const Color(0xFFBD9763));
 
     // 11. 홈플레이트 오각형
@@ -4676,8 +4673,6 @@ class _GrassExtensionPainter extends CustomPainter {
     // field outer Padding (16, 35, 16, 20)
     final innerW = w - 32;
     final innerH = h - 55;       // top 35 + bottom 20
-    final arcCenter = Offset(w * 0.5, 35 + innerH * 0.95);
-    final arcR = innerW * 1.10;
 
     final fullPath = Path()
       ..moveTo(0, 0)

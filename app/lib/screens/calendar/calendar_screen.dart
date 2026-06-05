@@ -163,8 +163,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     for (final r in dayVisits.values) {
       if (r == 'win') {
         wins++;
-      } else if (r == 'loss') losses++;
-      else draws++;
+      } else if (r == 'loss') {
+        losses++;
+      } else {
+        draws++;
+      }
     }
     final total = wins + losses + draws;
     final pct = total > 0 ? (wins / total * 100).toStringAsFixed(0) : '0';

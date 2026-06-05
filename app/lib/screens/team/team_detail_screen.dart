@@ -836,8 +836,11 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           final opp = isHome ? (g['away_score'] ?? 0) : (g['home_score'] ?? 0);
           if ((my as num) > (opp as num)) {
             wins++;
-          } else if (my < opp) losses++;
-          else draws++;
+          } else if (my < opp) {
+            losses++;
+          } else {
+            draws++;
+          }
         }
 
         return Container(
@@ -1378,8 +1381,11 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final Color rowColor;
     if (wins > losses) {
       rowColor = Colors.blue;
-    } else if (wins < losses) rowColor = Colors.red;
-    else rowColor = Colors.grey;
+    } else if (wins < losses) {
+      rowColor = Colors.red;
+    } else {
+      rowColor = Colors.grey;
+    }
 
     final winBar = total > 0 ? wins / total : 0.0;
 
