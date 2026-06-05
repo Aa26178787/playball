@@ -479,6 +479,14 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     } else {
       await LocalCache.removeFlag('compact_mode');
     }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(next ? '간략 모드 — 한 줄 카드 표시' : '상세 모드 — 풀 카드 표시'),
+      duration: const Duration(seconds: 2),
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 90),
+    ));
   }
 
   Future<void> _loadFavoriteTeams() async {
@@ -1727,7 +1735,7 @@ class GameCard extends StatelessWidget {
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               child: Row(
                 children: [
                   teamSide(game.homeTeamCode, game.homeTeam, game.homeScore, homeWon, true),
@@ -1865,12 +1873,12 @@ class GameCard extends StatelessWidget {
     final cardBg = t.paper;
     final cardBd = isMyTeam ? myColor : t.line;
 
-    // #18 Semantics — 게임카드 통째로 screen reader 가독
+    // Semantics — 핵심만 (팀+스코어+상태). 100자 이하 끊김 방지
     final semanticLabel = isFinished
-        ? '${game.homeTeam} ${game.homeScore}점 대 ${game.awayScore}점 ${game.awayTeam}, 경기 종료'
+        ? '${game.homeTeam} ${game.homeScore} ${game.awayScore} ${game.awayTeam}, 종료'
         : isLive
-            ? '${game.homeTeam} ${game.homeScore}점 대 ${game.awayScore}점 ${game.awayTeam}, ${game.currentInning ?? 0}회 ${game.inningHalf ?? ""} 진행중'
-            : '${game.homeTeam} 대 ${game.awayTeam}, ${game.status} ${game.startTime ?? ""}';
+            ? '${game.homeTeam} ${game.homeScore} ${game.awayScore} ${game.awayTeam}, ${game.currentInning ?? 0}회'
+            : '${game.homeTeam} ${game.awayTeam}, ${game.status}';
     return Semantics(
       label: semanticLabel,
       button: true,

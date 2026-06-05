@@ -240,15 +240,24 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       if (!mounted) return;
       setState(() { _gameData = gameData; _isLoading = false; });
 
-      // 1회성 핀 hint — 진행중 게임 처음 진입 시 안내
+      // 1회성 hint — 진행중 게임 처음 진입 시 안내 (핀 OR 베이스 탭)
       final status = gameData['game']?['status'] as String? ?? '';
-      if (status == '진행') {
-        final shown = await LocalCache.hasFlag('pin_hint_shown');
-        if (!shown && mounted) {
-          // 기존 SnackBar(예: onboarding) 우선 닫음 → 큐 충돌 방지
+      if (status == '진행' && mounted) {
+        final pinShown = await LocalCache.hasFlag('pin_hint_shown');
+        final baseShown = await LocalCache.hasFlag('base_hint_shown');
+        String? hintText;
+        String? flagKey;
+        if (!pinShown) {
+          hintText = '💡 필드뷰를 상단 고정하려면 BSO 옆 "고정" 버튼을 탭하세요';
+          flagKey = 'pin_hint_shown';
+        } else if (!baseShown) {
+          hintText = '💡 베이스(1·2·3루)를 탭하면 주자 정보를 볼 수 있어요';
+          flagKey = 'base_hint_shown';
+        }
+        if (hintText != null && flagKey != null && mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: const Text('💡 필드뷰를 상단 고정하려면 BSO 옆 "고정" 버튼을 탭하세요'),
+            content: Text(hintText),
             duration: const Duration(seconds: 6),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 100),
@@ -259,7 +268,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
             ),
           ));
-          await LocalCache.setFlag('pin_hint_shown');
+          await LocalCache.setFlag(flagKey);
         }
       }
 
@@ -526,12 +535,21 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         scrolledUnderElevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text('${game['home_team']} vs ${game['away_team']}',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 1),
             Text(
               subTab != null ? '$currentTab · $subTab' : currentTab,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF9A9AA2)),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFFC9C9D1)
+                    : const Color(0xFF6B6B73),
+                letterSpacing: 0.1,
+              ),
             ),
           ],
         ),
@@ -906,9 +924,16 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         textBaseline: TextBaseline.alphabetic,
                         children: [
                           AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            transitionBuilder: (c, anim) =>
-                                FadeTransition(opacity: anim, child: c),
+                            duration: const Duration(milliseconds: 250),
+                            transitionBuilder: (c, anim) {
+                              return SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(0, 0.4),
+                                  end: Offset.zero,
+                                ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+                                child: FadeTransition(opacity: anim, child: c),
+                              );
+                            },
                             child: Text('$homeScore',
                                 key: ValueKey(homeScore),
                                 style: TextStyle(color: ink, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.6, fontFeatures: const [FontFeature.tabularFigures()])),
@@ -919,9 +944,16 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                 style: TextStyle(color: line2, fontSize: 24, fontWeight: FontWeight.w400)),
                           ),
                           AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            transitionBuilder: (c, anim) =>
-                                FadeTransition(opacity: anim, child: c),
+                            duration: const Duration(milliseconds: 250),
+                            transitionBuilder: (c, anim) {
+                              return SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(0, 0.4),
+                                  end: Offset.zero,
+                                ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+                                child: FadeTransition(opacity: anim, child: c),
+                              );
+                            },
                             child: Text('$awayScore',
                                 key: ValueKey(awayScore),
                                 style: TextStyle(color: ink, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.6, fontFeatures: const [FontFeature.tabularFigures()])),
@@ -2425,7 +2457,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       children: [
         if (subLabels != null) ...[
           Container(
-            height: 36,
+            height: 44,
             decoration: pillDeco(),
             child: Row(
               children: List.generate(subLabels.length, (i) {

@@ -15,7 +15,7 @@ class AppColors {
   static const surface2Dark = Color(0xFF1F1F24);
 
   static const borderLight = Color(0xFFEDEDF0);
-  static const borderDark = Color(0xFF26262C);
+  static const borderDark = Color(0xFF33333A);
 
   static const textPrimary = Color(0xFF111113);
   static const textSecondary = Color(0xFF6B6B73);
@@ -157,6 +157,13 @@ class AppTheme {
           textStyle: const TextStyle(
               fontWeight: FontWeight.w600, fontFamily: 'Pretendard'),
         ),
+      ),
+      snackBarTheme: const SnackBarThemeData(
+        backgroundColor: Color(0xFF111113),
+        contentTextStyle: TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'Pretendard'),
+        actionTextColor: Color(0xFFFFA000),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
       ),
     );
   }
