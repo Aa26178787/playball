@@ -4461,10 +4461,10 @@ class _FullFieldView extends StatelessWidget {
   static const Map<String, Offset> _posCoords = {
     'P':  Offset(150, 208),   // 투수 (마운드)
     'C':  Offset(150, 283),   // 포수
-    '1B': Offset(220, 196),   // 1루수
-    '2B': Offset(183, 163),   // 2루수
-    'SS': Offset(117, 163),   // 유격수
-    '3B': Offset(80,  196),   // 3루수
+    '1B': Offset(220, 186),   // 1루수 (위로 10)
+    '2B': Offset(183, 153),   // 2루수
+    'SS': Offset(117, 153),   // 유격수
+    '3B': Offset(80,  186),   // 3루수
     'LF': Offset(64,  110),   // 좌익수
     'CF': Offset(150, 76),    // 중견수
     'RF': Offset(236, 110),   // 우익수
