@@ -740,7 +740,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - pitch_locations DB 데이터에 타순 접두사 잔존 ("N번타자 이름") — API 응답에서 매번 정규식 처리 중 (DB 마이그레이션으로 근본 해결 가능)
 - push_tokens 등록 사용자 매우 적음 (현재 1명) — 다수 유저 알림 시나리오 검증 불가
 - 라이브 경기 첫 진입 cold cache 2~3초 (pitch-locations/highlights 첫 호출 후 60s/1800s 캐시)
-- scheduler 30초 사이클 → 빠른 연속 이벤트(스코어 + 즉시 회복) 일부 합쳐서 1개 알림으로 통합
+- scheduler 30초 사이클 → 빠른 연속 이벤트(스코어 + 즉시 회복) 일부 합쳐서 1개 알림으로 통합 (의도된 dedup, Naver API rate limit + DB load 고려)
 
 ### WiFi 환경 체감 로딩 느림 (2026-06-04 진단 중)
 서버 측 최적화 적용했지만 사용자 체감 차이 존재. **모바일 직접 nslookup+curl 측정 시 WiFi vs 셀룰러 raw 동일** → 네트워크 자체 문제 아님.

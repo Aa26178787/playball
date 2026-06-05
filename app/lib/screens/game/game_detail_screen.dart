@@ -4169,6 +4169,82 @@ class _FullFieldView extends StatelessWidget {
     required this.isDark, this.fieldView,
   });
 
+  static const _baseLabel = {
+    'base1': '1루',
+    'base2': '2루',
+    'base3': '3루',
+    'batter': '타석',
+  };
+
+  void _showBaseSheet(BuildContext ctx, String baseKey, Map<String, dynamic>? p, bool isOccupied) {
+    final baseName = _baseLabel[baseKey] ?? baseKey;
+    final hasRunner = p != null && (p['name'] as String? ?? '').isNotEmpty;
+    showModalBottomSheet(
+      context: ctx,
+      backgroundColor: isDark ? const Color(0xFF18181C) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => Padding(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + MediaQuery.of(ctx).viewPadding.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(width: 32, height: 4,
+              margin: const EdgeInsets.only(bottom: 12, left: 16),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.black26,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isOccupied ? const Color(0xFFFCD34D) : (isDark ? Colors.white12 : Colors.black12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(baseName,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
+                        color: isOccupied ? Colors.black87 : (isDark ? Colors.white70 : Colors.black54))),
+              ),
+              const SizedBox(width: 8),
+              Text(isOccupied ? '주자 점거' : '비어있음',
+                  style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black54)),
+            ]),
+            const SizedBox(height: 12),
+            if (hasRunner) ...[
+              Row(children: [
+                _PlayerDot(
+                  name: '',
+                  imageUrl: p['image'] as String?,
+                  label: '',
+                  isOffense: true, isDark: isDark, size: 44,
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(p['name'] as String? ?? '',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : Colors.black87)),
+                    if ((p['position'] as String? ?? '').isNotEmpty)
+                      Text(p['position'] as String,
+                          style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54)),
+                  ],
+                )),
+              ]),
+            ] else ...[
+              Text(isOccupied ? '주자 정보 없음' : '점거된 주자가 없습니다',
+                  style: TextStyle(fontSize: 13, color: isDark ? Colors.white60 : Colors.black54)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   // Normalized (x,y) coordinates on the field widget (0=left/top, 1=right/bottom)
   // SVG 300x310 좌표계 (mockup과 동일) — placed() 에서 painter transform 적용
   static const Map<String, Offset> _posCoords = {
@@ -4267,13 +4343,17 @@ class _FullFieldView extends StatelessWidget {
         final coord = _baseCoords[baseKey]!;
         final runnerName = p?['name'] as String? ?? '';
         return placed(coord,
-          _PlayerDot(
-            name: runnerName,
-            imageUrl: p?['image'] as String?,
-            label: '',
-            isOffense: true,
-            isDark: isDark,
-            size: 26,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _showBaseSheet(ctx, baseKey, p, isOccupied),
+            child: _PlayerDot(
+              name: runnerName,
+              imageUrl: p?['image'] as String?,
+              label: '',
+              isOffense: true,
+              isDark: isDark,
+              size: 26,
+            ),
           ),
           68, 46,
         );
@@ -4670,10 +4750,6 @@ class _GrassExtensionPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    // field outer Padding (16, 35, 16, 20)
-    final innerW = w - 32;
-    final innerH = h - 55;       // top 35 + bottom 20
-
     final fullPath = Path()
       ..moveTo(0, 0)
       ..lineTo(w, 0)

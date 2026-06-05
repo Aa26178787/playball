@@ -1742,8 +1742,9 @@ def get_game_highlights(game_id: int):
 
     if not rows:
         # DB에 없으면 실시간 YouTube 크롤 시도
+        # 단, 진행중/예정 게임은 하이라이트 미존재가 정상 → 슬로우 크롤 skip (cold cache 완화)
         cur.execute("""
-            SELECT ht.name, at2.name, g.game_date
+            SELECT ht.name, at2.name, g.game_date, g.status
             FROM games g
             JOIN teams ht ON g.home_team_id = ht.id
             JOIN teams at2 ON g.away_team_id = at2.id
@@ -1756,7 +1757,9 @@ def get_game_highlights(game_id: int):
         if not game_row:
             return {"highlights": []}
 
-        home_name, away_name, game_date = game_row
+        home_name, away_name, game_date, gstatus = game_row
+        if gstatus in ('진행', '예정', '라인업', '취소'):
+            return {"highlights": []}
         try:
             from crawler.crawl_highlights import fetch_youtube_highlights, save_highlights
             articles = fetch_youtube_highlights(game_date.strftime('%Y-%m-%d') if game_date else None)

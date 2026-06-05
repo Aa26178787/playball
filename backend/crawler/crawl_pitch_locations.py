@@ -2,6 +2,7 @@ import sys
 import os
 import math
 import time
+import re
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -79,7 +80,7 @@ def save_pitch_locations_for_game(game_id, naver_game_id, max_inning):
         for item in reversed(text_relays):
             pts_opts = item.get('ptsOptions', [])
             txt_opts = item.get('textOptions', [])
-            batter = item.get('title', '')
+            batter = re.sub(r'^[0-9]+번타자 ', '', item.get('title', '') or '')
             inning_half = str(item.get('homeOrAway', ''))
             if not pts_opts:
                 continue
