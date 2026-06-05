@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/design_tokens.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../api/api_service.dart';
@@ -126,8 +127,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _availIcon(bool? available, bool checking) {
-    if (checking) return const SizedBox(width: 18, height: 18,
+    if (checking) {
+      return const SizedBox(width: 18, height: 18,
         child: CircularProgressIndicator(strokeWidth: 2));
+    }
     if (available == null) return const SizedBox.shrink();
     return Icon(available ? Icons.check_circle : Icons.cancel,
         color: available ? Colors.green : Colors.red, size: 20);
@@ -282,7 +285,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Checkbox(
                   value: _agreedTerms,
                   onChanged: (v) => setState(() => _agreedTerms = v ?? false),
-                  activeColor: const Color(0xFF111113),
+                  activeColor: SemColor.panelDark,
                 ),
                 const Expanded(
                   child: Text(
@@ -325,7 +328,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: ElevatedButton(
                   onPressed: (auth.isLoading || !_canRegister) ? null : _register,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF111113),
+                    backgroundColor: SemColor.panelDark,
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: Colors.grey[300],
                   ),
@@ -343,7 +346,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   ButtonStyle _smallBtn() => ElevatedButton.styleFrom(
-    backgroundColor: const Color(0xFF111113),
+    backgroundColor: SemColor.panelDark,
     foregroundColor: Colors.white,
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
     textStyle: const TextStyle(fontSize: 13),

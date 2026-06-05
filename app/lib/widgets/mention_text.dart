@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/design_tokens.dart';
 import 'package:flutter/gestures.dart';
 import '../api/api_service.dart';
 import '../screens/game/game_detail_screen.dart';
@@ -19,7 +20,7 @@ class MentionText extends StatelessWidget {
     super.key,
     required this.text,
     this.style,
-    this.mentionColor = const Color(0xFF111113),
+    this.mentionColor = SemColor.panelDark,
   });
 
   static final _pattern = RegExp(

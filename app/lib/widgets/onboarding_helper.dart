@@ -20,7 +20,7 @@ class OnboardingHelper {
           duration: const Duration(seconds: 8),
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.fromLTRB(16, 0, 16, 100 + bottomInset),
-          backgroundColor: const Color(0xFF111113),
+          backgroundColor: SemColor.panelDark,
           action: SnackBarAction(
             label: '설정',
             textColor: SemColor.warning,

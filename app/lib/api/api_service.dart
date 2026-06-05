@@ -319,8 +319,8 @@ class ApiService {
     final res = await _dio.get('/players/hitters', queryParameters: {
       'sort_by': sortBy,
       'limit': limit,
-      if (teamId != null) 'team_id': teamId,
-      if (position != null) 'position': position,
+      'team_id': ?teamId,
+      'position': ?position,
       if (qualified) 'qualified': true,
     });
     return res.data;
@@ -336,8 +336,8 @@ class ApiService {
     final res = await _dio.get('/players/pitchers', queryParameters: {
       'sort_by': sortBy,
       'limit': limit,
-      if (teamId != null) 'team_id': teamId,
-      if (throws != null) 'throws': throws,
+      'team_id': ?teamId,
+      'throws': ?throws,
       if (qualified) 'qualified': true,
     });
     return res.data;
@@ -364,7 +364,7 @@ class ApiService {
       {String? playerType}) async {
     final res = await _dio.get('/players/search', queryParameters: {
       'q': query,
-      if (playerType != null) 'player_type': playerType,
+      'player_type': ?playerType,
     });
     return res.data;
   }
@@ -563,8 +563,8 @@ class ApiService {
     int page = 1,
   }) async {
     final res = await _dio.get('/community/posts', queryParameters: {
-      if (teamId != null) 'team_id': teamId,
-      if (category != null) 'category': category,
+      'team_id': ?teamId,
+      'category': ?category,
       if (q != null && q.isNotEmpty) 'q': q,
       'sort': sort,
       'page': page,
@@ -613,8 +613,8 @@ class ApiService {
           'title': title,
           'content': content,
           'category': category,
-          if (teamId != null) 'team_id': teamId,
-          if (imageUrl != null) 'image_url': imageUrl,
+          'team_id': ?teamId,
+          'image_url': ?imageUrl,
         },
         options: Options(headers: headers));
   }

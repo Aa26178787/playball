@@ -113,6 +113,7 @@ class PlayBallApp extends StatelessWidget {
         builder: (context, themeProvider, _) => MaterialApp(
           title: 'PlayBall',
           debugShowCheckedModeBanner: false,
+          restorationScopeId: 'playball_root',
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/design_tokens.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../api/api_service.dart';
@@ -87,11 +88,11 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.sports_baseball, size: 80, color: Color(0xFF111113)),
+              const Icon(Icons.sports_baseball, size: 80, color: SemColor.panelDark),
               const SizedBox(height: 8),
               const Text(
                 'PlayBall',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF111113)),
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: SemColor.panelDark),
               ),
               const SizedBox(height: 48),
 
@@ -125,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Checkbox(
                     value: _autoLogin,
                     onChanged: (v) => setState(() => _autoLogin = v ?? false),
-                    activeColor: const Color(0xFF111113),
+                    activeColor: SemColor.panelDark,
                   ),
                   const Text('자동 로그인', style: TextStyle(fontSize: 14)),
                   if (_hasSavedCredentials) ...[
@@ -155,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: ElevatedButton(
                   onPressed: isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF111113),
+                    backgroundColor: SemColor.panelDark,
                     foregroundColor: Colors.white,
                   ),
                   child: isLoading

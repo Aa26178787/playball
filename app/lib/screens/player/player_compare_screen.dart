@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/design_tokens.dart';
 import '../../api/api_service.dart';
 import 'player_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -24,7 +25,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
   bool _loading2 = false;
 
   Future<void> _search(int slot, String query) async {
-    if (query.length < 1) {
+    if (query.isEmpty) {
       setState(() => slot == 1 ? _results1 = [] : _results2 = []);
       return;
     }
@@ -32,8 +33,11 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
       final data = await ApiService.searchPlayers(query);
       if (mounted) {
         setState(() {
-          if (slot == 1) _results1 = data['players'] ?? [];
-          else _results2 = data['players'] ?? [];
+          if (slot == 1) {
+            _results1 = data['players'] ?? [];
+          } else {
+            _results2 = data['players'] ?? [];
+          }
         });
       }
     } catch (_) {}
@@ -195,7 +199,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
         children: [
           // 헤더: 양 선수 프로필
           Container(
-            color: const Color(0xFF111113),
+            color: SemColor.panelDark,
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
             child: Row(
               children: [
@@ -277,7 +281,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
     TextStyle boldStyle(bool highlight) => TextStyle(
           fontSize: 14,
           fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
-          color: highlight ? const Color(0xFF111113) : Colors.black87,
+          color: highlight ? SemColor.panelDark : Colors.black87,
         );
 
     return Container(

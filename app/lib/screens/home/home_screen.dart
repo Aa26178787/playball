@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/design_tokens.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:shimmer/shimmer.dart';
@@ -36,7 +37,7 @@ class _Tok {
     paper2: isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
     line:   isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
     line2:  isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4),
-    ink:    isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113),
+    ink:    isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark,
     ink2:   isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46),
     ink3:   isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73),
     sub:    isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2),
@@ -1191,8 +1192,8 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                     icon: const Icon(Icons.refresh, size: 16),
                     label: const Text('다시 시도'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF111113),
-                      side: const BorderSide(color: Color(0xFF111113)),
+                      foregroundColor: SemColor.panelDark,
+                      side: const BorderSide(color: SemColor.panelDark),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     ),
                   ),
@@ -1224,8 +1225,8 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                       icon: const Icon(Icons.sports_baseball, size: 16),
                       label: const Text('전체 경기 보기'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF111113),
-                        side: const BorderSide(color: Color(0xFF111113)),
+                        foregroundColor: SemColor.panelDark,
+                        side: const BorderSide(color: SemColor.panelDark),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       ),
                     ),
@@ -2181,13 +2182,15 @@ class _PredictionBarState extends State<_PredictionBar> {
       final data = await ApiService.getWinPrediction(widget.gameId);
       debugPrint('[PredBar ${widget.gameId}] data=$data');
       _cache[widget.gameId] = data;
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _homeProb = (data['home_prob'] as num?)?.toDouble();
         _awayProb = (data['away_prob'] as num?)?.toDouble();
         _homeStarter = data['home_starter'] as String? ?? '';
         _awayStarter = data['away_starter'] as String? ?? '';
         _loading = false;
       });
+      }
     } catch (e, st) {
       debugPrint('[PredBar ${widget.gameId}] ERROR: $e\n$st');
       if (mounted) setState(() => _loading = false);

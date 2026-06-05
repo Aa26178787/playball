@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/design_tokens.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -167,8 +168,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final teamId = widget.team['id'] as int;
     final ck = 'team_games_$teamId';
     final cached = await LocalCache.get(ck, maxAgeSeconds: 600) as List?;
-    if (cached != null && mounted) setState(() { _games = cached; _gamesLoading = false; });
-    else if (mounted) setState(() => _gamesLoading = true);
+    if (cached != null && mounted) {
+      setState(() { _games = cached; _gamesLoading = false; });
+    } else if (mounted) setState(() => _gamesLoading = true);
     try {
       final data = await ApiService.getTeamGames(teamId);
       final games = data['games'] as List? ?? [];
@@ -183,8 +185,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final teamId = widget.team['id'] as int;
     final ck = 'team_roster_changes_$teamId';
     final cached = await LocalCache.get(ck, maxAgeSeconds: 300) as List?;
-    if (cached != null && mounted) setState(() { _rosterChanges = cached; _rosterLoading = false; });
-    else if (mounted) setState(() => _rosterLoading = true);
+    if (cached != null && mounted) {
+      setState(() { _rosterChanges = cached; _rosterLoading = false; });
+    } else if (mounted) setState(() => _rosterLoading = true);
     try {
       final data = await ApiService.getTeamRosterChanges(teamId, days: 30);
       final changes = data['changes'] as List? ?? [];
@@ -199,8 +202,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final teamId = widget.team['id'] as int;
     final ck = 'team_news_$teamId';
     final cached = await LocalCache.get(ck, maxAgeSeconds: 1800) as List?;
-    if (cached != null && mounted) setState(() { _news = cached; _newsLoading = false; });
-    else if (mounted) setState(() => _newsLoading = true);
+    if (cached != null && mounted) {
+      setState(() { _news = cached; _newsLoading = false; });
+    } else if (mounted) setState(() => _newsLoading = true);
     try {
       final data = await ApiService.getTeamNews(teamId, limit: 30);
       final news = data['news'] as List? ?? [];
@@ -215,8 +219,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final teamId = widget.team['id'] as int;
     final ck = 'team_community_$teamId';
     final cached = await LocalCache.get(ck, maxAgeSeconds: 300) as List?;
-    if (cached != null && mounted) setState(() { _communityPosts = cached; _communityLoading = false; });
-    else if (mounted) setState(() => _communityLoading = true);
+    if (cached != null && mounted) {
+      setState(() { _communityPosts = cached; _communityLoading = false; });
+    } else if (mounted) setState(() => _communityLoading = true);
     try {
       final data = await ApiService.getPosts(teamId: teamId, sort: 'latest', page: 1);
       final posts = data['posts'] as List? ?? [];
@@ -231,8 +236,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final teamId = widget.team['id'] as int;
     final ck = 'team_monthly_$teamId';
     final cached = await LocalCache.get(ck, maxAgeSeconds: 3600) as List?;
-    if (cached != null && mounted) setState(() { _monthlyStats = cached; _monthlyLoading = false; });
-    else if (mounted) setState(() => _monthlyLoading = true);
+    if (cached != null && mounted) {
+      setState(() { _monthlyStats = cached; _monthlyLoading = false; });
+    } else if (mounted) setState(() => _monthlyLoading = true);
     try {
       final data = await ApiService.getTeamMonthlyStats(teamId);
       final stats = data['monthly'] as List? ?? [];
@@ -247,8 +253,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final teamId = widget.team['id'] as int;
     final ck = 'team_h2h_$teamId';
     final cached = await LocalCache.get(ck, maxAgeSeconds: 3600) as List?;
-    if (cached != null && mounted) setState(() { _h2hRecords = cached; _h2hLoading = false; });
-    else if (mounted) setState(() => _h2hLoading = true);
+    if (cached != null && mounted) {
+      setState(() { _h2hRecords = cached; _h2hLoading = false; });
+    } else if (mounted) setState(() => _h2hLoading = true);
     try {
       final data = await ApiService.getTeamHeadToHead(teamId);
       final records = data['records'] as List? ?? [];
@@ -263,8 +270,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final teamId = widget.team['id'] as int;
     final ck = 'team_batting_order_$teamId';
     final cached = await LocalCache.get(ck, maxAgeSeconds: 1800) as List?;
-    if (cached != null && mounted) setState(() { _battingOrderStats = cached; _battingOrderLoading = false; });
-    else if (mounted) setState(() => _battingOrderLoading = true);
+    if (cached != null && mounted) {
+      setState(() { _battingOrderStats = cached; _battingOrderLoading = false; });
+    } else if (mounted) setState(() => _battingOrderLoading = true);
     try {
       final data = await ApiService.getTeamBattingOrder(teamId);
       final stats = data['stats'] as List? ?? [];
@@ -385,7 +393,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             child: const Text('최근 등록말소', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           ),
           if (_rosterLoading)
-            const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF111113))))
+            const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: SemColor.panelDark)))
           else if (_rosterChanges.isEmpty)
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
@@ -400,7 +408,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             child: const Text('최근 뉴스', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           ),
           if (_newsLoading)
-            const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF111113))))
+            const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: SemColor.panelDark)))
           else if (_news.isEmpty)
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 4, 16, 16),
@@ -491,14 +499,14 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         border: Border(bottom: BorderSide(
-                          color: selected ? const Color(0xFF111113) : Colors.transparent,
+                          color: selected ? SemColor.panelDark : Colors.transparent,
                           width: 2.5,
                         )),
                       ),
                       child: Text(subLabels[i], style: TextStyle(
                         fontSize: 12,
                         fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                        color: selected ? const Color(0xFF111113) : Colors.grey,
+                        color: selected ? SemColor.panelDark : Colors.grey,
                       )),
                     ),
                   ),
@@ -660,7 +668,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _buildPlayers() {
-    if (_playersLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
+    if (_playersLoading) return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
     if (_players.isEmpty) {
       return RefreshIndicator(
         onRefresh: _loadPlayers,
@@ -792,7 +800,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _buildGames() {
-    if (_gamesLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
+    if (_gamesLoading) return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
     if (_games.isEmpty) return const Center(child: Text('경기 정보가 없습니다'));
 
     final teamName = widget.team['name'] as String? ?? '';
@@ -812,8 +820,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           final isHome = g['home_team'] == teamName;
           final my = isHome ? (g['home_score'] ?? 0) : (g['away_score'] ?? 0);
           final opp = isHome ? (g['away_score'] ?? 0) : (g['home_score'] ?? 0);
-          if ((my as num) > (opp as num)) wins++;
-          else if (my < opp) losses++;
+          if ((my as num) > (opp as num)) {
+            wins++;
+          } else if (my < opp) losses++;
           else draws++;
         }
 
@@ -982,7 +991,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
 
   Widget _buildCommunity() {
-    if (_communityLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
+    if (_communityLoading) return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
     if (_communityPosts.isEmpty) {
       return Center(
         child: Column(
@@ -1097,7 +1106,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _buildMonthlyStats() {
-    if (_monthlyLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
+    if (_monthlyLoading) return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
     if (_monthlyStats.isEmpty) {
       return Center(
         child: Column(
@@ -1200,7 +1209,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                     barWidth: 2.5,
                     dotData: FlDotData(
                       show: true,
-                      getDotPainter: (_, _, _, ____) =>
+                      getDotPainter: (_, _, _, _) =>
                           FlDotCirclePainter(radius: 4, color: color, strokeWidth: 1.5, strokeColor: Colors.white),
                     ),
                     belowBarData: BarAreaData(
@@ -1285,7 +1294,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _buildHeadToHead() {
-    if (_h2hLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
+    if (_h2hLoading) return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
     if (_h2hRecords.isEmpty) {
       return Center(
         child: Column(
@@ -1353,8 +1362,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final pct     = total > 0 ? (wins / total * 100).toStringAsFixed(1) : '-';
 
     final Color rowColor;
-    if (wins > losses) rowColor = Colors.blue;
-    else if (wins < losses) rowColor = Colors.red;
+    if (wins > losses) {
+      rowColor = Colors.blue;
+    } else if (wins < losses) rowColor = Colors.red;
     else rowColor = Colors.grey;
 
     final winBar = total > 0 ? wins / total : 0.0;
@@ -1432,7 +1442,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _buildBattingOrder() {
-    if (_battingOrderLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
+    if (_battingOrderLoading) return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
     if (_battingOrderStats.isEmpty) {
       return Center(
         child: Column(

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../utils/design_tokens.dart';
 import '../../api/api_service.dart';
 
 class PitchLocationSheet extends StatefulWidget {
@@ -176,7 +177,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                   margin: const EdgeInsets.only(right: 12),
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _heatmap ? const Color(0xFF111113) : Colors.grey[200],
+                    color: _heatmap ? SemColor.panelDark : Colors.grey[200],
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -305,7 +306,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
       padding: const EdgeInsets.only(left: 16, top: 6, bottom: 2),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF111113))),
+        child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: SemColor.panelDark)),
       ),
     );
   }
@@ -332,10 +333,10 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: const Color(0xFF111113).withValues(alpha: 0.1),
+                color: SemColor.panelDark.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(teamLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF111113))),
+              child: Text(teamLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: SemColor.panelDark)),
             ),
             const SizedBox(width: 6),
           ],
@@ -353,7 +354,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                         _selectedInning = null;
                         _selectedBatter = null;
                       }),
-                      child: _chip(p, sel, const Color(0xFF111113)),
+                      child: _chip(p, sel, SemColor.panelDark),
                     ),
                   );
                 }).toList(),
@@ -470,7 +471,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
               child: Row(
                 children: _resultLabels.entries.map((e) {
                   final sel = _filter == e.key;
-                  final color = e.key == 'all' ? const Color(0xFF111113) : (_resultColors[e.key] ?? Colors.grey);
+                  final color = e.key == 'all' ? SemColor.panelDark : (_resultColors[e.key] ?? Colors.grey);
                   return Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: GestureDetector(
@@ -828,7 +829,9 @@ class _StrikeZonePainter extends CustomPainter {
       final pos = _toCanvas(x, z, size);
 
       if (pos.dx < -10 || pos.dx > size.width + 10 ||
-          pos.dy < -10 || pos.dy > size.height + 10) continue;
+          pos.dy < -10 || pos.dy > size.height + 10) {
+        continue;
+      }
 
       canvas.drawCircle(pos, 5.5, Paint()..color = Colors.black.withValues(alpha: 0.15));
       canvas.drawCircle(pos, 5, Paint()..color = color.withValues(alpha: 0.85));

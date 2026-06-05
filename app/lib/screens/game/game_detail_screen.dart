@@ -27,7 +27,27 @@ class GameDetailScreen extends StatefulWidget {
 }
 
 class _GameDetailScreenState extends State<GameDetailScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, RestorationMixin {
+  @override
+  String get restorationId => 'game_detail_${widget.gameId}';
+
+  final RestorableInt _restorableTabIndex = RestorableInt(0);
+  final RestorableInt _restorableLineupSub = RestorableInt(0);
+  final RestorableInt _restorableStatsSub = RestorableInt(0);
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_restorableTabIndex, 'tab_idx');
+    registerForRestoration(_restorableLineupSub, 'lineup_sub');
+    registerForRestoration(_restorableStatsSub, 'stats_sub');
+    // 복원된 값 적용
+    if (_tabController.index != _restorableTabIndex.value) {
+      _tabController.index = _restorableTabIndex.value.clamp(0, 3);
+    }
+    _lineupSubIndex = _restorableLineupSub.value.clamp(0, 1);
+    _statsSubIndex = _restorableStatsSub.value.clamp(0, 2);
+  }
+
   late TabController _tabController;
   Map<String, dynamic>? _gameData;
   Map<String, dynamic>? _relayData;
@@ -89,6 +109,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
+      _restorableTabIndex.value = _tabController.index;
       if (!_tabController.indexIsChanging && mounted) setState(() {});
       if (_tabController.index == 0 && _relayAllData == null) {
         ApiService.getGameRelayAll(widget.gameId)
@@ -128,6 +149,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     _refreshTimer?.cancel();
     _tabController.dispose();
     _inningScrollController.dispose();
+    _restorableTabIndex.dispose();
+    _restorableLineupSub.dispose();
+    _restorableStatsSub.dispose();
     super.dispose();
   }
 
@@ -229,7 +253,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             duration: const Duration(seconds: 6),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-            backgroundColor: const Color(0xFF111113),
+            backgroundColor: SemColor.panelDark,
             action: SnackBarAction(
               label: '확인',
               textColor: SemColor.warning,
@@ -486,11 +510,29 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final pitchers = _gameData!['pitchers'] as List;
     final batters = _gameData!['batters'] as List;
 
+    // breadcrumb: 팀 vs 팀 + 현재 탭 + (sub-tab)
+    const mainTabs = ['중계', '라인업', '기록', '하이라이트'];
+    final tabIdx = _tabController.index.clamp(0, mainTabs.length - 1);
+    final currentTab = mainTabs[tabIdx];
+    String? subTab;
+    if (tabIdx == 1) subTab = ['키플레이어', '로스터'][_lineupSubIndex];
+    else if (tabIdx == 2) subTab = ['투수', '타자', '상대'][_statsSubIndex];
+
     return Scaffold(
       appBar: AppBar(
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
-        title: Text('${game['home_team']} vs ${game['away_team']}'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${game['home_team']} vs ${game['away_team']}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            Text(
+              subTab != null ? '$currentTab · $subTab' : currentTab,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF9A9AA2)),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
@@ -572,7 +614,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildSameDayStrip() {
     // mockup MiniGames — 2-col grid
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink   = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final paper2= isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
@@ -750,7 +792,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
 
     // ── 토큰 ──────────────────────────────
-    final ink    = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink    = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink3   = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final sub    = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     final paper  = isDark ? const Color(0xFF18181C) : Colors.white;
@@ -1202,7 +1244,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _pitcherBadge(String name, Color color, String label) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final stats = _pitcherDayStats(name);
     return Row(
@@ -1234,7 +1276,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildRecentBar(List<String> recent, bool isHome) {
     if (recent.isEmpty) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink   = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     final line2 = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
@@ -1346,7 +1388,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final awayTeam = game['away_team'] as String? ?? '';
     final homeScore = _liveScore(game, 'home_score');
     final awayScore = _liveScore(game, 'away_score');
-    final ink = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
@@ -1663,7 +1705,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           else ...[
             Builder(builder: (ctx) {
               final isDark = Theme.of(ctx).brightness == Brightness.dark;
-              final ink   = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+              final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
               final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
               final paper = isDark ? const Color(0xFF18181C) : Colors.white;
               final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
@@ -1746,7 +1788,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildBatterRelayTile(Map<String, dynamic> entry) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink   = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink2  = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
     final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
@@ -1849,8 +1891,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             final rtype = r['type'] as int?;
             final title = r['title'] as String? ?? '';
             Color color = ink3;
-            if (rtype == 14 || rtype == 31) color = const Color(0xFFD97706);
-            else if (rtype == 2 || rtype == 20) color = const Color(0xFF7C3AED);
+            if (rtype == 14 || rtype == 31) {
+              color = const Color(0xFFD97706);
+            } else if (rtype == 2 || rtype == 20) color = const Color(0xFF7C3AED);
             else if (rtype == 7 || rtype == 21) color = const Color(0xFF0D9488);
             else if (rtype == 22) color = const Color(0xFF4F46E5);
             else if (rtype == 23) color = const Color(0xFFCA8A04);
@@ -1990,7 +2033,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
         if (groupCount == 0) {
           // fallback: relay 분리 못 함 → 전체 한 row (legacy)
-          if (isAway) cumAway += totalRuns; else cumHome += totalRuns;
+          if (isAway) {
+            cumAway += totalRuns;
+          } else {
+            cumHome += totalRuns;
+          }
           items.add({'inning': num, 'half': half, 'team': team, 'teamCode': tCode,
             'cumAway': cumAway, 'cumHome': cumHome,
             'relays': halfRelays, 'isFallback': true});
@@ -2002,7 +2049,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         final remainder = totalRuns - base * groupCount;
         for (int i = 0; i < scoringGroups.length; i++) {
           final runs = base + (i == scoringGroups.length - 1 ? remainder : 0);
-          if (isAway) cumAway += runs; else cumHome += runs;
+          if (isAway) {
+            cumAway += runs;
+          } else {
+            cumHome += runs;
+          }
           items.add({'inning': num, 'half': half, 'team': team, 'teamCode': tCode,
             'cumAway': cumAway, 'cumHome': cumHome,
             'relays': scoringGroups[i], 'runs': runs});
@@ -2200,7 +2251,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       // isHome ? row : row-reverse (홈 좌측, 원정 우측 정렬)
       final isHome = half == 'bottom';
       final isDarkS = Theme.of(context).brightness == Brightness.dark;
-      final inkS  = isDarkS ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+      final inkS  = isDarkS ? const Color(0xFFF4F4F5) : SemColor.panelDark;
       final ink2S = isDarkS ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
       final ink3S = isDarkS ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
       final paper2S = isDarkS ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
@@ -2255,7 +2306,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }).toList();
 
     final isDarkS = Theme.of(context).brightness == Brightness.dark;
-    final inkS  = isDarkS ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final inkS  = isDarkS ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink3S = isDarkS ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final paperS = isDarkS ? const Color(0xFF18181C) : Colors.white;
     final lineS  = isDarkS ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
@@ -2318,7 +2369,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildGameFloatingNav() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final idx = _tabController.index;
-    final activeColor = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final activeColor = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final inactiveColor = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     final pillBg = isDark ? const Color(0xFF18181C) : Colors.white;
     final borderColor = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
@@ -2339,11 +2390,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     if (idx == 1) {
       subLabels = ['키플레이어', '로스터'];
       subIdx = _lineupSubIndex;
-      onSubTap = (i) => setState(() => _lineupSubIndex = i);
+      onSubTap = (i) => setState(() {
+        _lineupSubIndex = i;
+        _restorableLineupSub.value = i;
+      });
     } else if (idx == 2) {
       subLabels = ['투수', '타자', '상대'];
       subIdx = _statsSubIndex;
-      onSubTap = (i) => setState(() => _statsSubIndex = i);
+      onSubTap = (i) => setState(() {
+        _statsSubIndex = i;
+        _restorableStatsSub.value = i;
+      });
     }
 
     const mainLabels = ['중계', '라인업', '기록', '하이라이트'];
@@ -2362,7 +2419,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             height: 36,
             decoration: pillDeco(),
             child: Row(
-              children: List.generate(subLabels!.length, (i) {
+              children: List.generate(subLabels.length, (i) {
                 final sel = i == subIdx;
                 return Expanded(
                   child: GestureDetector(
@@ -2444,7 +2501,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       return const Center(child: Text('경기 시작 후 확인할 수 있습니다'));
     }
     if (_previewData == null) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
+      return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
     }
 
     final homeTeam = _gameData!['game']['home_team'];
@@ -2487,7 +2544,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
-                          color: Color(0xFF111113))),
+                          color: SemColor.panelDark)),
                   Column(
                     children: [
                       Text(awayTeam, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -2533,7 +2590,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildStarterCard(Map<String, dynamic>? starter, String teamName) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink   = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink2  = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
     final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
@@ -2649,7 +2706,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildTopPlayerCard(Map<String, dynamic>? top, String teamName) {
     if (top == null) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink   = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink2  = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
     final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
@@ -2746,7 +2803,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _statChip(String label, String value) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -2761,7 +2818,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildRosterTab() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     if (_rosterData == null) {
       return Center(child: CircularProgressIndicator(color: ink, strokeWidth: 2.5));
@@ -2951,7 +3008,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFF111113),
+        color: SemColor.panelDark,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(title,
@@ -3014,7 +3071,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           const SizedBox(width: 6),
           CircleAvatar(
             radius: 12,
-            backgroundColor: const Color(0xFF111113),
+            backgroundColor: SemColor.panelDark,
             child: Text('${(b['batting_order'] as num).toInt()}',
                 style: const TextStyle(
                     fontSize: 11,
@@ -3102,9 +3159,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             ),
           TabBar(
-            indicatorColor: const Color(0xFF111113),
+            indicatorColor: SemColor.panelDark,
             indicatorWeight: 2.5,
-            labelColor: const Color(0xFF111113),
+            labelColor: SemColor.panelDark,
             unselectedLabelColor: Colors.grey,
             labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
@@ -3378,9 +3435,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         children: [
           TabBar(
-            indicatorColor: const Color(0xFF111113),
+            indicatorColor: SemColor.panelDark,
             indicatorWeight: 2.5,
-            labelColor: const Color(0xFF111113),
+            labelColor: SemColor.panelDark,
             unselectedLabelColor: Colors.grey,
             labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
@@ -3464,7 +3521,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   isFirst
                       ? CircleAvatar(
                           radius: 12,
-                          backgroundColor: const Color(0xFF111113),
+                          backgroundColor: SemColor.panelDark,
                           child: Text('$order',
                               style: const TextStyle(
                                   fontSize: 11,
@@ -3531,7 +3588,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildRecordDetailTab() {
     if (_recordDetailData == null) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
+      return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
     }
 
     final keyStats = _recordDetailData!['key_stats'] as Map<String, dynamic>? ?? {};
@@ -3557,7 +3614,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             },
             children: [
               TableRow(
-                decoration: const BoxDecoration(color: Color(0xFF111113)),
+                decoration: const BoxDecoration(color: SemColor.panelDark),
                 children: [
                   _tableCell('항목', isHeader: true),
                   _tableCell(homeTeam, isHeader: true),
@@ -3583,7 +3640,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             },
             children: [
               TableRow(
-                decoration: const BoxDecoration(color: Color(0xFF111113)),
+                decoration: const BoxDecoration(color: SemColor.panelDark),
                 children: [
                   _tableCell('항목', isHeader: true),
                   _tableCell(homeTeam, isHeader: true),
@@ -3625,7 +3682,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
-                              color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFF4F4F5) : const Color(0xFF111113))),
+                              color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFF4F4F5) : SemColor.panelDark)),
                     ),
                     const SizedBox(width: 12),
                     Expanded(child: Text(desc, style: const TextStyle(fontSize: 13))),
@@ -3692,7 +3749,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildHighlightsTab() {
     final isDarkT = Theme.of(context).brightness == Brightness.dark;
-    final ink   = isDarkT ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink   = isDarkT ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink3  = isDarkT ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final sub   = isDarkT ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     final paper = isDarkT ? const Color(0xFF18181C) : Colors.white;
@@ -3902,8 +3959,8 @@ class _GameShareSheetState extends State<_GameShareSheet> {
                   icon: const Icon(Icons.text_fields, size: 16),
                   label: const Text('텍스트 공유'),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF111113)),
-                    foregroundColor: const Color(0xFF111113),
+                    side: const BorderSide(color: SemColor.panelDark),
+                    foregroundColor: SemColor.panelDark,
                   ),
                 ),
               ),
@@ -3917,7 +3974,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
                       : const Icon(Icons.image, size: 16),
                   label: const Text('이미지 공유'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF111113),
+                    backgroundColor: SemColor.panelDark,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -3958,7 +4015,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF111113), Color(0xFF283593)],
+          colors: [SemColor.panelDark, Color(0xFF283593)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

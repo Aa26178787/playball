@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/design_tokens.dart';
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:shimmer/shimmer.dart';
@@ -108,11 +109,13 @@ class _PlayerScreenState extends State<PlayerScreen>
     try {
       final r1 = await ApiService.getPlayerPopularity(limit: 30);
       final r2 = await ApiService.getTeamPopularity();
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _popularPlayers = r1['players'] ?? [];
         _popularTeams = r2['teams'] ?? [];
         _popularLoading = false;
       });
+      }
     } catch (_) {
       if (mounted) setState(() => _popularLoading = false);
     }
@@ -128,7 +131,8 @@ class _PlayerScreenState extends State<PlayerScreen>
       final res = await ApiService.votePlayer(playerId);
       final voted = res['voted'] as bool? ?? false;
       final count = res['vote_count'] as int? ?? 0;
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         final idx = _popularPlayers.indexWhere((p) => (p as Map)['id'] == playerId);
         if (idx >= 0) {
           final updated = Map<String, dynamic>.from(_popularPlayers[idx] as Map);
@@ -142,6 +146,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           _loadPopularity();
         }
       });
+      }
     } catch (e) {
       if (!mounted) return;
       final msg = _voteErrorMessage(e);
@@ -169,7 +174,8 @@ class _PlayerScreenState extends State<PlayerScreen>
       final res = await ApiService.voteTeam(teamId);
       final voted = res['voted'] as bool? ?? false;
       final count = res['vote_count'] as int? ?? 0;
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         final idx = _popularTeams.indexWhere((t) => (t as Map)['id'] == teamId);
         if (idx >= 0) {
           final updated = Map<String, dynamic>.from(_popularTeams[idx] as Map);
@@ -181,6 +187,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                   .compareTo((a as Map)['vote_count'] as int? ?? 0));
         }
       });
+      }
     } catch (e) {
       if (!mounted) return;
       final msg = _voteErrorMessage(e);
@@ -369,7 +376,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 margin: const EdgeInsets.only(right: 6),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: sel ? const Color(0xFF111113) : Colors.grey.withValues(alpha: 0.12),
+                  color: sel ? SemColor.panelDark : Colors.grey.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Text('전체',
@@ -427,7 +434,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
-                color: sel ? const Color(0xFF111113) : Colors.grey.withValues(alpha: 0.12),
+                color: sel ? SemColor.panelDark : Colors.grey.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
@@ -622,7 +629,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Widget _buildPopularityTab() {
     if (_popularLoading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
+      return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final items = _popularShowTeam ? _popularTeams : _popularPlayers;
@@ -639,7 +646,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                     duration: const Duration(milliseconds: 150),
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
-                      color: !_popularShowTeam ? const Color(0xFF111113) : Colors.grey.withValues(alpha: 0.12),
+                      color: !_popularShowTeam ? SemColor.panelDark : Colors.grey.withValues(alpha: 0.12),
                       borderRadius: const BorderRadius.horizontal(left: Radius.circular(10)),
                     ),
                     child: Text('선수',
@@ -657,7 +664,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                     duration: const Duration(milliseconds: 150),
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
-                      color: _popularShowTeam ? const Color(0xFF111113) : Colors.grey.withValues(alpha: 0.12),
+                      color: _popularShowTeam ? SemColor.panelDark : Colors.grey.withValues(alpha: 0.12),
                       borderRadius: const BorderRadius.horizontal(right: Radius.circular(10)),
                     ),
                     child: Text('구단',
@@ -852,9 +859,9 @@ class _PlayerScreenState extends State<PlayerScreen>
             ? null
             : TabBar(
                 controller: _tabController,
-                indicatorColor: const Color(0xFF111113),
+                indicatorColor: SemColor.panelDark,
                 indicatorWeight: 2.5,
-                labelColor: const Color(0xFF111113),
+                labelColor: SemColor.panelDark,
                 unselectedLabelColor: Colors.grey,
                 labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                 unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),

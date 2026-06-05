@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/design_tokens.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
@@ -69,11 +70,13 @@ class _SearchScreenState extends State<SearchScreen> {
     await _saveHistory(q);
     try {
       final data = await ApiService.search(q);
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _players = data['players'] ?? [];
         _teams = data['teams'] ?? [];
         _loading = false;
       });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -112,7 +115,7 @@ class _SearchScreenState extends State<SearchScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5))
+          ? const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5))
           : !_searched
               ? _buildHistory()
               : _players.isEmpty && _teams.isEmpty

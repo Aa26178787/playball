@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/design_tokens.dart';
 import 'dart:async';
 import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
@@ -123,9 +124,9 @@ class _TeamScreenState extends State<TeamScreen>
         surfaceTintColor: Colors.transparent,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: const Color(0xFF111113),
+          indicatorColor: SemColor.panelDark,
           indicatorWeight: 2.5,
-          labelColor: const Color(0xFF111113),
+          labelColor: SemColor.panelDark,
           unselectedLabelColor: Colors.grey,
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
@@ -193,7 +194,7 @@ class _TeamScreenState extends State<TeamScreen>
       for (final o in _odds) (o['id'] as int? ?? 0): o,
     };
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final scaffoldBg = isDark ? const Color(0xFF111113) : const Color(0xFFFAFAFB);
+    final scaffoldBg = isDark ? SemColor.panelDark : const Color(0xFFFAFAFB);
     return Container(
       color: scaffoldBg,
       child: RefreshIndicator(
@@ -246,7 +247,7 @@ class _TeamScreenState extends State<TeamScreen>
   }
 
   Widget _buildFilterChips(bool isDark) {
-    final ink = isDark ? Colors.white : const Color(0xFF111113);
+    final ink = isDark ? Colors.white : SemColor.panelDark;
     final sub = isDark ? Colors.white60 : const Color(0xFF6B6B73);
     final line = isDark ? Colors.white24 : const Color(0xFFE0E0E4);
     Widget chip(String label, String value) {
@@ -361,7 +362,7 @@ class _TeamScreenState extends State<TeamScreen>
     final paper2 = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
     final line   = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final line2  = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
-    final ink    = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final ink    = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink2   = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
     final ink3   = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final sub    = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
@@ -1201,7 +1202,7 @@ class _TeamScreenState extends State<TeamScreen>
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: isFav
-            ? const BorderSide(color: Color(0xFF111113), width: 1.5)
+            ? const BorderSide(color: SemColor.panelDark, width: 1.5)
             : BorderSide.none,
       ),
       child: InkWell(
@@ -1241,7 +1242,7 @@ class _TeamScreenState extends State<TeamScreen>
                   ),
                   if (isFav) ...[
                     const SizedBox(width: 6),
-                    const Icon(Icons.star, size: 16, color: Color(0xFF111113)),
+                    const Icon(Icons.star, size: 16, color: SemColor.panelDark),
                   ],
                 ],
               ),
@@ -1392,7 +1393,7 @@ class _Tok {
     paper2: isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
     line:   isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
     line2:  isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4),
-    ink:    isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113),
+    ink:    isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark,
     ink2:   isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46),
     ink3:   isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73),
     sub:    isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2),
@@ -1455,7 +1456,7 @@ Widget _buildSegmentControl(bool isDark, List<String> labels, TabController ctrl
                   fontSize: 13,
                   fontFamily: 'Pretendard',
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                  color: selected ? const Color(0xFF111113) : Colors.grey,
+                  color: selected ? SemColor.panelDark : Colors.grey,
                 ),
               ),
             ),
@@ -1627,7 +1628,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
         .map((m) => (m['id'] as int?) ?? -1).toSet();
 
     return Container(
-      color: isDark ? const Color(0xFF111113) : const Color(0xFFFAFAFB),
+      color: isDark ? SemColor.panelDark : const Color(0xFFFAFAFB),
       child: ListView.builder(
         padding: EdgeInsets.fromLTRB(16, 8, 16, (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
         itemCount: sorted.length,
@@ -1731,7 +1732,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
+      return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
     }
     if (_error) {
       return Center(
@@ -1753,7 +1754,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      color: isDark ? const Color(0xFF111113) : const Color(0xFFFAFAFB),
+      color: isDark ? SemColor.panelDark : const Color(0xFFFAFAFB),
       child: Column(
       children: [
         _buildSegmentControl(isDark, ['타격', '투수'], _tabController),
@@ -1894,11 +1895,13 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
         _error = false;
       });
     } catch (_) {
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _loading = false;
         final allEmpty = _hitterCache.values.every((l) => l.isEmpty);
         if (allEmpty) _error = true;
       });
+      }
     }
   }
 
@@ -1952,7 +1955,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      color: isDark ? const Color(0xFF111113) : const Color(0xFFFAFAFB),
+      color: isDark ? SemColor.panelDark : const Color(0xFFFAFAFB),
       child: Column(
         children: [
           _buildSegmentControl(isDark, ['타자', '투수'], _tabController),
@@ -2119,7 +2122,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     final top3 = players.take(3).toList();
     final rest = players.skip(3).toList();
     return Container(
-      color: isDark ? const Color(0xFF111113) : const Color(0xFFFAFAFB),
+      color: isDark ? SemColor.panelDark : const Color(0xFFFAFAFB),
       child: ListView(
         padding: EdgeInsets.only(top: 8, bottom: (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
         children: [

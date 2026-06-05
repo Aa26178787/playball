@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/design_tokens.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -232,8 +233,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
       await context.read<AuthProvider>().logout();
       if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('탈퇴 처리 중 오류가 발생했습니다')));
+      }
     }
   }
 
@@ -262,11 +265,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
     try {
       final res = await ApiService.updateNickname(result);
       setState(() => _user?['nickname'] = res['nickname']);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('닉네임이 변경되었습니다')));
+      }
     } on DioException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.response?.data?['detail'] ?? '변경 실패')));
+      }
     }
   }
 
@@ -289,11 +296,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
       uiSettings: [
         AndroidUiSettings(
           toolbarTitle: '프로필 이미지 크롭',
-          toolbarColor: const Color(0xFF111113),
+          toolbarColor: SemColor.panelDark,
           toolbarWidgetColor: Colors.white,
-          statusBarColor: const Color(0xFF111113),  // 상단 status bar 침범 방지
+          statusBarColor: SemColor.panelDark,  // 상단 status bar 침범 방지
           backgroundColor: Colors.white,
-          activeControlsWidgetColor: const Color(0xFF111113),
+          activeControlsWidgetColor: SemColor.panelDark,
           initAspectRatio: CropAspectRatioPreset.square,
           lockAspectRatio: true,
           hideBottomControls: false,
@@ -319,12 +326,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
         _user?['profile_image'] = bustedUrl;
         _uploadingImage = false;
       });
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('프로필 이미지가 변경되었습니다')));
+      }
     } catch (_) {
       setState(() => _uploadingImage = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('이미지 업로드 실패')));
+      }
     }
   }
 
@@ -344,7 +355,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5))
+          ? const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
@@ -401,7 +412,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 children: [
                   CircleAvatar(
                     radius: 36,
-                    backgroundColor: const Color(0xFF111113),
+                    backgroundColor: SemColor.panelDark,
                     backgroundImage: _user?['profile_image'] != null
                         ? CachedNetworkImageProvider(_user!['profile_image'])
                         : null,
@@ -424,7 +435,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(3),
                         decoration: const BoxDecoration(
-                          color: Color(0xFF111113),
+                          color: SemColor.panelDark,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
@@ -487,7 +498,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   if (ok == true) _load();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF111113),
+                  backgroundColor: SemColor.panelDark,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   textStyle: const TextStyle(fontSize: 12),

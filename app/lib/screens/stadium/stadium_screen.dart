@@ -439,11 +439,13 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
     if (mounted) setState(() => _communityLoading = true);
     try {
       final data = await ApiService.getCommunityFood(widget.stadiumIndex + 1);
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _communityPlaces = data['places'] ?? [];
         _communityLoading = false;
         _communityLoaded = true;
       });
+      }
     } catch (_) {
       if (mounted) setState(() { _communityLoading = false; _communityLoaded = true; });
     }

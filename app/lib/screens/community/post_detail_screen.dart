@@ -52,9 +52,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       _commentController.clear();
       _loadPost();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('댓글 작성 실패. 로그인이 필요합니다')),
       );
+      }
     }
   }
 
@@ -92,11 +94,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     try {
       await ApiService.updatePost(widget.postId, titleCtrl.text.trim(), contentCtrl.text.trim());
       _loadPost();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('수정되었습니다')));
+      }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('수정 실패')));
+      }
     }
   }
 
@@ -120,8 +126,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       await ApiService.deletePost(widget.postId);
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('삭제 실패')));
+      }
     }
   }
 
@@ -130,8 +138,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       await ApiService.deleteComment(commentId);
       _loadPost();
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('삭제 실패')));
+      }
     }
   }
 
@@ -189,8 +199,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 if (reason != null) {
                   try {
                     await ApiService.reportPost(widget.postId, reason: reason);
-                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('신고가 접수되었습니다')));
+                    }
                   } catch (_) {}
                 }
               }

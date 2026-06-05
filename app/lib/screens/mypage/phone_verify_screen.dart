@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/design_tokens.dart';
 import 'package:dio/dio.dart';
 import '../../api/api_service.dart';
 
@@ -76,7 +77,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Icon(Icons.mark_email_unread_outlined,
-                size: 56, color: Color(0xFF111113)),
+                size: 56, color: SemColor.panelDark),
             const SizedBox(height: 16),
             const Text(
               '가입한 이메일로 인증번호를 발송합니다.\n인증 후 커뮤니티 글쓰기가 가능합니다.',
@@ -93,7 +94,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                     : const Icon(Icons.send),
                 label: Text(_sending ? '발송 중...' : '인증번호 발송'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF111113),
+                  backgroundColor: SemColor.panelDark,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
