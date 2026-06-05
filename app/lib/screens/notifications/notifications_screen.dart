@@ -181,7 +181,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   onRefresh: _load,
                   child: ListView.separated(
                     itemCount: _notifications.length,
-                    separatorBuilder: (_, __) =>
+                    separatorBuilder: (_, _) =>
                         Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
                     itemBuilder: (_, i) {
                       final n = _notifications[i] as Map;

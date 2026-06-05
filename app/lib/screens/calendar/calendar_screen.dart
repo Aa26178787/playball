@@ -1172,7 +1172,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: 140,
-                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                      errorWidget: (_, _, _) => const SizedBox.shrink(),
                     ),
                   ),
                 ],

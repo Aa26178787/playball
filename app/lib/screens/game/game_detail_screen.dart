@@ -423,159 +423,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     );
   }
 
-  // 승리확률 그래프
-  Widget _buildWinRateChart(String homeTeam, String awayTeam) {
-    final relays = _relayAllData?['relays'] as List? ?? [];
-    final pts = relays.where((r) {
-      final wr = r['home_win_rate'];
-      return wr != null && (wr as num) > 0 && (wr as num) < 100;
-    }).toList();
-
-    if (pts.isEmpty) {
-      final wr = _getWinRate();
-      if (wr == null) return const SizedBox.shrink();
-      final home = (wr['homeTeamWinRate'] as num?)?.toDouble() ?? 50;
-      final away = (wr['awayTeamWinRate'] as num?)?.toDouble() ?? 50;
-      return _buildWinRateStatic(home, away, homeTeam, awayTeam);
-    }
-
-    // downsample to max 80 points
-    final step = pts.length > 80 ? (pts.length / 80).ceil() : 1;
-    final sampled = <dynamic>[];
-    for (int i = 0; i < pts.length; i += step) sampled.add(pts[i]);
-    if (sampled.last != pts.last) sampled.add(pts.last);
-
-    final spots = <FlSpot>[];
-    for (int i = 0; i < sampled.length; i++) {
-      final wr = (sampled[i]['home_win_rate'] as num).toDouble();
-      spots.add(FlSpot(i.toDouble(), wr));
-    }
-
-    final lastWr = spots.last.y;
-    final homeColor = const Color(0xFF111113);
-    final awayColor = const Color(0xFFC62828);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 12),
-        Row(children: [
-          const Text('승리확률 추이', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          const Spacer(),
-          Container(width: 10, height: 10, color: homeColor),
-          const SizedBox(width: 4),
-          Text(homeTeam, style: const TextStyle(fontSize: 11)),
-          const SizedBox(width: 8),
-          Container(width: 10, height: 10, color: awayColor),
-          const SizedBox(width: 4),
-          Text(awayTeam, style: const TextStyle(fontSize: 11)),
-        ]),
-        const SizedBox(height: 4),
-        SizedBox(
-          height: 120,
-          child: LineChart(LineChartData(
-            minY: 0,
-            maxY: 100,
-            gridData: FlGridData(
-              show: true,
-              drawHorizontalLine: true,
-              horizontalInterval: 25,
-              getDrawingHorizontalLine: (_) => const FlLine(color: Color(0xFFE0E0E0), strokeWidth: 1),
-              drawVerticalLine: false,
-            ),
-            borderData: FlBorderData(show: false),
-            titlesData: FlTitlesData(
-              leftTitles: AxisTitles(sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 28,
-                interval: 25,
-                getTitlesWidget: (v, _) => Text('${v.toInt()}%', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-              )),
-              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            ),
-            extraLinesData: ExtraLinesData(horizontalLines: [
-              HorizontalLine(y: 50, color: Color(0xFFE0E0E4), strokeWidth: 1,
-                dashArray: [4, 4]),
-            ]),
-            lineBarsData: [
-              LineChartBarData(
-                spots: spots,
-                isCurved: true,
-                color: homeColor,
-                barWidth: 2,
-                dotData: const FlDotData(show: false),
-                belowBarData: BarAreaData(
-                  show: true,
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [homeColor.withValues(alpha: 0.25), homeColor.withValues(alpha: 0.0)],
-                  ),
-                ),
-              ),
-            ],
-            lineTouchData: LineTouchData(
-              touchTooltipData: LineTouchTooltipData(
-                getTooltipItems: (spots) => spots.map((s) => LineTooltipItem(
-                  '홈 ${s.y.toStringAsFixed(1)}%',
-                  const TextStyle(fontSize: 11, color: Colors.white),
-                )).toList(),
-              ),
-            ),
-          )),
-        ),
-        // 현재 승률 표시
-        Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(homeTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-              const SizedBox(width: 8),
-              Text('${lastWr.toStringAsFixed(1)}%',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: homeColor)),
-              const Text(' : ', style: TextStyle(fontSize: 14, color: Colors.grey)),
-              Text('${(100 - lastWr).toStringAsFixed(1)}%',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: awayColor)),
-              const SizedBox(width: 8),
-              Text(awayTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWinRateStatic(double home, double away, String homeTeam, String awayTeam) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Color(0xFFF5F5F6),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(children: [
-        Expanded(child: Column(children: [
-          Text(homeTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text('${home.toStringAsFixed(1)}%',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111113))),
-        ])),
-        const Column(children: [
-          Icon(Icons.sports_baseball, size: 16, color: Colors.grey),
-          SizedBox(height: 2),
-          Text('승리확률', style: TextStyle(fontSize: 11, color: Colors.grey)),
-        ]),
-        Expanded(child: Column(children: [
-          Text(awayTeam, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text('${away.toStringAsFixed(1)}%',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFC62828))),
-        ])),
-      ]),
-    );
-  }
 
   // 승리확률 헬퍼
   Map<String, dynamic>? _getWinRate() {
@@ -1336,100 +1183,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     );
   }
 
-  Widget _buildScoreHeader(Map<String, dynamic> game) {
-    final homeRecent = List<String>.from(game['home_recent_5'] ?? []);
-    final awayRecent = List<String>.from(game['away_recent_5'] ?? []);
-    final homeRank = _rankMap[game['home_team_id'] as int?];
-    final awayRank = _rankMap[game['away_team_id'] as int?];
-    return Container(
-      padding: const EdgeInsets.all(20),
-      color: const Color(0xFF111113),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    TeamLogo(teamCode: game['home_team_code'] as String? ?? '', size: 48),
-                    const SizedBox(height: 6),
-                    Text(game['home_team'],
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center),
-                    if (homeRank != null && homeRank > 0)
-                      Text('${homeRank}위', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                    if (homeRecent.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      _buildRecentBar(homeRecent, true),
-                    ],
-                  ],
-                ),
-              ),
-              Text(
-                game['status'] == '예정'
-                    ? 'VS'
-                    : '${_liveScore(game, 'home_score')} : ${_liveScore(game, 'away_score')}',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    TeamLogo(teamCode: game['away_team_code'] as String? ?? '', size: 48),
-                    const SizedBox(height: 6),
-                    Text(game['away_team'],
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center),
-                    if (awayRank != null && awayRank > 0)
-                      Text('${awayRank}위', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                    if (awayRecent.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      _buildRecentBar(awayRecent, false),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            game['status'] == '진행'
-                ? '${game['current_inning']}회 ${game['inning_half'] ?? ''}'
-                : game['status'],
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
-          ),
-          // 승투/패투 (종료 시)
-          if (game['status'] == '종료' && (game['win_pitcher'] != null || game['lose_pitcher'] != null)) ...[
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (game['win_pitcher'] != null) ...[
-                  _pitcherBadge(game['win_pitcher'] as String, Colors.lightBlueAccent, '승'),
-                  if (game['lose_pitcher'] != null) const SizedBox(width: 16),
-                ],
-                if (game['lose_pitcher'] != null)
-                  _pitcherBadge(game['lose_pitcher'] as String, Colors.redAccent, '패'),
-              ],
-            ),
-          ],
-          if (_weatherData != null) ...[
-            const SizedBox(height: 6),
-            _buildWeatherRow(_weatherData!),
-          ],
-        ],
-      ),
-    );
-  }
-
   // 그날 기록 lookup — pitchers list에서 name 매칭 → "5이닝 2실점 7K"
   String _pitcherDayStats(String name) {
     final pitchers = (_gameData?['pitchers'] as List?) ?? [];
@@ -1729,71 +1482,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       ),
     );
   }
-
-  Widget _buildFieldSection(Map game) {
-    final isLive = game['status'] == '진행';
-    if (isLive && _relayData != null) return _buildLiveStatus();
-    if (_rosterData == null) return const SizedBox.shrink();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final homeBatters = (_rosterData!['home']['batters'] as List? ?? [])
-        .cast<Map<String, dynamic>>();
-    final homePitchers = (_rosterData!['home']['pitchers'] as List? ?? [])
-        .cast<Map<String, dynamic>>();
-
-    final defense = homeBatters
-        .where((b) => b['is_starter'] == true &&
-            b['batting_order'] != null && b['batting_order'] != 0)
-        .map<Map<String, dynamic>>((b) => {
-          'name': b['name'] as String? ?? '',
-          'image': b['profile_image'],
-          'position': b['position'] as String? ?? '',
-          'pos_code': '',
-        })
-        .toList();
-
-    final hasPitcher = defense.any((d) => (d['position'] as String?) == '투수');
-    if (!hasPitcher) {
-      final spList = homePitchers.where((p) => p['is_starter'] == true).toList();
-      if (spList.isNotEmpty) {
-        defense.add({
-          'name': spList.first['name'] as String? ?? '',
-          'image': spList.first['profile_image'],
-          'position': '투수',
-          'pos_code': 'P',
-        });
-      }
-    }
-
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDark
-                ? [const Color(0xFF0D2818), const Color(0xFF1B3A22)]
-                : [const Color(0xFF1B4332), const Color(0xFF2D6A4F)],
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              height: 220,
-              child: _FullFieldView(
-                base1: false, base2: false, base3: false,
-                fieldView: {'defense': defense, 'batter': null, 'pitcher': null, 'runners': null},
-                isDark: isDark,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildLiveStatus() {
     final state = _relayData!['current_state'];
     if (state == null) return const SizedBox.shrink();
@@ -2606,71 +2294,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       ],
     );
   }
-
-  Widget _buildScoreRow({
-    required String teamName,
-    required List<String> cells,
-    required double teamColWidth,
-    bool isHeader = false,
-    List<int> boldCols = const [],
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isHeader ? const Color(0xFF111113) : Colors.transparent,
-        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E4))),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: teamColWidth,
-            height: 34,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              border: Border(right: BorderSide(color: Color(0xFFE0E0E4))),
-            ),
-            child: Text(
-              teamName,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: isHeader ? Colors.white : null,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          ...cells.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final val = entry.value;
-            final isBold = boldCols.contains(idx);
-            return Expanded(
-              child: Container(
-                height: 34,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  border: Border(
-                      right: BorderSide(color: Color(0xFFEDEDF0))),
-                ),
-                child: Text(
-                  val,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight:
-                        (isHeader || isBold) ? FontWeight.bold : FontWeight.normal,
-                    color: isHeader
-                        ? Colors.white
-                        : isBold
-                            ? const Color(0xFF111113)
-                            : null,
-                  ),
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
   Widget _buildLineupTab() {
     return IndexedStack(
       index: _lineupSubIndex,
@@ -4125,11 +3748,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         width: double.infinity,
                         height: isShorts ? 180 : 140,
                         fit: isShorts ? BoxFit.contain : BoxFit.cover,
-                        placeholder: (_, __) => Container(
+                        placeholder: (_, _) => Container(
                           height: isShorts ? 180 : 140,
                           color: paper2,
                         ),
-                        errorWidget: (_, __, ___) => Container(
+                        errorWidget: (_, _, _) => Container(
                           height: isShorts ? 180 : 140,
                           color: paper2,
                           child: Icon(Icons.broken_image, color: sub),
@@ -4697,8 +4320,8 @@ class _PlayerDot extends StatelessWidget {
                   ? CachedNetworkImage(
                       imageUrl: imageUrl!,
                       fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Icon(Icons.person, size: size * 0.55, color: Colors.white70),
-                      placeholder: (_, __) => Container(color: Colors.black26),
+                      errorWidget: (_, _, _) => Icon(Icons.person, size: size * 0.55, color: Colors.white70),
+                      placeholder: (_, _) => Container(color: Colors.black26),
                     )
                   : Icon(Icons.person, size: size * 0.55, color: Colors.white70),
             ),

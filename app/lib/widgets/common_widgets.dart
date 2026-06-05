@@ -98,8 +98,8 @@ class PlayerAvatar extends StatelessWidget {
           memCacheWidth: cacheSize,
           memCacheHeight: cacheSize,
           fadeInDuration: Duration.zero,
-          errorWidget: (_, __, ___) => fallback(),
-          placeholder: (_, __) => fallback(),
+          errorWidget: (_, _, _) => fallback(),
+          placeholder: (_, _) => fallback(),
         ),
       );
     });

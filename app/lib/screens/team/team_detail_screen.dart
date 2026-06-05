@@ -440,8 +440,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 child: CachedNetworkImage(
                   imageUrl: thumbnail,
                   width: 72, height: 54, fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(width: 72, height: 54, color: Colors.grey[200]),
-                  errorWidget: (_, __, ___) => Container(width: 72, height: 54, color: Colors.grey[100],
+                  placeholder: (_, _) => Container(width: 72, height: 54, color: Colors.grey[200]),
+                  errorWidget: (_, _, _) => Container(width: 72, height: 54, color: Colors.grey[100],
                       child: const Icon(Icons.article_outlined, color: Colors.grey, size: 20)),
                 ),
               ),
@@ -914,48 +914,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     );
   }
 
-  Widget _buildRosterChanges() {
-    if (_rosterLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
-    if (_rosterChanges.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Text('최근 30일 등록말소 내역이 없습니다', style: TextStyle(color: Colors.grey)),
-        ),
-      );
-    }
-
-    // 날짜별 그룹핑
-    final Map<String, List> byDate = {};
-    for (final c in _rosterChanges) {
-      final date = c['change_date'] as String? ?? '';
-      byDate.putIfAbsent(date, () => []).add(c);
-    }
-    final sortedDates = byDate.keys.toList()..sort((a, b) => b.compareTo(a));
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: sortedDates.length,
-      itemBuilder: (context, i) {
-        final date = sortedDates[i];
-        final items = byDate[date]!;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 8, 4, 4),
-              child: Text(
-                date,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
-              ),
-            ),
-            ...items.map((c) => _buildChangeItem(c)),
-            const Divider(height: 1),
-          ],
-        );
-      },
-    );
-  }
 
   Widget _buildChangeItem(Map<String, dynamic> c) {
     final changeType = c['change_type'] as String? ?? '';
@@ -1022,82 +980,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     );
   }
 
-  Widget _buildNews() {
-    if (_newsLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
-    if (_news.isEmpty) {
-      return const Center(child: Text('뉴스가 없습니다', style: TextStyle(color: Colors.grey)));
-    }
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: _news.length,
-      separatorBuilder: (context2, idx) => const Divider(height: 1, indent: 16, endIndent: 16),
-      itemBuilder: (_, i) {
-        final n = _news[i] as Map;
-        final title = n['title'] as String? ?? '';
-        final media = n['media'] as String? ?? '';
-        final pub = n['published_at'] as String?;
-        final url = n['url'] as String? ?? '';
-        final thumbnail = n['thumbnail'] as String? ?? '';
-
-        String dateStr = '';
-        if (pub != null) {
-          try {
-            final dt = DateTime.parse(pub).toLocal();
-            dateStr = '${dt.month}/${dt.day} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-          } catch (_) {}
-        }
-
-        return InkWell(
-          onTap: () => _openUrl(url),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (thumbnail.isNotEmpty) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: CachedNetworkImage(
-                      imageUrl: thumbnail,
-                      width: 80,
-                      height: 60,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(width: 80, height: 60, color: Colors.grey[200]),
-                      errorWidget: (_, __, ___) => Container(
-                        width: 80, height: 60, color: Colors.grey[100],
-                        child: const Icon(Icons.article_outlined, color: Colors.grey, size: 24),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, height: 1.4),
-                          maxLines: thumbnail.isNotEmpty ? 3 : 2,
-                          overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 4),
-                      Row(children: [
-                        if (media.isNotEmpty) ...[
-                          Text(media, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                          const SizedBox(width: 8),
-                        ],
-                        if (dateStr.isNotEmpty)
-                          Text(dateStr, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
-                      ]),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildCommunity() {
     if (_communityLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFF111113), strokeWidth: 2.5));
@@ -1129,7 +1011,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: _communityPosts.length,
-        separatorBuilder: (_, __) => const Divider(height: 1, indent: 16, endIndent: 16),
+        separatorBuilder: (_, _) => const Divider(height: 1, indent: 16, endIndent: 16),
         itemBuilder: (_, i) {
           final post = _communityPosts[i] as Map;
           final title = post['title'] as String? ?? '';
@@ -1318,7 +1200,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                     barWidth: 2.5,
                     dotData: FlDotData(
                       show: true,
-                      getDotPainter: (_, __, ___, ____) =>
+                      getDotPainter: (_, _, _, ____) =>
                           FlDotCirclePainter(radius: 4, color: color, strokeWidth: 1.5, strokeColor: Colors.white),
                     ),
                     belowBarData: BarAreaData(

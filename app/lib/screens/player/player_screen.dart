@@ -248,8 +248,8 @@ class _PlayerScreenState extends State<PlayerScreen>
         : _allHitters.where((p) {
             final code = (p as Map)['team_code'] as String? ?? '';
             return _teams.any((t) =>
-                (t as Map)['id'] == _selectedTeamId &&
-                (t as Map)['short_name'] == code);
+                t['id'] == _selectedTeamId &&
+                t['short_name'] == code);
           }).toList();
 
     filtered.sort((a, b) {
@@ -276,8 +276,8 @@ class _PlayerScreenState extends State<PlayerScreen>
         : _allPitchers.where((p) {
             final code = (p as Map)['team_code'] as String? ?? '';
             return _teams.any((t) =>
-                (t as Map)['id'] == _selectedTeamId &&
-                (t as Map)['short_name'] == code);
+                t['id'] == _selectedTeamId &&
+                t['short_name'] == code);
           }).toList();
 
     filtered.sort((a, b) {
@@ -476,7 +476,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                             imageUrl: img,
                             fit: BoxFit.cover,
                             width: double.infinity,
-                            errorWidget: (_, __, ___) => _playerPlaceholder(code, color),
+                            errorWidget: (_, _, _) => _playerPlaceholder(code, color),
                           )
                         : _playerPlaceholder(code, color),
                   ),
@@ -548,7 +548,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         mainAxisSpacing: 8,
       ),
       itemCount: 12,
-      itemBuilder: (_, __) => Shimmer.fromColors(
+      itemBuilder: (_, _) => Shimmer.fromColors(
         baseColor: base,
         highlightColor: highlight,
         child: Container(
@@ -708,7 +708,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               child: ListView.separated(
                 padding: EdgeInsets.only(bottom: (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
                 itemCount: items.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     Divider(height: 1, indent: 64, endIndent: 16, color: Colors.grey.withValues(alpha: 0.15)),
                 itemBuilder: (_, i) {
                   final item = items[i] as Map;

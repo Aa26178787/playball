@@ -232,7 +232,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     borderRadius: BorderRadius.circular(8),
                     child: CachedNetworkImage(imageUrl: _post!['image_url'] as String,
                       fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                      errorWidget: (_, _, _) => const SizedBox.shrink(),
                     ),
                   ),
                 ],

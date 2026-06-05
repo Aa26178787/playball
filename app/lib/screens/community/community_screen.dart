@@ -8,10 +8,6 @@ import 'post_detail_screen.dart';
 import 'create_post_screen.dart';
 
 const _categories = ['전체', '자유', '분석', '유머'];
-const _teamCodes = <String, String>{
-  'LG': 'LG', 'KT': 'KT', 'SK': 'SSG', 'NC': 'NC', 'OB': '두산',
-  'HT': 'KIA', 'LT': '롯데', 'SS': '삼성', 'HH': '한화', 'WO': '키움',
-};
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -450,7 +446,7 @@ class _PostCard extends StatelessWidget {
                     child: CachedNetworkImage(
                       imageUrl: imageUrl,
                       fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         color: Colors.grey[100],
                         child: const Icon(Icons.broken_image, color: Colors.grey),
                       ),

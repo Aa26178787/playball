@@ -571,7 +571,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
     }
     return ListView.separated(
       itemCount: _kakaoPlaces.length,
-      separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
+      separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
       itemBuilder: (_, i) {
         final p = _kakaoPlaces[i];
         final dist = p['distance'] as int;
@@ -619,7 +619,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
             : ListView.separated(
                 padding: const EdgeInsets.only(bottom: 80),
                 itemCount: _communityPlaces.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
                 itemBuilder: (_, i) {
                   final p = _communityPlaces[i];
@@ -877,7 +877,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
               Expanded(
                 child: ListView.separated(
                   itemCount: _results.length,
-                  separatorBuilder: (_, __) =>
+                  separatorBuilder: (_, _) =>
                       Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2)),
                   itemBuilder: (_, i) {
                     final r = _results[i];

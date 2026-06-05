@@ -150,7 +150,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: _kTeams.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (_, i) {
                     final t = _kTeams[i];
                     final sel = _selectedTeamId == t.id;

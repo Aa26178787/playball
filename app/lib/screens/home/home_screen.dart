@@ -288,60 +288,6 @@ class _FloatingNavBar extends StatelessWidget {
     );
   }
 
-  Widget _buildChip(Map<String, dynamic> item) {
-    final code = item['code'] as String? ?? '';
-    final name = item['name'] as String? ?? '';
-    final gameStr = item['gameStr'] as String? ?? '';
-    final gameStatus = item['gameStatus'] as String? ?? '';
-    final won = item['won'] as bool? ?? false;
-    final lost = item['lost'] as bool? ?? false;
-
-    Color gameColor;
-    if (gameStatus == '진행') {
-      gameColor = Colors.green;
-    } else if (gameStatus == '종료') {
-      gameColor = won ? const Color(0xFF3B82F6) : (lost ? const Color(0xFFEF4444) : Colors.grey);
-    } else if (gameStatus == '없음') {
-      gameColor = isDark ? Colors.white30 : Colors.black26;
-    } else {
-      gameColor = isDark ? Colors.white54 : Colors.black45;
-    }
-
-    final textColor = isDark ? Colors.white.withValues(alpha: 0.88) : Colors.black87;
-
-    return GestureDetector(
-      onTap: () => onMyTeamTap?.call(item),
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withValues(alpha: 0.07) : Colors.black.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
-            width: 0.8,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            TeamLogo(teamCode: code, size: 18),
-            const SizedBox(width: 5),
-            Text(name,
-                style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w700, color: textColor)),
-            if (gameStr.isNotEmpty) ...[
-              const SizedBox(width: 5),
-              Text(gameStr,
-                  style: TextStyle(
-                      fontSize: 11, color: gameColor, fontWeight: FontWeight.w600)),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class TodayGamesTab extends StatefulWidget {
@@ -407,44 +353,9 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
   }
 
-  void _resetGameScroll() {
-    if (_gameScrollController.hasClients) {
-      _gameScrollController.jumpTo(0);
-    }
-  }
 
-  void _prevDay() {
-    if (_selectedDate.isAfter(_seasonStart)) {
-      setState(() => _selectedDate = _selectedDate.subtract(const Duration(days: 1)));
-      _resetGameScroll();
-      _loadGames();
-      Future.delayed(const Duration(seconds: 3), () { if (mounted) _loadTomorrowGames(); });
-    }
-  }
 
-  void _nextDay() {
-    if (_selectedDate.isBefore(_seasonEnd)) {
-      setState(() => _selectedDate = _selectedDate.add(const Duration(days: 1)));
-      _resetGameScroll();
-      _loadGames();
-      Future.delayed(const Duration(seconds: 3), () { if (mounted) _loadTomorrowGames(); });
-    }
-  }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: _seasonStart,
-      lastDate: _seasonEnd,
-      locale: const Locale('ko', 'KR'),
-    );
-    if (picked != null && mounted) {
-      setState(() => _selectedDate = picked);
-      _loadGames();
-      Future.delayed(const Duration(seconds: 3), () { if (mounted) _loadTomorrowGames(); });
-    }
-  }
 
   @override
   void initState() {
@@ -632,7 +543,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
 
       final combined = <dynamic>[];
       for (final r in results) {
-        final games = (r as Map<String, dynamic>)['games'] as List? ?? [];
+        final games = r['games'] as List? ?? [];
         combined.addAll(games);
       }
       // race condition 방지: 최신 호출만 반영, empty면 기존 데이터 유지
@@ -1018,123 +929,9 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     );
   }
 
-  Widget _buildDateNavHeader() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final today = DateTime.now();
-    final isToday = _isSameDay(_selectedDate, today);
-    final prev = _selectedDate.subtract(const Duration(days: 1));
-    final next = _selectedDate.add(const Duration(days: 1));
-    final canPrev = _selectedDate.isAfter(_seasonStart);
-    final canNext = _selectedDate.isBefore(_seasonEnd);
-    String fmtShort(DateTime d) => '${d.month}/${d.day}';
-
-    final dim = isDark ? Colors.white38 : Colors.black38;
-    final arrowC = isDark ? Colors.white60 : Colors.black45;
-
-    return GestureDetector(
-      onHorizontalDragEnd: (details) {
-        final v = details.primaryVelocity ?? 0;
-        if (v < -250 && canNext) _nextDay();
-        else if (v > 250 && canPrev) _prevDay();
-      },
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.scaffoldDark : AppColors.surfaceLight,
-          border: Border(bottom: BorderSide(
-            color: isDark ? AppColors.borderDark : AppColors.borderLight,
-            width: 0.5,
-          )),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                // 이전날
-                Expanded(
-                  child: GestureDetector(
-                    onTap: canPrev ? _prevDay : null,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      child: Row(
-                        children: [
-                          Icon(Icons.chevron_left, size: 20, color: canPrev ? arrowC : Colors.transparent),
-                          const SizedBox(width: 2),
-                          Text(fmtShort(prev), style: TextStyle(fontSize: 13, color: canPrev ? dim : Colors.transparent)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // 오늘 바로가기
-                GestureDetector(
-                  onTap: isToday ? null : () {
-                    setState(() { _selectedDate = today; _isLoading = true; _games = []; _loadGen++; });
-                    _loadGames();
-                    _loadTomorrowGames();
-                  },
-                  onLongPress: _pickDate,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: isToday ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isToday ? AppColors.primary.withValues(alpha: 0.3) : Colors.transparent,
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      isToday ? '오늘' : '오늘로',
-                      style: TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600,
-                        color: isToday ? AppColors.primary : dim,
-                      ),
-                    ),
-                  ),
-                ),
-                // 다음날
-                Expanded(
-                  child: GestureDetector(
-                    onTap: canNext ? _nextDay : null,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(fmtShort(next), style: TextStyle(fontSize: 13, color: canNext ? dim : Colors.transparent)),
-                          const SizedBox(width: 2),
-                          Icon(Icons.chevron_right, size: 20, color: canNext ? arrowC : Colors.transparent),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (_favoriteTeamIds.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    _buildFilterChip('전체', !_myTeamOnly, () => setState(() => _myTeamOnly = false)),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('마이팀', _myTeamOnly, () => setState(() => _myTeamOnly = true), icon: Icons.star),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
-    const dayNames = ['월', '화', '수', '목', '금', '토', '일'];
-    final dayName = dayNames[_selectedDate.weekday - 1];
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
@@ -1270,215 +1067,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     );
   }
 
-  Widget _buildMyTeamDashboard() {
-    if (_favoriteTeamIds.isEmpty || _rankings.isEmpty) return const SizedBox.shrink();
-    final myRankings = _rankings
-        .where((r) => _favoriteTeamIds.contains(r['id'] as int?))
-        .toList();
-    if (myRankings.isEmpty) return const SizedBox.shrink();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(0, 8, 0, 4),
-      clipBehavior: Clip.hardEdge,
-      decoration: const BoxDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 헤더 + 필터 칩 통합
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 12, 6),
-            child: Row(
-              children: [
-                const Icon(Icons.star, size: 13, color: AppColors.primary),
-                const SizedBox(width: 5),
-                const Text('마이팀',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                const Spacer(),
-                _buildFilterChip('전체', !_myTeamOnly,
-                    () => setState(() => _myTeamOnly = false)),
-                const SizedBox(width: 6),
-                _buildFilterChip('마이팀', _myTeamOnly,
-                    () => setState(() => _myTeamOnly = true), icon: Icons.star),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 66,
-            child: Stack(
-              children: [
-                ListView(
-                  scrollDirection: Axis.horizontal,
-                  clipBehavior: Clip.none,
-                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
-                  children: myRankings.map((r) => _buildMyTeamCard(r as Map)).toList(),
-                ),
-                // 좌측 fade
-                Positioned(
-                  left: 0, top: 0, bottom: 0, width: 24,
-                  child: IgnorePointer(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                          colors: [
-                            isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-                            (isDark ? AppColors.surfaceDark : AppColors.surfaceLight).withValues(alpha: 0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                // 우측 fade
-                Positioned(
-                  right: 0, top: 0, bottom: 0, width: 24,
-                  child: IgnorePointer(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.centerRight,
-                          end: Alignment.centerLeft,
-                          colors: [
-                            isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-                            (isDark ? AppColors.surfaceDark : AppColors.surfaceLight).withValues(alpha: 0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildMyTeamCard(Map ranking) {
-    final teamId = ranking['id'] as int? ?? 0;
-    final code = ranking['short_name'] as String? ?? '';
-    final name = ranking['name'] as String? ?? '';
-    final rank = ranking['rank'] as int? ?? 0;
-    final wins = ranking['wins'] as int? ?? 0;
-    final losses = ranking['losses'] as int? ?? 0;
-    final draws = ranking['draws'] as int? ?? 0;
-    final streak = ranking['streak'] as int? ?? 0;
-    final recent5 = (ranking['recent_5'] as List?)?.cast<String>() ?? [];
-
-    Map? todayGame;
-    for (final g in _games) {
-      final gm = g as Map;
-      if (gm['home_team_id'] == teamId || gm['away_team_id'] == teamId) {
-        todayGame = gm;
-        break;
-      }
-    }
-
-    final bool isHome = todayGame != null && todayGame['home_team_id'] == teamId;
-    final String oppName = todayGame != null
-        ? (isHome
-            ? todayGame['away_team'] as String? ?? ''
-            : todayGame['home_team'] as String? ?? '')
-        : '';
-
-    String gameStr;
-    Color gameColor = Colors.grey;
-    bool showWinIcon = false;
-    bool showLossIcon = false;
-
-    if (todayGame == null) {
-      gameStr = '오늘 경기 없음';
-    } else {
-      final status = todayGame['status'] as String? ?? '';
-      final hs = todayGame['home_score'] as int? ?? 0;
-      final as_ = todayGame['away_score'] as int? ?? 0;
-      final myScore = isHome ? hs : as_;
-      final oppScore = isHome ? as_ : hs;
-      if (status == '예정' || status == '라인업') {
-        gameStr = 'vs $oppName  ${todayGame['start_time'] ?? ''}';
-        gameColor = Colors.indigo;
-      } else if (status == '진행') {
-        gameStr = '$myScore : $oppScore  vs $oppName';
-        gameColor = Colors.green;
-      } else if (status == '종료') {
-        gameStr = '$myScore : $oppScore  vs $oppName';
-        if (myScore > oppScore) { gameColor = Colors.blue; showWinIcon = true; }
-        else if (myScore < oppScore) { gameColor = Colors.red; showLossIcon = true; }
-      } else if (status == '취소') {
-        gameStr = '취소  vs $oppName';
-      } else {
-        gameStr = 'vs $oppName';
-      }
-    }
-
-    String streakText = '';
-    Color streakColor = Colors.grey;
-    if (streak > 0) { streakText = '$streak연승'; streakColor = Colors.blue; }
-    else if (streak < 0) { streakText = '${-streak}연패'; streakColor = Colors.red; }
-
-    final Color rankBg = rank <= 5 ? const Color(0xFF1565C0) : const Color(0xFF78909C);
-
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(ranking))),
-      ),
-      child: Container(
-        width: 158,
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 1.2),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // 상단: 로고 + 팀명 + 순위
-            Row(
-              children: [
-                TeamLogo(teamCode: code, size: 22),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(name,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                      overflow: TextOverflow.ellipsis),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(color: rankBg, borderRadius: BorderRadius.circular(8)),
-                  child: Text('${rank}위',
-                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-            // 하단: 오늘 경기 + 연속
-            Row(
-              children: [
-                if (showWinIcon) const Icon(Icons.arrow_upward, size: 9, color: Colors.blue),
-                if (showLossIcon) const Icon(Icons.arrow_downward, size: 9, color: Colors.red),
-                Expanded(
-                  child: Text(gameStr,
-                      style: TextStyle(fontSize: 11, color: gameColor, fontWeight: FontWeight.w600),
-                      overflow: TextOverflow.ellipsis),
-                ),
-                if (streakText.isNotEmpty) ...[
-                  const SizedBox(width: 4),
-                  Text(streakText,
-                      style: TextStyle(fontSize: 11, color: streakColor, fontWeight: FontWeight.w700)),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   double _listBottomPad(BuildContext context) {
     // tab pill 58 + optional myTeam pill (44 + 8 gap) + 16 margin + 18 clearance
@@ -1803,65 +1392,8 @@ class GameCard extends StatelessWidget {
       this.myTeamIsHome = false, this.myTeamIsAway = false,
       this.homeRank, this.awayRank, this.nextHomeSeries, this.nextAwaySeries});
 
-  Widget _starterChip(String name, _Tok t) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-    decoration: BoxDecoration(
-      color: t.paper2,
-      borderRadius: BorderRadius.circular(6),
-      border: Border.all(color: t.line2, width: 1),
-    ),
-    child: Text(name,
-        style: TextStyle(fontSize: 11, color: t.ink2, fontWeight: FontWeight.w700),
-        overflow: TextOverflow.ellipsis),
-  );
 
-  Widget _buildNextSeriesInline(Map<String, String> series, _Tok t) {
-    final dateStr = series['date'] ?? '';
-    String dateLabel = '';
-    if (dateStr.length >= 10) {
-      final parts = dateStr.split('-');
-      if (parts.length == 3) {
-        final m = int.tryParse(parts[1]) ?? 0;
-        final d = int.tryParse(parts[2]) ?? 0;
-        if (m > 0 && d > 0) dateLabel = ' $m/$d~';
-      }
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('다음 ', style: TextStyle(fontSize: 11, color: t.sub)),
-        TeamLogo(teamCode: series['code'] ?? '', size: 15),
-        const SizedBox(width: 3),
-        Flexible(
-          child: Text(
-            '${series['name'] ?? ''}$dateLabel',
-            style: TextStyle(fontSize: 11, color: t.ink3, fontWeight: FontWeight.w600),
-            overflow: TextOverflow.ellipsis, maxLines: 1,
-          ),
-        ),
-      ],
-    );
-  }
 
-  Widget? _buildWeatherWidget(_Tok t) {
-    final w = game.weather;
-    if (w == null) return null;
-    if (w['indoor'] == true) {
-      return Text('실내', style: TextStyle(fontSize: 11, color: t.sub));
-    }
-    final emoji = w['emoji'] ?? '';
-    final temp = w['temp'];
-    final pop = w['pop'];
-    final popVal = pop is num ? pop.toInt() : null;
-    final parts = <String>[
-      if (emoji.isNotEmpty) emoji,
-      if (temp != null) '${temp}°',
-      if (popVal != null && popVal > 0) '$popVal%',
-    ];
-    if (parts.isEmpty) return null;
-    return Text(parts.join(' '),
-        style: TextStyle(fontSize: 11, color: t.ink3, fontWeight: FontWeight.w600));
-  }
 
   // 다크 모드: 어두운 팀색(KT/NC/두산 등) lightness 부스트로 가시성 확보
   // 라이트 모드: 너무 밝은 팀색 약간 어둡게 (대비 확보)
@@ -2427,91 +1959,10 @@ class GameCard extends StatelessWidget {
     );
   }
 
-  Widget _symmetricPitcher(_Tok t, bool homeWon, bool isLeftSide) {
-    // 좌측 = 홈, 우측 = 원정
-    final isHomeSide = isLeftSide;
-    final isWinSide = isHomeSide == homeWon;
-    final name = isWinSide ? game.winPitcher : game.losePitcher;
-    if (name == null) return const SizedBox.shrink();
-    final label = isWinSide ? '승' : '패';
-    final col = isWinSide ? const Color(0xFF1976D2) : const Color(0xFFC62828);
-    final badge = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      decoration: BoxDecoration(
-        color: col.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(label, style: TextStyle(fontSize: 11, color: col, fontWeight: FontWeight.w800)),
-    );
-    final nameText = Text(name,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2),
-        overflow: TextOverflow.ellipsis, maxLines: 1);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: isLeftSide
-          ? [badge, const SizedBox(width: 4), nameText]
-          : [nameText, const SizedBox(width: 4), badge],
-    );
-  }
 
-  Widget _nextSeriesInline(Map<String, String> series, _Tok t) {
-    final dateStr = series['date'] ?? '';
-    String dateLabel = '';
-    if (dateStr.length >= 10) {
-      final parts = dateStr.split('-');
-      if (parts.length == 3) {
-        final m = int.tryParse(parts[1]) ?? 0;
-        final d = int.tryParse(parts[2]) ?? 0;
-        if (m > 0 && d > 0) dateLabel = ' $m/$d~';
-      }
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('다음 ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: t.sub)),
-        TeamLogo(teamCode: series['code'] ?? '', size: 15),
-        const SizedBox(width: 3),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 90),
-          child: Text('${series['name'] ?? ''}$dateLabel',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.ink3),
-              overflow: TextOverflow.ellipsis, maxLines: 1),
-        ),
-      ],
-    );
-  }
 
-  Widget _strippedLabel({required String label, required Widget value, required _Tok t}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
-        const SizedBox(height: 4),
-        value,
-      ],
-    );
-  }
 
-  Widget _buildStarterValue(_Tok t, String? h, String? a) {
-    final parts = <String>[];
-    if (h != null && h.isNotEmpty) parts.add(h);
-    if (a != null && a.isNotEmpty) parts.add(a);
-    return Text(parts.join(' · '),
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.ink2),
-        maxLines: 1, overflow: TextOverflow.ellipsis);
-  }
 
-  Widget _buildPitcherValue(_Tok t, bool homeWon, bool awayWon) {
-    final winName = game.winPitcher;
-    final loseName = game.losePitcher;
-    final parts = <String>[];
-    if (winName != null) parts.add('승 $winName');
-    if (loseName != null) parts.add('패 $loseName');
-    return Text(parts.join(' · '),
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.ink2),
-        maxLines: 1, overflow: TextOverflow.ellipsis);
-  }
 }
 
 
