@@ -645,13 +645,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           _fieldPinned
               ? Column(
                   children: [
-                    // panel-spacer: panel actual height와 일치 + paper bg (scaffold body 색 노출 방지)
-                    Container(
-                      height: _sameDayGames.isNotEmpty ? 505 : 410,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? const Color(0xFF18181C)
-                          : Colors.white,
-                    ),
+                    // panel-spacer: transparent → panel rounded 끝점 보이게 (paper 노출 X)
+                    SizedBox(height: _sameDayGames.isNotEmpty ? 505 : 410),
                     Expanded(
                       // gameHeader skip — 핀 시 panel 바로 아래 TabBarView (득점요약/이닝중계)만 표시
                       child: TabBarView(
@@ -1917,7 +1912,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     final winRate = _getWinRate();
 
-    final navBottom = 120.0 + MediaQuery.of(context).viewPadding.bottom;
+    // navBottom: 핀/탭 sub-label 모드에서 floating nav 가림 방지 (sub bar 시 더 큼)
+    final hasSubBar = _tabController.index == 1 || _tabController.index == 2;
+    final navBottom = (hasSubBar ? 200.0 : 150.0) + MediaQuery.of(context).viewPadding.bottom;
     return SingleChildScrollView(
       controller: _inningScrollController,
       physics: const ClampingScrollPhysics(),
