@@ -1832,7 +1832,11 @@ class GameCard extends StatelessWidget {
     final homeColor = teamColor(game.homeTeamCode);
     final awayColor = teamColor(game.awayTeamCode);
     // 마이팀 색: 한화가 home이면 homeColor, away면 awayColor (둘 다 마이팀인 경우 홈 우선)
-    final myColor = myTeamIsHome ? homeColor : (myTeamIsAway ? awayColor : homeColor);
+    // 다크모드 대비: badge bg/border/text 용도 → _adjustTeamColor 적용 (winner glow는 raw 유지)
+    final myColor = _adjustTeamColor(
+      myTeamIsHome ? homeColor : (myTeamIsAway ? awayColor : homeColor),
+      isDark,
+    );
     // accent: 마이팀이면 팀색, 아니면 ink (승팀 강조용)
     final accent = isMyTeam ? myColor : t.ink;
 
@@ -1861,19 +1865,21 @@ class GameCard extends StatelessWidget {
         );
       }
       if (isCancelled) {
+        // 다크모드 contrast — SemColor.danger(#C62828) 어두운 배경 4:1 미달 → 밝은 red 사용
+        final dangerOn = isDark ? const Color(0xFFEF4444) : SemColor.danger;
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: SemColor.danger.withValues(alpha: 0.08),
+            color: dangerOn.withValues(alpha: isDark ? 0.15 : 0.08),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: SemColor.danger.withValues(alpha: 0.35), width: 1),
+            border: Border.all(color: dangerOn.withValues(alpha: 0.45), width: 1),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.cancel_outlined, size: 11, color: SemColor.danger),
+            Icon(Icons.cancel_outlined, size: 11, color: dangerOn),
             const SizedBox(width: 4),
-            const Text('취소',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: SemColor.danger,
-                    decoration: TextDecoration.lineThrough, decorationColor: SemColor.danger)),
+            Text('취소',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: dangerOn,
+                    decoration: TextDecoration.lineThrough, decorationColor: dangerOn)),
           ]),
         );
       }

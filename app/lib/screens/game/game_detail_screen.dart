@@ -439,9 +439,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildRelayShimmer() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Shimmer.fromColors(
-      baseColor: Colors.grey[300]!,
-      highlightColor: Colors.grey[100]!,
+      baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+      highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
       child: Column(
         children: List.generate(5, (i) => Container(
           margin: const EdgeInsets.only(bottom: 8),

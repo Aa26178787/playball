@@ -38,10 +38,12 @@ class AppTheme {
     final isDark = br == Brightness.dark;
     return ThemeData(
       useMaterial3: true,
-      // 미세 ripple — 완전 비활성 시 press 피드백 없음 → InkSparkle 약하게
+      // 미세 ripple — 다크 모드는 어두운 surface 위 ripple 가시성 위해 alpha 상향
       splashFactory: InkSparkle.splashFactory,
-      highlightColor: (isDark ? AppColors.primaryDark : AppColors.primary).withValues(alpha: 0.05),
-      splashColor: (isDark ? AppColors.primaryDark : AppColors.primary).withValues(alpha: 0.08),
+      highlightColor: (isDark ? AppColors.primaryDark : AppColors.primary)
+          .withValues(alpha: isDark ? 0.08 : 0.05),
+      splashColor: (isDark ? AppColors.primaryDark : AppColors.primary)
+          .withValues(alpha: isDark ? 0.12 : 0.08),
       fontFamily: 'Pretendard',
       // 한글 가독성 — line-height 1.4, letterSpacing 0 (음수 자간 제거)
       textTheme: const TextTheme(
@@ -170,12 +172,14 @@ class AppTheme {
               fontWeight: FontWeight.w600, fontFamily: 'Pretendard'),
         ),
       ),
-      snackBarTheme: const SnackBarThemeData(
-        backgroundColor: Color(0xFF111113),
-        contentTextStyle: TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'Pretendard'),
-        actionTextColor: Color(0xFFFFA000),
+      snackBarTheme: SnackBarThemeData(
+        // 다크 모드 scaffold #111113와 동일 시 floating 시인성 손실 → 다크는 surface2Dark
+        backgroundColor: isDark ? AppColors.surface2Dark : const Color(0xFF111113),
+        contentTextStyle: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'Pretendard'),
+        actionTextColor: const Color(0xFFFFA000),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+        elevation: 6,
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
