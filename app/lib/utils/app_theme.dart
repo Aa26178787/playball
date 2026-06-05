@@ -38,9 +38,10 @@ class AppTheme {
     final isDark = br == Brightness.dark;
     return ThemeData(
       useMaterial3: true,
-      splashFactory: NoSplash.splashFactory,
-      highlightColor: Colors.transparent,
-      splashColor: Colors.transparent,
+      // 미세 ripple — 완전 비활성 시 press 피드백 없음 → InkSparkle 약하게
+      splashFactory: InkSparkle.splashFactory,
+      highlightColor: (isDark ? AppColors.primaryDark : AppColors.primary).withValues(alpha: 0.05),
+      splashColor: (isDark ? AppColors.primaryDark : AppColors.primary).withValues(alpha: 0.08),
       fontFamily: 'Pretendard',
       // 한글 가독성 — line-height 1.4, letterSpacing 0 (음수 자간 제거)
       textTheme: const TextTheme(
@@ -117,12 +118,13 @@ class AppTheme {
         dividerColor: isDark ? AppColors.borderDark : AppColors.borderLight,
         indicatorColor:
             isDark ? AppColors.primaryDark : AppColors.primary,
+        indicatorSize: TabBarIndicatorSize.label,
         labelColor: isDark ? AppColors.primaryDark : AppColors.primary,
-        unselectedLabelColor: AppColors.textSecondary,
+        unselectedLabelColor: AppColors.textTertiary,
         labelStyle: const TextStyle(
-            fontWeight: FontWeight.w700, fontSize: 13, fontFamily: 'Pretendard'),
+            fontWeight: FontWeight.w800, fontSize: 13, fontFamily: 'Pretendard', letterSpacing: 0),
         unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w500, fontSize: 13, fontFamily: 'Pretendard'),
+            fontWeight: FontWeight.w500, fontSize: 13, fontFamily: 'Pretendard', letterSpacing: 0),
       ),
       chipTheme: ChipThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -174,6 +176,20 @@ class AppTheme {
         actionTextColor: Color(0xFFFFA000),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+        modalBackgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        showDragHandle: true,
+        dragHandleColor: isDark ? Colors.white24 : Colors.black26,
+        dragHandleSize: const Size(36, 4),
+      ),
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
       ),
     );
   }

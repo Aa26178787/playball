@@ -1862,10 +1862,18 @@ class GameCard extends StatelessWidget {
       if (isCancelled) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: t.line2, width: 1)),
-          child: Text('취소',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink3)),
+          decoration: BoxDecoration(
+            color: SemColor.danger.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: SemColor.danger.withValues(alpha: 0.35), width: 1),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.cancel_outlined, size: 11, color: SemColor.danger),
+            const SizedBox(width: 4),
+            const Text('취소',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: SemColor.danger,
+                    decoration: TextDecoration.lineThrough, decorationColor: SemColor.danger)),
+          ]),
         );
       }
       if (isFinished) {
@@ -1973,9 +1981,17 @@ class GameCard extends StatelessWidget {
                           if (isMyTeam) ...[
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                              decoration: BoxDecoration(color: myColor, borderRadius: BorderRadius.circular(5)),
-                              child: const Text('마이팀',
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
+                              decoration: BoxDecoration(
+                                color: myColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(5),
+                                border: Border.all(color: myColor.withValues(alpha: 0.6), width: 1),
+                              ),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                Icon(Icons.star_rounded, size: 11, color: myColor),
+                                const SizedBox(width: 3),
+                                Text('마이팀',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: myColor)),
+                              ]),
                             ),
                             const SizedBox(width: 7),
                           ],
