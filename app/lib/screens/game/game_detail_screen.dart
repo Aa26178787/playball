@@ -4461,20 +4461,20 @@ class _FullFieldView extends StatelessWidget {
   static const Map<String, Offset> _posCoords = {
     'P':  Offset(150, 208),   // 투수 (마운드)
     'C':  Offset(150, 283),   // 포수
-    '1B': Offset(226, 220),   // 1루수
-    '2B': Offset(192, 182),   // 2루수
-    'SS': Offset(108, 182),   // 유격수
-    '3B': Offset(74,  220),   // 3루수
-    'LF': Offset(64,  112),   // 좌익수
-    'CF': Offset(150, 78),    // 중견수
-    'RF': Offset(236, 112),   // 우익수
+    '1B': Offset(220, 196),   // 1루수
+    '2B': Offset(183, 163),   // 2루수
+    'SS': Offset(117, 163),   // 유격수
+    '3B': Offset(80,  196),   // 3루수
+    'LF': Offset(64,  110),   // 좌익수
+    'CF': Offset(150, 76),    // 중견수
+    'RF': Offset(236, 110),   // 우익수
     'DH': Offset(30,  280),   // 지명타자 (벤치)
   };
   static const Map<String, Offset> _baseCoords = {
-    'base1':  Offset(208, 208),   // 1루 base
-    'base2':  Offset(150, 150),   // 2루 base
-    'base3':  Offset(92,  208),   // 3루 base
-    'batter': Offset(131, 262),   // 타자 (mockup 우타석)
+    'base1':  Offset(222, 200),   // 1루 주자
+    'base2':  Offset(162, 148),   // 2루 주자
+    'base3':  Offset(78,  200),   // 3루 주자
+    'batter': Offset(132, 262),   // 타자 (mockup 우타석)
   };
   static const Map<String, String> _posLabel = {
     'P': '투수', 'C': '포수', '1B': '1루수', '2B': '2루수',
