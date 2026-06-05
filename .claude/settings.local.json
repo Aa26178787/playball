@@ -138,7 +138,10 @@
       "Bash(adb -s \"adb-R3CX90J1HJK-iohcsy._adb-tls-connect._tcp\" pull /sdcard/screen.png /c/Users/qq772/Downloads/current_field.png)",
       "Bash(adb -s \"adb-R3CX90J1HJK-iohcsy._adb-tls-connect._tcp\" shell \"dumpsys SurfaceFlinger --display-id\")",
       "Bash(adb -s \"adb-R3CX90J1HJK-iohcsy._adb-tls-connect._tcp\" shell \"screencap -p -d 4630946564756762243 /sdcard/screen.png\")",
-      "Bash(MSYS_NO_PATHCONV=1 adb -s \"adb-R3CX90J1HJK-iohcsy._adb-tls-connect._tcp\" pull \"/sdcard/screen.png\" \"C:/Users/qq772/Downloads/current_field.png\")"
+      "Bash(MSYS_NO_PATHCONV=1 adb -s \"adb-R3CX90J1HJK-iohcsy._adb-tls-connect._tcp\" pull \"/sdcard/screen.png\" \"C:/Users/qq772/Downloads/current_field.png\")",
+      "Bash(Get-ChildItem -Path \"app\\\\lib\\\\screens\" -Recurse -Filter \"*.dart\")",
+      "Bash(Measure-Object)",
+      "Bash(Select-Object -ExpandProperty Count)"
     ]
   }
 }

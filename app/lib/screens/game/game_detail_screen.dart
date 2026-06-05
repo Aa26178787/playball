@@ -647,7 +647,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   children: [
                     // panel-spacer: panel actual height와 일치 + paper bg (scaffold body 색 노출 방지)
                     Container(
-                      height: _sameDayGames.isNotEmpty ? 460 : 365,
+                      height: _sameDayGames.isNotEmpty ? 530 : 435,
                       color: Theme.of(context).brightness == Brightness.dark
                           ? const Color(0xFF18181C)
                           : Colors.white,
@@ -1083,7 +1083,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 60, 16, 20),
                           // C안: 좌표 자체 bilinear quad mapping (Matrix4 제거)
-                          child: SizedBox(height: 230, width: double.infinity, child: fieldWidget),
+                          child: SizedBox(height: 290, width: double.infinity, child: fieldWidget),
                         ),
                         // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
                         Positioned(
@@ -1562,7 +1562,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     return Container(
       // panel-spacer와 동일 height + 하단 rounded (gameHeader ClipRRect bottom 16과 일치)
-      height: _sameDayGames.isNotEmpty ? 460 : 365,
+      height: _sameDayGames.isNotEmpty ? 530 : 435,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: paper,
@@ -1617,7 +1617,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     const Positioned.fill(child: CustomPaint(painter: _GrassExtensionPainter())),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 60, 16, 20),
-                      child: SizedBox(height: 230, width: double.infinity, child: fieldWidget),
+                      child: SizedBox(height: 290, width: double.infinity, child: fieldWidget),
                     ),
                     // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
                     Positioned(
