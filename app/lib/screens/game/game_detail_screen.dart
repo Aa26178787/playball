@@ -538,10 +538,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('${game['home_team']} vs ${game['away_team']}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             const SizedBox(height: 1),
             Text(
               subTab != null ? '$currentTab · $subTab' : currentTab,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,

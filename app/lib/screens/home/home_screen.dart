@@ -1522,6 +1522,7 @@ class GameCard extends StatelessWidget {
           Icon(Icons.map_outlined, size: 11, color: t.ink3),
           const SizedBox(width: 4),
           Text('지도 · ${game.stadium!}',
+              maxLines: 1, overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2)),
           const SizedBox(width: 2),
           Icon(Icons.chevron_right, size: 12, color: t.ink3),
@@ -1725,30 +1726,28 @@ class GameCard extends StatelessWidget {
 
     Widget teamSide(String code, String name, int score, bool won, bool isHomeSide) {
       final dim = (homeWon || awayWon) && !won;
+      final txt = Flexible(
+        child: Text(name,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: won ? FontWeight.w800 : FontWeight.w600,
+              color: dim ? t.sub : t.ink,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis),
+      );
       return Expanded(
         child: Row(
           mainAxisAlignment: isHomeSide ? MainAxisAlignment.start : MainAxisAlignment.end,
           children: [
             if (!isHomeSide) ...[
-              Text(name,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: won ? FontWeight.w800 : FontWeight.w600,
-                    color: dim ? t.sub : t.ink,
-                  ),
-                  overflow: TextOverflow.ellipsis),
+              txt,
               const SizedBox(width: 8),
             ],
             Opacity(opacity: dim ? 0.45 : 1.0, child: TeamLogo(teamCode: code, size: 22)),
             if (isHomeSide) ...[
               const SizedBox(width: 8),
-              Text(name,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: won ? FontWeight.w800 : FontWeight.w600,
-                    color: dim ? t.sub : t.ink,
-                  ),
-                  overflow: TextOverflow.ellipsis),
+              txt,
             ],
           ],
         ),
@@ -1975,7 +1974,7 @@ class GameCard extends StatelessWidget {
                           _weatherChip(t),
                           if (game.stadium != null) ...[
                             const SizedBox(width: 6),
-                            _stadiumChip(context, t),
+                            Flexible(child: _stadiumChip(context, t)),
                           ],
                           const Spacer(),
                           if (isMyTeam) ...[
