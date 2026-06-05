@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:shimmer/shimmer.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/game.dart';
@@ -203,7 +202,7 @@ class _FloatingNavBar extends StatelessWidget {
                     duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                     decoration: BoxDecoration(
-                      color: selected ? activeColor.withOpacity(0.12) : Colors.transparent,
+                      color: selected ? activeColor.withValues(alpha: 0.12) : Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Column(
@@ -308,7 +307,7 @@ class _FloatingNavBar extends StatelessWidget {
       gameColor = isDark ? Colors.white54 : Colors.black45;
     }
 
-    final textColor = isDark ? Colors.white.withOpacity(0.88) : Colors.black87;
+    final textColor = isDark ? Colors.white.withValues(alpha: 0.88) : Colors.black87;
 
     return GestureDetector(
       onTap: () => onMyTeamTap?.call(item),
@@ -316,10 +315,10 @@ class _FloatingNavBar extends StatelessWidget {
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.05),
+          color: isDark ? Colors.white.withValues(alpha: 0.07) : Colors.black.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isDark ? Colors.white.withOpacity(0.12) : Colors.black.withOpacity(0.08),
+            color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
             width: 0.8,
           ),
         ),
@@ -676,27 +675,27 @@ class _TodayGamesTabState extends State<TodayGamesTab>
 
     try {
       // 오늘 날짜: /games/today (서버 30초 캐시) 사용 — /games/date/{date}는 5분 캐시라 스코어 갱신 지연
-      print('[loadGames] dateStr=$dateStr isToday=$isToday calling API');
+      debugPrint('[loadGames] dateStr=$dateStr isToday=$isToday calling API');
       final data = isToday
           ? await ApiService.getTodayGames()
           : await ApiService.getGamesByDate(dateStr);
-      print('[loadGames] response keys=${data.keys.toList()} games_count=${(data['games'] as List?)?.length}');
-      if (!mounted) { print('[loadGames] unmounted after API'); return; }
+      debugPrint('[loadGames] response keys=${data.keys.toList()} games_count=${(data['games'] as List?)?.length}');
+      if (!mounted) { debugPrint('[loadGames] unmounted after API'); return; }
       if (_loadGen != gen) {
-        print('[loadGames] loadGen mismatch $gen vs $_loadGen — skip');
+        debugPrint('[loadGames] loadGen mismatch $gen vs $_loadGen — skip');
         if (_isLoading) setState(() => _isLoading = false);
         return;
       }
       final games = data['games'] as List? ?? [];
       await LocalCache.set('games_$dateStr', games);
-      if (!mounted || _loadGen != gen) { print('[loadGames] unmounted/gen after cache set'); return; }
-      print('[loadGames] setState _games=${games.length} _isLoading=false');
+      if (!mounted || _loadGen != gen) { debugPrint('[loadGames] unmounted/gen after cache set'); return; }
+      debugPrint('[loadGames] setState _games=${games.length} _isLoading=false');
       setState(() { _games = games; _isLoading = false; _loadError = false; });
       _updateMyTeamData();
       _prefetchAdjacentDates(dateStr);
       _prefetchGameDetails(games);
     } catch (e, st) {
-      print('[loadGames] ERROR: $e\n$st');
+      debugPrint('[loadGames] ERROR: $e\n$st');
       if (!mounted) return;
       if (_loadGen != gen) {
         if (_isLoading) setState(() => _isLoading = false);
@@ -1080,10 +1079,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                     duration: const Duration(milliseconds: 150),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                     decoration: BoxDecoration(
-                      color: isToday ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+                      color: isToday ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isToday ? AppColors.primary.withOpacity(0.3) : Colors.transparent,
+                        color: isToday ? AppColors.primary.withValues(alpha: 0.3) : Colors.transparent,
                         width: 1,
                       ),
                     ),
@@ -1254,7 +1253,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [scaffoldBg, scaffoldBg.withOpacity(0)],
+                                colors: [scaffoldBg, scaffoldBg.withValues(alpha: 0)],
                               ),
                             ),
                           ),
@@ -1324,7 +1323,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                           end: Alignment.centerRight,
                           colors: [
                             isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-                            (isDark ? AppColors.surfaceDark : AppColors.surfaceLight).withOpacity(0),
+                            (isDark ? AppColors.surfaceDark : AppColors.surfaceLight).withValues(alpha: 0),
                           ],
                         ),
                       ),
@@ -1342,7 +1341,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                           end: Alignment.centerLeft,
                           colors: [
                             isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-                            (isDark ? AppColors.surfaceDark : AppColors.surfaceLight).withOpacity(0),
+                            (isDark ? AppColors.surfaceDark : AppColors.surfaceLight).withValues(alpha: 0),
                           ],
                         ),
                       ),
@@ -1434,7 +1433,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 1.2),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 1.2),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -19,7 +19,7 @@ class TeamProvider extends ChangeNotifier {
           .map((t) => Team.fromJson(t))
           .toList();
     } catch (e) {
-      print('팀 순위 오류: $e');
+      debugPrint('팀 순위 오류: $e');
     }
 
     _isLoading = false;

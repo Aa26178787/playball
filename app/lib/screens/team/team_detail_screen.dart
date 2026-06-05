@@ -336,7 +336,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(26),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 16, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 16, offset: const Offset(0, 4))],
       ),
       child: Row(
         children: List.generate(labels.length, (i) {
@@ -348,7 +348,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: selected ? color.withOpacity(0.12) : Colors.transparent,
+                  color: selected ? color.withValues(alpha: 0.12) : Colors.transparent,
                   borderRadius: BorderRadius.circular(22),
                 ),
                 child: Column(
@@ -556,7 +556,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _divider() {
-    return Container(width: 1, height: 28, color: Colors.grey.withOpacity(0.25));
+    return Container(width: 1, height: 28, color: Colors.grey.withValues(alpha: 0.25));
   }
 
   Widget _buildHeader(Map team, String code, Color color,
@@ -566,7 +566,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final gbText = gb == null ? '-' : gb == 0 ? '-' : gb.toStringAsFixed(1);
 
     return Container(
-      color: color.withOpacity(0.06),
+      color: color.withValues(alpha: 0.06),
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
@@ -696,7 +696,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   Widget _sectionHeader(String title) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.grey.withOpacity(0.1),
+      color: Colors.grey.withValues(alpha: 0.1),
       child: Text(
         title,
         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
@@ -820,7 +820,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -829,7 +829,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.07),
+                  color: Colors.grey.withValues(alpha: 0.07),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 ),
                 child: Row(
@@ -851,7 +851,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                         margin: const EdgeInsets.only(left: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: c.withOpacity(0.12),
+                          color: c.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(color: c, width: 0.8),
                         ),
@@ -994,7 +994,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          color: typeColor.withOpacity(0.15),
+          color: typeColor.withValues(alpha: 0.15),
           shape: BoxShape.circle,
         ),
         child: Icon(typeIcon, size: 16, color: typeColor),
@@ -1010,7 +1010,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: typeColor.withOpacity(0.1),
+          color: typeColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(changeType, style: TextStyle(fontSize: 11, color: typeColor, fontWeight: FontWeight.bold)),
@@ -1172,7 +1172,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
+                          color: Colors.blue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(category,
@@ -1262,14 +1262,14 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 gridData: FlGridData(
                   show: true,
                   horizontalInterval: 0.25,
-                  getDrawingHorizontalLine: (_) => FlLine(color: Colors.grey.withOpacity(0.2), strokeWidth: 1),
+                  getDrawingHorizontalLine: (_) => FlLine(color: Colors.grey.withValues(alpha: 0.2), strokeWidth: 1),
                   drawVerticalLine: false,
                 ),
                 borderData: FlBorderData(
                   show: true,
                   border: Border(
-                    bottom: BorderSide(color: Colors.grey.withOpacity(0.3)),
-                    left: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                    bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                    left: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
                   ),
                 ),
                 titlesData: FlTitlesData(
@@ -1323,14 +1323,14 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                     ),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: color.withOpacity(0.12),
+                      color: color.withValues(alpha: 0.12),
                     ),
                   ),
                   // 5할 기준선
                   LineChartBarData(
                     spots: [FlSpot(0, 0.5), FlSpot((spots.length - 1).toDouble(), 0.5)],
                     isCurved: false,
-                    color: Colors.grey.withOpacity(0.5),
+                    color: Colors.grey.withValues(alpha: 0.5),
                     barWidth: 1,
                     dotData: const FlDotData(show: false),
                     dashArray: [4, 4],
@@ -1343,7 +1343,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           const Text('월별 세부 성적', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Table(
-            border: TableBorder.all(color: Colors.grey.withOpacity(0.2), width: 0.5),
+            border: TableBorder.all(color: Colors.grey.withValues(alpha: 0.2), width: 0.5),
             columnWidths: const {
               0: FlexColumnWidth(1.2),
               1: FlexColumnWidth(1),
@@ -1353,7 +1353,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             },
             children: [
               TableRow(
-                decoration: BoxDecoration(color: color.withOpacity(0.1)),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.1)),
                 children: ['월', '경기', '승', '패', '승률'].map((h) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                   child: Text(h, textAlign: TextAlign.center,
@@ -1437,7 +1437,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         // 종합 요약 카드
         Card(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
@@ -1589,7 +1589,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -1617,7 +1617,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
           // AVG 기반 배경색 (높을수록 진한 파랑)
           final t = maxAvg > minAvg ? (avg - minAvg) / (maxAvg - minAvg) : 0.5;
-          final bgColor = Color.lerp(Colors.grey.shade100, color.withOpacity(0.18), t)!;
+          final bgColor = Color.lerp(Colors.grey.shade100, color.withValues(alpha: 0.18), t)!;
 
           return Container(
             margin: const EdgeInsets.only(bottom: 6),
@@ -1652,7 +1652,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                     children: [
                       CircleAvatar(
                         radius: 11,
-                        backgroundColor: color.withOpacity(0.15),
+                        backgroundColor: color.withValues(alpha: 0.15),
                         backgroundImage: (topPlayerImage != null && topPlayerImage.isNotEmpty)
                             ? CachedNetworkImageProvider(topPlayerImage)
                             : null,
@@ -1703,7 +1703,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                     width: 26,
                     height: barH,
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.7),
+                      color: color.withValues(alpha: 0.7),
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                     ),
                   ),

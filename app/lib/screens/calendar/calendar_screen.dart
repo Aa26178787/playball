@@ -168,7 +168,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF111113).withOpacity(0.06),
+        color: const Color(0xFF111113).withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -197,7 +197,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
               decoration: BoxDecoration(
-                color: Colors.teal.withOpacity(0.12),
+                color: Colors.teal.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text('통계', style: TextStyle(fontSize: 11, color: Colors.teal, fontWeight: FontWeight.bold)),
@@ -209,7 +209,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
               decoration: BoxDecoration(
-                color: const Color(0xFF111113).withOpacity(0.12),
+                color: const Color(0xFF111113).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text('랭킹', style: TextStyle(fontSize: 11, color: Color(0xFF111113), fontWeight: FontWeight.bold)),
@@ -377,7 +377,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           leading: Container(
                             width: 32, height: 32,
                             decoration: BoxDecoration(
-                              color: rank <= 3 ? medalColor.withOpacity(0.15) : Colors.grey.withOpacity(0.08),
+                              color: rank <= 3 ? medalColor.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.08),
                               shape: BoxShape.circle,
                             ),
                             alignment: Alignment.center,
@@ -410,7 +410,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
@@ -630,7 +630,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         color: isSelected ? const Color(0xFF111113) : isToday ? const Color(0xFFE8EAF6) : null,
                         borderRadius: BorderRadius.circular(8),
                         border: visitColor != null && !isSelected
-                            ? Border.all(color: visitColor.withOpacity(0.6), width: 1.5)
+                            ? Border.all(color: visitColor.withValues(alpha: 0.6), width: 1.5)
                             : null,
                       ),
                       child: Column(
@@ -704,7 +704,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 height: 14,
                 margin: EdgeInsets.fromLTRB(isFirst ? 2 : 0, 2, isLast ? 2 : 0, 2),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.85),
+                  color: color.withValues(alpha: 0.85),
                   borderRadius: BorderRadius.only(
                     topLeft: isFirst ? const Radius.circular(4) : Radius.zero,
                     bottomLeft: isFirst ? const Radius.circular(4) : Radius.zero,
@@ -798,7 +798,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: color.withOpacity(0.4), width: 1),
+        side: BorderSide(color: color.withValues(alpha: 0.4), width: 1),
       ),
       child: ListTile(
         leading: Container(
@@ -1008,7 +1008,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.2),
+                      color: statusColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -1087,7 +1087,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ? Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: Colors.grey.withOpacity(0.1),
+                            color: Colors.grey.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text('무승부',
@@ -1101,7 +1101,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                 margin: const EdgeInsets.only(right: 8),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.1),
+                                  color: Colors.blue.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text('승 $winPitcher',
@@ -1111,7 +1111,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.1),
+                                  color: Colors.red.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text('패 $losePitcher',
@@ -1308,7 +1308,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? color : color.withOpacity(0.1),
+          color: isSelected ? color : color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: isSelected ? color : Colors.transparent),
         ),
@@ -1325,7 +1325,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.indigo.withOpacity(0.08),
+        color: Colors.indigo.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -1400,7 +1400,7 @@ class _AddEventDialogState extends State<_AddEventDialog> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+          color: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(

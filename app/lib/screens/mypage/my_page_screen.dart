@@ -205,6 +205,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       ),
     );
     if (ok != true) return;
+    if (!mounted) return;
     await context.read<AuthProvider>().logout();
     if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
   }
@@ -227,6 +228,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     if (ok != true) return;
     try {
       await ApiService.deleteAccount();
+      if (!mounted) return;
       await context.read<AuthProvider>().logout();
       if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (_) {
@@ -657,7 +659,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         children: [
           Container(
             width: 28, height: 28,
-            decoration: BoxDecoration(color: color.withOpacity(0.15), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.15), shape: BoxShape.circle),
             child: Center(child: Text(label,
                 style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13))),
           ),

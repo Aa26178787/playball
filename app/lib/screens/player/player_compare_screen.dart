@@ -137,7 +137,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
               color: Colors.white,
               border: Border.all(color: Colors.grey[300]!),
               borderRadius: BorderRadius.circular(8),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)],
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)],
             ),
             child: ListView.builder(
               shrinkWrap: true,

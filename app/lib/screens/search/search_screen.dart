@@ -91,7 +91,7 @@ class _SearchScreenState extends State<SearchScreen> {
           decoration: InputDecoration(
             hintText: '선수, 팀 검색',
             border: InputBorder.none,
-            hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
+            hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
           ),
           style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 16),
           onSubmitted: _search,

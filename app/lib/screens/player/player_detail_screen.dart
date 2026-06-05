@@ -4,7 +4,6 @@ import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import 'player_stats_section.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../widgets/common_widgets.dart';
 
 class PlayerDetailScreen extends StatefulWidget {

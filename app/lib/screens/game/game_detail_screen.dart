@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'dart:math' as math;
-import 'package:dio/dio.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
@@ -13,7 +11,6 @@ import 'package:path_provider/path_provider.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
-import '../../utils/app_theme.dart';
 import '../../utils/design_tokens.dart';
 import 'pitch_location_chart.dart';
 import '../player/player_detail_screen.dart';
@@ -245,7 +242,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
       // LIVE 게임 포함 항상 캐시 — 다음 진입 시 stale-while-revalidate
       await LocalCache.set(_ck('detail'), gameData);
-      final isPast = _isPastGame(gameData);
 
       // 같은 날 경기 목록 (미니 카드용)
       final dateStr = gameData['game']['game_date'] as String?;
@@ -515,7 +511,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [homeColor.withOpacity(0.25), homeColor.withOpacity(0.0)],
+                    colors: [homeColor.withValues(alpha: 0.25), homeColor.withValues(alpha: 0.0)],
                   ),
                 ),
               ),
@@ -908,11 +904,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     // ── 토큰 ──────────────────────────────
     final ink    = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
-    final ink2   = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
     final ink3   = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final sub    = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     final paper  = isDark ? const Color(0xFF18181C) : Colors.white;
-    final paper2 = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
     final line   = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final line2  = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
     const live   = Color(0xFFE53935);
@@ -1818,8 +1812,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       margin: const EdgeInsets.symmetric(horizontal: 2.5),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: on ? c : Colors.white.withOpacity(0.18),
-        boxShadow: on ? [BoxShadow(color: c.withOpacity(0.65), blurRadius: 5, spreadRadius: 1)] : null,
+        color: on ? c : Colors.white.withValues(alpha: 0.18),
+        boxShadow: on ? [BoxShadow(color: c.withValues(alpha: 0.65), blurRadius: 5, spreadRadius: 1)] : null,
       ),
     );
     Widget bsoGroup(String lbl, int count, int max, Color c) => Row(
@@ -1878,9 +1872,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildInningsTab(List innings) {
     final awayTeam = _gameData!['game']['away_team'] as String;
     final homeTeam = _gameData!['game']['home_team'] as String;
-    final awayShort = awayTeam.length > 3 ? awayTeam.substring(0, 3) : awayTeam;
-    final homeShort = homeTeam.length > 3 ? homeTeam.substring(0, 3) : homeTeam;
-
     final relays = _relayAllData?['relays'] as List? ?? [];
 
     final Map<int, List> grouped = {};
@@ -1955,8 +1946,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       flush();
       return result;
     }
-
-    final winRate = _getWinRate();
 
     // navBottom: 핀/탭 sub-label 모드에서 floating nav 가림 방지 (sub bar 시 더 큼)
     final hasSubBar = _tabController.index == 1 || _tabController.index == 2;
@@ -2490,7 +2479,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         if (pitcher.isNotEmpty)
                           Text(
                             '투수: $pitcher',
-                            style: TextStyle(fontSize: 11, color: onSurface.withOpacity(0.48)),
+                            style: TextStyle(fontSize: 11, color: onSurface.withValues(alpha: 0.48)),
                           ),
                       ],
                     ),
@@ -2760,7 +2749,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       duration: const Duration(milliseconds: 180),
                       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                       decoration: BoxDecoration(
-                        color: sel ? activeColor.withOpacity(0.12) : Colors.transparent,
+                        color: sel ? activeColor.withValues(alpha: 0.12) : Colors.transparent,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Center(
@@ -2798,7 +2787,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: sel ? activeColor.withOpacity(0.12) : Colors.transparent,
+                      color: sel ? activeColor.withValues(alpha: 0.12) : Colors.transparent,
                       borderRadius: BorderRadius.circular(22),
                     ),
                     child: Column(
@@ -2926,7 +2915,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
-    final paper2= isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
     final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final track = isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);
 
@@ -3029,8 +3017,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 );
               }),
             ],
-            // unused: paper2 (keep for consistency)
-            if (paper2 == paper2) const SizedBox.shrink(),
           ],
         ),
       ),
@@ -3254,7 +3240,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             child: Container(
             margin: const EdgeInsets.only(bottom: 4),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.05),
+              color: Colors.orange.withValues(alpha: 0.05),
               border: Border(bottom: BorderSide(color: Color(0xFFEDEDF0))),
             ),
             child: ListTile(
@@ -3276,9 +3262,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.15),
+                      color: Colors.orange.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                      border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
                     ),
                     child: const Text('선발',
                         style: TextStyle(
@@ -3372,9 +3358,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       margin: const EdgeInsets.only(left: 4),
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.6)),
+        border: Border.all(color: color.withValues(alpha: 0.6)),
       ),
       child: Text(label,
           style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
@@ -3556,7 +3542,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(label,
@@ -3618,9 +3604,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: resultColor.withOpacity(0.15),
+                  color: resultColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: resultColor.withOpacity(0.5)),
+                  border: Border.all(color: resultColor.withValues(alpha: 0.5)),
                 ),
                 child: Text(result,
                     style: TextStyle(
@@ -4370,9 +4356,9 @@ class _GameShareSheetState extends State<_GameShareSheet> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.2),
+                  color: statusColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: statusColor.withOpacity(0.5)),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.5)),
                 ),
                 child: Text(statusLabel, style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold)),
               ),
@@ -4426,7 +4412,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
+              color: Colors.white.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -4462,16 +4448,16 @@ class _GameShareSheetState extends State<_GameShareSheet> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           CircleAvatar(
             radius: 10,
-            backgroundColor: color.withOpacity(0.2),
+            backgroundColor: color.withValues(alpha: 0.2),
             backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl) : null,
             child: imageUrl == null ? Icon(Icons.person, size: 11, color: color) : null,
           ),
@@ -4658,17 +4644,17 @@ class _PlayerDot extends StatelessWidget {
   Widget build(BuildContext context) {
     // 공격=주황계열, 수비=파란계열, 타자=노랑 강조
     final Color dotColor = isBatter
-        ? const Color(0xFFE65100).withOpacity(0.90)
+        ? const Color(0xFFE65100).withValues(alpha: 0.90)
         : isOffense
-            ? const Color(0xFFBF360C).withOpacity(0.90)
-            : const Color(0xFF0D47A1).withOpacity(0.90);
+            ? const Color(0xFFBF360C).withValues(alpha: 0.90)
+            : const Color(0xFF0D47A1).withValues(alpha: 0.90);
     final Color borderColor = isBatter
         ? Colors.yellow[300]!
         : isOffense ? Colors.orange[300]! : Colors.lightBlue[200]!;
     final Color textColor = isOffense ? Colors.orange[100]! : Colors.lightBlue[100]!;
     final Color labelBg = isOffense
-        ? Colors.orange[900]!.withOpacity(0.85)
-        : Colors.indigo[900]!.withOpacity(0.85);
+        ? Colors.orange[900]!.withValues(alpha: 0.85)
+        : Colors.indigo[900]!.withValues(alpha: 0.85);
 
     final displayName = name.length > 7 ? name.substring(0, 7) : name;
 
@@ -4701,7 +4687,7 @@ class _PlayerDot extends StatelessWidget {
               color: dotColor,
               border: Border.all(color: borderColor, width: 1.8),
               boxShadow: [BoxShadow(
-                color: borderColor.withOpacity(0.5),
+                color: borderColor.withValues(alpha: 0.5),
                 blurRadius: isOffense ? 6 : 4,
                 spreadRadius: 0.5,
               )],
@@ -4814,7 +4800,7 @@ class _FieldBgPainter extends CustomPainter {
         ),
         bx, by,
       );
-      canvas.drawPath(hlPath, Paint()..color = const Color(0xFFF59E0B).withOpacity(0.4));
+      canvas.drawPath(hlPath, Paint()..color = const Color(0xFFF59E0B).withValues(alpha: 0.4));
     }
     final basePath = _rotated45(
       Path()..addRRect(
@@ -4826,7 +4812,7 @@ class _FieldBgPainter extends CustomPainter {
       bx, by,
     );
     canvas.drawPath(basePath, Paint()
-      ..color = Colors.black.withOpacity(0.22)
+      ..color = Colors.black.withValues(alpha: 0.22)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5));
     canvas.drawPath(
       basePath,
@@ -4930,12 +4916,12 @@ class _FieldBgPainter extends CustomPainter {
         Rect.fromLTWH(_kPMX - 8, _kPMY - 2.5, 16, 5),
         const Radius.circular(1.5),
       ),
-      Paint()..color = Colors.white.withOpacity(0.85),
+      Paint()..color = Colors.white.withValues(alpha: 0.85),
     );
 
     // 8. 파울라인
     final foulPaint = Paint()
-      ..color = Colors.white.withOpacity(0.8)
+      ..color = Colors.white.withValues(alpha: 0.8)
       ..strokeWidth = 1.5;
     canvas.drawLine(Offset(_kHX, _kHY), Offset(0, _kHY - _kHX), foulPaint);
     canvas.drawLine(Offset(_kHX, _kHY), Offset(_kFieldW, _kHY - _kHX), foulPaint);
@@ -4963,7 +4949,7 @@ class _FieldBgPainter extends CustomPainter {
 
     // 12. 타자석
     final batterPaint = Paint()
-      ..color = Colors.white.withOpacity(0.72)
+      ..color = Colors.white.withValues(alpha: 0.72)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.2;
     canvas.drawRRect(
