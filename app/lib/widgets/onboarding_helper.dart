@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/local_cache.dart';
 import '../api/api_service.dart';
+import '../utils/design_tokens.dart';
 
 /// #2 온보딩 — 첫 로그인 후 마이팀 미설정 시 SnackBar 안내
 class OnboardingHelper {
@@ -22,7 +23,7 @@ class OnboardingHelper {
           backgroundColor: const Color(0xFF111113),
           action: SnackBarAction(
             label: '설정',
-            textColor: const Color(0xFFFFA000),
+            textColor: SemColor.warning,
             onPressed: () {
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
               onSettingsTap?.call();

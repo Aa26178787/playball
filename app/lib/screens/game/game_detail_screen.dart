@@ -1010,7 +1010,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
+                      Semantics(
+                        label: '$homeTeam $homeScore점 대 $awayScore점 $awayTeam',
+                        child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
@@ -1037,6 +1039,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                 style: TextStyle(color: ink, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.6, fontFeatures: const [FontFeature.tabularFigures()])),
                           ),
                         ],
+                      ),
                       ),
                       const SizedBox(height: 6),
                       if (isLive)
