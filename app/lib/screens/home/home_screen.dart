@@ -12,6 +12,7 @@ import '../../utils/team_theme.dart';
 import '../../utils/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../game/game_detail_screen.dart';
+import '../../widgets/onboarding_helper.dart';
 import '../team/team_screen.dart';
 import '../team/team_detail_screen.dart';
 import '../player/player_screen.dart';
@@ -467,6 +468,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         _loadUnreadCount();
         _loadTomorrowGames();
         _backgroundPrefetch();
+        // #2 온보딩 — 첫 로그인 후 마이팀 미설정 시 hint
+        if (_authProvider?.isLoggedIn == true) {
+          OnboardingHelper.maybeShowFirstTimeHint(context);
+        }
       });
     });
   }

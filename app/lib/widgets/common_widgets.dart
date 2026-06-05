@@ -48,15 +48,16 @@ class AppErrorView extends StatelessWidget {
   }
 }
 
-/// 새로고침 피드백 SnackBar
+/// 새로고침 피드백 SnackBar — bottom margin safeArea + floating nav 동적 회피
 void showRefreshSnack(BuildContext context, {bool success = true, String? message}) {
   final msg = message ?? (success ? '새로고침 완료' : '새로고침 실패');
+  final bottomInset = MediaQuery.of(context).viewPadding.bottom;
   ScaffoldMessenger.of(context).hideCurrentSnackBar();
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
     content: Text(msg),
     duration: const Duration(seconds: 1),
     behavior: SnackBarBehavior.floating,
-    margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+    margin: EdgeInsets.fromLTRB(16, 0, 16, 80 + bottomInset),
     backgroundColor: success ? const Color(0xFF1B5E20) : SemColor.danger,
   ));
 }
@@ -87,17 +88,21 @@ class PlayerAvatar extends StatelessWidget {
       child: Icon(Icons.person, color: color, size: size * 0.55),
     );
     if (imageUrl == null || imageUrl!.isEmpty) return fallback();
-    return ClipOval(
-      child: CachedNetworkImage(
-        imageUrl: imageUrl!,
-        width: size, height: size, fit: BoxFit.cover,
-        memCacheWidth: (size * 2).toInt().clamp(80, 400),
-        memCacheHeight: (size * 2).toInt().clamp(80, 400),
-        fadeInDuration: Duration.zero,
-        errorWidget: (_, __, ___) => fallback(),
-        placeholder: (_, __) => fallback(),
-      ),
-    );
+    return Builder(builder: (ctx) {
+      final dpr = MediaQuery.of(ctx).devicePixelRatio;
+      final cacheSize = (size * dpr).toInt().clamp(80, 800);
+      return ClipOval(
+        child: CachedNetworkImage(
+          imageUrl: imageUrl!,
+          width: size, height: size, fit: BoxFit.cover,
+          memCacheWidth: cacheSize,
+          memCacheHeight: cacheSize,
+          fadeInDuration: Duration.zero,
+          errorWidget: (_, __, ___) => fallback(),
+          placeholder: (_, __) => fallback(),
+        ),
+      );
+    });
   }
 }
 

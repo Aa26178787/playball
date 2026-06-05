@@ -193,7 +193,12 @@ class _PostListTabState extends State<_PostListTab>
       if (mounted) {
         final more = data['posts'] as List? ?? [];
         setState(() {
-          _posts = [..._posts, ...more];
+          // #22 memory cap — 200개 초과 시 oldest 제거 (스크롤 위치는 유지, 새 페이지 표시)
+          var combined = [..._posts, ...more];
+          if (combined.length > 200) {
+            combined = combined.sublist(combined.length - 200);
+          }
+          _posts = combined;
           _page++;
           _hasMore = more.length >= 20;
           _loadingMore = false;

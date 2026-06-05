@@ -1188,20 +1188,26 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   // BSO overlay (검은 반투명 배경 위 흰 텍스트 + 컬러 dot)
   Widget _bsoOverlayGroup(String lbl, int count, int max, Color c) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(lbl, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white)),
-        const SizedBox(width: 3),
-        ...List.generate(max, (i) => Container(
-          width: 7, height: 7,
-          margin: const EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: i < count ? c : Colors.white.withValues(alpha: 0.25),
-          ),
-        )),
-      ],
+    // #19 색맹 대응: dot + 라벨 + 숫자 (색만 의존 X)
+    return Semantics(
+      label: '$lbl $count of $max',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$lbl$count',
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white)),
+          const SizedBox(width: 3),
+          ...List.generate(max, (i) => Container(
+            width: 7, height: 7,
+            margin: const EdgeInsets.symmetric(horizontal: 1),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: i < count ? c : Colors.white.withValues(alpha: 0.25),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 0.5),
+            ),
+          )),
+        ],
+      ),
     );
   }
 
