@@ -1560,14 +1560,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final awayScore = _liveScore(game, 'away_score');
     final ink = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
 
-    return Container(
-      // panel-spacer와 동일 height + 하단 rounded (gameHeader ClipRRect bottom 16과 일치)
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+      child: Container(
       height: _sameDayGames.isNotEmpty ? 505 : 410,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: paper,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-      ),
+      color: paper,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1690,13 +1687,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             ),
           ),
-          if (_sameDayGames.isNotEmpty)
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-              child: _buildSameDayStrip(),
-            ),
+          if (_sameDayGames.isNotEmpty) _buildSameDayStrip(),
           const SizedBox(height: 8),
         ],
+      ),
       ),
     );
   }
