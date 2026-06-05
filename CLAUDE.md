@@ -496,6 +496,121 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - push_tokens / user_settings notify 컬럼: DB ✅
 - _get_app() 초기화: FCM OK: True 확인 ✅
 
+## 세션 변경사항 요약 (2026-06-04 ~ 06-05)
+
+### 필드뷰 (mockup SVG 300x310 좌표계)
+- `_FieldBgPainter` 전면 재작성 — `canvas.scale(size.width / 300)` 후 SVG 좌표로 그림
+- BoxFit.contain — visible content (y=66~296, 230 height) fit + 가로 center
+- 부채꼴 dirt sector 90도 (-45° ~ +45°), radius `_R_DIRT=132`
+- 외야 mowing stripe 9개 (교대 #54944A/#4C8A42, sweep 10° each)
+- 부채꼴 외야 잔디 배경 (#356030 → #264821 radial gradient)
+- 내야 정사각 잔디 다이아몬드 + 베이스패스 stroke (페어 clip)
+- 1B/3B/2B dirt 컷아웃 + 마운드 + 홈 dirt + 홈플레이트 5각형
+- 베이스: 회전 정사각 (`_rot45` matrix), 점거 시 #FCD34D + orange aura
+- 배터박스 2개 (RRect rx 1.5)
+- 파울라인: 진짜 -135°/-45° 방향
+- 슬롯 크기: outer `(screen_w - 36) x 345`, inner field area `(screen_w - 68) x 290`
+- field SizedBox 230 → 290, Padding(16, 35, 16, 20), 패널 height 530/435 → 505/410
+
+### 선수 위치 (SVG 좌표 — placed() painter transform 적용)
+- 수비: P(150,208) C(150,283) 1B(220,186) 2B(183,153) SS(117,153) 3B(80,186) LF(64,118) CF(150,84) RF(236,118)
+- DH(30,280) 벤치
+- 베이스/주자: base1(222,200) base2(162,148) base3(78,200) batter(132,262)
+
+### 핀 (필드뷰 + 다른경기 strip 상단 고정)
+- `bool _fieldPinned` state + AppBar IconButton 제거 → BSO overlay 오른쪽 별도 토글 "고정"
+- `_buildPinnedPanel(game)`: mini-scoreboard (홈로고+스코어+원정로고) + 필드뷰 + 다른경기 strip
+- panel height 강제 (Container) + spacer Column 동일 → scaffold body 노출 fix
+- 핀 시 gameHeader skip → 본문 직접 TabBarView (Column[spacer, Expanded(TabBarView)])
+- 하단 rounded `BorderRadius.vertical(bottom: 16)`
+
+### BSO overlay (필드뷰 상단 가운데)
+- 필드뷰 Stack 안 `Positioned(top:8, center)` 검은 반투명 캡슐
+- LIVE badge (진행중 빨강 / 비라이브 회색) + BSO dots + refresh
+- 항상 표시 (비라이브 시 0/0/0 fallback, null-safe `?.`)
+- 핀 토글 별도 `Positioned(top:8, right:12)` (BSO와 분리)
+
+### 다른 경기 strip (1x4)
+- 위치: gameHeader 내부 필드뷰 ↓ 승투패투 위
+- 2-col grid → 4-col (`crossAxisCount: 4, childAspectRatio: 1.4`)
+- 셀 축소: TeamLogo 16, fontSize 9~11, padding 4
+
+### 게임카드
+- 폰트 +2pt (`_centerPitcherCell`/`_centerNextSeriesCell` 11→13)
+- 마이팀 외곽선 팀컬러 + width 2
+- weather/status chip 외곽선 추가 (지도 chip 통일)
+- 헤더 chip만 opaque, 빈공간 transparent (overlay 자연 노출)
+- 선발/다음시리즈 Container Padding 양끝 확장 (negative margin assertion 회피 → Padding vertical 15 + 자체 horizontal 15)
+- 오버레이 팀로고: wikipedia 500px PNG (size>=200, kTeamOverlayLogoUrls map), `ImageFiltered blur sigma 1.2`
+- 일반 로고: Naver f92_88 (size<80) + f400_400 (size>=80)
+- 진행중 카드도 winner 강조 (homeWon/awayWon에 `isLive` 포함)
+- footer Container `color: cardBg` opaque
+
+### 승투/패투
+- `_pitcherBadge` 이미지 제거, 라벨박스(승/패) + 이름 + 그날 기록 (`이닝/실점/K`)
+- `_pitcherDayStats(name)` helper — `pitchers` list lookup → runs_allowed 사용 (자책 → 실점)
+- MatchupHeader 각 팀 column 안 `_buildRecentBar` 직후 위치 (좌우 대칭)
+- 홈팀 col: home 승 시 승 라벨 / 진 시 패 라벨, 원정 col: 반대
+
+### 날짜/월 스트립
+- 외곽선 `Border.all` → `boxShadow(black 0.08, blur 4, offset (0,1))`
+- color transparent → paper
+
+### 프로필 이미지
+- `image_cropper: ^7.1.0` 추가 (pubspec.yaml)
+- `image_cropper_for_web 5.1.0` + `image_cropper_platform_interface 6.1.0`
+- 1:1 강제 crop, JPG 90, max 512
+- AndroidManifest.xml UCropActivity 등록 (Theme.AppCompat.Light.NoActionBar)
+- AndroidUiSettings.statusBarColor 추가 → 상단 status bar 침범 fix
+- `MultipartFile filename: 'profile.jpg'` 명시 — 서버 ext check 통과
+- ⚠️ image_cropper 7.1.0에 `cropStyle` named param 없음 → 원형 가이드 미지원 (정사각 grid만)
+
+### nginx /static 권한
+- `/home/ubuntu` 디렉토리 `o+x` 없어 nginx www-data 접근 불가 → 403 Forbidden
+- `chmod o+x /home/ubuntu /home/ubuntu/playball /home/ubuntu/playball/backend` + `chmod -R o+rX static`
+- 모든 기존 프로필 이미지 즉시 표시
+
+### 인증 안정성
+- `_RefreshResult` enum (success / authFailed / networkError)
+- refresh 응답 401/403만 logout → 5xx/network 유지
+- `_refreshFuture` in-flight dedup (동시 401 race 차단)
+- retry fetch 실패 시 logout 안 함 (다음 요청에서 재시도)
+
+### naver_crawler 보정 로직
+- `update_live_game_players`: batter `posName or pos` fallback — homeLineup 은 posName, homeEntry 는 pos 키 → 벤치 선수도 position 정확
+- `save_game_roster` 끝부분 starter fixup SQL — 같은 batting_order 의 대타 starter + 실제 포지션 sub 시 sub 를 starter 로 promote, 대타 강등
+- scheduler `_fixup_starter_positions()` 안전망 sweep (`_inProgressNoStarterBatter` cycle 후 호출)
+
+### relay_all 빈 archive 차단
+- 종료 직후 game_pitches 비어있을 때 relay_list=[] archive 영속 → 이후 빈 결과 영구
+- relay_list 비어있으면 archive 저장 skip + 캐시 60s 만 (재조회 유도)
+- 419/420/422 기존 빈 archive DELETE
+
+### game_summary 발송 지연
+- `game_pitchers.result IN ('승','패','세이브','홀드')` 1건 이상 확인 후 발송
+- 미달 시 다음 사이클로 미룸 (대타→대타 본문 X, 정상 승투/패투/홀드/세이브 본문)
+
+### crawl_transactions FA 옛 뉴스 차단
+- Google News RSS 결과 중 `published_at < today - 7일` skip
+- event_date도 `published_at` 우선 (발행일 영속)
+- 강백호 FA 같은 옛 시즌 뉴스 재알림 차단
+
+### 경기 상세 UI
+- 핀 토글 BSO overlay 우측 별도 (검은 반투명 캡슐 + push_pin + "고정")
+- BSO overlay LIVE badge: 진행중 빨강 / 비라이브 회색 (#9A9AA3)
+- BSO overlay refresh `SizedBox(16,16)` wrap → spinner/icon shift 방지
+- 날씨/온도 row 위치: ScoreBoardDark ↓ MatchupHeader ↑ 사이
+- floatHeaderSlivers: true (스크롤 reveal)
+- NestedScrollView 제거 → SingleChildScrollView + Column(gameHeader + SizedBox(TabBarView fixed-height)) (단일 스크롤)
+- 다른 경기 strip 새 위치: 필드뷰 ↓ 승투패투 ↑
+- 종료 승투/패투 → MatchupHeader 안 각 팀 column 안 (좌우 대칭)
+- 득점 요약 어웨이 row `mainAxisAlignment.end` (오른쪽 cluster)
+
+### 빌드/배포
+- adb wireless reconnect 필요 시 폰에서 무선 디버깅 재시작
+- flutter run -d adb-R3CX90J1HJK... (specific device id)
+- screencap: MSYS_NO_PATHCONV=1 adb pull (Git Bash path translation 회피)
+
 ## 구현 완료
 
 ### 경기/투구

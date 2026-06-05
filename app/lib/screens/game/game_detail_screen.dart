@@ -4465,9 +4465,9 @@ class _FullFieldView extends StatelessWidget {
     '2B': Offset(183, 153),   // 2루수
     'SS': Offset(117, 153),   // 유격수
     '3B': Offset(80,  186),   // 3루수
-    'LF': Offset(64,  110),   // 좌익수
-    'CF': Offset(150, 76),    // 중견수
-    'RF': Offset(236, 110),   // 우익수
+    'LF': Offset(64,  118),   // 좌익수 (밑으로 8)
+    'CF': Offset(150, 84),    // 중견수
+    'RF': Offset(236, 118),   // 우익수
     'DH': Offset(30,  280),   // 지명타자 (벤치)
   };
   static const Map<String, Offset> _baseCoords = {
