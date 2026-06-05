@@ -4783,13 +4783,17 @@ class _FieldBgPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // BoxFit.contain — SVG content 잘림 방지 + 가로 center + 세로 top
+    // visible content 영역만 fit (외야 stripe top y=66 ~ 홈베이스 dirt bottom y=296)
+    // 위/아래 배경 dead space 제거 → field 자체 확장
+    const svgVisTop = 66.0;
+    const svgVisH   = 230.0;  // 296 - 66
+    final scaleH = size.height / svgVisH;
     final scaleW = size.width / _kFieldW;
-    final scaleH = size.height / _kFieldH;
-    final scale = math.min(scaleW, scaleH);
+    final scale = math.max(scaleH, scaleW * 0.95);  // 키워서 잘림 허용
     final dx = (size.width - _kFieldW * scale) / 2;
+    final dy = -svgVisTop * scale + (size.height - svgVisH * scale) / 2;
     canvas.save();
-    canvas.translate(dx, 0);
+    canvas.translate(dx, dy);
     canvas.scale(scale, scale);
 
     // 1. 배경 (파울 지역 어두운 잔디)
