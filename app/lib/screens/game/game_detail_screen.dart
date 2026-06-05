@@ -14,6 +14,7 @@ import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/design_tokens.dart';
 import 'pitch_location_chart.dart';
 import '../player/player_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -224,6 +225,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       if (status == '진행') {
         final shown = await LocalCache.hasFlag('pin_hint_shown');
         if (!shown && mounted) {
+          // 기존 SnackBar(예: onboarding) 우선 닫음 → 큐 충돌 방지
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: const Text('💡 필드뷰를 상단 고정하려면 BSO 옆 "고정" 버튼을 탭하세요'),
             duration: const Duration(seconds: 6),
@@ -232,7 +235,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             backgroundColor: const Color(0xFF111113),
             action: SnackBarAction(
               label: '확인',
-              textColor: const Color(0xFFFFA000),
+              textColor: SemColor.warning,
               onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
             ),
           ));

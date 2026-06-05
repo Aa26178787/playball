@@ -42,6 +42,9 @@ class SemColor {
   // base 점거
   static const baseOn   = Color(0xFFFCD34D);
   static const baseAura = Color(0xFFF59E0B);
+
+  // dark panel/sheet bg (SnackBar, game header, player header)
+  static const panelDark = Color(0xFF111113);
 }
 
 class Space {

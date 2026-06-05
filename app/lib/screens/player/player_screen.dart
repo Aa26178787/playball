@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/api_service.dart';
@@ -141,10 +142,21 @@ class _PlayerScreenState extends State<PlayerScreen>
           _loadPopularity();
         }
       });
-    } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('투표 중 오류가 발생했습니다')));
+    } catch (e) {
+      if (!mounted) return;
+      final msg = _voteErrorMessage(e);
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
+  }
+
+  String _voteErrorMessage(Object e) {
+    if (e is DioException) {
+      final code = e.response?.statusCode;
+      if (code == 429) return '잠시 후 다시 시도해주세요';
+      if (code == 401 || code == 403) return '로그인이 필요합니다';
+    }
+    return '투표 중 오류가 발생했습니다';
   }
 
   Future<void> _voteTeam(int teamId) async {
@@ -169,9 +181,11 @@ class _PlayerScreenState extends State<PlayerScreen>
                   .compareTo((a as Map)['vote_count'] as int? ?? 0));
         }
       });
-    } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('투표 중 오류가 발생했습니다')));
+    } catch (e) {
+      if (!mounted) return;
+      final msg = _voteErrorMessage(e);
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
   }
 

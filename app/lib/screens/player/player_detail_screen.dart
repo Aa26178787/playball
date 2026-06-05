@@ -468,33 +468,40 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 
   Widget _buildHeader(Map<String, dynamic> player) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      color: const Color(0xFF111113),
-      child: Row(
-        children: [
-          PlayerAvatar(
-            imageUrl: player['profile_image'] as String?,
-            teamCode: player['team_code'] as String?,
-            size: 76,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(player['name'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                Text(
-                  '${player['team'] ?? ''} | ${(player['position'] != null && player['position'].toString().isNotEmpty) ? player['position'] : player['player_type'] ?? ''}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-                Text('#${player['number'] ?? '-'}', style: const TextStyle(color: Colors.white54, fontSize: 13)),
-                if (player['roster_status'] != null)
-                  _buildRosterBadge(player['roster_status']),
-              ],
+    final name = player['name'] ?? '';
+    final team = player['team'] ?? '';
+    final posOrType = (player['position'] != null && player['position'].toString().isNotEmpty)
+        ? player['position'] : (player['player_type'] ?? '');
+    final number = player['number'] ?? '-';
+    return Semantics(
+      label: '$team $name 선수, 등번호 $number, $posOrType',
+      header: true,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        color: const Color(0xFF111113),
+        child: Row(
+          children: [
+            PlayerAvatar(
+              imageUrl: player['profile_image'] as String?,
+              teamCode: player['team_code'] as String?,
+              size: 76,
             ),
-          ),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text('$team | $posOrType',
+                      style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                  Text('#$number', style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                  if (player['roster_status'] != null)
+                    _buildRosterBadge(player['roster_status']),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
