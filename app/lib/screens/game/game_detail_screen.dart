@@ -4,7 +4,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'dart:math' as math;
-import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -515,8 +514,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final tabIdx = _tabController.index.clamp(0, mainTabs.length - 1);
     final currentTab = mainTabs[tabIdx];
     String? subTab;
-    if (tabIdx == 1) subTab = ['키플레이어', '로스터'][_lineupSubIndex];
-    else if (tabIdx == 2) subTab = ['투수', '타자', '상대'][_statsSubIndex];
+    if (tabIdx == 1) {
+      subTab = ['키플레이어', '로스터'][_lineupSubIndex];
+    } else if (tabIdx == 2) {
+      subTab = ['투수', '타자', '상대'][_statsSubIndex];
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -1893,12 +1895,19 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             Color color = ink3;
             if (rtype == 14 || rtype == 31) {
               color = const Color(0xFFD97706);
-            } else if (rtype == 2 || rtype == 20) color = const Color(0xFF7C3AED);
-            else if (rtype == 7 || rtype == 21) color = const Color(0xFF0D9488);
-            else if (rtype == 22) color = const Color(0xFF4F46E5);
-            else if (rtype == 23) color = const Color(0xFFCA8A04);
-            else if (rtype == 24) color = const Color(0xFF475569);
-            else if (rtype == 25) color = const Color(0xFFE53935);
+            } else if (rtype == 2 || rtype == 20) {
+              color = const Color(0xFF7C3AED);
+            } else if (rtype == 7 || rtype == 21) {
+              color = const Color(0xFF0D9488);
+            } else if (rtype == 22) {
+              color = const Color(0xFF4F46E5);
+            } else if (rtype == 23) {
+              color = const Color(0xFFCA8A04);
+            } else if (rtype == 24) {
+              color = const Color(0xFF475569);
+            } else if (rtype == 25) {
+              color = const Color(0xFFE53935);
+            }
             return Padding(
               padding: const EdgeInsets.only(top: 3),
               child: Row(children: [
@@ -4463,9 +4472,9 @@ class _FieldBgPainter extends CustomPainter {
 
   Path _rotated45(Path path, double cx, double cy) {
     final m = Matrix4.identity()
-      ..translate(cx, cy)
+      ..translateByDouble(cx, cy, 0.0, 1.0)
       ..rotateZ(math.pi / 4)
-      ..translate(-cx, -cy);
+      ..translateByDouble(-cx, -cy, 0.0, 1.0);
     return path.transform(m.storage);
   }
 

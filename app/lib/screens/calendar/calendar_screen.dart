@@ -1404,7 +1404,7 @@ class _AddEventDialogState extends State<_AddEventDialog> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.4),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(

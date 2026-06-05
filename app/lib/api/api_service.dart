@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -8,12 +10,25 @@ class ApiService {
   static final favoriteTeamsChanged = ValueNotifier<int>(0);
   static final myTeamData = ValueNotifier<List<Map<String, dynamic>>>([]);
   static const String baseUrl = 'https://playball.duckdns.org';
-  static final Dio _dio = Dio(BaseOptions(
-    baseUrl: baseUrl,
-    connectTimeout: const Duration(seconds: 8),
-    receiveTimeout: const Duration(seconds: 8),
-    headers: {'Accept-Encoding': 'identity'},  // gzip 디코드 hang 회피
-  ));
+  static final Dio _dio = _buildDio();
+
+  static Dio _buildDio() {
+    final dio = Dio(BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout: const Duration(seconds: 8),
+      receiveTimeout: const Duration(seconds: 8),
+      headers: {'Accept-Encoding': 'identity'},  // gzip 디코드 hang 회피
+    ));
+    // D-C: WiFi 환경 동시 호출 큐잉 완화 — maxConnectionsPerHost 6→20
+    dio.httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () {
+        final client = HttpClient();
+        client.maxConnectionsPerHost = 20;
+        return client;
+      },
+    );
+    return dio;
+  }
   static bool _interceptorAdded = false;
 
   static const _secure = FlutterSecureStorage();
@@ -34,9 +49,39 @@ class ApiService {
   static Map<String, dynamic>? getPlayerDetailMem(int id) => _playerDetailMem[id];
   static void setPlayerDetailMem(int id, Map<String, dynamic> data) => _playerDetailMem[id] = data;
 
+  // D-B: 동시 in-flight 요청 카운터 + 타이밍 로그 (debug only)
+  static int _inFlightCount = 0;
+
   static void initInterceptor(Future<void> Function() onLogout) {
     if (_interceptorAdded) return;
     _interceptorAdded = true;
+
+    if (kDebugMode) {
+      _dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (opts, handler) {
+          _inFlightCount++;
+          opts.extra['_sw'] = Stopwatch()..start();
+          opts.extra['_inflight_at_start'] = _inFlightCount;
+          debugPrint('[Dio→] ${opts.method} ${opts.path} (in-flight: $_inFlightCount)');
+          return handler.next(opts);
+        },
+        onResponse: (res, handler) {
+          _inFlightCount = (_inFlightCount - 1).clamp(0, 1 << 30);
+          final sw = res.requestOptions.extra['_sw'] as Stopwatch?;
+          final ms = sw?.elapsedMilliseconds ?? 0;
+          final start = res.requestOptions.extra['_inflight_at_start'] ?? 0;
+          debugPrint('[Dio←] ${res.statusCode} ${res.requestOptions.path} ${ms}ms (peak in-flight: $start)');
+          return handler.next(res);
+        },
+        onError: (err, handler) {
+          _inFlightCount = (_inFlightCount - 1).clamp(0, 1 << 30);
+          final sw = err.requestOptions.extra['_sw'] as Stopwatch?;
+          final ms = sw?.elapsedMilliseconds ?? 0;
+          debugPrint('[Dio✗] ${err.type} ${err.requestOptions.path} ${ms}ms');
+          return handler.next(err);
+        },
+      ));
+    }
 
     // Retry interceptor: 네트워크 오류 or 5xx 시 1회 재시도
     _dio.interceptors.add(InterceptorsWrapper(

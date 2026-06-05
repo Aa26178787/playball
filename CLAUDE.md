@@ -726,11 +726,9 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [x] 커뮤니티 UI 인스타그램 형태 개선 (이미지 있는 글은 이미지 먼저 표시)
 
 ### 장기 (설계/리소스/난이도 높음)
-- [ ] 게임카드 배경: 경기 구장별 사진 삽입
 - [x] 실시간 중계 필드뷰 표시 (BSO + 야구장 다이아몬드 CustomPainter, 진행중 경기)
 - [x] 포스트시즌 진출 확률 — Monte Carlo 10,000회, GET /teams/postseason-odds @cached(300), 순위탭 하단 바차트
 - [ ] 홈화면 위젯 (Android AppWidget — native kotlin 필요)
-- [ ] 카카오맵 구장 화면 재작성 (kakao_map_plugin 불안정 → WebView + 카카오 JS SDK, flutter_inappwebview)
 
 ### 추가 기능 (완료)
 - [x] 직관 통계 강화 — `/user/stadium-stats` (구장별/월별) + 캘린더 통계 버튼/바텀시트
@@ -740,7 +738,6 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 ## 알려진 버그 / 성능 이슈
 
 - pitch_locations DB 데이터에 타순 접두사 잔존 ("N번타자 이름") — API 응답에서 매번 정규식 처리 중 (DB 마이그레이션으로 근본 해결 가능)
-- 재계약 안 한 외인 선수 팀 명단에 여전히 표시
 - push_tokens 등록 사용자 매우 적음 (현재 1명) — 다수 유저 알림 시나리오 검증 불가
 - 라이브 경기 첫 진입 cold cache 2~3초 (pitch-locations/highlights 첫 호출 후 60s/1800s 캐시)
 - scheduler 30초 사이클 → 빠른 연속 이벤트(스코어 + 즉시 회복) 일부 합쳐서 1개 알림으로 통합

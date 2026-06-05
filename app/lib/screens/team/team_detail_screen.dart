@@ -170,7 +170,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final cached = await LocalCache.get(ck, maxAgeSeconds: 600) as List?;
     if (cached != null && mounted) {
       setState(() { _games = cached; _gamesLoading = false; });
-    } else if (mounted) setState(() => _gamesLoading = true);
+    } else if (mounted) {
+      setState(() => _gamesLoading = true);
+    }
     try {
       final data = await ApiService.getTeamGames(teamId);
       final games = data['games'] as List? ?? [];
@@ -187,7 +189,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final cached = await LocalCache.get(ck, maxAgeSeconds: 300) as List?;
     if (cached != null && mounted) {
       setState(() { _rosterChanges = cached; _rosterLoading = false; });
-    } else if (mounted) setState(() => _rosterLoading = true);
+    } else if (mounted) {
+      setState(() => _rosterLoading = true);
+    }
     try {
       final data = await ApiService.getTeamRosterChanges(teamId, days: 30);
       final changes = data['changes'] as List? ?? [];
@@ -204,7 +208,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final cached = await LocalCache.get(ck, maxAgeSeconds: 1800) as List?;
     if (cached != null && mounted) {
       setState(() { _news = cached; _newsLoading = false; });
-    } else if (mounted) setState(() => _newsLoading = true);
+    } else if (mounted) {
+      setState(() => _newsLoading = true);
+    }
     try {
       final data = await ApiService.getTeamNews(teamId, limit: 30);
       final news = data['news'] as List? ?? [];
@@ -221,7 +227,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final cached = await LocalCache.get(ck, maxAgeSeconds: 300) as List?;
     if (cached != null && mounted) {
       setState(() { _communityPosts = cached; _communityLoading = false; });
-    } else if (mounted) setState(() => _communityLoading = true);
+    } else if (mounted) {
+      setState(() => _communityLoading = true);
+    }
     try {
       final data = await ApiService.getPosts(teamId: teamId, sort: 'latest', page: 1);
       final posts = data['posts'] as List? ?? [];
@@ -238,7 +246,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final cached = await LocalCache.get(ck, maxAgeSeconds: 3600) as List?;
     if (cached != null && mounted) {
       setState(() { _monthlyStats = cached; _monthlyLoading = false; });
-    } else if (mounted) setState(() => _monthlyLoading = true);
+    } else if (mounted) {
+      setState(() => _monthlyLoading = true);
+    }
     try {
       final data = await ApiService.getTeamMonthlyStats(teamId);
       final stats = data['monthly'] as List? ?? [];
@@ -255,7 +265,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final cached = await LocalCache.get(ck, maxAgeSeconds: 3600) as List?;
     if (cached != null && mounted) {
       setState(() { _h2hRecords = cached; _h2hLoading = false; });
-    } else if (mounted) setState(() => _h2hLoading = true);
+    } else if (mounted) {
+      setState(() => _h2hLoading = true);
+    }
     try {
       final data = await ApiService.getTeamHeadToHead(teamId);
       final records = data['records'] as List? ?? [];
@@ -272,7 +284,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final cached = await LocalCache.get(ck, maxAgeSeconds: 1800) as List?;
     if (cached != null && mounted) {
       setState(() { _battingOrderStats = cached; _battingOrderLoading = false; });
-    } else if (mounted) setState(() => _battingOrderLoading = true);
+    } else if (mounted) {
+      setState(() => _battingOrderLoading = true);
+    }
     try {
       final data = await ApiService.getTeamBattingOrder(teamId);
       final stats = data['stats'] as List? ?? [];

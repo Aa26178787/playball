@@ -134,7 +134,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         child: Column(
           children: [
             DropdownButtonFormField<String>(
-              value: _category,
+              initialValue: _category,
               decoration: const InputDecoration(labelText: '카테고리', border: OutlineInputBorder()),
               items: ['자유', '팀별', '분석', '유머']
                   .map((c) => DropdownMenuItem(value: c, child: Text(c)))

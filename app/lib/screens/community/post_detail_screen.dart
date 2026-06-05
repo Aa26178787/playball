@@ -199,7 +199,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 if (reason != null) {
                   try {
                     await ApiService.reportPost(widget.postId, reason: reason);
-                    if (mounted) {
+                    if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('신고가 접수되었습니다')));
                     }
