@@ -277,12 +277,22 @@ class _PostListTabState extends State<_PostListTab>
                       : ListView.builder(
                           controller: _scrollCtrl,
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          itemCount: _posts.length + (_loadingMore ? 1 : 0),
+                          itemCount: _posts.length + (_loadingMore || (!_hasMore && _posts.isNotEmpty) ? 1 : 0),
                           itemBuilder: (_, i) {
                             if (i == _posts.length) {
-                              return const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              if (_loadingMore) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                );
+                              }
+                              // 끝 표시
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                child: Center(
+                                  child: Text('— 마지막 글입니다 —',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                                ),
                               );
                             }
                             return _PostCard(post: _posts[i], onRefresh: _load);

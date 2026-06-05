@@ -56,5 +56,15 @@ class Space {
   static const double xxl = 32;
 }
 
+class Radii {
+  // 모서리 반경 통일 scale (Flutter Radius와 충돌 회피 → Radii)
+  static const double xs  = 4;   // chip mini
+  static const double sm  = 8;   // chip
+  static const double md  = 12;  // card inner
+  static const double lg  = 16;  // card outer
+  static const double xl  = 20;  // sheet, dialog
+  static const double pill = 999;
+}
+
 // 최소 터치 영역 (iOS HIG / Android Material)
 const double kMinTapTarget = 44;

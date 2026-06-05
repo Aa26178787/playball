@@ -106,6 +106,23 @@ class PlayerAvatar extends StatelessWidget {
   }
 }
 
+/// 통일된 bottom sheet drag handle
+class SheetHandle extends StatelessWidget {
+  const SheetHandle({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: 36, height: 4,
+      margin: const EdgeInsets.only(top: 10, bottom: 8),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white24 : Colors.black26,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+}
+
 /// 최소 터치 영역 확보 wrapper (44x44 보장)
 class TapTarget extends StatelessWidget {
   final Widget child;

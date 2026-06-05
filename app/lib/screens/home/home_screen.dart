@@ -47,6 +47,39 @@ class _Tok {
 
 const Color _kLiveRed = Color(0xFFE53935);
 
+class _LivePulseDot extends StatefulWidget {
+  final double size;
+  const _LivePulseDot({this.size = 5});
+  @override
+  State<_LivePulseDot> createState() => _LivePulseDotState();
+}
+
+class _LivePulseDotState extends State<_LivePulseDot> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat(reverse: true);
+  late final Animation<double> _a = Tween<double>(begin: 0.55, end: 1.0)
+      .animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
+
+  @override
+  void dispose() { _c.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _a,
+      builder: (_, _) => Opacity(
+        opacity: _a.value,
+        child: Container(
+          width: widget.size, height: widget.size,
+          decoration: const BoxDecoration(color: _kLiveRed, shape: BoxShape.circle),
+        ),
+      ),
+    );
+  }
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -1667,8 +1700,12 @@ class GameCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             border: Border.all(color: _kLiveRed.withValues(alpha: 0.45)),
           ),
-          child: Text('${game.currentInning ?? 0}회 ${game.inningHalf ?? ''}',
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _kLiveRed)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const _LivePulseDot(size: 4),
+            const SizedBox(width: 4),
+            Text('${game.currentInning ?? 0}회 ${game.inningHalf ?? ''}',
+                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _kLiveRed)),
+          ]),
         );
       }
       if (isCancelled) {
@@ -1815,8 +1852,7 @@ class GameCard extends StatelessWidget {
             border: Border.all(color: _kLiveRed.withValues(alpha: 0.45), width: 1),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 5, height: 5,
-                decoration: const BoxDecoration(color: _kLiveRed, shape: BoxShape.circle)),
+            const _LivePulseDot(size: 5),
             const SizedBox(width: 5),
             Text('${game.currentInning ?? 0}회 ${game.inningHalf ?? ''}',
                 style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _kLiveRed)),

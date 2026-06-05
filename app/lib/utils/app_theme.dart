@@ -5,8 +5,8 @@ class AppColors {
   // hi-fi mockup ink 톤 (네이비 → 검정)
   static const primary = Color(0xFF111113);
   static const primaryLight = Color(0xFF3F3F46);
-  // dark mode primary (alt: 흰 톤 강조)
-  static const primaryDark = Color(0xFFF4F4F5);
+  // dark mode primary (alt: 흰 톤 강조 — Apple HIG 따라 순백 회피)
+  static const primaryDark = Color(0xFFE5E5E7);
 
   static const scaffoldLight = Color(0xFFFAFAFB);
   static const scaffoldDark = Color(0xFF111113);
@@ -42,6 +42,16 @@ class AppTheme {
       highlightColor: Colors.transparent,
       splashColor: Colors.transparent,
       fontFamily: 'Pretendard',
+      // 한글 가독성 — line-height 1.4, letterSpacing 0 (음수 자간 제거)
+      textTheme: const TextTheme(
+        bodyLarge:   TextStyle(fontSize: 16, height: 1.4, letterSpacing: 0),
+        bodyMedium:  TextStyle(fontSize: 14, height: 1.4, letterSpacing: 0),
+        bodySmall:   TextStyle(fontSize: 12, height: 1.4, letterSpacing: 0),
+        titleLarge:  TextStyle(fontSize: 20, height: 1.3, letterSpacing: 0, fontWeight: FontWeight.w700),
+        titleMedium: TextStyle(fontSize: 16, height: 1.3, letterSpacing: 0, fontWeight: FontWeight.w700),
+        titleSmall:  TextStyle(fontSize: 14, height: 1.3, letterSpacing: 0, fontWeight: FontWeight.w600),
+        labelLarge:  TextStyle(fontSize: 14, height: 1.2, letterSpacing: 0, fontWeight: FontWeight.w600),
+      ),
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         brightness: br,
