@@ -422,7 +422,7 @@ class _TeamScreenState extends State<TeamScreen>
                             Flexible(
                               child: Text(team['name'] as String? ?? '',
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: ink, letterSpacing: -0.15)),
+                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: ink, letterSpacing: 05)),
                             ),
                             if (isFav) ...[
                               const SizedBox(width: 6),
@@ -1688,7 +1688,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(t['name'] as String? ?? '',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: tk.ink, letterSpacing: -0.15)),
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: tk.ink, letterSpacing: 05)),
                       const SizedBox(height: 7),
                       LayoutBuilder(builder: (_, box) {
                         return ClipRRect(
@@ -1714,7 +1714,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
                     Text(displayVal,
                         style: TextStyle(
                           fontSize: isBest ? 17 : 15, fontWeight: FontWeight.w800,
-                          color: tk.ink, letterSpacing: -0.3,
+                          color: tk.ink, letterSpacing: 0,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         )),
                     const SizedBox(height: 2),
@@ -2298,7 +2298,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                     children: [
                       Text(name,
                           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
-                              color: t.ink, letterSpacing: -0.15)),
+                              color: t.ink, letterSpacing: 05)),
                       const SizedBox(height: 3),
                       Text(team,
                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: t.ink3)),
@@ -2312,7 +2312,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                     Text(value,
                         style: TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w800, color: t.ink,
-                          letterSpacing: -0.3,
+                          letterSpacing: 0,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         )),
                     const SizedBox(height: 2),

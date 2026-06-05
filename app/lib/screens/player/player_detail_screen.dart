@@ -661,8 +661,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       show: true,
                       drawVerticalLine: false,
                       getDrawingHorizontalLine: (value) => FlLine(
-                        color: Colors.grey.withValues(alpha: 0.2),
-                        strokeWidth: 1,
+                        color: Colors.grey.withValues(alpha: 0.3),
+                        strokeWidth: 0.8,
+                        dashArray: const [4, 4],
                       ),
                     ),
                     borderData: FlBorderData(

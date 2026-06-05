@@ -125,6 +125,12 @@ class PlayBallApp extends StatelessWidget {
           themeMode: themeProvider.themeMode,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
+          // a11y 큰 글자 사용자 1.3 이하 clamp — UI 레이아웃 깨짐 방지
+          builder: (ctx, child) => MediaQuery.withClampedTextScaling(
+            minScaleFactor: 0.85,
+            maxScaleFactor: 1.3,
+            child: child ?? const SizedBox.shrink(),
+          ),
           home: const AppEntryPoint(),
         ),
       ),

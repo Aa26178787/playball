@@ -892,7 +892,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         TeamLogo(teamCode: homeCode, size: 56),
                         const SizedBox(height: 6),
                         Text(shortName(homeTeam),
-                            style: TextStyle(color: ink, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
+                            style: TextStyle(color: ink, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0)),
                         if (homeRank != null && homeRank > 0)
                           Text('$homeRank위', style: TextStyle(color: sub, fontSize: 11, fontWeight: FontWeight.w600)),
                         if (homeWinRate != null) ...[
@@ -934,9 +934,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                 child: FadeTransition(opacity: anim, child: c),
                               );
                             },
-                            child: Text('$homeScore',
-                                key: ValueKey(homeScore),
-                                style: TextStyle(color: ink, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.6, fontFeatures: const [FontFeature.tabularFigures()])),
+                            child: Builder(builder: (_) {
+                              final isLoser = (isDone || isLive) && homeScore < awayScore;
+                              return Text('$homeScore',
+                                  key: ValueKey(homeScore),
+                                  style: TextStyle(
+                                    color: isLoser ? ink.withValues(alpha: 0.45) : ink,
+                                    fontSize: isLoser ? 30 : 34,
+                                    fontWeight: FontWeight.w800, letterSpacing: 0,
+                                    fontFeatures: const [FontFeature.tabularFigures()],
+                                  ));
+                            }),
                           ),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -954,9 +962,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                 child: FadeTransition(opacity: anim, child: c),
                               );
                             },
-                            child: Text('$awayScore',
-                                key: ValueKey(awayScore),
-                                style: TextStyle(color: ink, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.6, fontFeatures: const [FontFeature.tabularFigures()])),
+                            child: Builder(builder: (_) {
+                              final isLoser = (isDone || isLive) && awayScore < homeScore;
+                              return Text('$awayScore',
+                                  key: ValueKey(awayScore),
+                                  style: TextStyle(
+                                    color: isLoser ? ink.withValues(alpha: 0.45) : ink,
+                                    fontSize: isLoser ? 30 : 34,
+                                    fontWeight: FontWeight.w800, letterSpacing: 0,
+                                    fontFeatures: const [FontFeature.tabularFigures()],
+                                  ));
+                            }),
                           ),
                         ],
                       ),
@@ -991,7 +1007,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         TeamLogo(teamCode: awayCode, size: 56),
                         const SizedBox(height: 6),
                         Text(shortName(awayTeam),
-                            style: TextStyle(color: ink, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
+                            style: TextStyle(color: ink, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0)),
                         if (awayRank != null && awayRank > 0)
                           Text('$awayRank위', style: TextStyle(color: sub, fontSize: 11, fontWeight: FontWeight.w600)),
                         if (awayWinRate != null) ...[
@@ -1444,7 +1460,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     TeamLogo(teamCode: homeCode, size: 28),
                     const SizedBox(width: 6),
                     Flexible(child: Text(homeTeam,
-                        style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+                        style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: 0),
                         overflow: TextOverflow.ellipsis, maxLines: 1)),
                   ],
                 )),
@@ -1457,7 +1473,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   children: [
                     Flexible(child: Text(awayTeam,
                         textAlign: TextAlign.end,
-                        style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+                        style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: 0),
                         overflow: TextOverflow.ellipsis, maxLines: 1)),
                     const SizedBox(width: 6),
                     TeamLogo(teamCode: awayCode, size: 28),
@@ -1749,7 +1765,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   Padding(
                     padding: const EdgeInsets.only(top: 4, bottom: 12, left: 2),
                     child: Text('이닝별 중계',
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: ink, letterSpacing: -0.2)),
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: ink, letterSpacing: 0)),
                   ),
                   ...sortedInnings.map((inningNum) {
                     final items = grouped[inningNum]!;
@@ -1774,7 +1790,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           initiallyExpanded: false,
                           tilePadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
                           title: Text('$inningNum회',
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: ink, letterSpacing: -0.1)),
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: ink, letterSpacing: 0)),
                           iconColor: ink3,
                           collapsedIconColor: ink3,
                           children: [
@@ -1875,7 +1891,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             spacing: 7, runSpacing: 5,
             children: [
               Text(batterName,
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink, letterSpacing: -0.1)),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink, letterSpacing: 0)),
               if (pitcherName != null)
                 Text('vs $pitcherName',
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: sub)),
@@ -2363,7 +2379,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             child: Row(
               children: [
                 Text('득점 요약',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: inkS, letterSpacing: -0.2)),
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: inkS, letterSpacing: 0)),
                 const Spacer(),
                 Icon(
                   _scoringExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
@@ -2671,7 +2687,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             Text(teamName, style: TextStyle(fontSize: 11, color: sub, fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             Text(starter['name'] ?? '',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: ink, letterSpacing: -0.2)),
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: ink, letterSpacing: 0)),
             Text(starter['hit_type'] ?? '',
                 style: TextStyle(fontSize: 11, color: ink3, fontWeight: FontWeight.w600)),
             Container(height: 1, color: line, margin: const EdgeInsets.symmetric(vertical: 10)),
@@ -2777,7 +2793,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             Text(teamName, style: TextStyle(fontSize: 11, color: sub, fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             Text(top['name'] ?? '',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: ink, letterSpacing: -0.2)),
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: ink, letterSpacing: 0)),
             Container(height: 1, color: line, margin: const EdgeInsets.symmetric(vertical: 10)),
             Text('시즌 성적',
                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ink3, letterSpacing: 0.3)),
@@ -2852,7 +2868,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         Text(label, style: TextStyle(fontSize: 11, color: sub, fontWeight: FontWeight.w600)),
         const SizedBox(height: 2),
         Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink,
-            fontFeatures: const [FontFeature.tabularFigures()], letterSpacing: -0.2)),
+            fontFeatures: const [FontFeature.tabularFigures()], letterSpacing: 0)),
       ],
     );
   }
@@ -2877,7 +2893,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             indicatorWeight: 2.5,
             labelColor: ink,
             unselectedLabelColor: sub,
-            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: -0.1),
+            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: 0),
             unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
             dividerColor: Colors.transparent,
             tabs: [Tab(text: homeTeam), Tab(text: awayTeam)],
@@ -3890,7 +3906,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   child: Text(title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ink, letterSpacing: -0.1)),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ink, letterSpacing: 0)),
                 ),
               ],
             ),

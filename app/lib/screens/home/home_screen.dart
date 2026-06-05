@@ -823,7 +823,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   child: Text(
                     '$month월',
                     style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: -0.2,
+                      fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0,
                       color: isActive ? (isDark ? Colors.black : Colors.white) : tk.ink2,
                     ),
                   ),
@@ -908,7 +908,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   Text(
                     '${date.day}',
                     style: TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.3,
+                      fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: 0,
                       color: isSelected ? (isDark ? Colors.black : Colors.white) : tk.ink,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
@@ -1010,7 +1010,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: isDark ? const Color(0xFFF5F5F5) : AppColors.primary,
-                  letterSpacing: -0.3,
+                  letterSpacing: 0,
                 )),
           ],
         ),
@@ -1359,7 +1359,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 Icon(Icons.swap_horiz, size: 16, color: t.ink2),
                 const SizedBox(width: 6),
                 Text('오늘 등록말소',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: -0.15)),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: 05)),
                 const SizedBox(width: 8),
                 if (registrations.isNotEmpty)
                   _rosterChip('${registrations.length}명 등록', const Color(0xFF1976D2), t),
@@ -1591,7 +1591,7 @@ class GameCard extends StatelessWidget {
         logo,
         const SizedBox(height: 7),
         Text(name,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: -0.15),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: 05),
             maxLines: 1, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 5),
         Text(rank != null ? '$rank위' : (isHome ? '홈' : '원정'),
@@ -2023,7 +2023,7 @@ class GameCard extends StatelessWidget {
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 17, fontWeight: FontWeight.w800,
-                                color: t.ink3, letterSpacing: -0.3,
+                                color: t.ink3, letterSpacing: 0,
                               ),
                             )
                           else
@@ -2036,7 +2036,7 @@ class GameCard extends StatelessWidget {
                                     style: TextStyle(
                                       fontSize: homeWon ? 34 : 26,
                                       fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.6,
+                                      letterSpacing: 0,
                                       color: homeWon ? t.ink : (isDraw ? t.ink : t.ink2.withValues(alpha: 0.55)),
                                       fontFeatures: const [FontFeature.tabularFigures()],
                                     )),
@@ -2051,7 +2051,7 @@ class GameCard extends StatelessWidget {
                                     style: TextStyle(
                                       fontSize: awayWon ? 34 : 26,
                                       fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.6,
+                                      letterSpacing: 0,
                                       color: awayWon ? t.ink : (isDraw ? t.ink : t.ink2.withValues(alpha: 0.55)),
                                       fontFeatures: const [FontFeature.tabularFigures()],
                                     )),
