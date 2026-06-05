@@ -4457,26 +4457,24 @@ class _FullFieldView extends StatelessWidget {
   static Offset _perspective(Offset src) => src;
 
   // Normalized (x,y) coordinates on the field widget (0=left/top, 1=right/bottom)
-  // Stack canvas 기준 normalized 0-1 좌표
-  // 외야수/P/C/DH: 기존 위치 (정상)
-  // 1B/2B/3B/SS + 베이스: painter dirt circle 위치에 맞춰 조정
+  // SVG 300x310 좌표계 (mockup과 동일) — placed() 에서 painter transform 적용
   static const Map<String, Offset> _posCoords = {
-    'CF': Offset(0.50, 0.09),
-    'LF': Offset(0.17, 0.22),
-    'RF': Offset(0.83, 0.22),
-    'SS': Offset(0.392, 0.453),   // 유격수 (2B에 더 가깝게)
-    '2B': Offset(0.608, 0.453),   // 2루수 (2B에 더 가깝게)
-    '3B': Offset(0.306, 0.648),   // 3루수 (파울라인 안쪽)
-    '1B': Offset(0.694, 0.648),   // 1루수 (파울라인 안쪽)
-    'P':  Offset(0.50, 0.60),
-    'C':  Offset(0.50, 0.90),
-    'DH': Offset(0.05, 0.92),
+    'P':  Offset(150, 208),   // 투수 (마운드)
+    'C':  Offset(150, 283),   // 포수
+    '1B': Offset(226, 220),   // 1루수
+    '2B': Offset(192, 182),   // 2루수
+    'SS': Offset(108, 182),   // 유격수
+    '3B': Offset(74,  220),   // 3루수
+    'LF': Offset(64,  112),   // 좌익수
+    'CF': Offset(150, 78),    // 중견수
+    'RF': Offset(236, 112),   // 우익수
+    'DH': Offset(30,  280),   // 지명타자 (벤치)
   };
   static const Map<String, Offset> _baseCoords = {
-    'base1':  Offset(0.750, 0.617),   // SVG (208, 208)
-    'base2':  Offset(0.50, 0.366),    // SVG (150, 150)
-    'base3':  Offset(0.250, 0.617),   // SVG (92, 208)
-    'batter': Offset(0.565, 0.879),   // SVG (165, 268)
+    'base1':  Offset(208, 208),   // 1루 base
+    'base2':  Offset(150, 150),   // 2루 base
+    'base3':  Offset(92,  208),   // 3루 base
+    'batter': Offset(131, 262),   // 타자 (mockup 우타석)
   };
   static const Map<String, String> _posLabel = {
     'P': '투수', 'C': '포수', '1B': '1루수', '2B': '2루수',
@@ -4511,10 +4509,22 @@ class _FullFieldView extends StatelessWidget {
       final w = constraints.maxWidth;
       final h = constraints.maxHeight;
 
-      Widget placed(Offset norm, Widget child, double chipW, double chipH) {
+      // painter transform 동일 적용 (SVG 300x310 → canvas)
+      const svgVisTop = 66.0;
+      const svgVisH = 230.0;
+      const svgW = 300.0;
+      final scaleH = h / svgVisH;
+      final scaleW = w / svgW;
+      final fScale = math.max(scaleH, scaleW * 0.95);
+      final fDx = (w - svgW * fScale) / 2;
+      final fDy = -svgVisTop * fScale + (h - svgVisH * fScale) / 2;
+
+      Widget placed(Offset svgPos, Widget child, double chipW, double chipH) {
+        final cx = svgPos.dx * fScale + fDx;
+        final cy = svgPos.dy * fScale + fDy;
         return Positioned(
-          left: (w * norm.dx - chipW / 2).clamp(0, w - chipW),
-          top:  (h * norm.dy - chipH / 2).clamp(0, h - chipH),
+          left: (cx - chipW / 2).clamp(0, w - chipW),
+          top:  (cy - chipH / 2).clamp(0, h - chipH),
           child: child,
         );
       }
