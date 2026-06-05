@@ -4821,88 +4821,81 @@ class _FieldBgPainter extends CustomPainter {
     // 9. 홈 plate dirt 원 (큰)
     canvas.drawCircle(Offset(w * 0.50, h * 0.858), w * 0.10, dirtPaint);  // SVG r=30
 
-    // ── Bases (대각선 시점에 맞춰 살짝 누운 마름모: height 0.65x) ──
+    // ── Bases (mockup SVG: 회전 정사각 12x12, drop shadow dx=0 dy=1 blur=1.2) ──
+    // 2B occupied: orange aura (26x26) + yellow inner (12x12)
     void drawBase(Offset pos, bool occupied) {
-      final bs = 8.0;
-      final bh = bs * 0.65;
-      // 그림자
-      canvas.drawPath(
-        Path()
-          ..moveTo(pos.dx,           pos.dy - bh + 1.5)
-          ..lineTo(pos.dx + bs * 1.1, pos.dy + 1.5)
-          ..lineTo(pos.dx,           pos.dy + bh + 1.5)
-          ..lineTo(pos.dx - bs * 1.1, pos.dy + 1.5)
-          ..close(),
-        Paint()..color = Colors.black.withOpacity(0.22)
-              ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
-      );
-      if (occupied) {
-        canvas.drawPath(
-          Path()
-            ..moveTo(pos.dx,           pos.dy - bh * 2.6)
-            ..lineTo(pos.dx + bs * 2.6, pos.dy)
-            ..lineTo(pos.dx,           pos.dy + bh * 2.6)
-            ..lineTo(pos.dx - bs * 2.6, pos.dy)
-            ..close(),
-          Paint()..color = Colors.yellow.withOpacity(0.45)
-                ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
-        );
-      }
-      final bp = Paint()
-        ..color = occupied ? const Color(0xFFFFE066) : Colors.white.withOpacity(0.95)
-        ..style = PaintingStyle.fill;
-      final path = Path()
-        ..moveTo(pos.dx,      pos.dy - bh)
+      final bs = w * 0.04;  // SVG 12 / 300 = 0.04 → half-side after rotation 45도
+      // 회전 정사각 = 마름모 (꼭짓점 top/right/bottom/left)
+      final basePath = Path()
+        ..moveTo(pos.dx, pos.dy - bs)
         ..lineTo(pos.dx + bs, pos.dy)
-        ..lineTo(pos.dx,      pos.dy + bh)
+        ..lineTo(pos.dx, pos.dy + bs)
         ..lineTo(pos.dx - bs, pos.dy)
         ..close();
-      canvas.drawPath(path, bp);
-      canvas.drawPath(path, Paint()
-        ..color = Colors.black.withOpacity(0.25)
-        ..strokeWidth = 0.8
-        ..style = PaintingStyle.stroke);
+      if (occupied) {
+        // Orange aura (26/300 = 0.087 → half 0.043)
+        final glowHalf = w * 0.043;
+        final glowPath = Path()
+          ..moveTo(pos.dx, pos.dy - glowHalf)
+          ..lineTo(pos.dx + glowHalf, pos.dy)
+          ..lineTo(pos.dx, pos.dy + glowHalf)
+          ..lineTo(pos.dx - glowHalf, pos.dy)
+          ..close();
+        canvas.drawPath(glowPath, Paint()..color = const Color(0xFFF59E0B).withOpacity(0.4));
+      }
+      // drop shadow (mockup filter: dx=0, dy=1, stdDeviation=1.2, opacity=0.25)
+      final shadowPath = Path()
+        ..moveTo(pos.dx, pos.dy - bs + 1)
+        ..lineTo(pos.dx + bs, pos.dy + 1)
+        ..lineTo(pos.dx, pos.dy + bs + 1)
+        ..lineTo(pos.dx - bs, pos.dy + 1)
+        ..close();
+      canvas.drawPath(shadowPath,
+        Paint()
+          ..color = Colors.black.withOpacity(0.25)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.2),
+      );
+      // fill: 점거 시 yellow (#FCD34D) / 비점거 시 white
+      canvas.drawPath(basePath, Paint()
+        ..color = occupied ? const Color(0xFFFCD34D) : Colors.white);
     }
     drawBase(p1B, base1);
     drawBase(p2B, base2);
     drawBase(p3B, base3);
 
-    // ── Home plate (대각선 시점: y 0.65x 압축) ──
-    canvas.drawPath(
-      Path()
-        ..moveTo(pHome.dx,      pHome.dy - 3.25 + 1.5)
-        ..lineTo(pHome.dx + 5,  pHome.dy - 1 + 1.5)
-        ..lineTo(pHome.dx + 4,  pHome.dy + 3 + 1.5)
-        ..lineTo(pHome.dx - 4,  pHome.dy + 3 + 1.5)
-        ..lineTo(pHome.dx - 5,  pHome.dy - 1 + 1.5)
-        ..close(),
-      Paint()..color = Colors.black.withOpacity(0.22)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
-    );
+    // ── Home plate (mockup SVG pentagon: 150,274 158,267 158,259 142,259 142,267) ──
     final homePath = Path()
-      ..moveTo(pHome.dx,      pHome.dy - 3.25)
-      ..lineTo(pHome.dx + 5,  pHome.dy - 1)
-      ..lineTo(pHome.dx + 4,  pHome.dy + 3)
-      ..lineTo(pHome.dx - 4,  pHome.dy + 3)
-      ..lineTo(pHome.dx - 5,  pHome.dy - 1)
+      ..moveTo(w * 0.500, h * 0.884)  // bottom point (150, 274)
+      ..lineTo(w * 0.527, h * 0.861)  // (158, 267)
+      ..lineTo(w * 0.527, h * 0.835)  // (158, 259)
+      ..lineTo(w * 0.473, h * 0.835)  // (142, 259)
+      ..lineTo(w * 0.473, h * 0.861)  // (142, 267)
       ..close();
-    canvas.drawPath(homePath, Paint()..color = Colors.white.withOpacity(0.95));
-    canvas.drawPath(homePath, Paint()
-      ..color = Colors.black.withOpacity(0.25)
-      ..strokeWidth = 0.8
-      ..style = PaintingStyle.stroke);
+    canvas.drawPath(homePath, Paint()..color = Colors.white);
 
-    // 배터 박스 (홈 양옆 사각형 outline)
+    // ── Batter boxes (mockup: 2 rects, x126/x162 y255 w12 h18 rx1.5, white opacity 0.72) ──
     final batterBoxPaint = Paint()
-      ..color = Colors.white.withOpacity(0.35)
-      ..strokeWidth = 1.0
+      ..color = Colors.white.withOpacity(0.72)
+      ..strokeWidth = 1.2
       ..style = PaintingStyle.stroke;
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset(pHome.dx - 9, pHome.dy + 1), width: 6, height: 12),
+    canvas.drawRRect(
+      RRect.fromRectXY(
+        Rect.fromCenter(
+          center: Offset(w * 0.440, h * 0.852),  // (132, 264)
+          width: w * 0.040, height: h * 0.058,
+        ),
+        1.5, 1.5,
+      ),
       batterBoxPaint,
     );
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset(pHome.dx + 9, pHome.dy + 1), width: 6, height: 12),
+    canvas.drawRRect(
+      RRect.fromRectXY(
+        Rect.fromCenter(
+          center: Offset(w * 0.560, h * 0.852),  // (168, 264)
+          width: w * 0.040, height: h * 0.058,
+        ),
+        1.5, 1.5,
+      ),
       batterBoxPaint,
     );
   }
