@@ -4783,9 +4783,13 @@ class _FieldBgPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // SVG viewBox → 실제 크기로 스케일
-    final scale = size.width / _kFieldW;
+    // BoxFit.contain — SVG content 잘림 방지 + 가로 center + 세로 top
+    final scaleW = size.width / _kFieldW;
+    final scaleH = size.height / _kFieldH;
+    final scale = math.min(scaleW, scaleH);
+    final dx = (size.width - _kFieldW * scale) / 2;
     canvas.save();
+    canvas.translate(dx, 0);
     canvas.scale(scale, scale);
 
     // 1. 배경 (파울 지역 어두운 잔디)
