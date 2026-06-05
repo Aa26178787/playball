@@ -4464,10 +4464,10 @@ class _FullFieldView extends StatelessWidget {
     'CF': Offset(0.50, 0.09),
     'LF': Offset(0.17, 0.22),
     'RF': Offset(0.83, 0.22),
-    'SS': Offset(0.349, 0.488),   // SVG (115, 178) → canvas norm
-    '2B': Offset(0.651, 0.488),   // SVG (185, 178)
-    '3B': Offset(0.228, 0.661),   // SVG (87, 218)
-    '1B': Offset(0.773, 0.661),   // SVG (213, 218)
+    'SS': Offset(0.392, 0.453),   // 유격수 (2B에 더 가깝게)
+    '2B': Offset(0.608, 0.453),   // 2루수 (2B에 더 가깝게)
+    '3B': Offset(0.306, 0.648),   // 3루수 (파울라인 안쪽)
+    '1B': Offset(0.694, 0.648),   // 1루수 (파울라인 안쪽)
     'P':  Offset(0.50, 0.60),
     'C':  Offset(0.50, 0.90),
     'DH': Offset(0.05, 0.92),
