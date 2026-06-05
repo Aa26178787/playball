@@ -1690,7 +1690,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             ),
           ),
-          if (_sameDayGames.isNotEmpty) _buildSameDayStrip(),
+          if (_sameDayGames.isNotEmpty)
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+              child: _buildSameDayStrip(),
+            ),
           const SizedBox(height: 8),
         ],
       ),
