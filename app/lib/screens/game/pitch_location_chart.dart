@@ -389,7 +389,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                       padding: const EdgeInsets.only(right: 6),
                       child: GestureDetector(
                         onTap: () => setState(() { _selectedInning = ing; _selectedBatter = null; }),
-                        child: _chip('${ing}회', sel, Colors.grey[700]!),
+                        child: _chip('$ing회', sel, Colors.grey[700]!),
                       ),
                     );
                   }),

@@ -832,7 +832,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         Text(shortName(homeTeam),
                             style: TextStyle(color: ink, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
                         if (homeRank != null && homeRank > 0)
-                          Text('${homeRank}위', style: TextStyle(color: sub, fontSize: 11, fontWeight: FontWeight.w600)),
+                          Text('$homeRank위', style: TextStyle(color: sub, fontSize: 11, fontWeight: FontWeight.w600)),
                         if (homeWinRate != null) ...[
                           const SizedBox(height: 4),
                           _buildWinRatePill(homeWinRate),
@@ -917,7 +917,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         Text(shortName(awayTeam),
                             style: TextStyle(color: ink, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
                         if (awayRank != null && awayRank > 0)
-                          Text('${awayRank}위', style: TextStyle(color: sub, fontSize: 11, fontWeight: FontWeight.w600)),
+                          Text('$awayRank위', style: TextStyle(color: sub, fontSize: 11, fontWeight: FontWeight.w600)),
                         if (awayWinRate != null) ...[
                           const SizedBox(height: 4),
                           _buildWinRatePill(awayWinRate),
@@ -1192,8 +1192,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       final r = p['runs_allowed'];
       final so = p['strikeouts'];
       final parts = <String>[];
-      if (ip != null && ip != 0) parts.add('${ip}이닝');
-      if (r != null) parts.add('${r}실점');
+      if (ip != null && ip != 0) parts.add('$ip이닝');
+      if (r != null) parts.add('$r실점');
       if (so != null && so > 0) parts.add('${so}K');
       return parts.join(' ');
     }
@@ -1291,8 +1291,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final parts = <String>[
       if (emoji.isNotEmpty) emoji,
       if (description.isNotEmpty) description,
-      if (temp != null) '${temp}°C',
-      if (feelsLike != null) '체감 ${feelsLike}°',
+      if (temp != null) '$temp°C',
+      if (feelsLike != null) '체감 $feelsLike°',
       if (humidity != null) '습도 $humidity%',
       if (windSpeed != null && (windSpeed as num) > 0) '풍속 ${windSpeed}m/s',
       if (pop != null) '강수 $pop%',
@@ -2016,7 +2016,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     // r['title'] = opt.text = "타자 : 결과" (at-bat description)
     // r['text']  = item.title = category label ("홈런"/"안타" etc.)
-    String _atBatText(Map r) {
+    String atBatText(Map r) {
       final optText = (r['title'] as String? ?? '').trim();
       if (optText.isNotEmpty) return optText;
       return (r['text'] as String? ?? '').trim();
@@ -2024,7 +2024,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
 
 
-    ({String batter, String result}) _parsePlay(String raw) {
+    ({String batter, String result}) parsePlay(String raw) {
       if (raw.contains(' : ')) {
         final idx = raw.indexOf(' : ');
         return (batter: raw.substring(0, idx).trim(), result: raw.substring(idx + 3).trim());
@@ -2033,7 +2033,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
 
     // 텍스트 추출: 모든 RBI 타석 + 홈인 정보 (line1 batter+result / line2 홈인)
-    List<String> _extractLines(List halfRelays) {
+    List<String> extractLines(List halfRelays) {
       final lines = <String>[];
       String? curAtBat;
       for (final r in halfRelays) {
@@ -2114,9 +2114,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
         if (atbat != null) {
           pitcher = (atbat['pitcher_name'] as String? ?? '').trim();
-          final txt = _atBatText(atbat);
+          final txt = atBatText(atbat);
           if (txt.isNotEmpty) {
-            final parsed = _parsePlay(txt);
+            final parsed = parsePlay(txt);
             result = parsed.result;
             batter = parsed.batter.isNotEmpty
                 ? parsed.batter
@@ -2205,7 +2205,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       final ink3S = isDarkS ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
       final paper2S = isDarkS ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
 
-      final lines = _extractLines(halfRelays);
+      final lines = extractLines(halfRelays);
       final txt = lines.join('\n');
       // 점수 형식: 홈:원정 누적 (예: '2:0')
       final scoreText = '$cumHome:$cumAway';
@@ -3239,7 +3239,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             if (pitchCount > 0) ...[
               const SizedBox(width: 6),
-              Text('${pitchCount}구',
+              Text('$pitchCount구',
                   style: TextStyle(fontSize: 11, color: Colors.grey[400])),
             ],
           ],

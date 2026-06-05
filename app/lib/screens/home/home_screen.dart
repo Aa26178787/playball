@@ -308,6 +308,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   bool _loadError = false;
   Set<int> _favoriteTeamIds = {};
   bool _myTeamOnly = false;
+  bool _compactMode = false;
   Timer? _autoRefreshTimer;
   int _unreadNotifCount = 0;
   int _loadGen = 0;
@@ -365,6 +366,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     _loadGames();        // 최우선
     _loadFavoriteTeams();
     _loadRankings();
+    _loadCompactMode();
     _startAutoRefresh();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToSelected();
@@ -463,6 +465,21 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     });
   }
 
+  Future<void> _loadCompactMode() async {
+    final has = await LocalCache.hasFlag('compact_mode');
+    if (mounted) setState(() => _compactMode = has);
+  }
+
+  Future<void> _toggleCompactMode() async {
+    final next = !_compactMode;
+    setState(() => _compactMode = next);
+    if (next) {
+      await LocalCache.setFlag('compact_mode');
+    } else {
+      await LocalCache.removeFlag('compact_mode');
+    }
+  }
+
   Future<void> _loadFavoriteTeams() async {
     final cached = await LocalCache.get('favorite_teams') as List?;
     if (cached != null && mounted) {
@@ -521,13 +538,13 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       final base = _selectedDate.isAfter(DateTime.now())
           ? _selectedDate
           : DateTime.now();
-      String _ds(int offset) {
+      String ds(int offset) {
         final d = base.add(Duration(days: offset));
         return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
       }
 
       // 캐시 먼저 확인 — 없는 날짜만 API 호출 + LocalCache에 저장
-      final dates = List.generate(7, (i) => _ds(i + 1));
+      final dates = List.generate(7, (i) => ds(i + 1));
       final results = await Future.wait(dates.map((d) async {
         final c = await LocalCache.getStale('games_$d') as List?;
         if (c != null) return <String, dynamic>{'games': c};
@@ -957,6 +974,11 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         ),
         actions: [
           IconButton(
+            icon: Icon(_compactMode ? Icons.view_agenda_outlined : Icons.view_compact_outlined),
+            tooltip: _compactMode ? '상세 보기' : '간략 보기',
+            onPressed: _toggleCompactMode,
+          ),
+          IconButton(
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -1242,6 +1264,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             awayRank: rankMap[awayId],
             nextHomeSeries: _nextSeries(homeId, awayId),
             nextAwaySeries: _nextSeries(awayId, homeId),
+            compact: _compactMode,
           );
         },
       ),
@@ -1387,10 +1410,12 @@ class GameCard extends StatelessWidget {
   final int? awayRank;
   final Map<String, String>? nextHomeSeries;
   final Map<String, String>? nextAwaySeries;
+  final bool compact;
 
   const GameCard({super.key, required this.game, this.isMyTeam = false,
       this.myTeamIsHome = false, this.myTeamIsAway = false,
-      this.homeRank, this.awayRank, this.nextHomeSeries, this.nextAwaySeries});
+      this.homeRank, this.awayRank, this.nextHomeSeries, this.nextAwaySeries,
+      this.compact = false});
 
 
 
@@ -1476,7 +1501,7 @@ class GameCard extends StatelessWidget {
       final popVal = pop is num ? pop.toInt() : null;
       final parts = <String>[
         if (emoji.isNotEmpty) emoji,
-        if (temp != null) '${temp}°',
+        if (temp != null) '$temp°',
         if (popVal != null && popVal > 0) '$popVal%',
       ];
       if (parts.isEmpty) return const SizedBox.shrink();
@@ -1527,7 +1552,7 @@ class GameCard extends StatelessWidget {
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: -0.15),
             maxLines: 1, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 5),
-        Text(rank != null ? '${rank}위' : (isHome ? '홈' : '원정'),
+        Text(rank != null ? '$rank위' : (isHome ? '홈' : '원정'),
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
         const SizedBox(height: 7),
         // 각 팀 mini5 W 박스 = 자기 팀 컬러 (라이트/다크 모드 보정)
@@ -1614,6 +1639,129 @@ class GameCard extends StatelessWidget {
     );
   }
 
+  // 간략 모드 — 1줄 카드 (높이 ~56px). 팀로고+팀명+스코어+상태만
+  Widget _buildCompactCard(BuildContext context, _Tok t, bool isDark,
+      bool isLive, bool isFinished, bool isCancelled,
+      bool isDraw, bool homeWon, bool awayWon,
+      Color homeColor, Color awayColor, Color myColor) {
+    final cardBd = isMyTeam ? myColor : t.line;
+    final showScore = isFinished || isLive;
+    final timeText = (!showScore && !isCancelled)
+        ? (game.startTime ?? game.status) : '';
+
+    Widget statusBadge() {
+      if (isLive) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: _kLiveRed.withValues(alpha: isDark ? 0.20 : 0.10),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: _kLiveRed.withValues(alpha: 0.45)),
+          ),
+          child: Text('${game.currentInning ?? 0}회 ${game.inningHalf ?? ''}',
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _kLiveRed)),
+        );
+      }
+      if (isCancelled) {
+        return Text('취소', style: TextStyle(fontSize: 11, color: t.ink3, fontWeight: FontWeight.w700));
+      }
+      if (isFinished) {
+        return Text('종료', style: TextStyle(fontSize: 11, color: t.ink3, fontWeight: FontWeight.w700));
+      }
+      return Text(timeText, style: TextStyle(fontSize: 11, color: t.ink2, fontWeight: FontWeight.w700));
+    }
+
+    final semanticLabel = isFinished
+        ? '${game.homeTeam} ${game.homeScore} 대 ${game.awayScore} ${game.awayTeam}, 경기 종료'
+        : isLive
+            ? '${game.homeTeam} ${game.homeScore} 대 ${game.awayScore} ${game.awayTeam}, 진행중'
+            : '${game.homeTeam} 대 ${game.awayTeam}, ${game.status}';
+
+    Widget teamSide(String code, String name, int score, bool won, bool isHomeSide) {
+      final dim = (homeWon || awayWon) && !won;
+      return Expanded(
+        child: Row(
+          mainAxisAlignment: isHomeSide ? MainAxisAlignment.start : MainAxisAlignment.end,
+          children: [
+            if (!isHomeSide) ...[
+              Text(name,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: won ? FontWeight.w800 : FontWeight.w600,
+                    color: dim ? t.sub : t.ink,
+                  ),
+                  overflow: TextOverflow.ellipsis),
+              const SizedBox(width: 8),
+            ],
+            Opacity(opacity: dim ? 0.45 : 1.0, child: TeamLogo(teamCode: code, size: 22)),
+            if (isHomeSide) ...[
+              const SizedBox(width: 8),
+              Text(name,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: won ? FontWeight.w800 : FontWeight.w600,
+                    color: dim ? t.sub : t.ink,
+                  ),
+                  overflow: TextOverflow.ellipsis),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: t.paper,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: cardBd, width: isMyTeam ? 2 : 1),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  teamSide(game.homeTeamCode, game.homeTeam, game.homeScore, homeWon, true),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: showScore
+                        ? Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text('${game.homeScore}',
+                                style: TextStyle(fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: homeWon ? homeColor : t.ink,
+                                    fontFeatures: const [FontFeature.tabularFigures()])),
+                            const Text(' : ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                            Text('${game.awayScore}',
+                                style: TextStyle(fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: awayWon ? awayColor : t.ink,
+                                    fontFeatures: const [FontFeature.tabularFigures()])),
+                          ])
+                        : statusBadge(),
+                  ),
+                  teamSide(game.awayTeamCode, game.awayTeam, game.awayScore, awayWon, false),
+                  if (showScore) ...[
+                    const SizedBox(width: 8),
+                    statusBadge(),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1640,6 +1788,11 @@ class GameCard extends StatelessWidget {
     final myColor = myTeamIsHome ? homeColor : (myTeamIsAway ? awayColor : homeColor);
     // accent: 마이팀이면 팀색, 아니면 ink (승팀 강조용)
     final accent = isMyTeam ? myColor : t.ink;
+
+    if (compact) {
+      return _buildCompactCard(context, t, isDark, isLive, isFinished, isCancelled,
+          isDraw, homeWon, awayWon, homeColor, awayColor, myColor);
+    }
 
     // ── 상태 pill ──
     Widget statusPill() {

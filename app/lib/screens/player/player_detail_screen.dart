@@ -566,7 +566,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final recent = filtered.length > 20 ? filtered.sublist(filtered.length - 20) : filtered;
     if (recent.isEmpty) return const SizedBox.shrink();
 
-    double? _getValue(Map d) {
+    double? getValue(Map d) {
       if (trendStat == 'avg') return (d['avg'] as num?)?.toDouble();
       if (trendStat == 'era') {
         final ip = (d['ip'] as num?)?.toDouble() ?? 0;
@@ -581,7 +581,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final spots = <FlSpot>[];
     final labels = <String>[];
     for (int i = 0; i < recent.length; i++) {
-      final val = _getValue(recent[i] as Map);
+      final val = getValue(recent[i] as Map);
       if (val != null) {
         spots.add(FlSpot(i.toDouble(), val));
         final dateStr = (recent[i] as Map)['game_date'] as String? ?? '';
@@ -772,7 +772,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     if (dateStr == null || dateStr.length < 10) return '-';
     final month = int.tryParse(dateStr.substring(5, 7)) ?? 0;
     final day = int.tryParse(dateStr.substring(8, 10)) ?? 0;
-    return '$month월 ${day}일';
+    return '$month월 $day일';
   }
 
   Widget _buildRecent5Games(Map<String, dynamic> player) {

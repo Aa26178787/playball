@@ -655,7 +655,7 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
                 ListView.separated(
                   padding: EdgeInsets.only(bottom: navBottom),
                   itemCount: _places.length,
-                  separatorBuilder: (_, _x) => Divider(height: 1, color: Colors.grey.withValues(alpha: 0.12)),
+                  separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey.withValues(alpha: 0.12)),
                   itemBuilder: (_, i) {
                     final p = _places[i];
                     final isApproved = p['status'] == 'approved';
@@ -919,7 +919,7 @@ class _FoodSubmitSheetState extends State<_FoodSubmitSheet> {
                 Expanded(
                   child: ListView.separated(
                     itemCount: _results.length,
-                    separatorBuilder: (_, _x) => Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
+                    separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
                     itemBuilder: (_, i) {
                       final p = _results[i];
                       return ListTile(

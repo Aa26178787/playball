@@ -62,6 +62,11 @@ class LocalCache {
     await prefs.setBool('${_prefix}flag_$key', true);
   }
 
+  static Future<void> removeFlag(String key) async {
+    final prefs = await _getPrefs();
+    await prefs.remove('${_prefix}flag_$key');
+  }
+
   // 로그아웃 시 호출 — 유저 개인 데이터 캐시 삭제
   static Future<void> clearUser() async {
     final prefs = await _getPrefs();

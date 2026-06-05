@@ -801,7 +801,7 @@ class _TeamScreenState extends State<TeamScreen>
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _heroStat('${wins}승 ${losses}패${draws > 0 ? ' ${draws}무' : ''}', '경기 $totalGames'),
+                    _heroStat('$wins승 $losses패${draws > 0 ? ' $draws무' : ''}', '경기 $totalGames'),
                     const SizedBox(width: 16),
                     _heroStat(winRate, '승률'),
                     const SizedBox(width: 16),
@@ -936,7 +936,7 @@ class _TeamScreenState extends State<TeamScreen>
                               Icon(Icons.star_rounded, size: 14, color: color),
                             ],
                             const Spacer(),
-                            Text('${wins}-${losses}${draws > 0 ? '-$draws' : ''}',
+                            Text('$wins-$losses${draws > 0 ? '-$draws' : ''}',
                                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                             const SizedBox(width: 8),
                             Text(winRate, style: TextStyle(fontSize: 12, color: Colors.grey[600])),

@@ -25,7 +25,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
       setState(() => _sentToEmail = res['email'] ?? '이메일');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('인증번호를 ${_sentToEmail}로 발송했습니다 (5분 유효)')));
+          SnackBar(content: Text('인증번호를 $_sentToEmail로 발송했습니다 (5분 유효)')));
       }
     } on DioException catch (e) {
       final detail = e.response?.data?['detail'] ?? '발송 실패';
