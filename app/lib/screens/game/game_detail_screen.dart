@@ -647,7 +647,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   children: [
                     // panel-spacer: panel actual height와 일치 + paper bg (scaffold body 색 노출 방지)
                     Container(
-                      height: _sameDayGames.isNotEmpty ? 530 : 435,
+                      height: _sameDayGames.isNotEmpty ? 505 : 410,
                       color: Theme.of(context).brightness == Brightness.dark
                           ? const Color(0xFF18181C)
                           : Colors.white,
@@ -1081,7 +1081,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         ),
                         // 슬롯/배경 확장: padding 20/28 + SizedBox 230
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 60, 16, 20),
+                          padding: const EdgeInsets.fromLTRB(16, 35, 16, 20),
                           // C안: 좌표 자체 bilinear quad mapping (Matrix4 제거)
                           child: SizedBox(height: 290, width: double.infinity, child: fieldWidget),
                         ),
@@ -1562,7 +1562,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     return Container(
       // panel-spacer와 동일 height + 하단 rounded (gameHeader ClipRRect bottom 16과 일치)
-      height: _sameDayGames.isNotEmpty ? 530 : 435,
+      height: _sameDayGames.isNotEmpty ? 505 : 410,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: paper,
@@ -1616,7 +1616,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   children: [
                     const Positioned.fill(child: CustomPaint(painter: _GrassExtensionPainter())),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 60, 16, 20),
+                      padding: const EdgeInsets.fromLTRB(16, 35, 16, 20),
                       child: SizedBox(height: 290, width: double.infinity, child: fieldWidget),
                     ),
                     // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
@@ -4937,10 +4937,10 @@ class _GrassExtensionPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    // field outer Padding (16, 60, 16, 20) — inner painter 좌표를 outer absolute로 정확 매핑
-    final innerW = w - 32;       // horizontal 16*2
-    final innerH = h - 80;       // top 60 + bottom 20
-    final arcCenter = Offset(w * 0.5, 60 + innerH * 0.95);
+    // field outer Padding (16, 35, 16, 20)
+    final innerW = w - 32;
+    final innerH = h - 55;       // top 35 + bottom 20
+    final arcCenter = Offset(w * 0.5, 35 + innerH * 0.95);
     final arcR = innerW * 1.10;
 
     final fullPath = Path()
