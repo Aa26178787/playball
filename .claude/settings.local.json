@@ -141,7 +141,9 @@
       "Bash(MSYS_NO_PATHCONV=1 adb -s \"adb-R3CX90J1HJK-iohcsy._adb-tls-connect._tcp\" pull \"/sdcard/screen.png\" \"C:/Users/qq772/Downloads/current_field.png\")",
       "Bash(Get-ChildItem -Path \"app\\\\lib\\\\screens\" -Recurse -Filter \"*.dart\")",
       "Bash(Measure-Object)",
-      "Bash(Select-Object -ExpandProperty Count)"
+      "Bash(Select-Object -ExpandProperty Count)",
+      "Bash(awk NR==4696{print NR\": class start\"} NR==4932{print NR\": class end\"} *)",
+      "Bash(awk 'NR<4696 || NR>4932' \"C:/Users/qq772/playball/app/lib/screens/game/game_detail_screen.dart\")"
     ]
   }
 }

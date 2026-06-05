@@ -4693,237 +4693,234 @@ class _PlayerDot extends StatelessWidget {
   }
 }
 
+// 좌표 상수 (SVG 300x310 viewBox)
+const double _kFieldW    = 300, _kFieldH    = 310;
+const double _kHX        = 150, _kHY        = 278;   // 파울라인 원점
+const double _kHVX       = 150, _kHVY       = 266;   // 베이스패스 홈 꼭짓점
+const double _kMB1X      = 208, _kMB1Y      = 208;   // 1루
+const double _kMB2X      = 150, _kMB2Y      = 150;   // 2루
+const double _kMB3X      = 92,  _kMB3Y      = 208;   // 3루
+const double _kPMX       = 150, _kPMY       = 208;   // 투수판
+const double _kR_OUT     = 212;
+const double _kR_DIRT    = 132;
+const double _kR_HOME    = 30;
+const double _kR_BASE    = 17;
+const double _kR_MOUND   = 18;
+
 class _FieldBgPainter extends CustomPainter {
   final bool base1, base2, base3, isDark;
   const _FieldBgPainter({required this.base1, required this.base2, required this.base3, required this.isDark});
 
+  Offset _pt(double deg, double r) {
+    final a = deg * math.pi / 180;
+    return Offset(_kHX + r * math.sin(a), _kHY - r * math.cos(a));
+  }
+
+  Path _sector(double d1, double d2, double r) {
+    final p1 = _pt(d1, r);
+    final p2 = _pt(d2, r);
+    final big = (d2 - d1).abs() > 180;
+    return Path()
+      ..moveTo(_kHX, _kHY)
+      ..lineTo(p1.dx, p1.dy)
+      ..arcToPoint(p2, radius: Radius.circular(r), clockwise: true, largeArc: big)
+      ..close();
+  }
+
+  Path get _fairClip => Path()
+    ..moveTo(_kHX, _kHY)
+    ..lineTo(0, _kHY - _kHX)
+    ..lineTo(0, 0)
+    ..lineTo(_kFieldW, 0)
+    ..lineTo(_kFieldW, _kHY - _kHX)
+    ..close();
+
+  Paint _dirtPaint(Rect rect) => Paint()
+    ..shader = const RadialGradient(
+      center: Alignment(0, -0.2),
+      radius: 0.72,
+      colors: [Color(0xFFD2B083), Color(0xFFBD9763)],
+    ).createShader(rect);
+
+  Path _rotated45(Path path, double cx, double cy) {
+    final m = Matrix4.identity()
+      ..translate(cx, cy)
+      ..rotateZ(math.pi / 4)
+      ..translate(-cx, -cy);
+    return path.transform(m.storage);
+  }
+
+  void _drawBase(Canvas canvas, double bx, double by, bool on) {
+    if (on) {
+      final hlPath = _rotated45(
+        Path()..addRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromCenter(center: Offset(bx, by), width: 26, height: 26),
+            const Radius.circular(3),
+          ),
+        ),
+        bx, by,
+      );
+      canvas.drawPath(hlPath, Paint()..color = const Color(0xFFF59E0B).withOpacity(0.4));
+    }
+    final basePath = _rotated45(
+      Path()..addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(bx, by), width: 12, height: 12),
+          const Radius.circular(2),
+        ),
+      ),
+      bx, by,
+    );
+    canvas.drawPath(basePath, Paint()
+      ..color = Colors.black.withOpacity(0.22)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5));
+    canvas.drawPath(
+      basePath,
+      Paint()..color = on ? const Color(0xFFFCD34D) : Colors.white,
+    );
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
+    // SVG viewBox → 실제 크기로 스케일
+    final scale = size.width / _kFieldW;
+    canvas.save();
+    canvas.scale(scale, scale);
 
-    // mockup HTML/SVG 기반 좌표 시스템 (viewBox 300x310)
-    // pHome 기준 foul line(-135도/-45도)을 따라 base/2B/mound 위치 정함
-    // → canvas aspect ratio 와 무관하게 정확한 각도 유지 + base 외곽 foul line 안쪽 보장
-    final pHome = Offset(w * 0.50, h * 0.897);
-    final dirtSectorRadius = h * 0.426;
-    final bs = w * 0.028;  // base 회전 corner half (8.49/300 ≈ 0.0283)
-    // 1B/3B 베이스: foul line direction (-45°/-135°)을 따라 거리 + 안쪽 perpendicular shift (bs)
-    final baseDist = dirtSectorRadius * 0.686;  // mockup 90.5/132
-    final cos45 = math.cos(3.14 * 0.25);  // 0.707
-    final p1B = Offset(
-      pHome.dx + (baseDist - bs) * cos45,
-      pHome.dy + (-baseDist - bs) * cos45,
+    // 1. 배경 (파울 지역 어두운 잔디)
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, _kFieldW, _kFieldH),
+      Paint()
+        ..shader = const RadialGradient(
+          center: Alignment(0, 0.1),
+          radius: 0.75,
+          colors: [Color(0xFF356030), Color(0xFF264821)],
+        ).createShader(Rect.fromLTWH(0, 0, _kFieldW, _kFieldH)),
     );
-    final p3B = Offset(
-      pHome.dx - (baseDist - bs) * cos45,
-      pHome.dy + (-baseDist - bs) * cos45,
-    );
-    final p2B    = Offset(pHome.dx, pHome.dy - dirtSectorRadius * 0.97);  // mockup 128/132
-    final pMound = Offset(pHome.dx, pHome.dy - dirtSectorRadius * 0.53);  // mockup 70/132
 
-    // 1. 배경 (어두운 잔디 radial gradient)
-    final bgPaint = Paint()
-      ..shader = ui.Gradient.radial(
-        Offset(w * 0.50, h * 0.55), w * 0.75,
-        [const Color(0xFF356030), const Color(0xFF264821)],
+    // 2. 외야 잔디 mowing stripe
+    const stripeColors = [Color(0xFF54944A), Color(0xFF4C8A42)];
+    for (int i = 0; i < 9; i++) {
+      canvas.drawPath(
+        _sector(-45 + i * 10.0, -45 + (i + 1) * 10.0, _kR_OUT),
+        Paint()..color = stripeColors[i % 2],
       );
-    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), bgPaint);
-
-    // 2. 잔디 mowing stripe 9개 (부채꼴, 90도 sweep, 교대 색상) — 외야수 뒤까지 확장
-    final stripeRadius = h * 1.10;  // 이전 0.684 → 1.10 (CF h*0.09 너머)
-    final stripeRect = Rect.fromCircle(center: pHome, radius: stripeRadius);
-    const double startAng = -3.14 * 0.75;
-    const double totalSweep = 3.14 * 0.5;
-    const int stripeCount = 9;
-    final stripeSweep = totalSweep / stripeCount;
-    for (int i = 0; i < stripeCount; i++) {
-      final color = (i % 2 == 0)
-          ? const Color(0xFF54944A)
-          : const Color(0xFF4C8A42);
-      final path = Path()
-        ..moveTo(pHome.dx, pHome.dy)
-        ..arcTo(stripeRect, startAng + i * stripeSweep, stripeSweep, false)
-        ..lineTo(pHome.dx, pHome.dy)
-        ..close();
-      canvas.drawPath(path, Paint()..color = color);
     }
 
-    // 3-7. dirt 영역 — 모두 fair wedge clip 안 (foul line 바깥 dirt 안 보이게)
-    final farClip = (w + h) * 3.0;
-    final foulLFar = Offset(
-      pHome.dx + farClip * math.cos(-3.14 * 0.75),
-      pHome.dy + farClip * math.sin(-3.14 * 0.75),
+    // 3. 내야 흙 부채꼴
+    final dirtRect = Rect.fromCenter(
+      center: Offset(_kHX, _kHY),
+      width: _kR_DIRT * 2, height: _kR_DIRT * 2,
     );
-    final foulRFar = Offset(
-      pHome.dx + farClip * math.cos(-3.14 * 0.25),
-      pHome.dy + farClip * math.sin(-3.14 * 0.25),
+    canvas.drawPath(_sector(-45, 45, _kR_DIRT), _dirtPaint(dirtRect));
+
+    // 4. 내야 잔디 다이아몬드 (정사각)
+    canvas.drawPath(
+      Path()
+        ..moveTo(150, 162)
+        ..lineTo(196, 208)
+        ..lineTo(150, 254)
+        ..lineTo(104, 208)
+        ..close(),
+      Paint()
+        ..shader = const RadialGradient(
+          center: Alignment(0, 0.2),
+          radius: 0.68,
+          colors: [Color(0xFF57994C), Color(0xFF4A8741)],
+        ).createShader(Rect.fromLTWH(104, 162, 92, 92)),
     );
-    final fairWedge = Path()
-      ..moveTo(pHome.dx, pHome.dy)
-      ..lineTo(foulLFar.dx, foulLFar.dy)
-      ..lineTo(-w, -h * 3)
-      ..lineTo(w * 2, -h * 3)
-      ..lineTo(foulRFar.dx, foulRFar.dy)
-      ..close();
 
-    final dirtPaint = Paint()
-      ..shader = ui.Gradient.radial(
-        Offset(w * 0.50, h * 0.42), w * 0.72,
-        [const Color(0xFFD2B083), const Color(0xFFBD9763)],
-      );
-
+    // 5. 베이스패스 + 1·3루 흙 서클 (페어 클리핑)
     canvas.save();
-    canvas.clipPath(fairWedge);
+    canvas.clipPath(_fairClip);
 
-    // 3. dirt sector
-    final dirtSectorRect = Rect.fromCircle(center: pHome, radius: dirtSectorRadius);
-    final dirtSectorPath = Path()
-      ..moveTo(pHome.dx, pHome.dy)
-      ..arcTo(dirtSectorRect, -3.14 * 0.75, 3.14 * 0.5, false)
-      ..lineTo(pHome.dx, pHome.dy)
-      ..close();
-    canvas.drawPath(dirtSectorPath, dirtPaint);
-
-    // 4. 내야 잔디 다이아몬드 (베이스 위치 기반, 비례)
-    final infieldGrass = Paint()
-      ..shader = ui.Gradient.radial(
-        Offset(w * 0.50, h * 0.671), w * 0.68,
-        [const Color(0xFF57994C), const Color(0xFF4A8741)],
-      );
-    final infieldGrassPath = Path()
-      ..moveTo(pHome.dx, p2B.dy + (pMound.dy - p2B.dy) * 0.4)  // top
-      ..lineTo((p1B.dx + pMound.dx) * 0.5, pMound.dy + (p2B.dy - pMound.dy) * 0.3)  // mid-right
-      ..lineTo(pHome.dx, pMound.dy + (p2B.dy - pMound.dy) * (-0.6))  // bottom (toward home)
-      ..lineTo((p3B.dx + pMound.dx) * 0.5, pMound.dy + (p2B.dy - pMound.dy) * 0.3)  // mid-left
-      ..close();
-    canvas.drawPath(infieldGrassPath, infieldGrass);
-
-    // 5. 베이스 path 외곽 stroke (1B-2B-3B 경로 dirt 두께 표시)
-    final basePathStroke = Paint()
-      ..color = const Color(0xFFC6A475)
-      ..strokeWidth = 13
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-    final basePathOutline = Path()
-      ..moveTo(pHome.dx, pHome.dy - bs * 2)
-      ..lineTo(p1B.dx, p1B.dy)
-      ..lineTo(p2B.dx, p2B.dy)
-      ..lineTo(p3B.dx, p3B.dy)
-      ..close();
-    canvas.drawPath(basePathOutline, basePathStroke);
-
-    // 6. 1B/3B/2B dirt 컷아웃
-    canvas.drawCircle(p1B, w * 0.057, dirtPaint);
-    canvas.drawCircle(p3B, w * 0.057, dirtPaint);
-    canvas.drawCircle(p2B, w * 0.057, dirtPaint);
-
-    // 7. 마운드 dirt 원 + rubber
-    canvas.drawCircle(pMound, w * 0.06, dirtPaint);
-    final rubberPaint = Paint()
-      ..color = Colors.white.withOpacity(0.85);
-    canvas.drawRect(
-      Rect.fromCenter(center: pMound, width: w * 0.053, height: 5),
-      rubberPaint,
+    canvas.drawPath(
+      Path()
+        ..moveTo(_kHVX, _kHVY)
+        ..lineTo(_kMB1X, _kMB1Y)
+        ..lineTo(_kMB2X, _kMB2Y)
+        ..lineTo(_kMB3X, _kMB3Y)
+        ..close(),
+      Paint()
+        ..color = const Color(0xFFBD9763)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 13
+        ..strokeJoin = StrokeJoin.round,
     );
-
-    // 9. 홈 plate dirt 원 (clip 안)
-    canvas.drawCircle(Offset(w * 0.50, h * 0.858), w * 0.10, dirtPaint);
-
+    canvas.drawCircle(Offset(_kMB1X, _kMB1Y), _kR_BASE,
+        Paint()..color = const Color(0xFFBD9763));
+    canvas.drawCircle(Offset(_kMB3X, _kMB3Y), _kR_BASE,
+        Paint()..color = const Color(0xFFBD9763));
     canvas.restore();
 
-    // 8. 파울 라인 (white) — pHome에서 진짜 -135도/-45도 각도로 (canvas 가장자리까지)
+    // 6. 2루 흙 서클 (내야 흙 부채꼴 클리핑)
+    canvas.save();
+    canvas.clipPath(_sector(-45, 45, _kR_DIRT));
+    canvas.drawCircle(Offset(_kMB2X, _kMB2Y), _kR_BASE,
+        Paint()..color = const Color(0xFFBD9763));
+    canvas.restore();
+
+    // 7. 투수 마운드 + rubber
+    canvas.drawCircle(Offset(_kPMX, _kPMY), _kR_MOUND,
+        Paint()..color = const Color(0xFFBD9763));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(_kPMX - 8, _kPMY - 2.5, 16, 5),
+        const Radius.circular(1.5),
+      ),
+      Paint()..color = Colors.white.withOpacity(0.85),
+    );
+
+    // 8. 파울라인
     final foulPaint = Paint()
-      ..color = Colors.white.withOpacity(0.80)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-    final far = w + h;  // canvas 밖까지 연장
-    final foulLeftEnd = Offset(
-      pHome.dx + far * math.cos(-3.14 * 0.75),
-      pHome.dy + far * math.sin(-3.14 * 0.75),
+      ..color = Colors.white.withOpacity(0.8)
+      ..strokeWidth = 1.5;
+    canvas.drawLine(Offset(_kHX, _kHY), Offset(0, _kHY - _kHX), foulPaint);
+    canvas.drawLine(Offset(_kHX, _kHY), Offset(_kFieldW, _kHY - _kHX), foulPaint);
+
+    // 9. 베이스 (2루 먼저 → 1, 3루 위로 overlay 방지)
+    _drawBase(canvas, _kMB2X, _kMB2Y, base2);
+    _drawBase(canvas, _kMB1X, _kMB1Y, base1);
+    _drawBase(canvas, _kMB3X, _kMB3Y, base3);
+
+    // 10. 홈 흙 서클
+    canvas.drawCircle(Offset(_kHVX, _kHVY), _kR_HOME,
+        Paint()..color = const Color(0xFFBD9763));
+
+    // 11. 홈플레이트 오각형
+    canvas.drawPath(
+      Path()
+        ..moveTo(_kHVX,      _kHVY + 8)
+        ..lineTo(_kHVX + 8,  _kHVY + 1)
+        ..lineTo(_kHVX + 8,  _kHVY - 7)
+        ..lineTo(_kHVX - 8,  _kHVY - 7)
+        ..lineTo(_kHVX - 8,  _kHVY + 1)
+        ..close(),
+      Paint()..color = Colors.white,
     );
-    final foulRightEnd = Offset(
-      pHome.dx + far * math.cos(-3.14 * 0.25),
-      pHome.dy + far * math.sin(-3.14 * 0.25),
-    );
-    canvas.drawLine(pHome, foulLeftEnd, foulPaint);
-    canvas.drawLine(pHome, foulRightEnd, foulPaint);
 
-    // ── Bases (mockup SVG: 12x12 rect rotated 45 → corner half 6*sqrt2 ≈ 8.5) ──
-    void drawBase(Offset pos, bool occupied) {
-      // bs는 outer 스코프에서 정의됨 (w * 0.028)
-      final basePath = Path()
-        ..moveTo(pos.dx, pos.dy - bs)
-        ..lineTo(pos.dx + bs, pos.dy)
-        ..lineTo(pos.dx, pos.dy + bs)
-        ..lineTo(pos.dx - bs, pos.dy)
-        ..close();
-      if (occupied) {
-        // Orange aura (26px rotated → corner half = 13*√2/2 ≈ 18.4 / 300 = 0.061)
-        final glowHalf = w * 0.061;
-        final glowPath = Path()
-          ..moveTo(pos.dx, pos.dy - glowHalf)
-          ..lineTo(pos.dx + glowHalf, pos.dy)
-          ..lineTo(pos.dx, pos.dy + glowHalf)
-          ..lineTo(pos.dx - glowHalf, pos.dy)
-          ..close();
-        canvas.drawPath(glowPath, Paint()..color = const Color(0xFFF59E0B).withOpacity(0.4));
-      }
-      // drop shadow (mockup filter: dx=0, dy=1, stdDeviation=1.2, opacity=0.25)
-      final shadowPath = Path()
-        ..moveTo(pos.dx, pos.dy - bs + 1)
-        ..lineTo(pos.dx + bs, pos.dy + 1)
-        ..lineTo(pos.dx, pos.dy + bs + 1)
-        ..lineTo(pos.dx - bs, pos.dy + 1)
-        ..close();
-      canvas.drawPath(shadowPath,
-        Paint()
-          ..color = Colors.black.withOpacity(0.25)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.2),
-      );
-      // fill: 점거 시 yellow (#FCD34D) / 비점거 시 white
-      canvas.drawPath(basePath, Paint()
-        ..color = occupied ? const Color(0xFFFCD34D) : Colors.white);
-    }
-    drawBase(p1B, base1);
-    drawBase(p2B, base2);
-    drawBase(p3B, base3);
-
-    // ── Home plate (mockup SVG pentagon: 150,274 158,267 158,259 142,259 142,267) ──
-    final homePath = Path()
-      ..moveTo(w * 0.500, h * 0.884)  // bottom point (150, 274)
-      ..lineTo(w * 0.527, h * 0.861)  // (158, 267)
-      ..lineTo(w * 0.527, h * 0.835)  // (158, 259)
-      ..lineTo(w * 0.473, h * 0.835)  // (142, 259)
-      ..lineTo(w * 0.473, h * 0.861)  // (142, 267)
-      ..close();
-    canvas.drawPath(homePath, Paint()..color = Colors.white);
-
-    // ── Batter boxes (mockup: 2 rects, x126/x162 y255 w12 h18 rx1.5, white opacity 0.72) ──
-    final batterBoxPaint = Paint()
+    // 12. 타자석
+    final batterPaint = Paint()
       ..color = Colors.white.withOpacity(0.72)
-      ..strokeWidth = 1.2
-      ..style = PaintingStyle.stroke;
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
     canvas.drawRRect(
-      RRect.fromRectXY(
-        Rect.fromCenter(
-          center: Offset(w * 0.440, h * 0.852),  // (132, 264)
-          width: w * 0.040, height: h * 0.058,
-        ),
-        1.5, 1.5,
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(_kHVX - 24, _kHVY - 11, 12, 18),
+        const Radius.circular(1.5),
       ),
-      batterBoxPaint,
+      batterPaint,
     );
     canvas.drawRRect(
-      RRect.fromRectXY(
-        Rect.fromCenter(
-          center: Offset(w * 0.560, h * 0.852),  // (168, 264)
-          width: w * 0.040, height: h * 0.058,
-        ),
-        1.5, 1.5,
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(_kHVX + 12, _kHVY - 11, 12, 18),
+        const Radius.circular(1.5),
       ),
-      batterBoxPaint,
+      batterPaint,
     );
+
+    canvas.restore();
   }
 
   @override
