@@ -404,7 +404,7 @@ class _TeamScreenState extends State<TeamScreen>
                         Text('$rank',
                             style: TextStyle(
                               fontSize: 19, fontWeight: FontWeight.w800, color: rankCol,
-                              letterSpacing: -0.4, fontFeatures: const [FontFeature.tabularFigures()],
+                              letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()],
                             )),
                         const SizedBox(height: 4),
                         _buildMoveIndicator(team['rank_change'] as int?, ink2, sub, line2),
@@ -515,7 +515,7 @@ class _TeamScreenState extends State<TeamScreen>
                           Text(gbText,
                               style: TextStyle(
                                 fontSize: 17, fontWeight: FontWeight.w800,
-                                color: isLead ? ink : ink2, letterSpacing: -0.4,
+                                color: isLead ? ink : ink2, letterSpacing: 0,
                                 fontFeatures: const [FontFeature.tabularFigures()],
                               )),
                           const SizedBox(height: 4),
@@ -1676,7 +1676,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 17, fontWeight: FontWeight.w800, color: rankCol,
-                        letterSpacing: -0.4, fontFeatures: const [FontFeature.tabularFigures()],
+                        letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()],
                       )),
                 ),
                 const SizedBox(width: 13),
@@ -2275,7 +2275,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 17, fontWeight: FontWeight.w800, color: rankCol,
-                        letterSpacing: -0.4, fontFeatures: const [FontFeature.tabularFigures()],
+                        letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()],
                       )),
                 ),
                 const SizedBox(width: 12),

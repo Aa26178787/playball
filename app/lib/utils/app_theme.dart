@@ -180,8 +180,9 @@ class AppTheme {
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
         modalBackgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+        // 기존 inline shape 다수가 16 → theme도 16으로 통일
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),
         // showDragHandle false: 각 sheet이 자체 handle 가짐 (calendar 4곳 + base sheet 등)
         // → global true 시 중복 표시
