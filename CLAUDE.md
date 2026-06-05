@@ -696,6 +696,86 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - [x] **GameDetailScreen _isLoadingInFlight 가드** — _loadData 재진입 방지
 - [x] **VPS swap 1G→4G 확장** + swappiness 60→30 (OOM 방지)
 
+## 세션 변경사항 요약 (2026-06-05 ~ 06-06) — UI/UX 정리 + 다크모드 시인성
+
+### Analyzer cleanup (338 → 24, app/lib=0)
+- `dart fix --apply`: curly_braces 39 + null_aware 9 + 기타 (14 파일)
+- `withOpacity` → `withValues(alpha:)` 90개 (7 파일)
+- 미사용 import/method/field/local var 일괄 제거 (~1400 lines)
+- `__/___` → `_` wildcard (Dart 3.7+)
+- `Matrix4.translate` → `translateByDouble` (deprecated)
+- `surfaceVariant` → `surfaceContainerHighest`
+- `DropdownButtonFormField.value` → `initialValue`
+- `print` → `debugPrint`
+- `letterSpacing` 음수(-0.6/-0.3/-0.2/-0.1/-0.4/-0.5) → 0 일괄 (한글 자간 정책 통일)
+- **critical fix**: `letterSpacing: 05` typo (Dart parser = int 5, 한글 자간 5px 폭증 → GameCard overflow) — 5 곳 fix
+- BuildContext async gap 가드 (mypage 로그아웃/탈퇴, post_detail 신고)
+- SCREAMING_SNAKE → camelCase (_kR_OUT 등)
+
+### Design tokens 도입 + migration
+- `design_tokens.dart`: `Typo`/`SemColor`/`Space`/`Radii` 4 클래스
+- `SemColor.panelDark` (#111113), `SemColor.brand(context)` 테마-aware helper
+- 19 파일 inline `Color(0xFF111113)` → `SemColor.panelDark` migration
+- `MaterialApp.builder` `MediaQuery.withClampedTextScaling 0.85~1.3` (a11y 큰글자 깨짐 방지)
+
+### Theme (`AppTheme`) 강화
+- `textTheme` 한글 가독성: body/title height 1.4/1.3, letterSpacing 0
+- `AppColors.primaryDark` #F4F4F5 → **#E5E5E7** (Apple HIG 순백 회피)
+- `AppColors.borderDark` #26262C → **#33333A** (다크 contrast AAA)
+- `SnackBarTheme`: 다크는 surface2Dark + elevation 6 (scaffoldDark 동일 시인성 손실 차단)
+- `BottomSheetTheme`: 반경 16 + showDragHandle false (manual handle과 중복 방지)
+- `DialogTheme`: 16
+- `TabBarTheme`: labelStyle w800, indicatorSize.label, unselected textTertiary
+- `InkSparkle` splashFactory 활성 (다크 alpha 0.08/0.12 상향)
+
+### UI 기능
+- **GameCard compact mode**: AppBar 토글 (view_compact ↔ view_agenda), 1줄 카드 ~64px, LocalCache.setFlag 영구 저장
+- **AppBar breadcrumb (game_detail)**: 2단 title "팀 vs 팀\n중계 · 키플레이어" (subTab 동적)
+- **베이스 affordance**: 필드뷰 베이스 tap → bottom sheet (1·2·3루 + 주자 정보)
+- **LIVE pulse dot**: AnimationController opacity 0.55~1.0 easeInOut 1.4s
+- **AnimatedSwitcher 스코어**: fade → slide+fade 250ms easeOutCubic
+- **패팀 점수 dim**: opacity 0.45 + fontSize 30pt (vs 승팀 34pt)
+- **취소 status pill**: lineThrough + cancel icon + SemColor.danger
+- **마이팀 badge**: solid fill → 반투명 + border + star icon
+- **GameCard 외곽선**: borderDark AAA, 마이팀 width 2
+- **드래그 핸들**: `SheetHandle` 공통 위젯
+- **AppErrorView, PlayerAvatar, TapTarget**: common_widgets
+
+### Restoration framework
+- `RestorationMixin` + `RestorableInt × 3` (game_detail: tabIdx, lineupSub, statsSub)
+- `MaterialApp.restorationScopeId: 'playball_root'`
+- 프로세스 재시작 후 게임 상세 탭 복원
+
+### Dio 네트워크
+- `IOHttpClientAdapter.maxConnectionsPerHost = 20` (default 6 → WiFi 동시 호출 큐잉 완화)
+- Debug interceptor `kDebugMode only`: in-flight 카운터 + per-request timing 로그
+
+### 다크모드 시인성 (panelDark 검정 겹침 해결)
+- **team_screen TabBar** indicator/labelColor → 분기 (다크모드 탭 라벨 안 보임 fix)
+- **team_screen 부문별 카테고리 chip** 선택 white-on-white invisible → black 분기 + 비선택 t.ink2
+- **team_screen 마이팀 외곽선/star icon** → favBorder 분기
+- **team_screen _buildSegmentControl** → 분기
+- **team_screen 포디움 bg** → 다크 #1F1F24
+- **team_detail CircularProgressIndicator** × 6 → 분기
+- **team_detail 서브탭 segment** 선택 색/텍스트 → 분기
+- **login_screen** 'PlayBall' title + baseball icon → brand 분기
+- **calendar_screen** AppBar title + star icon + 직관 승률 카드 + 랭킹 시트 + FAB + 그리드 선택 셀 → brand
+- **community_screen** FAB + 카테고리 ChoiceChip + 팀 칩 + _tagChip + 인기 activeColor + 맛집 시트 → brand
+- **create_post_screen** 인증/이미지 첨부/@ 링크 chip/icon/text → brand
+- **game_detail** CircularProgressIndicator 다수 → brand
+
+### 백엔드
+- `crawl_pitch_locations.py` insert 전 `re.sub('^\d+번타자 ', '', batter)` (재발 방지)
+- DB: `game_pitch_locations` 101,809 행 batter_name prefix strip 마이그레이션
+- `highlights` endpoint: 진행/예정/취소 게임 슬로우 YouTube 크롤 skip
+- `relay_all` 빈 archive payload fallthrough + ON CONFLICT DO UPDATE
+- `scheduler 30초 사이클` 의도된 dedup 결론 (Naver API rate limit + DB load)
+
+### 오버플로우 보강
+- compact card teamSide Text → Flexible + maxLines 1 + ellipsis
+- AppBar breadcrumb maxLines:1 + ellipsis
+- GameCard stadium chip 외부 Flexible + 내부 Text Flexible + softWrap false
+
 ## 진행 예정 기능
 
 ### 즉시 (단순 수정 / 한 세션 내 완료 가능)
@@ -737,10 +817,62 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 
 ## 알려진 버그 / 성능 이슈
 
-- pitch_locations DB 데이터에 타순 접두사 잔존 ("N번타자 이름") — API 응답에서 매번 정규식 처리 중 (DB 마이그레이션으로 근본 해결 가능)
 - push_tokens 등록 사용자 매우 적음 (현재 1명) — 다수 유저 알림 시나리오 검증 불가
-- 라이브 경기 첫 진입 cold cache 2~3초 (pitch-locations/highlights 첫 호출 후 60s/1800s 캐시)
+- 라이브 경기 pitch-locations cold cache 첫 호출 Naver fetch 의존 (캐시 60s, 첫 진입 ~2초)
 - scheduler 30초 사이클 → 빠른 연속 이벤트(스코어 + 즉시 회복) 일부 합쳐서 1개 알림으로 통합 (의도된 dedup, Naver API rate limit + DB load 고려)
+- `SemColor.panelDark` 잔여 hardcoded 59건 — 대부분 `tk.ink` 토큰 할당 (이미 분기), TableRow header bg (테이블 border로 구분). minor impact, 점진 cleanup 가능
+
+## 앞으로 해야할 것
+
+### 즉시 가능 (low risk)
+- [ ] 실기/에뮬레이터 verify — UI 변경 누적 다수 (compact mode, breadcrumb, base sheet, 다크모드 brand 분기, theme 일괄 적용)
+- [ ] `letterSpacing` typo 류 방지: pre-commit grep hook (`-?\d*\.?\d+` 잘못 변환 감지)
+- [ ] `SemColor.panelDark` 잔여 59건 점진 `SemColor.brand(context)` 치환
+- [ ] AnimatedSwitcher 확장 (status pill, rank 변경, recent5 — 현재 정적)
+
+### 검증 / 도구 도입 권장
+- [ ] **Golden tests** 도입 — GameCard / TeamCard / PlayerCard 다크+라이트 4 골든 → CI 시각 회귀
+- [ ] **device_preview** 패키지 — 개발 중 모든 사이즈 한눈 + textScaler 슬라이더
+- [ ] **accessibility_tools** wrap — 다크 contrast / 터치 영역 / Semantics 자동 경고
+- [ ] **DevTools Performance overlay** — `_LivePulseDot` ×5 등 jank 측정 (저사양 폰)
+- [ ] CI pre-commit hook: `letterSpacing 0[1-9]` / `SemColor\.panelDark.*color:` hardcoded grep
+
+### 중기 (1~2 세션)
+- [ ] empty catch 41건 → debugPrint 추가 (silent fail 가시화)
+- [ ] non-null `!` 53건 audit (대부분 setState 후 안전이지만 일부 guard 추가 권장)
+- [ ] 빈 텍스트 상태 / 에러 상태 — `AppErrorView` 전체 화면 적용 (현재 일부만)
+- [ ] 시즌 트렌드 차트 grid dash 외 chart 일관성 (다른 chart도 동일 스타일)
+- [ ] 카드 모서리 반경 `Radii` 토큰 점진 적용 (현재 12/14/16/18 혼재)
+- [ ] **GameCard hierarchy** #4 후속 — compact 외에 "최소" 모드 (스코어만)
+- [ ] Spacer + Flexible 조합 audit (모든 Row layout)
+
+### 장기
+- [ ] 홈화면 위젯 (Android AppWidget — native kotlin)
+- [ ] Flutter state restoration 추가 화면 (home/team/player)
+- [ ] 베이스 affordance 확장: 수비수 tap 시 선수 정보, 타자 tap 시 detail
+- [ ] 동적 시간 표시 ("18:30" → "1시간 후 시작" 주기 timer)
+- [ ] 다국어 (i18n) — skip 확정 상태
+
+### 다크모드 잔여 점진
+- [ ] forgot_password_screen (213/218 hardcoded)
+- [ ] notifications_screen panelDark icon/text
+- [ ] my_page_screen 일부 hardcoded
+- [ ] phone_verify_screen panelDark
+- [ ] auth/register_screen panelDark
+- [ ] game_detail TableRow header (visible via border, low priority)
+
+## 검증 미완료 항목 (실기 테스트 필요)
+다음 누적 변경은 정적 분석 통과했으나 시각/동작 확인 필요:
+- compact 토글 hint SnackBar
+- 베이스 affordance bottom sheet (1·2·3루 tap)
+- LIVE pulse 애니메이션 (5경기 동시 시 GPU 부담)
+- AppBar breadcrumb 2단 표시 + 긴 팀명 ellipsis
+- 패팀 점수 dim opacity + 30pt
+- Restoration 프로세스 재시작 시나리오
+- Dio 동시 호출 20 한도
+- 다크모드 모든 화면 가시성 (특히 다크 surface 위 brand 색 contrast)
+- textScaler 1.3 시 모든 Row overflow
+- SnackBar surface2Dark bg 분리감
 
 ### WiFi 환경 체감 로딩 느림 (2026-06-04 진단 중)
 서버 측 최적화 적용했지만 사용자 체감 차이 존재. **모바일 직접 nslookup+curl 측정 시 WiFi vs 셀룰러 raw 동일** → 네트워크 자체 문제 아님.
