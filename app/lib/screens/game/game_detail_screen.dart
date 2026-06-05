@@ -4810,22 +4810,30 @@ class _FieldBgPainter extends CustomPainter {
       rubberPaint,
     );
 
-    // 8. 파울 라인 (white)
+    // 8. 파울 라인 (white) — pHome에서 진짜 -135도/-45도 각도로 (canvas 가장자리까지)
     final foulPaint = Paint()
       ..color = Colors.white.withOpacity(0.80)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
-    canvas.drawLine(pHome, Offset(0, h * 0.413), foulPaint);
-    canvas.drawLine(pHome, Offset(w, h * 0.413), foulPaint);
+    final far = w + h;  // canvas 밖까지 연장
+    final foulLeftEnd = Offset(
+      pHome.dx + far * math.cos(-3.14 * 0.75),
+      pHome.dy + far * math.sin(-3.14 * 0.75),
+    );
+    final foulRightEnd = Offset(
+      pHome.dx + far * math.cos(-3.14 * 0.25),
+      pHome.dy + far * math.sin(-3.14 * 0.25),
+    );
+    canvas.drawLine(pHome, foulLeftEnd, foulPaint);
+    canvas.drawLine(pHome, foulRightEnd, foulPaint);
 
     // 9. 홈 plate dirt 원 (큰)
     canvas.drawCircle(Offset(w * 0.50, h * 0.858), w * 0.10, dirtPaint);  // SVG r=30
 
-    // ── Bases (mockup SVG: 회전 정사각 12x12, drop shadow dx=0 dy=1 blur=1.2) ──
-    // 2B occupied: orange aura (26x26) + yellow inner (12x12)
+    // ── Bases (mockup SVG: 12x12 rect rotated 45 → 대각선 길이 12px = corner half 6*sqrt2 ≈ 8.5) ──
     void drawBase(Offset pos, bool occupied) {
-      final bs = w * 0.04;  // SVG 12 / 300 = 0.04 → half-side after rotation 45도
-      // 회전 정사각 = 마름모 (꼭짓점 top/right/bottom/left)
+      // SVG 12px rotated 45도 → 마름모 꼭짓점 거리 = 6*√2 ≈ 8.49 → 8.49/300 = 0.028
+      final bs = w * 0.028;
       final basePath = Path()
         ..moveTo(pos.dx, pos.dy - bs)
         ..lineTo(pos.dx + bs, pos.dy)
@@ -4833,8 +4841,8 @@ class _FieldBgPainter extends CustomPainter {
         ..lineTo(pos.dx - bs, pos.dy)
         ..close();
       if (occupied) {
-        // Orange aura (26/300 = 0.087 → half 0.043)
-        final glowHalf = w * 0.043;
+        // Orange aura (26px rotated → corner half = 13*√2/2 ≈ 18.4 / 300 = 0.061)
+        final glowHalf = w * 0.061;
         final glowPath = Path()
           ..moveTo(pos.dx, pos.dy - glowHalf)
           ..lineTo(pos.dx + glowHalf, pos.dy)
@@ -4927,46 +4935,15 @@ class _GrassExtensionPainter extends CustomPainter {
       ..lineTo(0, h)
       ..close();
 
+    // mockup inner painter와 동일 색상 (분리 보이지 않게)
     final grassBase = Paint()
       ..shader = ui.Gradient.radial(
-        arcCenter, arcR,
-        [
-          const Color(0xFF4A8C3E),
-          const Color(0xFF6BB05A),
-          const Color(0xFF7BC068),
-        ],
-        const [0.0, 0.6, 1.0],
+        Offset(w * 0.5, h * 0.55), w * 0.75,
+        [const Color(0xFF356030), const Color(0xFF264821)],
       );
     canvas.save();
     canvas.clipPath(fullPath);
     canvas.drawPath(fullPath, grassBase);
-
-    // stripe (mowing pattern) — inner painter와 동일 (각도/색)
-    final stripePaint = Paint()
-      ..color = Colors.black.withOpacity(0.06)
-      ..strokeWidth = 1;
-    for (double ang = -3.14 * 0.88; ang <= -3.14 * 0.12; ang += 3.14 * 0.04) {
-      final p1 = arcCenter;
-      final p2 = Offset(
-        arcCenter.dx + arcR * 1.2 * math.cos(ang),
-        arcCenter.dy + arcR * 1.2 * math.sin(ang),
-      );
-      final ang2 = ang + 3.14 * 0.02;
-      final p3 = Offset(
-        arcCenter.dx + arcR * 1.2 * math.cos(ang2),
-        arcCenter.dy + arcR * 1.2 * math.sin(ang2),
-      );
-      final fill = Path()
-        ..moveTo(p1.dx, p1.dy)
-        ..lineTo(p2.dx, p2.dy)
-        ..lineTo(p3.dx, p3.dy)
-        ..close();
-      canvas.drawPath(fill, Paint()..color = Colors.black.withOpacity(0.05));
-      final stripe = Path()
-        ..moveTo(p1.dx, p1.dy)
-        ..lineTo(p2.dx, p2.dy);
-      canvas.drawPath(stripe, stripePaint);
-    }
     canvas.restore();
   }
 
