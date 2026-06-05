@@ -674,12 +674,22 @@ def get_player_detail(player_id: int):
 
 @router.post("/{player_id}/vote")
 def vote_player(player_id: int, current_user: dict = Depends(get_current_user)):
-    """선수 인기투표 토글 (하트)"""
+    """선수 인기투표 토글 (하트). 5초 cooldown — 의도치 않은 연속 토글 방지."""
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
     cur = conn.cursor()
     uid = current_user['user_id']
+    # 5초 cooldown 체크 (created_at 기준)
+    cur.execute("""
+        SELECT EXTRACT(EPOCH FROM (NOW() - created_at)) FROM player_popularity_votes
+        WHERE user_id=%s AND player_id=%s
+    """, (uid, player_id))
+    cooldown_row = cur.fetchone()
+    if cooldown_row and cooldown_row[0] is not None and cooldown_row[0] < 5:
+        cur.close(); conn.close()
+        raise HTTPException(status_code=429, detail="잠시 후 다시 시도해주세요")
+
     cur.execute("SELECT id FROM player_popularity_votes WHERE user_id=%s AND player_id=%s", (uid, player_id))
     existing = cur.fetchone()
     if existing:

@@ -1015,15 +1015,27 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
-                          Text('$homeScore',
-                              style: TextStyle(color: ink, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.6, fontFeatures: const [FontFeature.tabularFigures()])),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            transitionBuilder: (c, anim) =>
+                                FadeTransition(opacity: anim, child: c),
+                            child: Text('$homeScore',
+                                key: ValueKey(homeScore),
+                                style: TextStyle(color: ink, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.6, fontFeatures: const [FontFeature.tabularFigures()])),
+                          ),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 10),
                             child: Text(':',
                                 style: TextStyle(color: line2, fontSize: 24, fontWeight: FontWeight.w400)),
                           ),
-                          Text('$awayScore',
-                              style: TextStyle(color: ink, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.6, fontFeatures: const [FontFeature.tabularFigures()])),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            transitionBuilder: (c, anim) =>
+                                FadeTransition(opacity: anim, child: c),
+                            child: Text('$awayScore',
+                                key: ValueKey(awayScore),
+                                style: TextStyle(color: ink, fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.6, fontFeatures: const [FontFeature.tabularFigures()])),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 6),

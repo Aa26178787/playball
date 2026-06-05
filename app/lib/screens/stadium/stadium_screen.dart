@@ -18,6 +18,16 @@ class _StadiumScreenState extends State<StadiumScreen> {
   bool _mapReady = false;
   int _selected = -1;
 
+  @override
+  void dispose() {
+    // WebView 명시적 정리 — Native 메모리 누수 방지
+    try {
+      _webController?.stopLoading();
+      _webController = null;
+    } catch (_) {}
+    super.dispose();
+  }
+
   static const _stadiums = [
     {
       'name': '잠실야구장 (LG)',
