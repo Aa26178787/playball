@@ -2180,7 +2180,16 @@ class GameCard extends StatelessWidget {
     final cardBg = t.paper;
     final cardBd = isMyTeam ? myColor : t.line;
 
-    return Container(
+    // #18 Semantics — 게임카드 통째로 screen reader 가독
+    final semanticLabel = isFinished
+        ? '${game.homeTeam} ${game.homeScore}점 대 ${game.awayScore}점 ${game.awayTeam}, 경기 종료'
+        : isLive
+            ? '${game.homeTeam} ${game.homeScore}점 대 ${game.awayScore}점 ${game.awayTeam}, ${game.currentInning ?? 0}회 ${game.inningHalf ?? ""} 진행중'
+            : '${game.homeTeam} 대 ${game.awayTeam}, ${game.status} ${game.startTime ?? ""}';
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: cardBg,
@@ -2415,6 +2424,7 @@ class GameCard extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 
