@@ -1359,7 +1359,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 Icon(Icons.swap_horiz, size: 16, color: t.ink2),
                 const SizedBox(width: 6),
                 Text('오늘 등록말소',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: 05)),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: 0)),
                 const SizedBox(width: 8),
                 if (registrations.isNotEmpty)
                   _rosterChip('${registrations.length}명 등록', const Color(0xFF1976D2), t),
@@ -1521,9 +1521,11 @@ class GameCard extends StatelessWidget {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.map_outlined, size: 11, color: t.ink3),
           const SizedBox(width: 4),
-          Text('지도 · ${game.stadium!}',
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2)),
+          Flexible(
+            child: Text('지도 · ${game.stadium!}',
+                maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false,
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2)),
+          ),
           const SizedBox(width: 2),
           Icon(Icons.chevron_right, size: 12, color: t.ink3),
         ]),
@@ -1592,7 +1594,7 @@ class GameCard extends StatelessWidget {
         logo,
         const SizedBox(height: 7),
         Text(name,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: 05),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: 0),
             maxLines: 1, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 5),
         Text(rank != null ? '$rank위' : (isHome ? '홈' : '원정'),
