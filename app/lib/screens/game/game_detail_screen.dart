@@ -1189,8 +1189,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   // BSO overlay (검은 반투명 배경 위 흰 텍스트 + 컬러 dot)
   Widget _bsoOverlayGroup(String lbl, int count, int max, Color c) {
     // #19 색맹 대응: dot + 라벨 + 숫자 (색만 의존 X)
+    final korLabel = lbl == 'B' ? '볼' : lbl == 'S' ? '스트라이크' : '아웃';
     return Semantics(
-      label: '$lbl $count of $max',
+      label: '$korLabel $count개 / $max개',
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

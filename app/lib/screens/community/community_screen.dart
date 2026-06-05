@@ -168,7 +168,7 @@ class _PostListTabState extends State<_PostListTab>
       if (mounted) {
         final posts = data['posts'] as List? ?? [];
         if (canCache) await LocalCache.set(cacheKey, {'posts': posts});
-        setState(() {
+        if (mounted) setState(() {
           _posts = posts;
           _hasMore = posts.length >= 20;
           _loading = false;

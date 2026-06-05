@@ -470,7 +470,11 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         _backgroundPrefetch();
         // #2 온보딩 — 첫 로그인 후 마이팀 미설정 시 hint
         if (_authProvider?.isLoggedIn == true) {
-          OnboardingHelper.maybeShowFirstTimeHint(context);
+          OnboardingHelper.maybeShowFirstTimeHint(
+            context,
+            onSettingsTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const MyPageScreen())),
+          );
         }
       });
     });

@@ -5,6 +5,7 @@ import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import 'player_stats_section.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../widgets/common_widgets.dart';
 
 class PlayerDetailScreen extends StatefulWidget {
   final int playerId;
@@ -472,11 +473,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       color: const Color(0xFF111113),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 38,
-            backgroundImage: player['profile_image'] != null ? CachedNetworkImageProvider(player['profile_image']) : null,
-            child: player['profile_image'] == null ? const Icon(Icons.person, size: 38, color: Colors.white) : null,
-            backgroundColor: const Color(0xFF283593),
+          PlayerAvatar(
+            imageUrl: player['profile_image'] as String?,
+            teamCode: player['team_code'] as String?,
+            size: 76,
           ),
           const SizedBox(width: 16),
           Expanded(

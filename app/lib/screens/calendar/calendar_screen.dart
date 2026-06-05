@@ -1195,7 +1195,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (ok == true && mounted) {
         try {
           await ApiService.deleteStadiumVisit(existing['id'] as int);
-          setState(() => _visitedGames.remove(gameId));
+          if (mounted) setState(() => _visitedGames.remove(gameId));
         } catch (_) {}
       }
       return;

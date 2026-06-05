@@ -143,7 +143,8 @@
       "Bash(Measure-Object)",
       "Bash(Select-Object -ExpandProperty Count)",
       "Bash(awk NR==4696{print NR\": class start\"} NR==4932{print NR\": class end\"} *)",
-      "Bash(awk 'NR<4696 || NR>4932' \"C:/Users/qq772/playball/app/lib/screens/game/game_detail_screen.dart\")"
+      "Bash(awk 'NR<4696 || NR>4932' \"C:/Users/qq772/playball/app/lib/screens/game/game_detail_screen.dart\")",
+      "Bash(grep -rn \"await.*[;]\\\\s*$\" /c/Users/qq772/playball/app/lib --include=\"*.dart\" -A 1)"
     ]
   }
 }

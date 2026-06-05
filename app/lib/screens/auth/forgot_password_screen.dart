@@ -26,11 +26,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       await ApiService.sendPasswordResetCode(email);
-      setState(() => _step = 1);
+      if (mounted) setState(() => _step = 1);
     } on DioException catch (e) {
-      setState(() => _error = e.response?.data?['detail'] ?? '발송 실패');
+      if (mounted) setState(() => _error = e.response?.data?['detail'] ?? '발송 실패');
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
