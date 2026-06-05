@@ -2563,7 +2563,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       return const Center(child: Text('경기 시작 후 확인할 수 있습니다'));
     }
     if (_previewData == null) {
-      return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
+      return Center(child: CircularProgressIndicator(color: SemColor.brand(context), strokeWidth: 2.5));
     }
 
     final homeTeam = _gameData!['game']['home_team'];
@@ -3650,7 +3650,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildRecordDetailTab() {
     if (_recordDetailData == null) {
-      return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
+      return Center(child: CircularProgressIndicator(color: SemColor.brand(context), strokeWidth: 2.5));
     }
 
     final keyStats = _recordDetailData!['key_stats'] as Map<String, dynamic>? ?? {};

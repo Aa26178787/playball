@@ -68,8 +68,9 @@ class _CommunityScreenState extends State<CommunityScreen>
                 MaterialPageRoute(builder: (_) => const CreatePostScreen()));
             if (created == true) _latestKey.currentState?._load();
           },
-          backgroundColor: SemColor.panelDark,
-          child: const Icon(Icons.edit, color: Colors.white),
+          backgroundColor: SemColor.brand(context),
+          foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white,
+          child: Icon(Icons.edit, color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white),
         ),
       ),
       body: TabBarView(
@@ -247,19 +248,23 @@ class _PostListTabState extends State<_PostListTab>
               final selected = _category == c;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
+                child: Builder(builder: (ctx) {
+                  final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                  return ChoiceChip(
                   label: Text(c),
                   selected: selected,
-                  selectedColor: SemColor.panelDark,
+                  selectedColor: SemColor.brand(ctx),
                   labelStyle: TextStyle(
-                    color: selected ? Colors.white : Colors.black87,
+                    color: selected
+                        ? (isDark ? Colors.black : Colors.white)
+                        : (isDark ? Colors.white70 : Colors.black87),
                     fontSize: 12,
                   ),
                   onSelected: (_) {
                     setState(() => _category = c);
                     _load();
                   },
-                ),
+                ); }),
               );
             }).toList(),
           ),
@@ -354,16 +359,18 @@ class _TeamTabState extends State<_TeamTab> {
             itemBuilder: (_, i) {
               final t = _teams[i];
               final selected = _selectedTeamId == t['id'];
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              final brand = SemColor.brand(context);
               return GestureDetector(
                 onTap: () => setState(() => _selectedTeamId = t['id']),
                 child: Container(
                   margin: const EdgeInsets.only(right: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: selected ? SemColor.panelDark : Colors.grey[100],
+                    color: selected ? brand : (isDark ? Colors.white12 : Colors.grey[100]),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: selected ? SemColor.panelDark : Colors.grey[300]!),
+                      color: selected ? brand : (isDark ? Colors.white24 : Colors.grey[300]!)),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -371,7 +378,9 @@ class _TeamTabState extends State<_TeamTab> {
                       Text(t['name'] ?? '',
                           style: TextStyle(
                               fontSize: 11,
-                              color: selected ? Colors.white : Colors.black87,
+                              color: selected
+                                  ? (isDark ? Colors.black : Colors.white)
+                                  : (isDark ? Colors.white70 : Colors.black87),
                               fontWeight: FontWeight.bold)),
                     ],
                   ),
@@ -472,7 +481,7 @@ class _PostCard extends StatelessWidget {
                       children: [
                         Row(children: [
                           if (post['team_name'] != null)
-                            _tagChip(post['team_name'], color: SemColor.panelDark),
+                            _tagChip(post['team_name'], color: SemColor.brand(context)),
                           _tagChip(post['category'] ?? ''),
                         ]),
                         const SizedBox(height: 6),
@@ -493,7 +502,7 @@ class _PostCard extends StatelessWidget {
                   children: [
                     Row(children: [
                       if (post['team_name'] != null)
-                        _tagChip(post['team_name'], color: SemColor.panelDark),
+                        _tagChip(post['team_name'], color: SemColor.brand(context)),
                       _tagChip(post['category'] ?? ''),
                     ]),
                     const SizedBox(height: 6),
@@ -605,7 +614,7 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
   Widget build(BuildContext context) {
     super.build(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activeColor = SemColor.panelDark;
+    final activeColor = SemColor.brand(context);
     final navBottom = (ApiService.myTeamData.value.isNotEmpty ? 142.0 : 90.0)
         + MediaQuery.of(context).viewPadding.bottom + 56; // FAB 없으므로 nav only
 
@@ -826,7 +835,7 @@ class _FoodSubmitSheetState extends State<_FoodSubmitSheet> {
 
   @override
   Widget build(BuildContext context) {
-    const color = SemColor.panelDark;
+    final color = SemColor.brand(context);
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SizedBox(
@@ -892,7 +901,7 @@ class _FoodSubmitSheetState extends State<_FoodSubmitSheet> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle, color: color, size: 18),
+                      Icon(Icons.check_circle, color: color, size: 18),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(_selected!['name'] as String,
@@ -941,7 +950,7 @@ class _FoodSubmitSheetState extends State<_FoodSubmitSheet> {
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                         subtitle: Text(p['category'] as String? ?? '',
                             style: const TextStyle(fontSize: 11)),
-                        trailing: const Icon(Icons.add, size: 18, color: color),
+                        trailing: Icon(Icons.add, size: 18, color: color),
                         onTap: () => setState(() => _selected = p),
                       );
                     },

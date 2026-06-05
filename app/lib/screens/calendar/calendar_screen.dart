@@ -172,19 +172,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
     final total = wins + losses + draws;
     final pct = total > 0 ? (wins / total * 100).toStringAsFixed(0) : '0';
+    final brand = SemColor.brand(context);
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: SemColor.panelDark.withValues(alpha: 0.06),
+        color: brand.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
-          const Icon(Icons.stadium, size: 15, color: SemColor.panelDark),
+          Icon(Icons.stadium, size: 15, color: brand),
           const SizedBox(width: 6),
           Text('직관 승률',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: SemColor.panelDark)),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: brand)),
           const SizedBox(width: 10),
           _visitStatChip('$wins승', Colors.blue),
           const SizedBox(width: 4),
@@ -217,10 +218,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
               decoration: BoxDecoration(
-                color: SemColor.panelDark.withValues(alpha: 0.12),
+                color: brand.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text('랭킹', style: TextStyle(fontSize: 11, color: SemColor.panelDark, fontWeight: FontWeight.bold)),
+              child: Text('랭킹', style: TextStyle(fontSize: 11, color: brand, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -350,15 +351,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
               width: 36, height: 4,
               decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  Icon(Icons.emoji_events, color: SemColor.panelDark, size: 18),
-                  SizedBox(width: 6),
-                  Text('직관승률 랭킹', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  SizedBox(width: 6),
-                  Text('(최소 5회)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Icon(Icons.emoji_events, color: SemColor.brand(context), size: 18),
+                  const SizedBox(width: 6),
+                  const Text('직관승률 랭킹', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 6),
+                  const Text('(최소 5회)', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 ],
               ),
             ),
@@ -403,7 +404,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
-                                  color: rank <= 3 ? medalColor : SemColor.panelDark)),
+                                  color: rank <= 3 ? medalColor : SemColor.brand(context))),
                         );
                       },
                     ),
@@ -494,9 +495,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 bottom: (ApiService.myTeamData.value.isNotEmpty ? 142.0 : 90.0) + MediaQuery.of(context).viewPadding.bottom,
               ),
               child: FloatingActionButton(
-                backgroundColor: SemColor.panelDark,
+                backgroundColor: brand,
+                foregroundColor: isDarkApp ? Colors.black : Colors.white,
                 onPressed: () => _showAddMenu(selected),
-                child: const Icon(Icons.add, color: Colors.white),
+                child: Icon(Icons.add, color: isDarkApp ? Colors.black : Colors.white),
               ),
             )
           : null,
@@ -584,6 +586,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildCalendarGrid() {
+    final brand = SemColor.brand(context);
     final firstDay = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
     final lastDay = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0);
     final startWeekday = firstDay.weekday % 7;
@@ -637,7 +640,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       height: 46,
                       margin: const EdgeInsets.all(1),
                       decoration: BoxDecoration(
-                        color: isSelected ? SemColor.panelDark : isToday ? const Color(0xFFE8EAF6) : null,
+                        color: isSelected ? brand : isToday ? const Color(0xFFE8EAF6) : null,
                         borderRadius: BorderRadius.circular(8),
                         border: visitColor != null && !isSelected
                             ? Border.all(color: visitColor.withValues(alpha: 0.6), width: 1.5)
@@ -872,7 +875,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
             ),
             ListTile(
-              leading: const CircleAvatar(backgroundColor: SemColor.panelDark, child: Icon(Icons.event, color: Colors.white, size: 20)),
+              leading: CircleAvatar(backgroundColor: SemColor.brand(context), child: const Icon(Icons.event, color: Colors.white, size: 20)),
               title: const Text('일정 추가', style: TextStyle(fontWeight: FontWeight.w600)),
               subtitle: Text('${date.month}/${date.day} 개인 일정 등록'),
               onTap: () { Navigator.pop(context); _showAddEventDialog(date); },
@@ -1033,7 +1036,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         const SizedBox(width: 6),
                         GestureDetector(
                           onTap: () => _addToCalendar(game),
-                          child: const Icon(Icons.calendar_today, size: 18, color: SemColor.panelDark),
+                          child: Icon(Icons.calendar_today, size: 18, color: SemColor.brand(context)),
                         ),
                       ],
                     ],
