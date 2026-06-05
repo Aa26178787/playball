@@ -34,6 +34,11 @@ class SemColor {
   static const danger  = Color(0xFFC62828);  // 패투 / 위험 강조
   static const info    = Color(0xFF1976D2);  // 정보
 
+  /// 브랜드 색 (테마 분기) — 다크모드 #E5E5E7 / 라이트 #111113
+  static Color brand(BuildContext ctx) =>
+      Theme.of(ctx).brightness == Brightness.dark
+          ? const Color(0xFFE5E5E7) : panelDark;
+
   // BSO
   static const bsoB = Color(0xFF22C55E);  // ball
   static const bsoS = Color(0xFFF43F5E);  // strike

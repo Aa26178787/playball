@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
+import '../../utils/app_theme.dart';
 import 'dart:async';
 import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
@@ -124,9 +125,12 @@ class _TeamScreenState extends State<TeamScreen>
         surfaceTintColor: Colors.transparent,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: SemColor.panelDark,
+          // 다크모드: SemColor.panelDark(#111113) = scaffoldDark → 보이지 않음. 분기
+          indicatorColor: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.primaryDark : SemColor.panelDark,
           indicatorWeight: 2.5,
-          labelColor: SemColor.panelDark,
+          labelColor: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.primaryDark : SemColor.panelDark,
           unselectedLabelColor: Colors.grey,
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
@@ -1171,6 +1175,8 @@ class _TeamScreenState extends State<TeamScreen>
 
   // ignore: unused_element
   Widget _buildTeamRowLegacy(Map<String, dynamic> team, {bool isTied = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final favBorder = isDark ? AppColors.primaryDark : SemColor.panelDark;
     final code = team['short_name'] as String? ?? '';
     final gb = team['games_behind'];
     final gbNum = gb as num?;
@@ -1202,7 +1208,7 @@ class _TeamScreenState extends State<TeamScreen>
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: isFav
-            ? const BorderSide(color: SemColor.panelDark, width: 1.5)
+            ? BorderSide(color: favBorder, width: 1.5)
             : BorderSide.none,
       ),
       child: InkWell(
@@ -1242,7 +1248,7 @@ class _TeamScreenState extends State<TeamScreen>
                   ),
                   if (isFav) ...[
                     const SizedBox(width: 6),
-                    const Icon(Icons.star, size: 16, color: SemColor.panelDark),
+                    Icon(Icons.star, size: 16, color: favBorder),
                   ],
                 ],
               ),
@@ -1456,7 +1462,9 @@ Widget _buildSegmentControl(bool isDark, List<String> labels, TabController ctrl
                   fontSize: 13,
                   fontFamily: 'Pretendard',
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                  color: selected ? SemColor.panelDark : Colors.grey,
+                  color: selected
+                      ? (isDark ? AppColors.primaryDark : SemColor.panelDark)
+                      : (isDark ? Colors.grey[400] : Colors.grey),
                 ),
               ),
             ),
@@ -1602,7 +1610,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
                 cat['label'] as String,
                 style: TextStyle(
                   fontSize: 12,
-                  color: sel ? Colors.white : null,
+                  color: sel ? (isDark ? Colors.black : Colors.white) : t.ink2,
                   fontWeight: sel ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
@@ -1731,8 +1739,10 @@ class _TeamStatsTabState extends State<TeamStatsTab>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
+      return Center(child: CircularProgressIndicator(
+          color: isDark ? AppColors.primaryDark : SemColor.panelDark, strokeWidth: 2.5));
     }
     if (_error) {
       return Center(
@@ -1752,7 +1762,6 @@ class _TeamStatsTabState extends State<TeamStatsTab>
         ),
       );
     }
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       color: isDark ? SemColor.panelDark : const Color(0xFFFAFAFB),
       child: Column(
@@ -2079,11 +2088,12 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
       );
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       padding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
       decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.06),
+        color: isDark ? const Color(0xFF1F1F24) : Colors.grey.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(

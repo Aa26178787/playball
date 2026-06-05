@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
+import '../../utils/app_theme.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:image_picker/image_picker.dart';
@@ -466,15 +467,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     final selectedPersonalEvents = selected != null ? _eventsOn(selected) : <dynamic>[];
 
+    final isDarkApp = Theme.of(context).brightness == Brightness.dark;
+    final brand = isDarkApp ? AppColors.primaryDark : SemColor.panelDark;
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
-        title: const Text('캘린더', style: TextStyle(fontWeight: FontWeight.bold, color: SemColor.panelDark)),
+        title: Text('캘린더', style: TextStyle(fontWeight: FontWeight.bold, color: brand)),
         actions: [
           if (_favoriteTeamIds.isNotEmpty)
             IconButton(
-              icon: Icon(_myTeamOnly ? Icons.star : Icons.star_border, color: _myTeamOnly ? SemColor.panelDark : null),
+              icon: Icon(_myTeamOnly ? Icons.star : Icons.star_border, color: _myTeamOnly ? brand : null),
               tooltip: '마이팀만 보기',
               onPressed: () => setState(() => _myTeamOnly = !_myTeamOnly),
             ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
+import '../../utils/app_theme.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -407,7 +408,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             child: const Text('최근 등록말소', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           ),
           if (_rosterLoading)
-            const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: SemColor.panelDark)))
+            Padding(padding: const EdgeInsets.all(16), child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark)))
           else if (_rosterChanges.isEmpty)
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
@@ -422,7 +423,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             child: const Text('최근 뉴스', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           ),
           if (_newsLoading)
-            const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: SemColor.panelDark)))
+            Padding(padding: const EdgeInsets.all(16), child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark)))
           else if (_news.isEmpty)
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 4, 16, 16),
@@ -513,14 +514,18 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         border: Border(bottom: BorderSide(
-                          color: selected ? SemColor.panelDark : Colors.transparent,
+                          color: selected
+                              ? (isDark ? AppColors.primaryDark : SemColor.panelDark)
+                              : Colors.transparent,
                           width: 2.5,
                         )),
                       ),
                       child: Text(subLabels[i], style: TextStyle(
                         fontSize: 12,
                         fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                        color: selected ? SemColor.panelDark : Colors.grey,
+                        color: selected
+                            ? (isDark ? AppColors.primaryDark : SemColor.panelDark)
+                            : (isDark ? Colors.grey[400] : Colors.grey),
                       )),
                     ),
                   ),
@@ -682,7 +687,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _buildPlayers() {
-    if (_playersLoading) return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
+    if (_playersLoading) return Center(child: CircularProgressIndicator(color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark, strokeWidth: 2.5));
     if (_players.isEmpty) {
       return RefreshIndicator(
         onRefresh: _loadPlayers,
@@ -814,7 +819,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _buildGames() {
-    if (_gamesLoading) return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
+    if (_gamesLoading) return Center(child: CircularProgressIndicator(color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark, strokeWidth: 2.5));
     if (_games.isEmpty) return const Center(child: Text('경기 정보가 없습니다'));
 
     final teamName = widget.team['name'] as String? ?? '';
@@ -1008,7 +1013,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
 
   Widget _buildCommunity() {
-    if (_communityLoading) return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
+    if (_communityLoading) return Center(child: CircularProgressIndicator(color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark, strokeWidth: 2.5));
     if (_communityPosts.isEmpty) {
       return Center(
         child: Column(
@@ -1123,7 +1128,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _buildMonthlyStats() {
-    if (_monthlyLoading) return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
+    if (_monthlyLoading) return Center(child: CircularProgressIndicator(color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark, strokeWidth: 2.5));
     if (_monthlyStats.isEmpty) {
       return Center(
         child: Column(
@@ -1311,7 +1316,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _buildHeadToHead() {
-    if (_h2hLoading) return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
+    if (_h2hLoading) return Center(child: CircularProgressIndicator(color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark, strokeWidth: 2.5));
     if (_h2hRecords.isEmpty) {
       return Center(
         child: Column(
@@ -1462,7 +1467,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _buildBattingOrder() {
-    if (_battingOrderLoading) return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
+    if (_battingOrderLoading) return Center(child: CircularProgressIndicator(color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark, strokeWidth: 2.5));
     if (_battingOrderStats.isEmpty) {
       return Center(
         child: Column(

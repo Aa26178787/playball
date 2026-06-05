@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
+import '../../utils/app_theme.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../api/api_service.dart';
@@ -80,6 +81,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final isLoading = auth.isLoading || _autoLoggingIn;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brand = isDark ? AppColors.primaryDark : SemColor.panelDark;
 
     return Scaffold(
       body: SafeArea(
@@ -88,11 +91,11 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.sports_baseball, size: 80, color: SemColor.panelDark),
+              Icon(Icons.sports_baseball, size: 80, color: brand),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'PlayBall',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: SemColor.panelDark),
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: brand),
               ),
               const SizedBox(height: 48),
 
