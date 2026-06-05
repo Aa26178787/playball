@@ -4702,105 +4702,49 @@ class _FieldBgPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // 3D rollback — no-op
-    Offset proj(Offset src) => src;
-    Offset toPixel(Offset src) {
-      final p = proj(src);
-      return Offset(w * p.dx, h * p.dy);
-    }
-    final p2B   = toPixel(const Offset(0.50, 0.42));
-    final p3B   = toPixel(const Offset(0.21, 0.62));
-    final p1B   = toPixel(const Offset(0.79, 0.62));
-    final pHome = toPixel(const Offset(0.50, 0.82));
-    final pMound= toPixel(const Offset(0.50, 0.62));
+    // mockup HTML/SVG 기반 좌표 시스템 (viewBox 300x310)
+    // 정규화: x → w-relative, y → h-relative (mockup aspect ratio 적용)
+    final pHome = Offset(w * 0.50, h * 0.897);     // SVG (150, 278)
+    final p2B   = Offset(w * 0.50, h * 0.484);     // SVG (150, 150)
+    final p1B   = Offset(w * 0.693, h * 0.671);    // SVG (208, 208)
+    final p3B   = Offset(w * 0.307, h * 0.671);    // SVG (92, 208)
+    final pMound= Offset(w * 0.50, h * 0.671);     // SVG (150, 208)
 
-    // ── Outfield grass: radial gradient + 잔디 stripe (실제 mowing pattern) ──
-    // 외야수 뒤 여백까지 잔디 덮음 (전체 캔버스 cover after diamond 뒤)
-    final arcCenter = Offset(w * 0.50, h * 0.95);
-    final arcR = w * 1.10;  // 0.78 → 1.10 (외야수 뒤 여백 cover)
-    final ofPath = Path()
-      ..moveTo(0, 0)
-      ..lineTo(w, 0)
-      ..lineTo(w, h)
-      ..lineTo(0, h)
-      ..close();
-    // 캔버스 전체를 잔디로 칠한 뒤 inner diamond 따로 dirt
-
-    // 0. 외야 잔디 밖 어두운 dirt (외야 펜스 외부)
-    canvas.drawRect(Rect.fromLTWH(0, 0, w, h),
-        Paint()..color = const Color(0xFF6B3F1E));
-
-    // 잔디 base (외야 부채꼴만, 180도 from home)
-    final grassBase = Paint()
+    // 1. 배경 (어두운 잔디 radial gradient)
+    final bgPaint = Paint()
       ..shader = ui.Gradient.radial(
-        arcCenter, arcR,
-        [
-          const Color(0xFF4A8C3E),
-          const Color(0xFF6BB05A),
-          const Color(0xFF7BC068),
-        ],
-        const [0.0, 0.6, 1.0],
+        Offset(w * 0.50, h * 0.55), w * 0.75,
+        [const Color(0xFF356030), const Color(0xFF264821)],
       );
-    // 외야 잔디 부채꼴 path (90도 from home, foul line 안 영역만)
-    final outfieldFanRect = Rect.fromCircle(center: pHome, radius: w * 0.95);
-    final outfieldFanPath = Path()
-      ..moveTo(pHome.dx, pHome.dy)
-      ..arcTo(outfieldFanRect, -3.14 * 0.75, 3.14 * 0.5, false)
-      ..lineTo(pHome.dx, pHome.dy)
-      ..close();
-    canvas.save();
-    canvas.clipPath(outfieldFanPath);
-    canvas.drawPath(ofPath, grassBase);
+    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), bgPaint);
 
-    // 잔디 stripe (mowing pattern) — fan-shape (홈에서 외야로 방사형)
-    final stripePaint = Paint()
-      ..color = Colors.black.withOpacity(0.06)
-      ..strokeWidth = 1;
-    for (double ang = -3.14 * 0.88; ang <= -3.14 * 0.12; ang += 3.14 * 0.04) {
-      final p1 = arcCenter;
-      final p2 = Offset(
-        arcCenter.dx + arcR * 1.2 * math.cos(ang),
-        arcCenter.dy + arcR * 1.2 * math.sin(ang),
-      );
-      final stripe = Path()
-        ..moveTo(p1.dx, p1.dy)
-        ..lineTo(p2.dx, p2.dy);
-      final ang2 = ang + 3.14 * 0.02;
-      final p3 = Offset(
-        arcCenter.dx + arcR * 1.2 * math.cos(ang2),
-        arcCenter.dy + arcR * 1.2 * math.sin(ang2),
-      );
-      final fill = Path()
-        ..moveTo(p1.dx, p1.dy)
-        ..lineTo(p2.dx, p2.dy)
-        ..lineTo(p3.dx, p3.dy)
+    // 2. 잔디 mowing stripe 9개 (부채꼴, 90도 sweep, 교대 색상)
+    final stripeRadius = h * 0.684;  // SVG 212 / 310 = 0.684
+    final stripeRect = Rect.fromCircle(center: pHome, radius: stripeRadius);
+    const double startAng = -3.14 * 0.75;
+    const double totalSweep = 3.14 * 0.5;
+    const int stripeCount = 9;
+    final stripeSweep = totalSweep / stripeCount;
+    for (int i = 0; i < stripeCount; i++) {
+      final color = (i % 2 == 0)
+          ? const Color(0xFF54944A)
+          : const Color(0xFF4C8A42);
+      final path = Path()
+        ..moveTo(pHome.dx, pHome.dy)
+        ..arcTo(stripeRect, startAng + i * stripeSweep, stripeSweep, false)
+        ..lineTo(pHome.dx, pHome.dy)
         ..close();
-      canvas.drawPath(fill, Paint()..color = Colors.black.withOpacity(0.05));
-      canvas.drawPath(stripe, stripePaint);
+      canvas.drawPath(path, Paint()..color = color);
     }
-    canvas.restore();
 
-    // 잔디 외곽 (warning track) — 황토 띠
-    final warningPaint = Paint()
-      ..color = const Color(0xFFAD7B3F).withOpacity(0.55)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 8;
-    canvas.drawArc(Rect.fromCircle(center: arcCenter, radius: arcR),
-        -3.14 * 0.88, 3.14 * 0.76, false, warningPaint);
-
-    // ── 실제 KBO 야구장 구성: 부채꼴 dirt sector + 큰 내야 잔디 다이아몬드 ──
-    // 1. dirt sector — pHome 중심 90도 부채꼴 (1B/3B 라인 따라)
+    // 3. dirt sector (90도 부채꼴, 외야 잔디 안)
+    final dirtSectorRadius = h * 0.426;  // SVG 132 / 310 = 0.426
+    final dirtSectorRect = Rect.fromCircle(center: pHome, radius: dirtSectorRadius);
     final dirtPaint = Paint()
       ..shader = ui.Gradient.radial(
-        pHome, w * 0.48,
-        [
-          const Color(0xFFD4A04A),  // 홈 근처 밝은 황토
-          const Color(0xFFB88838),  // 중간
-          const Color(0xFFA06A28),  // 외야 경계쪽 진한
-        ],
-        const [0.0, 0.55, 1.0],
+        Offset(w * 0.50, h * 0.42), w * 0.72,
+        [const Color(0xFFD2B083), const Color(0xFFBD9763)],
       );
-    final dirtSectorRect = Rect.fromCircle(center: pHome, radius: w * 0.52);
     final dirtSectorPath = Path()
       ..moveTo(pHome.dx, pHome.dy)
       ..arcTo(dirtSectorRect, -3.14 * 0.75, 3.14 * 0.5, false)
@@ -4808,68 +4752,74 @@ class _FieldBgPainter extends CustomPainter {
       ..close();
     canvas.drawPath(dirtSectorPath, dirtPaint);
 
-    // 2. 내야 잔디 다이아몬드 (큰 — 베이스 path 안쪽 거의 가득)
+    // 4. 내야 잔디 다이아몬드 (베이스 path 안쪽)
+    // SVG polygon (150,162)(196,208)(150,254)(104,208) — 가로 92, 세로 92 (정사각 마름모)
     final infieldGrass = Paint()
       ..shader = ui.Gradient.radial(
-        Offset(w * 0.50, h * 0.62), w * 0.28,
-        [const Color(0xFF5FA851), const Color(0xFF4D8E42)],
+        Offset(w * 0.50, h * 0.671), w * 0.68,
+        [const Color(0xFF57994C), const Color(0xFF4A8741)],
       );
     final infieldGrassPath = Path()
-      ..moveTo(w * 0.50, h * 0.47)
-      ..lineTo(w * 0.27, h * 0.62)
-      ..lineTo(w * 0.50, h * 0.77)
-      ..lineTo(w * 0.73, h * 0.62)
+      ..moveTo(w * 0.50, h * 0.523)    // SVG (150, 162)
+      ..lineTo(w * 0.653, h * 0.671)   // SVG (196, 208)
+      ..lineTo(w * 0.50, h * 0.819)    // SVG (150, 254)
+      ..lineTo(w * 0.347, h * 0.671)   // SVG (104, 208)
       ..close();
     canvas.drawPath(infieldGrassPath, infieldGrass);
 
-    // 3. 베이스 주변 dirt 컷아웃 (4 베이스 + 마운드 + 홈) — 잔디 영역 내 dirt 원
-    final cutoutPaint = Paint()
-      ..shader = ui.Gradient.radial(
-        Offset(w * 0.50, h * 0.62), w * 0.30,
-        [const Color(0xFFD4A04A), const Color(0xFFB88838)],
-      );
-    canvas.drawCircle(p1B,   w * 0.045, cutoutPaint);  // 1B 자리
-    canvas.drawCircle(p2B,   w * 0.045, cutoutPaint);  // 2B 자리
-    canvas.drawCircle(p3B,   w * 0.045, cutoutPaint);  // 3B 자리
-    canvas.drawCircle(pMound, w * 0.055, cutoutPaint); // 마운드
-    canvas.drawCircle(Offset(pHome.dx, pHome.dy + h * 0.01), w * 0.055, cutoutPaint); // 홈 dirt
+    // 5. 베이스 path 외곽 stroke (1B-2B-3B 경로 dirt 두께 표시)
+    // foul line clip 적용
+    final fairClipPath = Path()
+      ..moveTo(pHome.dx, pHome.dy)
+      ..lineTo(0, h * 0.413)        // SVG (0, 128)
+      ..lineTo(0, 0)
+      ..lineTo(w, 0)
+      ..lineTo(w, h * 0.413)
+      ..close();
+    canvas.save();
+    canvas.clipPath(fairClipPath);
+    final basePathStroke = Paint()
+      ..color = const Color(0xFFC6A475)
+      ..strokeWidth = 13
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+    final basePathOutline = Path()
+      ..moveTo(w * 0.50, h * 0.858)   // SVG (150, 266)
+      ..lineTo(w * 0.693, h * 0.671)  // SVG (208, 208)
+      ..lineTo(w * 0.50, h * 0.484)   // SVG (150, 150)
+      ..lineTo(w * 0.307, h * 0.671)  // SVG (92, 208)
+      ..close();
+    canvas.drawPath(basePathOutline, basePathStroke);
+    // 1B/3B dirt 컷아웃 (잔디 안 작은 dirt 원)
+    canvas.drawCircle(p1B, w * 0.057, dirtPaint);  // SVG r=17
+    canvas.drawCircle(p3B, w * 0.057, dirtPaint);
+    canvas.restore();
 
-    // 4. dirt sector 경계 fade
-    final dirtEdgePaint = Paint()
-      ..color = const Color(0xFF8B5A28).withOpacity(0.30)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
-    canvas.drawArc(dirtSectorRect, -3.14 * 0.75, 3.14 * 0.5, false, dirtEdgePaint);
+    // 6. 2B dirt 컷아웃 (dirt sector 안에 있을 때만 보임)
+    canvas.save();
+    canvas.clipPath(dirtSectorPath);
+    canvas.drawCircle(p2B, w * 0.057, dirtPaint);
+    canvas.restore();
 
-    // 마운드 (작은 흙 원)
-    final moundPaint = Paint()
-      ..shader = ui.Gradient.radial(
-        pMound, w * 0.045,
-        [const Color(0xFFB8843A), const Color(0xFFA06A2A)],
-      );
-    canvas.drawCircle(pMound, w * 0.045, moundPaint);
+    // 7. 마운드 dirt 원 + rubber
+    canvas.drawCircle(pMound, w * 0.06, dirtPaint);  // SVG r=18
     final rubberPaint = Paint()
       ..color = Colors.white.withOpacity(0.85);
     canvas.drawRect(
-      Rect.fromCenter(center: pMound, width: w * 0.04, height: 2),
+      Rect.fromCenter(center: pMound, width: w * 0.053, height: 5),
       rubberPaint,
     );
 
-    // ── Baselines (흰 줄) ──
-    final linePaint = Paint()
-      ..color = Colors.white.withOpacity(0.85)
-      ..strokeWidth = 1.8
-      ..style = PaintingStyle.stroke;
-    canvas.drawLine(pHome, p1B, linePaint);
-    canvas.drawLine(pHome, p3B, linePaint);
-
-    // ── Foul lines extended ──
+    // 8. 파울 라인 (white)
     final foulPaint = Paint()
-      ..color = Colors.white.withOpacity(0.55)
-      ..strokeWidth = 1.4
+      ..color = Colors.white.withOpacity(0.80)
+      ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
-    canvas.drawLine(pHome, Offset(w * 0.0, h * 0.08), foulPaint);
-    canvas.drawLine(pHome, Offset(w * 1.0, h * 0.08), foulPaint);
+    canvas.drawLine(pHome, Offset(0, h * 0.413), foulPaint);
+    canvas.drawLine(pHome, Offset(w, h * 0.413), foulPaint);
+
+    // 9. 홈 plate dirt 원 (큰)
+    canvas.drawCircle(Offset(w * 0.50, h * 0.858), w * 0.10, dirtPaint);  // SVG r=30
 
     // ── Bases (대각선 시점에 맞춰 살짝 누운 마름모: height 0.65x) ──
     void drawBase(Offset pos, bool occupied) {
