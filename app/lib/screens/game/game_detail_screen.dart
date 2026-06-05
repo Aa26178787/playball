@@ -219,6 +219,27 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       if (!mounted) return;
       setState(() { _gameData = gameData; _isLoading = false; });
 
+      // 1회성 핀 hint — 진행중 게임 처음 진입 시 안내
+      final status = gameData['game']?['status'] as String? ?? '';
+      if (status == '진행') {
+        final shown = await LocalCache.hasFlag('pin_hint_shown');
+        if (!shown && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: const Text('💡 필드뷰를 상단 고정하려면 BSO 옆 "고정" 버튼을 탭하세요'),
+            duration: const Duration(seconds: 6),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+            backgroundColor: const Color(0xFF111113),
+            action: SnackBarAction(
+              label: '확인',
+              textColor: const Color(0xFFFFA000),
+              onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+            ),
+          ));
+          await LocalCache.setFlag('pin_hint_shown');
+        }
+      }
+
       // LIVE 게임 포함 항상 캐시 — 다음 진입 시 stale-while-revalidate
       await LocalCache.set(_ck('detail'), gameData);
       final isPast = _isPastGame(gameData);

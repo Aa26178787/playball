@@ -51,6 +51,17 @@ class LocalCache {
     await prefs.remove('$_prefix$key');
   }
 
+  // 1회성 flag (coachmark, onboarding 등 — TTL 없음, 영구 보존)
+  static Future<bool> hasFlag(String key) async {
+    final prefs = await _getPrefs();
+    return prefs.getBool('${_prefix}flag_$key') ?? false;
+  }
+
+  static Future<void> setFlag(String key) async {
+    final prefs = await _getPrefs();
+    await prefs.setBool('${_prefix}flag_$key', true);
+  }
+
   // 로그아웃 시 호출 — 유저 개인 데이터 캐시 삭제
   static Future<void> clearUser() async {
     final prefs = await _getPrefs();
