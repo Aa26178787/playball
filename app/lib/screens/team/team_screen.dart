@@ -462,7 +462,7 @@ class _TeamScreenState extends State<TeamScreen>
                           Row(children: [
                             Expanded(
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(99),
+                                borderRadius: BorderRadius.circular(999),
                                 child: Container(
                                   height: 6, color: track,
                                   child: Row(children: [
@@ -523,7 +523,7 @@ class _TeamScreenState extends State<TeamScreen>
                                 fontFeatures: const [FontFeature.tabularFigures()],
                               )),
                           const SizedBox(height: 4),
-                          Text('게임차', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600, color: sub)),
+                          Text('게임차', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: sub)),
                           const SizedBox(height: 6),
                           InkWell(
                             borderRadius: BorderRadius.circular(7),
@@ -1700,13 +1700,13 @@ class _TeamStatsTabState extends State<TeamStatsTab>
                       const SizedBox(height: 7),
                       LayoutBuilder(builder: (_, box) {
                         return ClipRRect(
-                          borderRadius: BorderRadius.circular(99),
+                          borderRadius: BorderRadius.circular(999),
                           child: Container(
                             height: 6, width: box.maxWidth, color: tk.track,
                             child: FractionallySizedBox(
                               alignment: Alignment.centerLeft,
                               widthFactor: barFraction,
-                              child: Container(decoration: BoxDecoration(color: tc, borderRadius: BorderRadius.circular(99))),
+                              child: Container(decoration: BoxDecoration(color: tc, borderRadius: BorderRadius.circular(999))),
                             ),
                           ),
                         );

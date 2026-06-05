@@ -101,7 +101,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey[400])),
+                    color: Colors.grey[600])),
           ),
           Expanded(child: _buildSearchField(2, _ctrl2, _results2)),
         ],

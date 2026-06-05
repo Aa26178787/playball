@@ -343,7 +343,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   ),
                   const SizedBox(height: 8),
                   if (searching)
-                    const Expanded(child: Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5)))
+                    Expanded(child: Center(child: CircularProgressIndicator(color: SemColor.brand(context), strokeWidth: 2.5)))
                   else if (matchupData != null)
                     _buildMatchupResult(matchupData!, player['name'] as String)
                   else
@@ -481,10 +481,13 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         color: SemColor.panelDark,
         child: Row(
           children: [
-            PlayerAvatar(
-              imageUrl: player['profile_image'] as String?,
-              teamCode: player['team_code'] as String?,
-              size: 76,
+            Hero(
+              tag: 'player_${widget.playerId}',
+              child: PlayerAvatar(
+                imageUrl: player['profile_image'] as String?,
+                teamCode: player['team_code'] as String?,
+                size: 76,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(

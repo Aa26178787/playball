@@ -1903,7 +1903,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               if (result.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(color: resultBg, borderRadius: BorderRadius.circular(99)),
+                  decoration: BoxDecoration(color: resultBg, borderRadius: BorderRadius.circular(999)),
                   child: Text(result,
                       style: TextStyle(fontSize: 11, color: resultFg, fontWeight: FontWeight.w700)),
                 ),
@@ -1928,7 +1928,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: paper2, borderRadius: BorderRadius.circular(99),
+                      color: paper2, borderRadius: BorderRadius.circular(999),
                       border: Border.all(color: line2, width: 1),
                     ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -2741,7 +2741,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           child: Text(typeName, style: TextStyle(fontSize: 11, color: ink2, fontWeight: FontWeight.w600))),
                       Expanded(
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(99),
+                          borderRadius: BorderRadius.circular(999),
                           child: LinearProgressIndicator(
                             value: (pk['ratio'] as num? ?? 0) / 100,
                             backgroundColor: track,
@@ -2835,7 +2835,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: c.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(99),
+                          borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(r,
                             style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w700)),
@@ -3359,7 +3359,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             if (pitchCount > 0) ...[
               const SizedBox(width: 6),
               Text('$pitchCount구',
-                  style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600])),
             ],
           ],
         ),
@@ -4493,7 +4493,7 @@ class _PlayerDot extends StatelessWidget {
               ),
               child: Text(
                 label,
-                style: TextStyle(fontSize: 7, color: textColor, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 8, color: textColor, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -4534,7 +4534,7 @@ class _PlayerDot extends StatelessWidget {
               child: Text(
                 displayName,
                 style: TextStyle(
-                  fontSize: 8.5,
+                  fontSize: 9,
                   color: textColor,
                   fontWeight: FontWeight.bold,
                   shadows: const [Shadow(offset: Offset(0, 1), blurRadius: 1, color: Colors.black)],

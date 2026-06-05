@@ -1496,7 +1496,7 @@ class GameCard extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(4)),
             child: Text(r,
-                style: TextStyle(fontSize: 7, fontWeight: FontWeight.w800, color: fg)),
+                style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: fg)),
           ),
         );
       }).toList(),

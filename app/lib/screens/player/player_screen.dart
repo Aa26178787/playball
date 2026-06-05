@@ -476,16 +476,19 @@ class _PlayerScreenState extends State<PlayerScreen>
             Expanded(
               child: Stack(
                 children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                    child: (img != null && img.isNotEmpty)
-                        ? CachedNetworkImage(
-                            imageUrl: img,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            errorWidget: (_, _, _) => _playerPlaceholder(code, color),
-                          )
-                        : _playerPlaceholder(code, color),
+                  Hero(
+                    tag: 'player_${p['id']}',
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                      child: (img != null && img.isNotEmpty)
+                          ? CachedNetworkImage(
+                              imageUrl: img,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              errorWidget: (_, _, _) => _playerPlaceholder(code, color),
+                            )
+                          : _playerPlaceholder(code, color),
+                    ),
                   ),
                   if (number != null)
                     Positioned(
@@ -629,7 +632,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   Widget _buildPopularityTab() {
     if (_popularLoading) {
-      return const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5));
+      return Center(child: CircularProgressIndicator(color: SemColor.brand(context), strokeWidth: 2.5));
     }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final items = _popularShowTeam ? _popularTeams : _popularPlayers;

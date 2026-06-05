@@ -355,7 +355,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5))
+          ? Center(child: CircularProgressIndicator(color: SemColor.brand(context), strokeWidth: 2.5))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(

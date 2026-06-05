@@ -21,9 +21,7 @@ class AppColors {
   static const textSecondary = Color(0xFF6B6B73);
   static const textTertiary = Color(0xFF9A9AA2);
 
-  static const live = Color(0xFF22C55E);
-  static const win = Color(0xFF3B82F6);
-  static const lose = Color(0xFFEF4444);
+  // live/win/lose 제거됨 — SemColor (design_tokens.dart) 사용 (live 색 이중정의 #22C55E vs #E53935 혼선 해소)
 
   AppColors._();
 }
@@ -148,8 +146,10 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: AppColors.primaryLight, width: 1.5),
+          // 다크: #3F3F46 포커스 테두리 거의 안 보임 → primaryDark
+          borderSide: BorderSide(
+              color: isDark ? AppColors.primaryDark : AppColors.primaryLight,
+              width: 1.5),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

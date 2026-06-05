@@ -96,20 +96,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  String _typeIcon(String? type) {
+  /// emoji는 기기별 렌더 상이 + 디자인 톤 이탈 → Material icon + 타입색
+  (IconData, Color) _typeIcon(String? type) {
     switch (type) {
-      case 'game_start':      return '⚾';
-      case 'score_change':    return '🔥';
-      case 'comeback':        return '⚡';
-      case 'game_end':        return '🏁';
-      case 'extra_innings':   return '🔄';
-      case 'cancelled':       return '🌧️';
-      case 'rank_change':     return '📊';
-      case 'winning_streak':  return '🔥';
-      case 'losing_streak':   return '😰';
-      case 'roster_change':   return '📋';
-      case 'new_comment':     return '💬';
-      default:                return '🔔';
+      case 'game_start':      return (Icons.sports_baseball, const Color(0xFF1976D2));
+      case 'score_change':    return (Icons.local_fire_department, const Color(0xFFE53935));
+      case 'comeback':        return (Icons.bolt, const Color(0xFFFFA000));
+      case 'game_end':        return (Icons.flag, const Color(0xFF455A64));
+      case 'extra_innings':   return (Icons.update, const Color(0xFF7B1FA2));
+      case 'cancelled':       return (Icons.umbrella, const Color(0xFF607D8B));
+      case 'rank_change':     return (Icons.leaderboard, const Color(0xFF1976D2));
+      case 'winning_streak':  return (Icons.trending_up, const Color(0xFFE53935));
+      case 'losing_streak':   return (Icons.trending_down, const Color(0xFF607D8B));
+      case 'roster_change':   return (Icons.swap_horiz, const Color(0xFF00897B));
+      case 'new_comment':     return (Icons.chat_bubble_outline, const Color(0xFF1976D2));
+      default:                return (Icons.notifications, const Color(0xFF6B6B73));
     }
   }
 
@@ -222,8 +223,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(_typeIcon(n['type'] as String?),
-                                  style: const TextStyle(fontSize: 22)),
+                              Builder(builder: (_) {
+                                final (icon, color) = _typeIcon(n['type'] as String?);
+                                return Container(
+                                  width: 36, height: 36,
+                                  decoration: BoxDecoration(
+                                    color: color.withValues(alpha: isDark ? 0.18 : 0.10),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(icon, size: 19, color: color),
+                                );
+                              }),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
@@ -263,7 +273,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     Text(
                                       _relativeTime(n['created_at'] as String),
                                       style: TextStyle(
-                                          fontSize: 11, color: Colors.grey[400]),
+                                          fontSize: 11, color: Colors.grey[600]),
                                     ),
                                   ],
                                 ),

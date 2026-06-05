@@ -32,7 +32,7 @@ class SemColor {
   static const success = Color(0xFF1976D2);  // 승투 / 성공
   static const warning = Color(0xFFFFA000);  // 경고 / 라인업
   static const danger  = Color(0xFFC62828);  // 패투 / 위험 강조
-  static const info    = Color(0xFF1976D2);  // 정보
+  static const info    = success;            // 정보 — success와 동일 (의도적 alias)
 
   /// 브랜드 색 (테마 분기) — 다크모드 #E5E5E7 / 라이트 #111113
   static Color brand(BuildContext ctx) =>
