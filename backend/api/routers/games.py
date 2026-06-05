@@ -263,11 +263,13 @@ def get_game_relay_all(game_id: int):
     cur.execute("SELECT payload FROM game_relay_archive WHERE game_id = %s", (game_id,))
     arch = cur.fetchone()
     if arch:
-        cur.close()
-        conn.close()
         result = arch[0]
-        cache_set(_cache_key, result, 3600)
-        return result
+        relays = result.get('relays') if isinstance(result, dict) else None
+        if relays:
+            cur.close()
+            conn.close()
+            cache_set(_cache_key, result, 3600)
+            return result
 
     cur.execute("""
         SELECT inning, inning_half, seqno, batter_name, pitcher_name,
@@ -422,7 +424,7 @@ def get_game_relay_all(game_id: int):
             acur = ac.cursor()
             acur.execute(
                 "INSERT INTO game_relay_archive (game_id, payload) VALUES (%s, %s) "
-                "ON CONFLICT (game_id) DO NOTHING",
+                "ON CONFLICT (game_id) DO UPDATE SET payload = EXCLUDED.payload, archived_at = NOW()",
                 (game_id, _json.dumps(result))
             )
             ac.commit()
