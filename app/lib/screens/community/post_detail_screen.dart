@@ -230,7 +230,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${_post!['author'] ?? ''} | ${(_post!['created_at'] ?? '').toString().substring(0, 10)}',
+                  '${_post!['author'] ?? ''} | ${(_post!['created_at'] ?? '').toString().length >= 10 ? (_post!['created_at'] as String).substring(0, 10) : ''}',
                   style: TextStyle(color: Colors.grey[400], fontSize: 12),
                 ),
                 const Divider(),
@@ -303,7 +303,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: Colors.grey.shade300)),
+              border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
             ),
             child: Row(
               children: [

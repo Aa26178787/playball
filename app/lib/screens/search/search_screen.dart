@@ -21,6 +21,7 @@ class _SearchScreenState extends State<SearchScreen> {
   List<String> _history = [];
   bool _loading = false;
   bool _searched = false;
+  bool _error = false;
 
   static const _historyKey = 'search_history';
   static const _maxHistory = 10;
@@ -66,7 +67,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _search(String q) async {
     q = q.trim();
     if (q.isEmpty) return;
-    setState(() { _loading = true; _searched = true; });
+    setState(() { _loading = true; _searched = true; _error = false; });
     await _saveHistory(q);
     try {
       final data = await ApiService.search(q);
@@ -78,7 +79,7 @@ class _SearchScreenState extends State<SearchScreen> {
       });
       }
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() { _loading = false; _error = true; });
     }
   }
 
@@ -115,12 +116,29 @@ class _SearchScreenState extends State<SearchScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: SemColor.panelDark, strokeWidth: 2.5))
+          ? Center(child: CircularProgressIndicator(color: SemColor.brand(context), strokeWidth: 2.5))
           : !_searched
               ? _buildHistory()
-              : _players.isEmpty && _teams.isEmpty
-                  ? const Center(child: Text('검색 결과가 없습니다', style: TextStyle(color: Colors.grey)))
-                  : _buildResults(),
+              : _error
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.wifi_off, size: 56, color: Colors.grey[400]),
+                          const SizedBox(height: 12),
+                          Text('검색에 실패했습니다', style: TextStyle(color: Colors.grey[500])),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () => _search(_ctrl.text),
+                            icon: const Icon(Icons.refresh, size: 18),
+                            label: const Text('다시 시도'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _players.isEmpty && _teams.isEmpty
+                      ? const Center(child: Text('검색 결과가 없습니다', style: TextStyle(color: Colors.grey)))
+                      : _buildResults(),
     );
   }
 

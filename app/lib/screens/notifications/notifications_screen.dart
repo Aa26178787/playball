@@ -31,12 +31,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _readAll() async {
-    await ApiService.readAllNotifications();
-    setState(() {
-      for (final n in _notifications) {
-        (n as Map)['is_read'] = true;
+    try {
+      await ApiService.readAllNotifications();
+      if (mounted) {
+        setState(() {
+          for (final n in _notifications) {
+            (n as Map)['is_read'] = true;
+          }
+        });
       }
-    });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('처리 실패. 다시 시도해주세요')));
+      }
+    }
   }
 
   Future<void> _deleteRead() async {
@@ -63,12 +71,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  Future<void> _deleteOne(int id) async {
+  /// API 삭제 성공 여부 반환 — Dismissible confirmDismiss에서 사용.
+  /// 실패 시 false → 위젯 dismiss 안 됨 (리스트-트리 불일치 크래시 방지)
+  Future<bool> _deleteOne(int id) async {
     try {
       await ApiService.deleteNotification(id);
-      if (mounted) setState(() => _notifications.removeWhere((x) => x['id'] == id));
+      return true;
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('삭제 실패')));
+      return false;
     }
   }
 
@@ -186,6 +197,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     itemBuilder: (_, i) {
                       final n = _notifications[i] as Map;
                       final unread = !(n['is_read'] as bool);
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
                       return Dismissible(
                         key: ValueKey('notif_${n['id']}'),
                         direction: DismissDirection.endToStart,
@@ -195,12 +207,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: const Icon(Icons.delete_outline, color: Colors.white),
                         ),
-                        onDismissed: (_) => _deleteOne(n['id'] as int),
+                        confirmDismiss: (_) => _deleteOne(n['id'] as int),
+                        onDismissed: (_) => setState(() => _notifications.removeWhere((x) => x['id'] == n['id'])),
                         child: InkWell(
                         onTap: () => _onTap(n),
                         child: Container(
                           color: unread
-                              ? Colors.black.withValues(alpha: 0.04)
+                              ? (isDark
+                                  ? Colors.white.withValues(alpha: 0.06)
+                                  : Colors.black.withValues(alpha: 0.04))
                               : null,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 12),
@@ -231,8 +246,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                           Container(
                                             width: 8,
                                             height: 8,
-                                            decoration: const BoxDecoration(
-                                              color: Colors.black,
+                                            decoration: BoxDecoration(
+                                              color: isDark ? Colors.white : Colors.black,
                                               shape: BoxShape.circle,
                                             ),
                                           ),

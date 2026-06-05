@@ -156,8 +156,9 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          // 다크: #111113 버튼 on #111113 scaffold → 윤곽 소실. 반전 (밝은 버튼 + 어두운 텍스트)
+          backgroundColor: isDark ? AppColors.primaryDark : AppColors.primary,
+          foregroundColor: isDark ? AppColors.primary : Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
