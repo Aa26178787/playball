@@ -77,14 +77,14 @@ class AppTheme {
         backgroundColor:
             isDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
         foregroundColor:
-            isDark ? const Color(0xFFF5F5F5) : AppColors.textPrimary,
+            isDark ? AppColors.primaryDark : AppColors.textPrimary,
         elevation: 0,
         titleTextStyle: TextStyle(
           fontFamily: 'Pretendard',
           fontSize: 18,
           fontWeight: FontWeight.w800,
-          color: isDark ? const Color(0xFFF5F5F5) : AppColors.primary,
-          letterSpacing: -0.3,
+          color: isDark ? AppColors.primaryDark : AppColors.primary,
+          letterSpacing: 0,
         ),
         systemOverlayStyle: isDark
             ? const SystemUiOverlayStyle(
@@ -183,7 +183,9 @@ class AppTheme {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        showDragHandle: true,
+        // showDragHandle false: 각 sheet이 자체 handle 가짐 (calendar 4곳 + base sheet 등)
+        // → global true 시 중복 표시
+        showDragHandle: false,
         dragHandleColor: isDark ? Colors.white24 : Colors.black26,
         dragHandleSize: const Size(36, 4),
       ),
