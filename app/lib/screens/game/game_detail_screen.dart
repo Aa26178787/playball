@@ -2087,9 +2087,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       return (batter: '', result: raw);
     }
 
-    // 간략 표기: 타점 주인만 ("타자 N타점" / "타자 홈런") — 앞뒤 상세 제거 (2026-06-06)
-    List<String> extractLines(List halfRelays) {
-      final lines = <String>[];
+    // 구조화 추출: 타자 / 타구 종류 / 타점 (2026-06-06 스코어박스 → N타점 badge)
+    List<({String batter, String desc, int rbi, bool isHR})> extractPlays(List halfRelays) {
+      final out = <({String batter, String desc, int rbi, bool isHR})>[];
       for (final r in halfRelays) {
         final rtype = r['type'] as int?;
         if (rtype != 13 && rtype != 23) continue;
@@ -2098,14 +2098,20 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         final parsed = parsePlay(raw);
         final batter = parsed.batter.replaceFirst(RegExp(r'^\d+번타자\s*'), '').trim();
         if (batter.isEmpty) continue;
-        final rbi = RegExp(r'(\d+)\s*타점').firstMatch(parsed.result);
-        if (rbi != null) {
-          lines.add('$batter ${rbi.group(1)}타점');
-        } else if (parsed.result.contains('홈런')) {
-          lines.add('$batter 홈런');
-        }
+        final result = parsed.result;
+        final m = RegExp(r'(\d+)\s*타점').firstMatch(result);
+        final isHR = result.contains('홈런');
+        if (m == null && !isHR) continue;
+        final rbi = m != null ? int.parse(m.group(1)!) : 1;
+        // 타구 desc — "(N타점)" 제거 후 잔여 텍스트
+        var desc = result
+            .replaceAll(RegExp(r'\(?\s*\d+\s*타점\s*\)?'), '')
+            .replaceAll(RegExp(r'\s{2,}'), ' ')
+            .trim();
+        if (desc.isEmpty) desc = isHR ? '홈런' : '적시타';
+        out.add((batter: batter, desc: desc, rbi: rbi, isHR: isHR));
       }
-      return lines.isEmpty ? ['득점'] : lines;
+      return out;
     }
 
     final halfCards = items.asMap().entries.map((entry) {
@@ -2115,25 +2121,15 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       final ing = item['inning'] as int;
       final half = item['half'] as String;
       final teamCode = item['teamCode'] as String;
-      final cumAway = item['cumAway'] as int;
-      final cumHome = item['cumHome'] as int;
       final halfRelays = item['relays'] as List;
       final halfLabel = half == 'top' ? '초' : '말';
 
-      // (상세 play rows 제거 — 간략 표기 extractLines만 사용, 2026-06-06)
-      // mockup row: [이닝chip][logo][txt][score badge]
-      // isHome ? row : row-reverse (홈 좌측, 원정 우측 정렬)
-      final isHome = half == 'bottom';
       final isDarkS = Theme.of(context).brightness == Brightness.dark;
       final inkS  = isDarkS ? const Color(0xFFF4F4F5) : SemColor.panelDark;
       final ink2S = isDarkS ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
       final ink3S = isDarkS ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
       final paper2S = isDarkS ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
-
-      final lines = extractLines(halfRelays);
-      final txt = lines.join('\n');
-      // 점수 형식: 홈:원정 누적 (예: '2:0')
-      final scoreText = '$cumHome:$cumAway';
+      final lineRow = isDarkS ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
 
       final inningChip = Container(
         width: 28, height: 22,
@@ -2145,37 +2141,64 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
       final logo = TeamLogo(teamCode: teamCode, size: 20);
 
-      final txtWidget = Flexible(
-        child: Text(txt,
-            style: TextStyle(fontSize: 12, color: ink2S, fontWeight: FontWeight.w600, height: 1.3),
-            textAlign: isHome ? TextAlign.left : TextAlign.right,
-            maxLines: 10, overflow: TextOverflow.ellipsis),
-      );
+      // ── 고정 컬럼 그리드 (이름 가변 길이 → 정렬 유지): [칩 28][로고 20][이름 56][타구 Expanded][N타점 48] ──
+      final plays = extractPlays(halfRelays);
 
-      final scoreBadge = Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(color: paper2S, borderRadius: BorderRadius.circular(6)),
-        child: Text(scoreText,
-            style: TextStyle(fontSize: 12, color: inkS, fontWeight: FontWeight.w800,
+      Widget rbiBadge(int rbi, bool isHR) => Container(
+        width: 48,
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isHR ? const Color(0xFFD97706).withValues(alpha: 0.14) : paper2S,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text('$rbi타점',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800,
+                color: isHR ? const Color(0xFFD97706) : inkS,
                 fontFeatures: const [FontFeature.tabularFigures()])),
       );
 
-      final rowChildren = isHome
-          ? [inningChip, const SizedBox(width: 8), logo, const SizedBox(width: 8), txtWidget, const SizedBox(width: 8), scoreBadge]
-          : [scoreBadge, const SizedBox(width: 8), txtWidget, const SizedBox(width: 8), logo, const SizedBox(width: 8), inningChip];
+      Widget playRow(({String batter, String desc, int rbi, bool isHR}) p, bool first) => Padding(
+        padding: EdgeInsets.only(top: first ? 0 : 6),
+        child: Row(children: [
+          if (first) inningChip else const SizedBox(width: 28),
+          const SizedBox(width: 8),
+          if (first) logo else const SizedBox(width: 20),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 56,
+            child: Text(p.batter, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: inkS)),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(p.desc, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink2S)),
+          ),
+          const SizedBox(width: 8),
+          rbiBadge(p.rbi, p.isHR),
+        ]),
+      );
 
-      final isDarkRow = Theme.of(context).brightness == Brightness.dark;
-      final lineRow = isDarkRow ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           border: isLast ? null : Border(bottom: BorderSide(color: lineRow, width: 1)),
         ),
-        // away: mainAxisAlignment.end로 오른쪽 가장자리부터 cluster 시작
-        child: Row(
-          mainAxisAlignment: isHome ? MainAxisAlignment.start : MainAxisAlignment.end,
-          children: rowChildren,
-        ),
+        child: plays.isEmpty
+            ? Row(children: [
+                inningChip,
+                const SizedBox(width: 8),
+                logo,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('득점', maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink2S)),
+                ),
+              ])
+            : Column(children: [
+                for (int i = 0; i < plays.length; i++) playRow(plays[i], i == 0),
+              ]),
       );
     }).toList();
 
