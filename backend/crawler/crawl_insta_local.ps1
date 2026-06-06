@@ -2,7 +2,7 @@
 # Output: insta_candidates.csv (review, then crawl_insta_handles.py --apply)
 # NOTE: ASCII-only messages (PS5.1 reads no-BOM UTF8 as ANSI)
 $ErrorActionPreference = 'Continue'
-$H = @{'User-Agent'='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'}
+$UAHDR = @{'User-Agent'='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'}
 $base = 'https://playball.duckdns.org'
 
 $players = @()
@@ -29,7 +29,7 @@ foreach ($p in $players) {
   foreach ($title in @($p.name, ($p.name + $suffix))) {
     try {
       $enc = [uri]::EscapeDataString($title)
-      $r = Invoke-WebRequest -UseBasicParsing -Uri "https://namu.wiki/w/$enc" -Headers $H -TimeoutSec 12
+      $r = Invoke-WebRequest -UseBasicParsing -Uri "https://namu.wiki/w/$enc" -Headers $UAHDR -TimeoutSec 12
       if ($r.StatusCode -eq 200) {
         $ms = [regex]::Matches($r.Content, 'instagram\.com/([A-Za-z0-9._]{2,30})')
         foreach ($m in $ms) {
