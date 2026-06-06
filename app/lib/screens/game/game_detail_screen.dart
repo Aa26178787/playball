@@ -2563,57 +2563,106 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (seasonVs != null) ...[
-            _rosterSectionHeader('시즌 상대 전적'),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          if (seasonVs != null)
+            Builder(builder: (_) {
+              final isDarkP = Theme.of(context).brightness == Brightness.dark;
+              final hCode = _gameData!['game']['home_team_code'] as String? ?? '';
+              final aCode = _gameData!['game']['away_team_code'] as String? ?? '';
+              final hC = teamColor(hCode);
+              final aC = teamColor(aCode);
+              final hw = (seasonVs['home_wins'] as int?) ?? 0;
+              final aw = (seasonVs['away_wins'] as int?) ?? 0;
+              final dr = (seasonVs['home_draws'] as int?) ?? 0;
+              final inkP = isDarkP ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+              final subP = isDarkP ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    children: [
-                      Text(homeTeam, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${seasonVs['home_wins']}승 ${seasonVs['home_losses']}패 ${seasonVs['home_draws']}무',
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    ],
+                  _rosterSectionHeader('시즌 상대 전적'),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDarkP ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isDarkP ? const Color(0xFF26262C) : const Color(0xFFEDEDF0)),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            TeamLogo(teamCode: hCode, size: 26),
+                            const SizedBox(width: 8),
+                            Text('$hw',
+                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
+                                    color: hw >= aw ? hC : subP,
+                                    fontFeatures: const [FontFeature.tabularFigures()])),
+                            const Spacer(),
+                            Text('$dr무', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: subP)),
+                            const Spacer(),
+                            Text('$aw',
+                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
+                                    color: aw >= hw ? aC : subP,
+                                    fontFeatures: const [FontFeature.tabularFigures()])),
+                            const SizedBox(width: 8),
+                            TeamLogo(teamCode: aCode, size: 26),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        // 팀컬러 양분 게이지 (다른구장 셀 띠와 동일 언어)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: SizedBox(
+                            height: 8,
+                            child: Row(children: [
+                              Expanded(flex: (hw * 10).clamp(1, 1000),
+                                  child: ColoredBox(color: hC.withValues(alpha: 0.9))),
+                              Container(width: 2, color: isDarkP ? Colors.black : Colors.white),
+                              Expanded(flex: (aw * 10).clamp(1, 1000),
+                                  child: ColoredBox(color: aC.withValues(alpha: 0.9))),
+                            ]),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text('$homeTeam $hw승 · $awayTeam $aw승${dr > 0 ? ' · $dr무' : ''}',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: inkP.withValues(alpha: 0.7))),
+                      ],
+                    ),
                   ),
-                  const Text('VS',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          color: SemColor.panelDark)),
-                  Column(
-                    children: [
-                      Text(awayTeam, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${seasonVs['away_wins']}승 ${seasonVs['away_losses']}패 ${seasonVs['away_draws']}무',
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    ],
-                  ),
+                  const SizedBox(height: 20),
+                ],
+              );
+            }),
+          _rosterSectionHeader('선발 맞대결'),
+          const SizedBox(height: 12),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _buildStarterCard(homeStarter, homeTeam)),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildStarterCard(awayStarter, awayTeam)),
                 ],
               ),
-            ),
-            const SizedBox(height: 20),
-          ],
-          _rosterSectionHeader('선발 투수'),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _buildStarterCard(homeStarter, homeTeam)),
-              const SizedBox(width: 8),
-              Expanded(child: _buildStarterCard(awayStarter, awayTeam)),
+              // 중앙 VS 칩 (맞대결 구도)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF26262C) : Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF33333A) : const Color(0xFFE0E0E4)),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 4)],
+                ),
+                child: Text('VS',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFFF4F4F5) : SemColor.panelDark)),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -3173,37 +3222,15 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     final homePitchers = pitchers.where((p) => p['team_side'] == 'home').toList();
     final awayPitchers = pitchers.where((p) => p['team_side'] == 'away').toList();
-    final winPitcher = pitchers.firstWhere((p) => p['result'] == '승', orElse: () => {});
-    final losePitcher = pitchers.firstWhere((p) => p['result'] == '패', orElse: () => {});
-    final savePitcher = pitchers.firstWhere((p) => p['result'] == '세이브', orElse: () => {});
     final homeTeam = _gameData!['game']['home_team'];
     final awayTeam = _gameData!['game']['away_team'];
 
+    // 상단 fixed 승/패/세이브 패널 제거 (2026-06-07) — 행 인라인 결과 칩으로 충분,
+    // 고정 영역이 리스트를 압박해 기록 열람 불편
     return DefaultTabController(
       length: 2,
       child: Column(
         children: [
-          if (winPitcher.isNotEmpty || losePitcher.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.all(12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  if (winPitcher.isNotEmpty)
-                    _resultSummary('승', winPitcher['name'], Colors.blue, imageUrl: winPitcher['profile_image'] as String?),
-                  if (losePitcher.isNotEmpty)
-                    _resultSummary('패', losePitcher['name'], Colors.red, imageUrl: losePitcher['profile_image'] as String?),
-                  if (savePitcher.isNotEmpty)
-                    _resultSummary('세이브', savePitcher['name'], Colors.green, imageUrl: savePitcher['profile_image'] as String?),
-                ],
-              ),
-            ),
           TabBar(
             indicatorColor: SemColor.panelDark,
             indicatorWeight: 2.5,
@@ -3222,67 +3249,44 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ],
             ),
           ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(16, 4, 16, 12 + MediaQuery.of(context).viewPadding.bottom + 116),
-            child: OutlinedButton.icon(
-              onPressed: () => showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-                builder: (_) => PitchLocationSheet(
-                  gameId: widget.gameId,
-                  gameStatus: _gameData?['game']['status'] as String? ?? '종료',
-                ),
-              ),
-              icon: const Icon(Icons.sports_baseball, size: 16),
-              label: const Text('투구 위치 보기'),
-            ),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildPitcherList(List pitchers) {
-    final navBottom = 16.0 + MediaQuery.of(context).viewPadding.bottom;
+    // 투구위치 버튼: fixed 하단 → 리스트 마지막 항목 (스크롤 동행, 리스트 풀 높이 확보)
+    final navBottom = 16.0 + MediaQuery.of(context).viewPadding.bottom + 96;
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 16, 16, navBottom),
-      children: pitchers.map((p) {
-        final pm = p as Map<String, dynamic>;
-        final playerId = pm['player_id'] as int?;
-        if (playerId == null) return _pitcherTile(pm);
-        return InkWell(
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId))),
-          child: _pitcherTile(pm),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _resultSummary(String label, String name, Color color, {String? imageUrl}) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(4),
+        ...pitchers.map((p) {
+          final pm = p as Map<String, dynamic>;
+          final playerId = pm['player_id'] as int?;
+          if (playerId == null) return _pitcherTile(pm);
+          return InkWell(
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId))),
+            child: _pitcherTile(pm),
+          );
+        }),
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: OutlinedButton.icon(
+            onPressed: () => showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+              builder: (_) => PitchLocationSheet(
+                gameId: widget.gameId,
+                gameStatus: _gameData?['game']['status'] as String? ?? '종료',
+              ),
+            ),
+            icon: const Icon(Icons.sports_baseball, size: 16),
+            label: const Text('투구 위치 보기'),
           ),
-          child: Text(label,
-              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
         ),
-        const SizedBox(height: 6),
-        CircleAvatar(
-          radius: 22,
-          backgroundColor: color.withValues(alpha: 0.1),
-          backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl) : null,
-          child: imageUrl == null ? Icon(Icons.person, size: 22, color: color) : null,
-        ),
-        const SizedBox(height: 4),
-        Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
       ],
     );
   }
@@ -3825,42 +3829,79 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         final title = h['title'] as String? ?? '';
         final url = h['url'] as String? ?? '';
         final thumbnail = h['thumbnail'] as String? ?? '';
+        final source = h['source'] as String? ?? '';
+        final published = h['published_at']?.toString() ?? '';
         final isShorts = url.contains('/shorts/');
+        final isYT = url.contains('youtu');
 
-        return GestureDetector(
-          onTap: () async {
-            await _openYouTube(url);
-          },
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            decoration: BoxDecoration(
-              color: paper,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: line, width: 1),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (thumbnail.isNotEmpty)
+        String relTime() {
+          try {
+            final dt = DateTime.parse(published).toLocal();
+            final diff = DateTime.now().difference(dt);
+            if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
+            if (diff.inHours < 24) return '${diff.inHours}시간 전';
+            return '${diff.inDays}일 전';
+          } catch (_) {
+            return '';
+          }
+        }
+
+        Widget sourceChip() => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: isYT ? const Color(0xFFE53935).withValues(alpha: 0.12) : paper2,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(isYT ? Icons.play_circle_fill : Icons.article_outlined,
+                size: 10, color: isYT ? const Color(0xFFE53935) : ink3),
+            const SizedBox(width: 3),
+            Text(isYT ? 'YouTube' : (source.isNotEmpty ? source : '뉴스'),
+                style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700,
+                    color: isYT ? const Color(0xFFE53935) : ink3)),
+          ]),
+        );
+
+        Widget metaRow() => Row(children: [
+          sourceChip(),
+          const Spacer(),
+          Text(relTime(), style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: sub)),
+        ]);
+
+        // ── 첫 항목: 히어로 카드 (대형 썸네일) ──
+        if (idx == 0) {
+          return GestureDetector(
+            onTap: () => _openYouTube(url),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: paper,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: line, width: 1),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Stack(
                     alignment: Alignment.center,
                     children: [
-                      CachedNetworkImage(
-                        imageUrl: thumbnail,
-                        width: double.infinity,
-                        height: isShorts ? 180 : 140,
-                        fit: isShorts ? BoxFit.contain : BoxFit.cover,
-                        placeholder: (_, _) => Container(
-                          height: isShorts ? 180 : 140,
-                          color: paper2,
-                        ),
-                        errorWidget: (_, _, _) => Container(
-                          height: isShorts ? 180 : 140,
-                          color: paper2,
-                          child: Icon(Icons.broken_image, color: sub),
-                        ),
-                      ),
+                      thumbnail.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: thumbnail,
+                              width: double.infinity,
+                              height: isShorts ? 180 : 160,
+                              fit: isShorts ? BoxFit.contain : BoxFit.cover,
+                              placeholder: (_, _) => Container(height: isShorts ? 180 : 160, color: paper2),
+                              errorWidget: (_, _, _) => Container(
+                                height: isShorts ? 180 : 160, color: paper2,
+                                child: Icon(Icons.broken_image, color: sub),
+                              ),
+                            )
+                          : Container(
+                              height: 120, width: double.infinity, color: paper2,
+                              child: Center(child: Icon(Icons.play_circle_outline, color: ink3, size: 36)),
+                            ),
                       Container(
                         width: 48, height: 48,
                         decoration: BoxDecoration(
@@ -3883,19 +3924,81 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           ),
                         ),
                     ],
-                  )
-                else
-                  Container(
-                    height: 80,
-                    color: paper2,
-                    child: Center(child: Icon(Icons.play_circle_outline, color: ink3, size: 36)),
                   ),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ink, letterSpacing: 0)),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ink, letterSpacing: 0, height: 1.3)),
+                        const SizedBox(height: 8),
+                        metaRow(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // ── 나머지: 컴팩트 가로 행 (좌측 썸네일 110x62) ──
+        return GestureDetector(
+          onTap: () => _openYouTube(url),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: paper,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: line, width: 1),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 110, height: 66,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      thumbnail.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: thumbnail,
+                              width: 110, height: 66, fit: BoxFit.cover,
+                              placeholder: (_, _) => Container(color: paper2),
+                              errorWidget: (_, _, _) => Container(color: paper2,
+                                  child: Icon(Icons.broken_image, size: 18, color: sub)),
+                            )
+                          : Container(color: paper2,
+                              child: Icon(Icons.play_circle_outline, color: ink3, size: 24)),
+                      Container(
+                        width: 24, height: 24,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.play_arrow, color: Colors.white, size: 15),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ink, letterSpacing: 0, height: 1.3)),
+                        const SizedBox(height: 5),
+                        metaRow(),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
