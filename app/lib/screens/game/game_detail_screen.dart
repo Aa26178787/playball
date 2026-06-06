@@ -2559,7 +2559,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final seasonVs = _previewData!['season_vs'];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      // 하단 플로팅 탭(nav)에 가림 방지 — bottom 여유 패딩
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 120 + MediaQuery.of(context).viewPadding.bottom),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -3256,7 +3257,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildPitcherList(List pitchers) {
     // 투구위치 버튼: fixed 하단 → 리스트 마지막 항목 (스크롤 동행, 리스트 풀 높이 확보)
-    final navBottom = 16.0 + MediaQuery.of(context).viewPadding.bottom + 96;
+    // 플로팅 nav 가림 방지 +120
+    final navBottom = 16.0 + MediaQuery.of(context).viewPadding.bottom + 120;
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 16, 16, navBottom),
       children: [
