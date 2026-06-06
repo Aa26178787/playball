@@ -859,9 +859,17 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 발견 2: **relay archive 동일 이벤트 이중 저장** (비인접 [타석][홈인][타석][홈인] 패턴) → 행 중복
 - **타점 산정 = 타석 뒤 홈인 이벤트 수 + (홈런 시 본인 1)** — 텍스트 표기 무관
 - byHalf 구성 시 최근 4개 윈도우 동일 (type,title,text) dedup
-- 표기: `[5말][로고] 김현수 우중간 적시 2루타 [2타점]` — 홈=좌 / 원정=우 미러, 이름 natural width, 타점 badge 48px (홈런 amber), desc 괄호 보조설명 제거
+- 표기: `[5말][로고][2타점] 김현수 우중간 적시 2루타` — 홈=좌 / 원정=우 미러, 이름 natural width, desc 괄호 보조설명 제거
+- **badge(N타점, 48px, 홈런 amber) 위치 = 로고 옆 시작 클러스터** — 변천: desc 뒤 floating(정렬 깨짐) → 가장자리 고정(eye-travel 과다) → 클러스터 (고정 컬럼 + 시선 이동 최소). desc는 Expanded(맨 끝)라 가변 길이 무영향
 - standalone 홈인(폭투 등): `주자명 홈인 (타석 외)` + 득점 badge
 - 누적 스코어(2:0) badge / 상세 play rows(playWidgets dead code ~120줄) 제거
+
+### 다른 경기 스트립 접기/펴기 토글
+- 필드뷰 아래 헤더 행 `다른 경기 N` + chevron 탭 → 접힘/펼침
+- 상태 `LocalCache('other_strip_expanded')` 영구 기억 (getStale로 로드)
+- 패널·spacer `AnimatedContainer` 200ms easeOutCubic — 높이 펼침 510 / 접힘 444 / 스트립無 408
+- 스트립은 `ClipRect + AnimatedSize` 동기화 (펼침 중 Column overflow 방지)
+- 접힘 시 본문(이닝중계/득점요약) +66px
 
 ### 순위 탭
 - **PS 확률 = 팀 순위 탭 내 세부 카테고리 chip** (시즌/전반기/최근10 옆 토글, `_showPsView`) — 별도 탭/카드 내 bar 제거
@@ -880,7 +888,8 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 다음타석 오버레이 (라이브), 좌타자 배터박스 mirror
 - 득점요약 — 다른 경기들 (밀어내기/실책 득점 케이스)
 - PS 확률 chip 토글 + % 표시
-- 핀 패널 478→482 후 overflow 재발 여부 (좁은 화면)
+- 핀 패널 510/444/408 높이 + 스트립 토글 애니메이션 (좁은 화면 overflow)
+- 득점요약 badge 클러스터 배치 — 원정(우측) 행 역방향 읽기 어색하면 전 행 좌측 통일 검토
 
 ## 진행 예정 기능
 
