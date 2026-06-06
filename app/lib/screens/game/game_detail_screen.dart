@@ -2711,76 +2711,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (seasonVs != null)
-            Builder(builder: (_) {
-              final isDarkP = Theme.of(context).brightness == Brightness.dark;
-              final hCode = _gameData!['game']['home_team_code'] as String? ?? '';
-              final aCode = _gameData!['game']['away_team_code'] as String? ?? '';
-              final hC = teamColor(hCode);
-              final aC = teamColor(aCode);
-              final hw = (seasonVs['home_wins'] as int?) ?? 0;
-              final aw = (seasonVs['away_wins'] as int?) ?? 0;
-              final dr = (seasonVs['home_draws'] as int?) ?? 0;
-              final inkP = isDarkP ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-              final subP = isDarkP ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _rosterSectionHeader('시즌 상대 전적'),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDarkP ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isDarkP ? const Color(0xFF26262C) : const Color(0xFFEDEDF0)),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            TeamLogo(teamCode: hCode, size: 26),
-                            const SizedBox(width: 8),
-                            Text('$hw',
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
-                                    color: hw >= aw ? hC : subP,
-                                    fontFeatures: const [FontFeature.tabularFigures()])),
-                            const Spacer(),
-                            Text('$dr무', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: subP)),
-                            const Spacer(),
-                            Text('$aw',
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
-                                    color: aw >= hw ? aC : subP,
-                                    fontFeatures: const [FontFeature.tabularFigures()])),
-                            const SizedBox(width: 8),
-                            TeamLogo(teamCode: aCode, size: 26),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        // 팀컬러 양분 게이지 (다른구장 셀 띠와 동일 언어)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(999),
-                          child: SizedBox(
-                            height: 8,
-                            child: Row(children: [
-                              Expanded(flex: (hw * 10).clamp(1, 1000),
-                                  child: ColoredBox(color: hC.withValues(alpha: 0.9))),
-                              Container(width: 2, color: isDarkP ? Colors.black : Colors.white),
-                              Expanded(flex: (aw * 10).clamp(1, 1000),
-                                  child: ColoredBox(color: aC.withValues(alpha: 0.9))),
-                            ]),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text('$homeTeam $hw승 · $awayTeam $aw승${dr > 0 ? ' · $dr무' : ''}',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: inkP.withValues(alpha: 0.7))),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              );
-            }),
+          // (시즌 상대전적 섹션 삭제 — 2026-06-07 요청)
           _rosterSectionHeader('선발 맞대결'),
           const SizedBox(height: 12),
           Stack(
@@ -3059,50 +2990,108 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     );
   }
 
+  // 간소화 로스터 (2026-06-07): 팀 서브탭 제거 — 한 화면 좌우 2열, 이미지 없이 타순+이름+포지션
   Widget _buildRosterTab() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     if (_rosterData == null) {
       return Center(child: CircularProgressIndicator(color: ink, strokeWidth: 2.5));
     }
 
-    final homeTeam = _gameData!['game']['home_team'];
-    final awayTeam = _gameData!['game']['away_team'];
+    final game = _gameData!['game'];
 
-    return DefaultTabController(
-      length: 2,
-      child: Column(
+    Widget teamCol(String side) {
+      final teamData = _rosterData![side] as Map<String, dynamic>;
+      final code = game['${side}_team_code'] as String? ?? '';
+      final name = game['${side}_team'] as String? ?? '';
+      final batters = (teamData['batters'] as List? ?? []).cast<Map<String, dynamic>>();
+      final pitchers = (teamData['pitchers'] as List? ?? []).cast<Map<String, dynamic>>();
+      final starters = batters
+          .where((b) => b['is_starter'] == true && (b['batting_order'] ?? 0) != 0)
+          .toList()
+        ..sort((a, b) => ((a['batting_order'] as num)).compareTo(b['batting_order'] as num));
+      final sp = pitchers.where((p) => p['is_starter'] == true).toList();
+      final spName = sp.isNotEmpty
+          ? sp.first['name'] as String? ?? ''
+          : (_previewData?['${side}_starter']?['name'] as String? ?? '');
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TabBar(
-            indicatorColor: ink,
-            indicatorWeight: 2.5,
-            labelColor: ink,
-            unselectedLabelColor: sub,
-            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: 0),
-            unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-            dividerColor: Colors.transparent,
-            tabs: [Tab(text: homeTeam), Tab(text: awayTeam)],
-          ),
-          Expanded(
-            child: TabBarView(
-              children: [
-                _buildTeamRoster(
-                  _rosterData!['home'],
-                  fallbackStarterName: _previewData?['home_starter']?['name'] as String?,
-                ),
-                _buildTeamRoster(
-                  _rosterData!['away'],
-                  fallbackStarterName: _previewData?['away_starter']?['name'] as String?,
-                ),
-              ],
+          Row(children: [
+            TeamLogo(teamCode: code, size: 18),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(name,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink)),
             ),
-          ),
+          ]),
+          const SizedBox(height: 10),
+          for (final b in starters)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 7),
+              child: Row(children: [
+                SizedBox(
+                  width: 16,
+                  child: Text('${b['batting_order']}',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: sub,
+                          fontFeatures: const [FontFeature.tabularFigures()])),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(b['name'] as String? ?? '',
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ink)),
+                ),
+                Text(b['position'] as String? ?? '',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ink3)),
+              ]),
+            ),
+          if (spName.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Container(height: 1, color: line),
+            const SizedBox(height: 8),
+            Row(children: [
+              Text('선발', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: sub)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(spName,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ink)),
+              ),
+            ]),
+          ],
         ],
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 120 + MediaQuery.of(context).viewPadding.bottom),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: paper,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: line, width: 1),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: teamCol('home')),
+            Container(width: 1, height: 320, margin: const EdgeInsets.symmetric(horizontal: 12), color: line),
+            Expanded(child: teamCol('away')),
+          ],
+        ),
       ),
     );
   }
 
+  // ignore: unused_element
   Widget _buildTeamRoster(Map<String, dynamic> teamData, {String? fallbackStarterName}) {
     final batters = teamData['batters'] as List;
     final pitchers = teamData['pitchers'] as List;
