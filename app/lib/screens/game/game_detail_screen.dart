@@ -2012,9 +2012,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final events = entry['events'] as List? ?? [];
 
     final resultTitle = resultRelay?['title'] as String? ?? '';
-    final result = resultTitle.contains(' : ')
+    var result = resultTitle.contains(' : ')
         ? resultTitle.split(' : ').sublist(1).join(' : ').trim()
         : resultTitle;
+    // 괄호 보조설명 제거 (송구 경로/홈런거리 등) — 고정 컬럼에서 잘림 방지, 핵심 상황만
+    result = result
+        .replaceAll(RegExp(r'\(.*?\)'), '')
+        .replaceAll(RegExp(r'\s{2,}'), ' ')
+        .trim();
 
     // result chip: out(red)/hit(green)/scoring(amber)/walk(blue)/default(ink3)
     Color resultBg, resultFg;
