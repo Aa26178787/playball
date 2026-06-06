@@ -1385,12 +1385,39 @@ def get_game_relay(game_id: int):
                     for r in fcur.fetchall()
                 ]
 
+                # 다음 타석 — 현재 타자 타순 + 1 (대타 교체 시 최신 row)
+                next_batter = None
+                try:
+                    cur_b = _pinfo('batter')
+                    if cur_b and cur_b.get('player_id'):
+                        fcur.execute("""
+                            SELECT batting_order FROM game_batters
+                            WHERE game_id = %s AND team_side = %s AND player_id = %s AND batting_order > 0
+                            LIMIT 1
+                        """, (game_id, batting_side, cur_b['player_id']))
+                        ob = fcur.fetchone()
+                        if ob:
+                            nxt_order = ob[0] % 9 + 1
+                            fcur.execute("""
+                                SELECT p.id, p.name, p.profile_image, p.number
+                                FROM game_batters gb
+                                JOIN players p ON p.id = gb.player_id
+                                WHERE gb.game_id = %s AND gb.team_side = %s AND gb.batting_order = %s
+                                ORDER BY gb.id DESC LIMIT 1
+                            """, (game_id, batting_side, nxt_order))
+                            nb = fcur.fetchone()
+                            if nb:
+                                next_batter = {"player_id": nb[0], "name": nb[1], "image": nb[2], "jersey": nb[3]}
+                except Exception:
+                    next_batter = None
+
                 fcur.close()
                 fconn.close()
 
                 field_view = {
                     "batting_side": batting_side,
                     "batter":  _pinfo('batter'),
+                    "next_batter": next_batter,
                     "pitcher": _pinfo('pitcher'),
                     "runners": {
                         "base1": _pinfo('base1'),

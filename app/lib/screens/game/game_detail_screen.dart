@@ -4184,6 +4184,7 @@ class _FullFieldView extends StatelessWidget {
     final defense = (fieldView?['defense'] as List?)
         ?.whereType<Map<String, dynamic>>().toList() ?? [];
     final batter  = fieldView?['batter']  as Map<String, dynamic>?;
+    final nextBatter = fieldView?['next_batter'] as Map<String, dynamic>?;
     final pitcher = fieldView?['pitcher'] as Map<String, dynamic>?;
     final runners = fieldView?['runners'] as Map<String, dynamic>?;
     final runner1 = runners?['base1'] as Map<String, dynamic>?;
@@ -4295,6 +4296,35 @@ class _FullFieldView extends StatelessWidget {
                 isBatter: true,
               ),
               68, 40,
+            ),
+          // ── 다음 타석 오버레이 (우하단) ──
+          if (nextBatter != null)
+            Positioned(
+              right: 4, bottom: 4,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(5, 3, 9, 3),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  ClipOval(
+                    child: SizedBox(
+                      width: 16, height: 16,
+                      child: (nextBatter['image'] as String?)?.isNotEmpty == true
+                          ? CachedNetworkImage(
+                              imageUrl: nextBatter['image'] as String,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, _, _) => const Icon(Icons.person, size: 12, color: Colors.white70),
+                            )
+                          : const Icon(Icons.person, size: 12, color: Colors.white70),
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Text('다음 ${nextBatter['name'] ?? ''}',
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                ]),
+              ),
             ),
         ],
       );
