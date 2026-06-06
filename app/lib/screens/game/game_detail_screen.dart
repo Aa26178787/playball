@@ -2424,28 +2424,46 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 fontFeatures: const [FontFeature.tabularFigures()])),
       );
 
+      // 중앙: 로고-선수-타구 가운데 정렬 / 사이드: 홈=좌 [이닝][타점], 어웨이=우 [타점][이닝]
       Widget playRow(({String batter, String desc, int rbi, bool isHR}) p, bool first) {
         final chipBox = first ? inningChip : const SizedBox(width: 28);
-        final logoBox = first ? logo : const SizedBox(width: 20);
-        final name = Text(p.batter, maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: inkS));
-        // Expanded — desc 길이 무관 badge를 카드 가장자리 고정 컬럼으로 (배열 일관성)
-        final desc = Expanded(
-          child: Text(p.desc, maxLines: 1, overflow: TextOverflow.ellipsis,
-              textAlign: isHome ? TextAlign.left : TextAlign.right,
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink2S)),
-        );
         final badge = rbiBadge(p.rbi, p.isHR);
-        // badge = 로고 옆 시작 클러스터 (고정 컬럼 + 시선 이동 최소 — 가장자리 고정의 eye-travel 문제 해소)
+        final sideCluster = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: isHome
+              ? [chipBox, const SizedBox(width: 4), badge]
+              : [badge, const SizedBox(width: 4), chipBox],
+        );
         return Padding(
           padding: EdgeInsets.only(top: first ? 0 : 6),
-          child: Row(
-            mainAxisAlignment: isHome ? MainAxisAlignment.start : MainAxisAlignment.end,
-            children: isHome
-                ? [chipBox, const SizedBox(width: 8), logoBox, const SizedBox(width: 8),
-                   badge, const SizedBox(width: 8), name, const SizedBox(width: 6), desc]
-                : [desc, const SizedBox(width: 6), name, const SizedBox(width: 8),
-                   badge, const SizedBox(width: 8), logoBox, const SizedBox(width: 8), chipBox],
+          child: Stack(
+            children: [
+              // 중앙 클러스터 — 양쪽 사이드 폭(84)만큼 패딩 후 center
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 84),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (first) logo else const SizedBox(width: 20),
+                    const SizedBox(width: 6),
+                    Text(p.batter, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: inkS)),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(p.desc, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink2S)),
+                    ),
+                  ],
+                ),
+              ),
+              // 사이드 클러스터 (홈=좌 / 어웨이=우)
+              Positioned(
+                left: isHome ? 0 : null,
+                right: isHome ? null : 0,
+                top: 0, bottom: 0,
+                child: Center(child: sideCluster),
+              ),
+            ],
           ),
         );
       }
@@ -2456,12 +2474,25 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           border: isLast ? null : Border(bottom: BorderSide(color: lineRow, width: 1)),
         ),
         child: plays.isEmpty
-            ? Row(
-                mainAxisAlignment: isHome ? MainAxisAlignment.start : MainAxisAlignment.end,
+            ? Stack(
                 children: [
-                  if (isHome) ...[inningChip, const SizedBox(width: 8), logo, const SizedBox(width: 8)],
-                  Text('득점', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink2S)),
-                  if (!isHome) ...[const SizedBox(width: 8), logo, const SizedBox(width: 8), inningChip],
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 84),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        logo,
+                        const SizedBox(width: 6),
+                        Text('득점', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink2S)),
+                      ],
+                    ),
+                  ),
+                  Positioned(
+                    left: isHome ? 0 : null,
+                    right: isHome ? null : 0,
+                    top: 0, bottom: 0,
+                    child: Center(child: inningChip),
+                  ),
                 ],
               )
             : Column(children: [
