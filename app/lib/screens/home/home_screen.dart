@@ -1859,7 +1859,7 @@ class GameCard extends StatelessWidget {
     // ── 상태 pill ──
     Widget statusPill() {
       if (isLive) {
-        // 라이브: LIVE dot + 'N회 초/말'
+        // 라이브: LIVE dot만 — 회차는 스코어 밑에만 표시 (중복 제거 2026-06-06)
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
@@ -1867,11 +1867,11 @@ class GameCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: _kLiveRed.withValues(alpha: 0.45), width: 1),
           ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const _LivePulseDot(size: 5),
-            const SizedBox(width: 5),
-            Text('${game.currentInning ?? 0}회 ${game.inningHalf ?? ''}',
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _kLiveRed)),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            _LivePulseDot(size: 5),
+            SizedBox(width: 5),
+            Text('LIVE',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _kLiveRed)),
           ]),
         );
       }
