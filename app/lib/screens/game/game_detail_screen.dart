@@ -2048,36 +2048,25 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 타석 헤더 — 고정 컬럼 Row: [타자 64][vs투수 80][결과 chip Expanded][투구위치 우측 고정]
-          // (Wrap 가변 흐름 → 타일 간 세로 정렬, 2026-06-07)
+          // 타석 헤더 2행 구조 (디자인 ①, 2026-06-07):
+          // 1행 [타자 vs 투수 ──── ⊕투구위치(우측 고정)] / 2행 결과 chip 풀 (잘림 0)
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 타자/vs투수 = 가변 폭 (2026-06-07 — 고정폭 잘림 회피)
-              Text(batterName,
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink, letterSpacing: 0)),
+              Flexible(
+                child: Text(batterName,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink, letterSpacing: 0)),
+              ),
               if (pitcherName != null) ...[
                 const SizedBox(width: 6),
-                Text('vs $pitcherName',
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: sub)),
+                Flexible(
+                  child: Text('vs $pitcherName',
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: sub)),
+                ),
               ],
-              const SizedBox(width: 7),
-              Expanded(
-                child: result.isNotEmpty
-                    ? Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                          decoration: BoxDecoration(color: resultBg, borderRadius: BorderRadius.circular(999)),
-                          child: Text(result,
-                              maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 11, color: resultFg, fontWeight: FontWeight.w700)),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
+              const Spacer(),
               const SizedBox(width: 6),
               if (pitches.isNotEmpty)
                 GestureDetector(
@@ -2112,6 +2101,19 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 ),
             ],
           ),
+          // 2행: 결과 chip (풀 텍스트 — 잘림 없음)
+          if (result.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(color: resultBg, borderRadius: BorderRadius.circular(999)),
+                child: Text(result,
+                    style: TextStyle(fontSize: 11, color: resultFg, fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ],
           // 이벤트 (도루/홈인/교체/방문 등)
           if (events.isNotEmpty) const SizedBox(height: 6),
           ...events.map((r) {
@@ -2161,16 +2163,18 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               if (parts.length >= 2) pitchResultText = parts[1];
             }
 
-            // pitch dot 색: B=green, T/S=red, F=orange, H/X=blue
-            Color dotBg, dotFg;
+            // pitch dot — tonal 스타일 (vivid solid → 저채도 tint bg + 600톤 fg, 결과 chip과 동일 언어)
+            Color dotFg;
             switch (pitchResult) {
-              case 'B': dotBg = const Color(0xFF4ADE80); dotFg = const Color(0xFF14532D); break;
-              case 'T': dotBg = const Color(0xFFFB7185); dotFg = const Color(0xFF881337); break;
-              case 'S': dotBg = const Color(0xFFF43F5E); dotFg = const Color(0xFF881337); break;
-              case 'F': dotBg = const Color(0xFFFB923C); dotFg = const Color(0xFF7C2D12); break;
-              case 'H': case 'X': dotBg = const Color(0xFF60A5FA); dotFg = const Color(0xFF1E3A8A); break;
-              default: dotBg = line2; dotFg = ink3;
+              case 'B': dotFg = const Color(0xFF16A34A); break;
+              case 'T': case 'S': dotFg = const Color(0xFFE11D48); break;
+              case 'F': dotFg = const Color(0xFFEA580C); break;
+              case 'H': case 'X': dotFg = const Color(0xFF2563EB); break;
+              default: dotFg = ink3;
             }
+            final dotBg = pitchResult == null
+                ? (isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0))
+                : dotFg.withValues(alpha: isDark ? 0.20 : 0.12);
 
             return Padding(
               padding: const EdgeInsets.only(top: 4),
