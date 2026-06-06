@@ -2213,15 +2213,16 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink2S)),
         );
         final badge = rbiBadge(p.rbi, p.isHR);
+        // badge = 로고 옆 시작 클러스터 (고정 컬럼 + 시선 이동 최소 — 가장자리 고정의 eye-travel 문제 해소)
         return Padding(
           padding: EdgeInsets.only(top: first ? 0 : 6),
           child: Row(
             mainAxisAlignment: isHome ? MainAxisAlignment.start : MainAxisAlignment.end,
             children: isHome
                 ? [chipBox, const SizedBox(width: 8), logoBox, const SizedBox(width: 8),
-                   name, const SizedBox(width: 6), desc, const SizedBox(width: 8), badge]
-                : [badge, const SizedBox(width: 8), desc, const SizedBox(width: 6),
-                   name, const SizedBox(width: 8), logoBox, const SizedBox(width: 8), chipBox],
+                   badge, const SizedBox(width: 8), name, const SizedBox(width: 6), desc]
+                : [desc, const SizedBox(width: 6), name, const SizedBox(width: 8),
+                   badge, const SizedBox(width: 8), logoBox, const SizedBox(width: 8), chipBox],
           ),
         );
       }
