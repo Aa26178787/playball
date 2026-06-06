@@ -4,7 +4,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
-import 'player_stats_section.dart';
 import 'player_compare_screen.dart';
 import '../../utils/team_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -27,7 +26,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   Map<String, dynamic>? _pitchStats;
   bool _isLoading = true;   // 전체 shimmer (initialData 없을 때)
   bool _bodyLoading = false; // 바디 shimmer (initialData 있어서 헤더만 먼저 표시할 때)
-  bool _useEng = false;
   bool _isFav = false;
   bool _favLoading = false;
   String _hitterTrendStat = 'avg';
@@ -196,7 +194,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     }
 
     final player = _playerData!;
-    final playerType = player['player_type'] as String? ?? '';
     return Scaffold(
       appBar: AppBar(
         title: Text(player['name'] ?? ''),
@@ -241,13 +238,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   _buildDetailStatsGrids(player),
                   if (_dailyStats.isNotEmpty) _buildTrendCard(player),
                   if (_pitchStats != null) _buildPitchStatsCard(),
-                  PlayerStatsSection(
-                    statsList: (_playerData!['stats'] as List?) ?? [],
-                    playerType: playerType,
-                    useEng: _useEng,
-                    onToggleEng: () => setState(() => _useEng = !_useEng),
-                    position: _playerData!['position'] as String?,
-                  ),
+                  // PlayerStatsSection(시즌별 표) 제거 — 3열 그리드로 대체 (2026-06-07)
                   const SizedBox(height: 80),
                 ],
               ),
@@ -720,9 +711,17 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
            ('WAR', _f1(cur['war'])), ('BABIP', _f3(cur['babip'])), ('QS', _i0(cur['qs']))]
         : [('wOBA', _f3(cur['woba'])), ('wRC+', _f1(cur['wrc_plus'])), ('WAR', _f1(cur['war'])),
            ('BABIP', _f3(cur['babip'])), ('ISO', _f3(cur['iso'])), ('득점권', _f3(cur['risp']))];
+    // 수비 (타자만 — fpct/po/assists 등 보유 시)
+    final defense = isPitcher
+        ? <(String, String)>[]
+        : [('수비율', _f3(cur['fpct'])), ('실책', _i0(cur['errors'])), ('풋아웃', _i0(cur['po'])),
+           ('어시스트', _i0(cur['assists'])), ('병살', _i0(cur['dp'])), ('포일', _i0(cur['pb']))];
+    final hasDefense = !isPitcher && defense.any((e) => e.$2 != '-' && e.$2 != '0');
+
     return Column(children: [
       _seasonGridSection('세부 기록', detail),
       _seasonGridSection('고급 지표', advanced),
+      if (hasDefense) _seasonGridSection('수비', defense),
     ]);
   }
 
@@ -1015,22 +1014,53 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         ? filtered.sublist(filtered.length - 5).reversed.toList()
         : filtered.reversed.toList();
 
+    // 그리드 섹션과 동일 디자인 언어 (2026-06-07): sub 타이틀 + paper 카드, 요약 4칸 + 경기 행 통합
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+
+    Widget summaryCell(String label, String value) => Column(children: [
+      Text(value,
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: ink,
+              letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()])),
+      const SizedBox(height: 3),
+      Text(label, style: TextStyle(fontSize: 9, color: sub)),
+    ]);
+
+    final summary = isHitter ? _hitterSummaryItems(recent) : _pitcherSummaryItems(recent);
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          isHitter ? _buildHitterSummary(recent) : _buildPitcherSummary(recent),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionLabel('최근 5경기'),
-                  isHitter ? _buildHitterRows(recent) : _buildPitcherRows(recent),
-                ],
-              ),
+          Text('최근 5경기',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+            decoration: BoxDecoration(
+              color: paper,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: line),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05),
+                  blurRadius: 6, offset: const Offset(0, 2))],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [for (final s in summary) summaryCell(s.$1, s.$2)],
+                ),
+                const SizedBox(height: 12),
+                Container(height: 1, color: line),
+                const SizedBox(height: 6),
+                isHitter ? _buildHitterRows(recent) : _buildPitcherRows(recent),
+              ],
             ),
           ),
         ],
@@ -1038,7 +1068,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     );
   }
 
-  Widget _buildHitterSummary(List<dynamic> rows) {
+  List<(String, String)> _hitterSummaryItems(List<dynamic> rows) {
     final totalAb = rows.fold<int>(0, (s, d) => s + ((d['ab'] as num?)?.toInt() ?? 0));
     final totalH  = rows.fold<int>(0, (s, d) => s + ((d['hits'] as num?)?.toInt() ?? 0));
     final totalHr = rows.fold<int>(0, (s, d) => s + ((d['home_runs'] as num?)?.toInt() ?? 0));
@@ -1047,72 +1077,33 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final totalHbp = rows.fold<int>(0, (s, d) => s + ((d['hbp'] as num?)?.toInt() ?? 0));
     final total2b  = rows.fold<int>(0, (s, d) => s + ((d['doubles'] as num?)?.toInt() ?? 0));
     final total3b  = rows.fold<int>(0, (s, d) => s + ((d['triples'] as num?)?.toInt() ?? 0));
-
     final avg = totalAb > 0 ? totalH / totalAb : 0.0;
     final tb  = totalH + total2b + 2 * total3b + 3 * totalHr;
     final slg = totalAb > 0 ? tb / totalAb : 0.0;
     final obpD = totalAb + totalBb + totalHbp;
     final obp  = obpD > 0 ? (totalH + totalBb + totalHbp) / obpD : 0.0;
-    final ops  = obp + slg;
-
-    return Card(
-      color: SemColor.panelDark.withValues(alpha: 0.05),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('최근 5경기 요약',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SemColor.panelDark)),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _summaryBox('AVG', avg.toStringAsFixed(3)),
-                _summaryBox('OPS', ops.toStringAsFixed(3)),
-                _summaryBox('HR', '$totalHr'),
-                _summaryBox('RBI', '$totalRbi'),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+    return [
+      ('AVG', avg.toStringAsFixed(3)),
+      ('OPS', (obp + slg).toStringAsFixed(3)),
+      ('HR', '$totalHr'),
+      ('RBI', '$totalRbi'),
+    ];
   }
 
-  Widget _buildPitcherSummary(List<dynamic> rows) {
+  List<(String, String)> _pitcherSummaryItems(List<dynamic> rows) {
     final totalEr = rows.fold<int>(0, (s, d) => s + ((d['er'] as num?)?.toInt() ?? 0));
     final totalH  = rows.fold<int>(0, (s, d) => s + ((d['h'] as num?)?.toInt() ?? 0));
     final totalBb = rows.fold<int>(0, (s, d) => s + ((d['bb'] as num?)?.toInt() ?? 0));
     final totalSo = rows.fold<int>(0, (s, d) => s + ((d['so'] as num?)?.toInt() ?? 0));
     final realIp  = rows.fold<double>(0.0, (s, d) => s + _ipToDecimal((d['ip'] as num?)?.toDouble() ?? 0));
-
     final era  = realIp > 0 ? totalEr * 9 / realIp : 0.0;
     final whip = realIp > 0 ? (totalH + totalBb) / realIp : 0.0;
-
-    return Card(
-      color: SemColor.panelDark.withValues(alpha: 0.05),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('최근 5경기 요약',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SemColor.panelDark)),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _summaryBox('ERA', era.toStringAsFixed(2)),
-                _summaryBox('WHIP', whip.toStringAsFixed(2)),
-                _summaryBox('K', '$totalSo'),
-                _summaryBox('IP', _fmtRealIp(realIp)),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+    return [
+      ('ERA', era.toStringAsFixed(2)),
+      ('WHIP', whip.toStringAsFixed(2)),
+      ('K', '$totalSo'),
+      ('IP', _fmtRealIp(realIp)),
+    ];
   }
 
   double _ipToDecimal(double ip) {
@@ -1125,17 +1116,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final full = realIp.floor();
     final thirds = ((realIp - full) * 3).round().clamp(0, 2);
     return thirds == 0 ? '$full' : '$full.$thirds';
-  }
-
-  Widget _summaryBox(String label, String value) {
-    return Column(
-      children: [
-        Text(value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: SemColor.panelDark)),
-        const SizedBox(height: 2),
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-      ],
-    );
   }
 
   Widget _buildHitterRows(List<dynamic> rows) {
