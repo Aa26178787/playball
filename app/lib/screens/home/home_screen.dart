@@ -1711,19 +1711,8 @@ class GameCard extends StatelessWidget {
 
     Widget teamSide(String code, String name, int score, bool won, bool isHomeSide) {
       final dim = (homeWon || awayWon) && !won;
-      // Expanded 이름 — 로고(카드 가장자리)/이름 시작/칩(스코어 경계) 전부 고정 x = 카드 간 수직선 정렬
-      final txt = Expanded(
-        child: Text(name,
-            textAlign: isHomeSide ? TextAlign.left : TextAlign.right,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: won ? FontWeight.w800 : FontWeight.w600,
-              color: dim ? t.sub : t.ink,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis),
-      );
-      // 홈/원정 미니 칩 — 항상 스코어 쪽 경계 (바깥쪽: 홈=우측끝, 원정=좌측끝)
+      // 팀명 제거 + 로고 30px (KBO 10팀 — 로고 식별 충분, ellipsis 문제 소멸)
+      // 접근성: 카드 Semantics 라벨이 팀명 커버
       Widget sideTag(String label) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
         decoration: BoxDecoration(
@@ -1736,18 +1725,16 @@ class GameCard extends StatelessWidget {
         child: Row(
           children: isHomeSide
               ? [
-                  Opacity(opacity: dim ? 0.45 : 1.0, child: TeamLogo(teamCode: code, size: 22)),
-                  const SizedBox(width: 8),
-                  txt,
-                  const SizedBox(width: 3),
+                  Opacity(opacity: dim ? 0.45 : 1.0, child: TeamLogo(teamCode: code, size: 30)),
+                  const SizedBox(width: 5),
                   sideTag('홈'),
+                  const Spacer(),
                 ]
               : [
+                  const Spacer(),
                   sideTag('원정'),
-                  const SizedBox(width: 3),
-                  txt,
-                  const SizedBox(width: 8),
-                  Opacity(opacity: dim ? 0.45 : 1.0, child: TeamLogo(teamCode: code, size: 22)),
+                  const SizedBox(width: 5),
+                  Opacity(opacity: dim ? 0.45 : 1.0, child: TeamLogo(teamCode: code, size: 30)),
                 ],
         ),
       );
