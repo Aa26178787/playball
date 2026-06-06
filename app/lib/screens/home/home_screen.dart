@@ -1709,34 +1709,24 @@ class GameCard extends StatelessWidget {
             ? '${game.homeTeam} ${game.homeScore} 대 ${game.awayScore} ${game.awayTeam}, 진행중'
             : '${game.homeTeam} 대 ${game.awayTeam}, ${game.status}';
 
-    Widget teamSide(String code, String name, int score, bool won, bool isHomeSide) {
+    // 양 사이드 3층 높이 대형 로고 + 아래 홈/원정 칩 (팀명 없음 — 로고 식별)
+    Widget teamSide(String code, bool won, bool isHomeSide) {
       final dim = (homeWon || awayWon) && !won;
-      // 팀명 제거 + 로고 30px (KBO 10팀 — 로고 식별 충분, ellipsis 문제 소멸)
-      // 접근성: 카드 Semantics 라벨이 팀명 커버
-      Widget sideTag(String label) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-        decoration: BoxDecoration(
-          color: t.paper2,
-          borderRadius: BorderRadius.circular(3),
-        ),
-        child: Text(label, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: t.sub)),
-      );
-      return Expanded(
-        child: Row(
-          children: isHomeSide
-              ? [
-                  Opacity(opacity: dim ? 0.45 : 1.0, child: TeamLogo(teamCode: code, size: 30)),
-                  const SizedBox(width: 5),
-                  sideTag('홈'),
-                  const Spacer(),
-                ]
-              : [
-                  const Spacer(),
-                  sideTag('원정'),
-                  const SizedBox(width: 5),
-                  Opacity(opacity: dim ? 0.45 : 1.0, child: TeamLogo(teamCode: code, size: 30)),
-                ],
-        ),
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Opacity(opacity: dim ? 0.45 : 1.0, child: TeamLogo(teamCode: code, size: 44)),
+          const SizedBox(height: 3),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: t.paper2,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Text(isHomeSide ? '홈' : '원정',
+                style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: t.sub)),
+          ),
+        ],
       );
     }
 
@@ -1771,47 +1761,50 @@ class GameCard extends StatelessWidget {
                     if (game.losePitcher != null) '패 ${game.losePitcher}',
                   ].join('  ·  ');
                 }
-                // 3층 구조: 1층 로고/팀명/스코어 · 2층 상태 · 3층 승패투수(선발)
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
+                // 양 사이드 대형 로고(3층 높이) | 중앙 3층 (스코어/상태/투수)
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // ── 1층: 홈로고 팀명 | 스코어(vs) | 팀명 어웨이로고 ──
-                    Row(
-                      children: [
-                        teamSide(game.homeTeamCode, game.homeTeam, game.homeScore, homeWon, true),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: showScore
-                              ? Row(mainAxisSize: MainAxisSize.min, children: [
-                                  Text('${game.homeScore}',
-                                      style: TextStyle(fontSize: 18,
-                                          fontWeight: FontWeight.w800,
-                                          color: homeWon ? homeColor : t.ink,
-                                          fontFeatures: const [FontFeature.tabularFigures()])),
-                                  Text(' : ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: t.ink3)),
-                                  Text('${game.awayScore}',
-                                      style: TextStyle(fontSize: 18,
-                                          fontWeight: FontWeight.w800,
-                                          color: awayWon ? awayColor : t.ink,
-                                          fontFeatures: const [FontFeature.tabularFigures()])),
-                                ])
+                    teamSide(game.homeTeamCode, homeWon, true),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // ── 1층: 스코어 (vs) ──
+                          showScore
+                              ? Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text('${game.homeScore}',
+                                        style: TextStyle(fontSize: 18,
+                                            fontWeight: FontWeight.w800,
+                                            color: homeWon ? homeColor : t.ink,
+                                            fontFeatures: const [FontFeature.tabularFigures()])),
+                                    Text(' : ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: t.ink3)),
+                                    Text('${game.awayScore}',
+                                        style: TextStyle(fontSize: 18,
+                                            fontWeight: FontWeight.w800,
+                                            color: awayWon ? awayColor : t.ink,
+                                            fontFeatures: const [FontFeature.tabularFigures()])),
+                                  ])
                               : Text('vs',
                                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: t.ink3)),
-                        ),
-                        teamSide(game.awayTeamCode, game.awayTeam, game.awayScore, awayWon, false),
-                      ],
+                          // ── 2층: 상태 ──
+                          const SizedBox(height: 5),
+                          statusBadge(),
+                          // ── 3층: 승패투수 또는 선발 ──
+                          if (subLine != null) ...[
+                            const SizedBox(height: 4),
+                            Text(subLine,
+                                textAlign: TextAlign.center,
+                                maxLines: 1, overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.ink3)),
+                          ],
+                        ],
+                      ),
                     ),
-                    // ── 2층: 상태 (구장명 제거 — 홈/원정 칩으로 충분) ──
-                    const SizedBox(height: 6),
-                    statusBadge(),
-                    // ── 3층: 승패투수 또는 선발 ──
-                    if (subLine != null) ...[
-                      const SizedBox(height: 5),
-                      Text(subLine,
-                          textAlign: TextAlign.center,
-                          maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.ink3)),
-                    ],
+                    teamSide(game.awayTeamCode, awayWon, false),
                   ],
                 );
               }),
