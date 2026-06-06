@@ -580,7 +580,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.easeOutCubic,
-                      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 510 : 444) : 408,
+                      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 504 : 438) : 408,
                     ),
                     Expanded(
                       // gameHeader skip — 핀 시 panel 바로 아래 TabBarView (득점요약/이닝중계)만 표시
@@ -1424,8 +1424,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
-      // 스트립 토글: 펼침 510 / 접힘 444 (+헤더 28). 스트립 없으면 408
-      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 510 : 444) : 408,
+      // 스트립 토글: 펼침 504 / 접힘 438 (+블라인드 핸들 ~23). 스트립 없으면 408
+      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 504 : 438) : 408,
       decoration: BoxDecoration(
         color: paper,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
@@ -1536,25 +1536,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             ),
           ),
-          // ── 다른 경기 접기/펴기 헤더 ──
-          if (_sameDayGames.isNotEmpty)
-            InkWell(
-              onTap: () {
-                setState(() => _stripExpanded = !_stripExpanded);
-                LocalCache.set('other_strip_expanded', _stripExpanded);
-              },
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 6, 14, 2),
-                child: Row(children: [
-                  Text('다른 경기 ${_sameDayGames.length}',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-                          color: isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2))),
-                  const Spacer(),
-                  Icon(_stripExpanded ? Icons.expand_less : Icons.expand_more,
-                      size: 16, color: isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2)),
-                ]),
-              ),
-            ),
           // AnimatedSize — 패널 높이 애니메이션과 동기화 (펼침 중 Column overflow 방지)
           if (_sameDayGames.isNotEmpty)
             ClipRect(
@@ -1567,7 +1548,34 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     : const SizedBox(width: double.infinity, height: 0),
               ),
             ),
-          const SizedBox(height: 4),
+          // ── 블라인드 핸들 (패널 중앙 하단) — 접힘: 라벨+▼ / 펼침: ▲만 ──
+          if (_sameDayGames.isNotEmpty)
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                setState(() => _stripExpanded = !_stripExpanded);
+                LocalCache.set('other_strip_expanded', _stripExpanded);
+              },
+              child: Container(
+                margin: const EdgeInsets.only(top: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  if (!_stripExpanded) ...[
+                    Text('오늘의 다른 경기',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                            color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73))),
+                    const SizedBox(width: 4),
+                  ],
+                  Icon(_stripExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      size: 16,
+                      color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73)),
+                ]),
+              ),
+            ),
         ],
       ),
     );
