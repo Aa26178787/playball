@@ -1999,12 +1999,25 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final homeCode = _gameData?['game']['home_team_code'] as String? ?? '';
     final awayCode = _gameData?['game']['away_team_code'] as String? ?? '';
 
-    // Group relay events by inning + half
+    // Group relay events by inning + half (+ 연속 중복 relay dedup — archive 이중 저장 케이스)
     final Map<String, List> byHalf = {};
     for (final r in relays) {
       final ing = r['inning'] as int? ?? 0;
       final half = r['inning_half']?.toString() ?? '0';
-      byHalf.putIfAbsent('$ing:$half', () => []).add(r);
+      final list = byHalf.putIfAbsent('$ing:$half', () => []);
+      // 최근 4개 윈도우 내 동일 이벤트 skip (비인접 중복: [타석][홈인][타석][홈인] 패턴)
+      bool dup = false;
+      for (int k = list.length - 1; k >= 0 && k >= list.length - 4; k--) {
+        final prev = list[k];
+        if (prev['type'] == r['type'] &&
+            (prev['title'] ?? '') == (r['title'] ?? '') &&
+            (prev['text'] ?? '') == (r['text'] ?? '')) {
+          dup = true;
+          break;
+        }
+      }
+      if (dup) continue;
+      list.add(r);
     }
 
     // 득점 부여한 atbat 단위로 row 분리. 누적 score 매 row마다.
@@ -2087,44 +2100,59 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       return (batter: '', result: raw);
     }
 
-    // 구조화 추출: 타자 / 타구 종류 / 타점 (2026-06-06 스코어박스 → N타점 badge)
+    // 구조화 추출 (2026-06-06 재설계): Naver title에 (N타점) 표기 없음 →
+    // 타점 = 해당 타석 뒤따르는 '홈인' 이벤트 수 + (홈런이면 타자 본인 1)
     List<({String batter, String desc, int rbi, bool isHR})> extractPlays(List halfRelays) {
       final out = <({String batter, String desc, int rbi, bool isHR})>[];
+      String? curBatter;
+      String curDesc = '';
+      bool curHR = false;
+      int curHomeins = 0;
+
+      void flush() {
+        if (curBatter == null) return;
+        final rbi = curHomeins + (curHR ? 1 : 0);
+        if (rbi > 0) {
+          out.add((batter: curBatter!, desc: curDesc, rbi: rbi, isHR: curHR));
+        }
+        curBatter = null;
+        curDesc = '';
+        curHR = false;
+        curHomeins = 0;
+      }
+
       for (final r in halfRelays) {
         final rtype = r['type'] as int?;
-        if (rtype != 13 && rtype != 23) continue;
         final raw = (r['title'] as String? ?? r['text'] as String? ?? '').trim();
-        if (raw.isEmpty) continue;
-        final parsed = parsePlay(raw);
-        final batter = parsed.batter.replaceFirst(RegExp(r'^\d+번타자\s*'), '').trim();
-        if (batter.isEmpty) continue;
-        final result = parsed.result;
-        final m = RegExp(r'(\d+)\s*타점').firstMatch(result);
-        final isHR = result.contains('홈런');
-        if (m == null && !isHR) continue;
-        final rbi = m != null ? int.parse(m.group(1)!) : 1;
-        // 타구 desc — "(N타점)" 제거 후 잔여 텍스트
-        var desc = result
-            .replaceAll(RegExp(r'\(?\s*\d+\s*타점\s*\)?'), '')
-            .replaceAll(RegExp(r'\s{2,}'), ' ')
-            .trim();
-        if (desc.isEmpty) desc = isHR ? '홈런' : '적시타';
-        out.add((batter: batter, desc: desc, rbi: rbi, isHR: isHR));
-      }
-      if (out.isEmpty) {
-        // 타점 텍스트 없는 득점 (폭투/밀어내기/실책 등) — 홈인 이벤트에서 주자 추출
-        for (final r in halfRelays) {
-          final rtype = r['type'] as int?;
-          if (rtype != 14 && rtype != 24 && rtype != 31) continue;
-          final txt = (r['title'] as String? ?? r['text'] as String? ?? '').trim();
-          if (!txt.contains('홈인') && !txt.contains('득점')) continue;
-          final nm = RegExp(r'([가-힣]{2,4})(?:이|가)?\s*홈인').firstMatch(txt);
-          // desc = 주자명 제거한 잔여 설명
-          var desc = txt;
-          if (nm != null) desc = txt.replaceFirst(nm.group(0)!, '홈인').trim();
-          out.add((batter: nm?.group(1) ?? '', desc: desc, rbi: 0, isHR: false));
+        if (rtype == 13 || rtype == 23) {
+          flush();
+          if (raw.isEmpty) continue;
+          final parsed = parsePlay(raw);
+          curBatter = parsed.batter.replaceFirst(RegExp(r'^\d+번타자\s*'), '').trim();
+          curHR = parsed.result.contains('홈런');
+          // desc — 괄호 보조설명/홈런거리 제거
+          curDesc = parsed.result
+              .replaceAll(RegExp(r'\(.*?\)'), '')
+              .replaceAll(RegExp(r'\s{2,}'), ' ')
+              .trim();
+          if (curDesc.isEmpty) curDesc = curHR ? '홈런' : '안타';
+        } else if (rtype == 14 || rtype == 24 || rtype == 31) {
+          if (!raw.contains('홈인')) continue;
+          if (curBatter != null) {
+            curHomeins++;
+          } else {
+            // standalone 홈인 (폭투/보크 등 — 타석 외 득점)
+            final nm = RegExp(r'([가-힣]{2,4})\s*:?\s*홈인').firstMatch(raw);
+            out.add((
+              batter: nm?.group(1) ?? '',
+              desc: nm != null ? '홈인 (타석 외)' : raw,
+              rbi: 0,
+              isHR: false,
+            ));
+          }
         }
       }
+      flush();
       return out;
     }
 
