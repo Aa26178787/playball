@@ -234,12 +234,13 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           : SingleChildScrollView(
               child: Column(
                 children: [
+                  // 배치: 헤더 → 핵심 2x2 → 최근5 → 세부/고급 → 트렌드 → 구종 → 시즌별 (빈도순)
                   _buildHeader(player),
                   _buildCoreStatsGrid(player),
-                  // InfoCard 제거 — 기본 정보 헤더 통합 (2026-06-07)
                   if (_dailyStats.isNotEmpty) _buildRecent5Games(player),
-                  if (_pitchStats != null) _buildPitchStatsCard(),
+                  _buildDetailStatsGrids(player),
                   if (_dailyStats.isNotEmpty) _buildTrendCard(player),
+                  if (_pitchStats != null) _buildPitchStatsCard(),
                   PlayerStatsSection(
                     statsList: (_playerData!['stats'] as List?) ?? [],
                     playerType: playerType,
@@ -628,45 +629,37 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     );
   }
 
-  // 핵심 2x2 + 세부 3열 그리드 (mockup, 현재 시즌 스탯)
-  Widget _buildCoreStatsGrid(Map<String, dynamic> player) {
+  // ── 시즌 스탯 그리드 공용 (mockup 카드 스타일) ──
+  Map? _latestSeason(Map<String, dynamic> player) {
     final stats = (player['stats'] as List?) ?? [];
-    if (stats.isEmpty) return const SizedBox.shrink();
-    // 최신 시즌
+    if (stats.isEmpty) return null;
     Map cur = stats.first as Map;
     for (final s in stats) {
       if (((s as Map)['season'] as num? ?? 0) > (cur['season'] as num? ?? 0)) cur = s;
     }
-    final isPitcher = (player['player_type'] as String? ?? '') == '투수';
-    final code = player['team_code'] as String? ?? '';
-    final rawTc = teamColor(code);
+    return cur;
+  }
+
+  static String _f3(dynamic v) => (v as num?)?.toStringAsFixed(3) ?? '-';
+  static String _f2(dynamic v) => (v as num?)?.toStringAsFixed(2) ?? '-';
+  static String _f1(dynamic v) => (v as num?)?.toStringAsFixed(1) ?? '-';
+  static String _i0(dynamic v) => '${(v as num?)?.toInt() ?? 0}';
+
+  Widget _seasonGridSection(String title, List<(String, String)> items,
+      {Color? tc, bool main = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final tc = isDark ? Color.lerp(rawTc, Colors.white, 0.25)! : rawTc;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final small = !main;
 
-    String f3(dynamic v) => (v as num?)?.toStringAsFixed(3) ?? '-';
-    String f2(dynamic v) => (v as num?)?.toStringAsFixed(2) ?? '-';
-    String i0(dynamic v) => '${(v as num?)?.toInt() ?? 0}';
-    String ip(dynamic v) => v == null ? '-' : '$v';
-
-    final main = isPitcher
-        ? [('ERA', f2(cur['era'])), ('탈삼진', i0(cur['strikeouts'])), ('승', i0(cur['wins'])), ('WHIP', f2(cur['whip']))]
-        : [('타율', f3(cur['avg'])), ('홈런', i0(cur['home_runs'])), ('타점', i0(cur['rbis'])), ('OPS', f3(cur['ops']))];
-    final detail = isPitcher
-        ? [('이닝', ip(cur['innings_pitched'])), ('세이브', i0(cur['saves'])), ('홀드', i0(cur['holds'])),
-           ('패', i0(cur['losses'])), ('피안타율', f3(cur['avg_against'])), ('QS', i0(cur['qs']))]
-        : [('안타', i0(cur['hits'])), ('도루', i0(cur['stolen_bases'])), ('볼넷', i0(cur['walks'])),
-           ('삼진', i0(cur['strikeouts'])), ('출루율', f3(cur['obp'])), ('장타율', f3(cur['slg']))];
-
-    Widget statCard((String, String) s, {bool highlight = false, bool small = false}) => Container(
+    Widget statCard((String, String) s, {bool highlight = false}) => Container(
       padding: EdgeInsets.all(small ? 12 : 14),
       decoration: BoxDecoration(
         color: paper,
         borderRadius: BorderRadius.circular(small ? 12 : 14),
-        border: Border.all(color: highlight ? tc.withValues(alpha: 0.4) : line),
+        border: Border.all(color: highlight && tc != null ? tc.withValues(alpha: 0.4) : line),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05),
             blurRadius: small ? 4 : 6, offset: Offset(0, small ? 1 : 2))],
       ),
@@ -675,7 +668,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         SizedBox(height: small ? 7 : 8),
         Text(s.$2,
             style: TextStyle(fontSize: small ? 20 : 28, fontWeight: FontWeight.w800,
-                color: highlight ? tc : ink, letterSpacing: 0,
+                color: highlight && tc != null ? tc : ink, letterSpacing: 0,
                 fontFeatures: const [FontFeature.tabularFigures()])),
       ]),
     );
@@ -683,25 +676,54 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('${cur['season'] ?? ''} 시즌 핵심 기록',
+        Text(title,
             style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
         const SizedBox(height: 12),
         GridView.count(
-          crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 1.6,
-          children: [for (int i = 0; i < main.length; i++) statCard(main[i], highlight: i == 0)],
-        ),
-        const SizedBox(height: 20),
-        Text('세부 기록',
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
-        const SizedBox(height: 12),
-        GridView.count(
-          crossAxisCount: 3, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 8, crossAxisSpacing: 8, childAspectRatio: 1.1,
-          children: [for (final s in detail) statCard(s, small: true)],
+          crossAxisCount: main ? 2 : 3, shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: main ? 10 : 8, crossAxisSpacing: main ? 10 : 8,
+          childAspectRatio: main ? 1.6 : 1.1,
+          children: [for (int i = 0; i < items.length; i++) statCard(items[i], highlight: main && i == 0)],
         ),
       ]),
     );
+  }
+
+  // 핵심 2x2
+  Widget _buildCoreStatsGrid(Map<String, dynamic> player) {
+    final cur = _latestSeason(player);
+    if (cur == null) return const SizedBox.shrink();
+    final isPitcher = (player['player_type'] as String? ?? '') == '투수';
+    final rawTc = teamColor(player['team_code'] as String? ?? '');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tc = isDark ? Color.lerp(rawTc, Colors.white, 0.25)! : rawTc;
+    final main = isPitcher
+        ? [('ERA', _f2(cur['era'])), ('탈삼진', _i0(cur['strikeouts'])), ('승', _i0(cur['wins'])), ('WHIP', _f2(cur['whip']))]
+        : [('타율', _f3(cur['avg'])), ('홈런', _i0(cur['home_runs'])), ('타점', _i0(cur['rbis'])), ('OPS', _f3(cur['ops']))];
+    return _seasonGridSection('${cur['season'] ?? ''} 시즌 핵심 기록', main, tc: tc, main: true);
+  }
+
+  // 세부 3열 + 고급 지표 3열
+  Widget _buildDetailStatsGrids(Map<String, dynamic> player) {
+    final cur = _latestSeason(player);
+    if (cur == null) return const SizedBox.shrink();
+    final isPitcher = (player['player_type'] as String? ?? '') == '투수';
+    final detail = isPitcher
+        ? [('이닝', cur['innings_pitched'] == null ? '-' : '${cur['innings_pitched']}'),
+           ('세이브', _i0(cur['saves'])), ('홀드', _i0(cur['holds'])),
+           ('패', _i0(cur['losses'])), ('피안타율', _f3(cur['avg_against'])), ('블론', _i0(cur['blown_saves']))]
+        : [('안타', _i0(cur['hits'])), ('도루', _i0(cur['stolen_bases'])), ('볼넷', _i0(cur['walks'])),
+           ('삼진', _i0(cur['strikeouts'])), ('출루율', _f3(cur['obp'])), ('장타율', _f3(cur['slg']))];
+    final advanced = isPitcher
+        ? [('FIP', _f2(cur['fip'])), ('K/9', _f2(cur['k_per_9'])), ('BB/9', _f2(cur['bb_per_9'])),
+           ('WAR', _f1(cur['war'])), ('BABIP', _f3(cur['babip'])), ('QS', _i0(cur['qs']))]
+        : [('wOBA', _f3(cur['woba'])), ('wRC+', _f1(cur['wrc_plus'])), ('WAR', _f1(cur['war'])),
+           ('BABIP', _f3(cur['babip'])), ('ISO', _f3(cur['iso'])), ('득점권', _f3(cur['risp']))];
+    return Column(children: [
+      _seasonGridSection('세부 기록', detail),
+      _seasonGridSection('고급 지표', advanced),
+    ]);
   }
 
   // ignore: unused_element
