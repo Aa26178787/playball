@@ -66,7 +66,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   bool _isLoadingInFlight = false;
   bool _isRelayRefreshing = false;
   bool _scoringExpanded = true;
-  bool _fieldPinned = false;
+  // 필드뷰 항상 상단 고정 (토글 버튼 제거 — 2026-06-06)
+  final bool _fieldPinned = true;
   List _sameDayGames = [];
   int _lineupSubIndex = 0;
   int _statsSubIndex = 0;
@@ -240,24 +241,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       if (!mounted) return;
       setState(() { _gameData = gameData; _isLoading = false; });
 
-      // 1회성 hint — 진행중 게임 처음 진입 시 안내 (핀 OR 베이스 탭)
+      // 1회성 hint — 진행중 게임 처음 진입 시 베이스 탭 안내 (핀 힌트 제거 — 필드뷰 항상 고정)
       final status = gameData['game']?['status'] as String? ?? '';
       if (status == '진행' && mounted) {
-        final pinShown = await LocalCache.hasFlag('pin_hint_shown');
         final baseShown = await LocalCache.hasFlag('base_hint_shown');
-        String? hintText;
-        String? flagKey;
-        if (!pinShown) {
-          hintText = '💡 필드뷰를 상단 고정하려면 BSO 옆 "고정" 버튼을 탭하세요';
-          flagKey = 'pin_hint_shown';
-        } else if (!baseShown) {
-          hintText = '💡 베이스(1·2·3루)를 탭하면 주자 정보를 볼 수 있어요';
-          flagKey = 'base_hint_shown';
-        }
-        if (hintText != null && flagKey != null && mounted) {
+        if (!baseShown && mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(hintText),
+            content: const Text('💡 베이스(1·2·3루)를 탭하면 주자 정보를 볼 수 있어요'),
             duration: const Duration(seconds: 6),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 100),
@@ -268,7 +259,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
             ),
           ));
-          await LocalCache.setFlag(flagKey);
+          await LocalCache.setFlag('base_hint_shown');
         }
       }
 
@@ -348,7 +339,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             .then((d) async {
               if (mounted) setState(() => _relayData = d);
               await LocalCache.set(_ck('relay_state'), d);
-              _maybeShowBaseTapHint();
             })
             .catchError((_) {});
 
@@ -424,17 +414,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     } finally {
       if (mounted) setState(() => _isRelayRefreshing = false);
     }
-  }
-
-  /// 필드뷰 베이스 탭 affordance — 라이브 첫 진입 1회 힌트
-  Future<void> _maybeShowBaseTapHint() async {
-    if (await LocalCache.hasFlag('hint_base_tap')) return;
-    await LocalCache.setFlag('hint_base_tap');
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('💡 필드뷰의 베이스를 누르면 주자 정보를 볼 수 있어요'),
-      duration: Duration(seconds: 4),
-    ));
   }
 
   void _scheduleRelayRetry() {
@@ -665,12 +644,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 5, left: 2),
-            child: Text('다른 경기',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.3)),
-          ),
-          // 1x4 한 줄 배치 (5경기 - 현재경기 = 4)
+          // 1x4 한 줄 배치 (5경기 - 현재경기 = 4) — '다른 경기' 라벨 제거 (2026-06-06)
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -1118,29 +1092,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                               ),
                             ),
                           ),
-                        // 고정 토글 — BSO overlay 오른쪽 별도
-                        Positioned(
-                          top: 8, right: 12,
-                          child: GestureDetector(
-                            onTap: () => setState(() => _fieldPinned = !_fieldPinned),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.55),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Tooltip(
-                                message: '필드뷰를 화면 상단에 고정',
-                                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                  Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                                      size: 14, color: _fieldPinned ? const Color(0xFFFFA000) : Colors.white),
-                                  const SizedBox(width: 3),
-                                  const Text('고정', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
-                                ]),
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -1167,7 +1118,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$lbl$count',
+          Text(lbl,
               style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white)),
           const SizedBox(width: 3),
           ...List.generate(max, (i) => Container(
@@ -1563,29 +1514,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           ),
                         ),
                       ),
-                    // 고정 토글 — BSO overlay 오른쪽 별도
-                    Positioned(
-                      top: 8, right: 12,
-                      child: GestureDetector(
-                        onTap: () => setState(() => _fieldPinned = !_fieldPinned),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.55),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Tooltip(
-                            message: '필드뷰를 화면 상단에 고정',
-                            child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                                  size: 14, color: _fieldPinned ? const Color(0xFFFFA000) : Colors.white),
-                              const SizedBox(width: 3),
-                              const Text('고정', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
-                            ]),
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -2146,16 +2074,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
     if (items.isEmpty) return const SizedBox.shrink();
 
-    // r['title'] = opt.text = "타자 : 결과" (at-bat description)
-    // r['text']  = item.title = category label ("홈런"/"안타" etc.)
-    String atBatText(Map r) {
-      final optText = (r['title'] as String? ?? '').trim();
-      if (optText.isNotEmpty) return optText;
-      return (r['text'] as String? ?? '').trim();
-    }
-
-
-
     ({String batter, String result}) parsePlay(String raw) {
       if (raw.contains(' : ')) {
         final idx = raw.indexOf(' : ');
@@ -2164,32 +2082,24 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       return (batter: '', result: raw);
     }
 
-    // 텍스트 추출: 모든 RBI 타석 + 홈인 정보 (line1 batter+result / line2 홈인)
+    // 간략 표기: 타점 주인만 ("타자 N타점" / "타자 홈런") — 앞뒤 상세 제거 (2026-06-06)
     List<String> extractLines(List halfRelays) {
       final lines = <String>[];
-      String? curAtBat;
       for (final r in halfRelays) {
         final rtype = r['type'] as int?;
-        if (rtype == 13 || rtype == 23) {
-          if (curAtBat != null) lines.add(curAtBat);
-          final raw = (r['title'] as String? ?? r['text'] as String? ?? '').trim();
-          if (raw.isEmpty) { curAtBat = null; continue; }
-          curAtBat = raw.contains(' : ')
-              ? raw.split(' : ').map((s) => s.trim()).join(' ')
-              : raw;
-        } else if (rtype == 14 || rtype == 24 || rtype == 31) {
-          final txt = (r['title'] as String? ?? r['text'] as String? ?? '').trim();
-          if (txt.contains('홈인') || txt.contains('득점')) {
-            if (curAtBat != null) {
-              lines.add('$curAtBat\n  └ $txt');
-              curAtBat = null;
-            } else {
-              lines.add(txt);
-            }
-          }
+        if (rtype != 13 && rtype != 23) continue;
+        final raw = (r['title'] as String? ?? r['text'] as String? ?? '').trim();
+        if (raw.isEmpty) continue;
+        final parsed = parsePlay(raw);
+        final batter = parsed.batter.replaceFirst(RegExp(r'^\d+번타자\s*'), '').trim();
+        if (batter.isEmpty) continue;
+        final rbi = RegExp(r'(\d+)\s*타점').firstMatch(parsed.result);
+        if (rbi != null) {
+          lines.add('$batter ${rbi.group(1)}타점');
+        } else if (parsed.result.contains('홈런')) {
+          lines.add('$batter 홈런');
         }
       }
-      if (curAtBat != null) lines.add(curAtBat);
       return lines.isEmpty ? ['득점'] : lines;
     }
 
@@ -2205,129 +2115,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       final halfRelays = item['relays'] as List;
       final halfLabel = half == 'top' ? '초' : '말';
 
-      // Group events: each at-bat + its subsequent홈인 runners
-      final plays = <({Map? atbat, List<Map> scorers})>[];
-      Map? curAtBat;
-      var curScorers = <Map>[];
-
-      void flushPlay() {
-        if (curAtBat != null || curScorers.isNotEmpty) {
-          plays.add((atbat: curAtBat, scorers: List.from(curScorers)));
-        }
-        curAtBat = null;
-        curScorers = [];
-      }
-
-      for (final r in halfRelays) {
-        final rtype = r['type'] as int?;
-        if (rtype == 13 || rtype == 23) {
-          if (curAtBat != null) flushPlay();
-          curAtBat = r as Map;
-        } else if (rtype == 14 || rtype == 24 || rtype == 31) {
-          final txt = (r['title'] as String? ?? r['text'] as String? ?? '').trim();
-          if (!txt.contains('홈인') && !txt.contains('득점')) continue;
-          curScorers.add(r as Map);
-        }
-      }
-      flushPlay();
-
-      // Build play rows
-      final playWidgets = <Widget>[];
-      for (final play in plays) {
-        final atbat = play.atbat;
-        final scorers = play.scorers;
-
-        bool showAtBat = false;
-        String batter = '';
-        String result = '';
-        String pitcher = '';
-        Color playColor = Colors.orange;
-        IconData playIcon = Icons.people_alt_outlined;
-
-        if (atbat != null) {
-          pitcher = (atbat['pitcher_name'] as String? ?? '').trim();
-          final txt = atBatText(atbat);
-          if (txt.isNotEmpty) {
-            final parsed = parsePlay(txt);
-            result = parsed.result;
-            batter = parsed.batter.isNotEmpty
-                ? parsed.batter
-                : (atbat['batter_name'] as String? ?? '');
-            final isHR = result.contains('홈런');
-            showAtBat = isHR || scorers.isNotEmpty;
-            playColor = isHR ? Colors.deepOrange : Colors.orange;
-            playIcon = isHR ? Icons.sports_baseball : Icons.people_alt_outlined;
-          } else if (scorers.isNotEmpty) {
-            batter = (atbat['batter_name'] as String? ?? '').trim();
-            showAtBat = batter.isNotEmpty;
-          }
-        }
-
-        if (!showAtBat && scorers.isEmpty) continue;
-
-        final onSurface = Theme.of(context).colorScheme.onSurface;
-        playWidgets.add(Padding(
-          padding: const EdgeInsets.only(top: 5),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (showAtBat) Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 1),
-                    child: Icon(playIcon, size: 14, color: playColor),
-                  ),
-                  const SizedBox(width: 5),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        RichText(
-                          text: TextSpan(
-                            style: TextStyle(fontSize: 12, color: onSurface, height: 1.4),
-                            children: [
-                              if (batter.isNotEmpty) ...[
-                                TextSpan(text: batter, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                const TextSpan(text: '  '),
-                              ],
-                              if (result.isNotEmpty)
-                                TextSpan(text: result, style: TextStyle(color: playColor, fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                        ),
-                        if (pitcher.isNotEmpty)
-                          Text(
-                            '투수: $pitcher',
-                            style: TextStyle(fontSize: 11, color: onSurface.withValues(alpha: 0.48)),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              for (final s in scorers)
-                Padding(
-                  padding: EdgeInsets.only(left: showAtBat ? 19.0 : 0.0, top: 2),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.directions_run, size: 12, color: Colors.teal),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          (s['title'] as String? ?? s['text'] as String? ?? '').trim(),
-                          style: const TextStyle(fontSize: 11, color: Colors.teal),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ));
-      }
-
+      // (상세 play rows 제거 — 간략 표기 extractLines만 사용, 2026-06-06)
       // mockup row: [이닝chip][logo][txt][score badge]
       // isHome ? row : row-reverse (홈 좌측, 원정 우측 정렬)
       final isHome = half == 'bottom';
@@ -4332,10 +4120,11 @@ class _FullFieldView extends StatelessWidget {
     'DH': Offset(30,  280),   // 지명타자 (벤치)
   };
   static const Map<String, Offset> _baseCoords = {
-    'base1':  Offset(222, 200),   // 1루 주자
-    'base2':  Offset(162, 148),   // 2루 주자
-    'base3':  Offset(78,  200),   // 3루 주자
-    'batter': Offset(132, 262),   // 타자 (mockup 우타석)
+    // 주자 dot = painter 베이스 중심 (_kMB1/2/3) 정확히 일치
+    'base1':  Offset(208, 208),   // 1루 주자
+    'base2':  Offset(150, 150),   // 2루 주자
+    'base3':  Offset(92,  208),   // 3루 주자
+    'batter': Offset(132, 262),   // 타자 우타석 (좌타는 build에서 x mirror → 168)
   };
   static const Map<String, String> _posLabel = {
     'P': '투수', 'C': '포수', '1B': '1루수', '2B': '2루수',
@@ -4448,7 +4237,11 @@ class _FullFieldView extends StatelessWidget {
           if (base3 || runner3 != null) runnerWidget(runner3, 'base3', base3),
           if (batter != null)
             placed(
-              _baseCoords['batter']!,
+              // 좌타/양타 → 좌타석(168) mirror, 우타 → 우타석(132). 홈플레이트 x=150 대칭
+              ((batter['bats'] as String? ?? '').startsWith('좌') ||
+                      (batter['bats'] as String? ?? '').startsWith('양'))
+                  ? const Offset(168, 262)
+                  : _baseCoords['batter']!,
               _PlayerDot(
                 name: batter['name'] as String? ?? '',
                 imageUrl: batter['image'] as String?,

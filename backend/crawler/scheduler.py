@@ -728,11 +728,13 @@ def _check_post_game_milestones(game_id: int):
     try:
         cur = conn.cursor()
 
-        # 해당 경기 팀 소속 타자 (볼넷/득점 포함)
+        # 해당 경기 팀 소속 타자 (볼넷/득점 포함) + 오늘 경기 기여분 (임계값 '통과' 판정용)
         cur.execute("""
             SELECT bs.player_id, p.name, t.name,
                    bs.home_runs, bs.rbis, bs.hits, bs.stolen_bases,
-                   COALESCE(bs.walks, 0), COALESCE(bs.runs, 0)
+                   COALESCE(bs.walks, 0), COALESCE(bs.runs, 0),
+                   COALESCE(gb.home_runs, 0), COALESCE(gb.rbis, 0), COALESCE(gb.hits, 0),
+                   COALESCE(gb.stolen_bases, 0), COALESCE(gb.walks, 0), COALESCE(gb.runs, 0)
             FROM game_batters gb
             JOIN batter_stats bs ON bs.player_id = gb.player_id AND bs.season = %s
             JOIN players p ON p.id = gb.player_id
@@ -741,10 +743,11 @@ def _check_post_game_milestones(game_id: int):
         """, (season, game_id))
         batters = cur.fetchall()
 
-        # 해당 경기 투수
+        # 해당 경기 투수 + 오늘 결과/탈삼진 (임계값 '통과' 판정용)
         cur.execute("""
             SELECT ps.player_id, p.name, t.name,
-                   ps.wins, ps.strikeouts, ps.saves, ps.holds
+                   ps.wins, ps.strikeouts, ps.saves, ps.holds,
+                   gp.result, COALESCE(gp.strikeouts, 0)
             FROM game_pitchers gp
             JOIN pitcher_stats ps ON ps.player_id = gp.player_id AND ps.season = %s
             JOIN players p ON p.id = gp.player_id
@@ -827,20 +830,27 @@ def _check_post_game_milestones(game_id: int):
             'season_rbi':  70,
             'season_hits': 100,
         }
+        today_batter = {}  # 통산 블록 재사용
         for row in batters:
             pid, pname, tname = row[0], row[1], row[2]
             vals = {'season_hr': row[3] or 0, 'season_rbi': row[4] or 0,
                     'season_hits': row[5] or 0, 'season_sb': row[6] or 0,
                     'season_bb': row[7] or 0, 'season_runs': row[8] or 0}
+            tg = {'season_hr': row[9], 'season_rbi': row[10], 'season_hits': row[11],
+                  'season_sb': row[12], 'season_bb': row[13], 'season_runs': row[14]}
+            today_batter[pid] = tg
             for mtype, thresholds in BATTER_SEASON.items():
+                prev = vals[mtype] - tg[mtype]
                 for t in thresholds:
-                    if vals[mtype] >= t:
+                    # 이번 경기로 임계값을 '통과'한 경우만 (stale 일괄 발송 방지 — 류현진 5승 오보 fix)
+                    if prev < t <= vals[mtype]:
                         notify_milestone(pid, pname, tname, mtype, t, season, month, game_id)
-            # 최연소 체크
+            # 최연소 체크 — 동일 통과 조건 (매 경기 재발송 방지)
             age = _age(pid)
             if age and age <= 25:
                 for mtype, min_val in YOUNG_BATTER_SEASON.items():
-                    if vals[mtype] >= min_val:
+                    prev = vals[mtype] - tg[mtype]
+                    if prev < min_val <= vals[mtype]:
                         ytype = mtype.replace('season_', 'young_season_')
                         notify_milestone(pid, pname, tname, ytype, vals[mtype],
                                          season, month, game_id, extra_label=f"{age}세")
@@ -856,18 +866,28 @@ def _check_post_game_milestones(game_id: int):
             'season_wins': 10,
             'season_so': 100,
         }
+        today_pitcher = {}  # 통산 블록 재사용
         for row in pitchers:
             pid, pname, tname = row[0], row[1], row[2]
             vals = {'season_wins': row[3] or 0, 'season_so': row[4] or 0,
                     'season_saves': row[5] or 0, 'season_holds': row[6] or 0}
+            result = (row[7] or '').strip()
+            tg = {'season_wins': 1 if result == '승' else 0,
+                  'season_so': row[8] or 0,
+                  'season_saves': 1 if result == '세이브' else 0,
+                  'season_holds': 1 if result == '홀드' else 0}
+            today_pitcher[pid] = tg
             for mtype, thresholds in PITCHER_SEASON.items():
+                prev = vals[mtype] - tg[mtype]
                 for t in thresholds:
-                    if vals[mtype] >= t:
+                    # 이번 경기로 임계값을 '통과'한 경우만
+                    if prev < t <= vals[mtype]:
                         notify_milestone(pid, pname, tname, mtype, t, season, month, game_id)
             age = _age(pid)
             if age and age <= 25:
                 for mtype, min_val in YOUNG_PITCHER_SEASON.items():
-                    if vals[mtype] >= min_val:
+                    prev = vals[mtype] - tg[mtype]
+                    if prev < min_val <= vals[mtype]:
                         ytype = mtype.replace('season_', 'young_season_')
                         notify_milestone(pid, pname, tname, ytype, vals[mtype],
                                          season, month, game_id, extra_label=f"{age}세")
@@ -900,21 +920,26 @@ def _check_post_game_milestones(game_id: int):
                     'career_sb':    [100, 200, 300],
                     'career_bb':    [500, 1000],
                 }
+                _CB_KEY = {'career_hits': 'season_hits', 'career_hr': 'season_hr',
+                           'career_rbi': 'season_rbi', 'career_sb': 'season_sb', 'career_bb': 'season_bb'}
                 for row in career_batters:
                     pid, pname, tname = row[0], row[1], row[2]
                     cvals = {'career_hits': row[3], 'career_hr': row[4],
                              'career_rbi': row[5], 'career_sb': row[6], 'career_bb': row[7]}
+                    tg = today_batter.get(pid, {})
                     for mtype, thresholds in CAREER_BATTER.items():
+                        prev = cvals[mtype] - tg.get(_CB_KEY[mtype], 0)
                         for t in thresholds:
-                            if cvals[mtype] >= t:
+                            # 이번 경기로 통과한 임계값만 (stale 일괄 발송 방지)
+                            if prev < t <= cvals[mtype]:
                                 notify_milestone(pid, pname, tname, mtype, t, season, 0, game_id)
-                    # 25세 이하 통산 100홈런/1000안타
+                    # 25세 이하 통산 100홈런/1000안타 — 동일 통과 조건
                     age = _age(pid)
                     if age and age <= 25:
-                        if cvals['career_hr'] >= 100:
+                        if cvals['career_hr'] - tg.get('season_hr', 0) < 100 <= cvals['career_hr']:
                             notify_milestone(pid, pname, tname, 'young_career_hr', 100,
                                              season, 0, game_id, extra_label=f"{age}세")
-                        if cvals['career_hits'] >= 1000:
+                        if cvals['career_hits'] - tg.get('season_hits', 0) < 1000 <= cvals['career_hits']:
                             notify_milestone(pid, pname, tname, 'young_career_hits', 1000,
                                              season, 0, game_id, extra_label=f"{age}세")
 
@@ -940,13 +965,18 @@ def _check_post_game_milestones(game_id: int):
                     'career_saves': [100, 200, 300],
                     'career_holds': [100, 200],
                 }
+                _CP_KEY = {'career_wins': 'season_wins', 'career_so': 'season_so',
+                           'career_saves': 'season_saves', 'career_holds': 'season_holds'}
                 for row in career_pitchers:
                     pid, pname, tname = row[0], row[1], row[2]
                     cvals = {'career_wins': row[3], 'career_so': row[4],
                              'career_saves': row[5], 'career_holds': row[6]}
+                    tg = today_pitcher.get(pid, {})
                     for mtype, thresholds in CAREER_PITCHER.items():
+                        prev = cvals[mtype] - tg.get(_CP_KEY[mtype], 0)
                         for t in thresholds:
-                            if cvals[mtype] >= t:
+                            # 이번 경기로 통과한 임계값만
+                            if prev < t <= cvals[mtype]:
                                 notify_milestone(pid, pname, tname, mtype, t, season, 0, game_id)
 
                 cur2.close()

@@ -343,6 +343,26 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   Set<int> _favoriteTeamIds = {};
   bool _myTeamOnly = false;
   bool _compactMode = false;
+
+  // 경기 있는 날짜 set (calendar API) — 경기 없는 날(월요일 등) 날짜 스트립 비활성용
+  final Set<String> _gameDates = {};
+  final Set<String> _loadedMonths = {};
+
+  String _dateKey(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Future<void> _loadMonthGameDates(DateTime d) async {
+    final key = '${d.year}-${d.month.toString().padLeft(2, '0')}';
+    if (_loadedMonths.contains(key)) return;
+    _loadedMonths.add(key);
+    try {
+      final data = await ApiService.getCalendar(d.year, d.month);
+      final games = data['games'] as Map? ?? {};
+      if (mounted) setState(() => _gameDates.addAll(games.keys.cast<String>()));
+    } catch (_) {
+      _loadedMonths.remove(key); // 실패 시 재시도 허용
+    }
+  }
   Timer? _autoRefreshTimer;
   int _unreadNotifCount = 0;
   int _loadGen = 0;
@@ -862,6 +882,13 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           final isSat = date.weekday == DateTime.saturday;
           final isSun = date.weekday == DateTime.sunday;
 
+          // 경기 없는 날 비활성 — 해당 월 로드 완료 후 game_dates에 없으면 disabled
+          final monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+          if (!_loadedMonths.contains(monthKey)) {
+            Future(() => _loadMonthGameDates(date));
+          }
+          final noGame = _loadedMonths.contains(monthKey) && !_gameDates.contains(_dateKey(date));
+
           final tk = _Tok.of(isDark);
           Color nameColor;
           if (isSelected) {
@@ -875,7 +902,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           }
 
           return GestureDetector(
-            onTap: () {
+            onTap: noGame ? null : () {
               if (!isSelected) {
                 setState(() => _selectedDate = date);
                 _loadGames();
@@ -883,7 +910,9 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
               }
             },
-            child: AnimatedContainer(
+            child: Opacity(
+              opacity: noGame ? 0.35 : 1.0,
+              child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               width: _itemW - 6,
               margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -923,6 +952,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   ),
                 ],
               ),
+            ),
             ),
           );
         },
@@ -1306,7 +1336,8 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             awayRank: rankMap[awayId],
             nextHomeSeries: _nextSeries(homeId, awayId),
             nextAwaySeries: _nextSeries(awayId, homeId),
-            compact: _compactMode,
+            // 마이팀 설정 시: 마이팀만 풀(hero) 카드, 나머지 compact 행 (2026-06-06)
+            compact: _compactMode || (_favoriteTeamIds.isNotEmpty && !isMyTeam),
           );
         },
       ),
@@ -1989,11 +2020,7 @@ class GameCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 15),
                       child: Row(
                         children: [
-                          _weatherChip(t),
-                          if (game.stadium != null) ...[
-                            const SizedBox(width: 6),
-                            Flexible(child: _stadiumChip(context, t)),
-                          ],
+                          // 날씨/구장 칩 → 스코어 아래로 이동 (2026-06-06)
                           const Spacer(),
                           if (isMyTeam) ...[
                             Container(
@@ -2061,7 +2088,8 @@ class GameCard extends StatelessWidget {
                                   padding: const EdgeInsets.symmetric(horizontal: 9),
                                   child: Text(':',
                                       style: TextStyle(
-                                        fontSize: 22, fontWeight: FontWeight.w400, color: t.line2,
+                                        // line2 → ink3: 양 스코어 사이 구분자 가시성 (2026-06-06)
+                                        fontSize: 22, fontWeight: FontWeight.w600, color: t.ink3,
                                       )),
                                 ),
                                 Text('${game.awayScore}',
@@ -2096,6 +2124,21 @@ class GameCard extends StatelessWidget {
                       teamId: game.awayTeamId, buildContext: context,
                     )),
                   ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // ── 날씨 + 구장 칩 (스코어 아래 중앙) — 2026-06-06 헤더에서 이동 ──
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _weatherChip(t),
+                      if (game.stadium != null) ...[
+                        const SizedBox(width: 6),
+                        Flexible(child: _stadiumChip(context, t)),
+                      ],
+                    ],
                   ),
                 ),
                 // ── divider + 선발 + 다음 시리즈 (opaque cardBg로 overlay 가림) ──

@@ -593,20 +593,8 @@ def read_notification(notif_id: int, current_user: dict = Depends(get_current_us
     return {"message": "읽음"}
 
 
-@router.delete('/notifications/{notif_id}')
-def delete_notification(notif_id: int, current_user: dict = Depends(get_current_user)):
-    conn = get_connection()
-    if not conn:
-        raise HTTPException(status_code=500, detail='DB 연결 실패')
-    cur = conn.cursor()
-    cur.execute(
-        "DELETE FROM user_notifications WHERE id = %s AND user_id = %s",
-        (notif_id, current_user['user_id'])
-    )
-    conn.commit(); cur.close(); conn.close()
-    return {"message": "삭제 완료"}
-
-
+# NOTE: '/notifications/read'는 '/notifications/{notif_id}'보다 먼저 선언 필수
+# (FastAPI 선언 순 매칭 — 반대면 'read'가 int 파싱 422 → 앱 '삭제 실패')
 @router.delete('/notifications/read')
 def delete_read_notifications(current_user: dict = Depends(get_current_user)):
     """읽은 알림 일괄 삭제."""
@@ -621,6 +609,20 @@ def delete_read_notifications(current_user: dict = Depends(get_current_user)):
     deleted = cur.rowcount
     conn.commit(); cur.close(); conn.close()
     return {"deleted": deleted}
+
+
+@router.delete('/notifications/{notif_id}')
+def delete_notification(notif_id: int, current_user: dict = Depends(get_current_user)):
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute(
+        "DELETE FROM user_notifications WHERE id = %s AND user_id = %s",
+        (notif_id, current_user['user_id'])
+    )
+    conn.commit(); cur.close(); conn.close()
+    return {"message": "삭제 완료"}
 
 
 @router.delete('/notifications')

@@ -1312,11 +1312,11 @@ def get_game_relay(game_id: int):
                 player_by_nid = {}
                 if nids:
                     fcur.execute("""
-                        SELECT naver_player_id, id, name, profile_image, number
+                        SELECT naver_player_id, id, name, profile_image, number, bats
                         FROM players WHERE naver_player_id = ANY(%s)
                     """, (nids,))
                     for r in fcur.fetchall():
-                        player_by_nid[str(r[0])] = {"player_id": r[1], "name": r[2], "image": r[3], "jersey": r[4]}
+                        player_by_nid[str(r[0])] = {"player_id": r[1], "name": r[2], "image": r[3], "jersey": r[4], "bats": r[5]}
 
                 # 타순 번호 방식(1-9)인 주자는 game_batters batting_order로 조회
                 base_nids = []

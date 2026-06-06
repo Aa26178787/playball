@@ -34,7 +34,7 @@ class _TeamScreenState extends State<TeamScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     ApiService.favoriteTeamsChanged.addListener(_loadFavoriteTeams);
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadTeams();
     _loadFavoriteTeams();
     _loadOdds();
@@ -135,10 +135,13 @@ class _TeamScreenState extends State<TeamScreen>
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
           dividerColor: Colors.transparent,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: const [
             Tab(text: '팀 순위'),
             Tab(text: '부문별 순위'),
             Tab(text: '팀 기록'),
+            Tab(text: 'PS 확률'),
           ],
         ),
       ),
@@ -148,6 +151,7 @@ class _TeamScreenState extends State<TeamScreen>
           _buildTeamRankings(),
           const PlayerRankingsTab(),
           const TeamStatsTab(),
+          _buildPostseasonTab(),
         ],
       ),
     );
@@ -210,21 +214,6 @@ class _TeamScreenState extends State<TeamScreen>
             // ── 필터 chip (stub: mv/전반기/최근10 백엔드 미지원) ──
             _buildFilterChips(isDark),
             const SizedBox(height: 8),
-            // ── 막대 설명 ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(2, 2, 2, 12),
-              child: Row(
-                children: [
-                  Text('막대 = 포스트시즌 진출확률',
-                      style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white38 : const Color(0xFF9A9AA2))),
-                  const SizedBox(width: 6),
-                  Text('Monte Carlo 100,000회',
-                      style: TextStyle(fontSize: 9.5, fontFamilyFallback: const ['monospace'],
-                          color: isDark ? Colors.white38 : const Color(0xFF9A9AA2))),
-                ],
-              ),
-            ),
             // ── 1~5위 ──
             ..._teams.where((t) => (t['rank'] as int? ?? 99) <= 5).map((t) {
               final id = t['id'] as int? ?? 0;
@@ -342,24 +331,7 @@ class _TeamScreenState extends State<TeamScreen>
     final isFav = _favoriteTeamIds.contains(id);
     final isExpanded = _expandedTeamIds.contains(id);
 
-    double pct(String key) => ((odds?[key] as num? ?? 0) * 100).toDouble();
-    final ks = pct('ks_direct_prob');
-    final po = pct('po_direct_prob');
-    final spo = pct('spo_direct_prob');
-    final wc4 = pct('wc_seed4_prob');
-    final wc5 = pct('wc_seed5_prob');
-    final ps = ks + po + spo + wc4 + wc5;
-
-    // 단계별 (라벨, 값, 색) — TOP2 추출용
-    final stages = [
-      ('한국시리즈', ks,  const Color(0xFFFFB300)),
-      ('플레이오프', po,  const Color(0xFF1565C0)),
-      ('준플레이오프', spo, const Color(0xFF1976D2)),
-      ('와일드카드 홈',    wc4, const Color(0xFF26A69A)),
-      ('와일드카드 원정',  wc5, const Color(0xFF66BB6A)),
-    ];
-    final top2 = [...stages]..sort((a, b) => b.$2.compareTo(a.$2));
-    final top2Picked = top2.where((s) => s.$2 > 0).take(2).toList();
+    // (PS 확률 계산 제거 — 'PS 확률' 별도 탭으로 분리, 2026-06-06)
 
     // 컬러 팔레트 (mockup tokens)
     final paper  = isDark ? const Color(0xFF18181C) : Colors.white;
@@ -457,54 +429,7 @@ class _TeamScreenState extends State<TeamScreen>
                                       fontFeatures: const [FontFeature.tabularFigures()])),
                             ),
                           ]),
-                          const SizedBox(height: 7),
-                          // PS bar — stacked 5 stages
-                          Row(children: [
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(999),
-                                child: Container(
-                                  height: 6, color: track,
-                                  child: Row(children: [
-                                    for (final s in stages)
-                                      if (s.$2 > 0)
-                                        Expanded(flex: (s.$2 * 100).round().clamp(1, 100000),
-                                            child: Container(color: s.$3)),
-                                    if (ps < 100)
-                                      Expanded(flex: ((100 - ps) * 100).round().clamp(1, 100000),
-                                          child: const SizedBox.shrink()),
-                                  ]),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: 42,
-                              child: Text('${ps.toStringAsFixed(1)}%',
-                                  textAlign: TextAlign.left,
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-                                      color: ps >= 50 ? ink : ink3,
-                                      fontFeatures: const [FontFeature.tabularFigures()])),
-                            ),
-                          ]),
-                          // TOP2 단계 라벨
-                          if (top2Picked.isNotEmpty) ...[
-                            const SizedBox(height: 5),
-                            Wrap(
-                              spacing: 8, runSpacing: 3,
-                              children: [
-                                for (final s in top2Picked)
-                                  Row(mainAxisSize: MainAxisSize.min, children: [
-                                    Container(width: 6, height: 6,
-                                        decoration: BoxDecoration(color: s.$3, shape: BoxShape.circle)),
-                                    const SizedBox(width: 4),
-                                    Text('${s.$1} ${s.$2.toStringAsFixed(1)}%',
-                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ink3,
-                                            fontFeatures: const [FontFeature.tabularFigures()])),
-                                  ]),
-                              ],
-                            ),
-                          ],
+                          // PS bar 제거 — 'PS 확률' 별도 탭으로 분리 (2026-06-06)
                         ],
                       ),
                     ),
@@ -1030,6 +955,93 @@ class _TeamScreenState extends State<TeamScreen>
           ),
         ],
       ],
+    );
+  }
+
+  // ── PS 확률 별도 탭 (2026-06-06 카드에서 분리) ──
+  Widget _buildPostseasonTab() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (_teams.isEmpty || _odds.isEmpty) {
+      return Center(child: CircularProgressIndicator(color: SemColor.brand(context), strokeWidth: 2.5));
+    }
+    final oddsById = <int, Map>{for (final o in _odds) (o['team_id'] as int? ?? -1): o};
+    final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+
+    Widget legendDot(String label, Color c) => Row(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 8, height: 8, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 11, color: ink3, fontWeight: FontWeight.w600)),
+        ]);
+
+    return RefreshIndicator(
+      onRefresh: _loadOdds,
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(16, 12, 16,
+            (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
+        children: [
+          Text('포스트시즌 진출 확률 — Monte Carlo 100,000회',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ink3)),
+          const SizedBox(height: 8),
+          Wrap(spacing: 12, runSpacing: 6, children: [
+            legendDot('한국시리즈', _cKs),
+            legendDot('플레이오프', _cPo),
+            legendDot('준PO', _cSpo),
+            legendDot('WC 홈', _cWc4),
+            legendDot('WC 원정', _cWc5),
+          ]),
+          const SizedBox(height: 14),
+          ..._teams.map((t) {
+            final team = t as Map;
+            final id = team['id'] as int? ?? -1;
+            final code = team['short_name'] as String? ?? '';
+            final odds = oddsById[id];
+            double pct(String key) => ((odds?[key] as num? ?? 0) * 100).toDouble();
+            final ks = pct('ks_direct_prob');
+            final po = pct('po_direct_prob');
+            final spo = pct('spo_direct_prob');
+            final wc4 = pct('wc_seed4_prob');
+            final wc5 = pct('wc_seed5_prob');
+            final ps = ks + po + spo + wc4 + wc5;
+            final out = (100.0 - ps).clamp(0.0, 100.0);
+            final tc = teamColor(code);
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              decoration: BoxDecoration(
+                color: paper,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: line, width: 1),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    SizedBox(
+                      width: 22,
+                      child: Text('${team['rank'] ?? '-'}',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: tc)),
+                    ),
+                    TeamLogo(teamCode: code, size: 26, logoUrl: team['logo_url'] as String?),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(team['name'] as String? ?? '',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+                    ),
+                    Text('PS ${ps.toStringAsFixed(1)}%',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800,
+                            color: ps >= 50 ? tc : ink3,
+                            fontFeatures: const [FontFeature.tabularFigures()])),
+                  ]),
+                  const SizedBox(height: 10),
+                  _psStackedBar(ks, po, spo, wc4, wc5, out, ps, tc, height: 12),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
 
