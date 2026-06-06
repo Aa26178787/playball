@@ -7,6 +7,7 @@ import '../../utils/local_cache.dart';
 import 'player_stats_section.dart';
 import 'player_compare_screen.dart';
 import '../../utils/team_theme.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../widgets/common_widgets.dart';
 
 class PlayerDetailScreen extends StatefulWidget {
@@ -234,6 +235,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
               child: Column(
                 children: [
                   _buildHeader(player),
+                  _buildCoreStatsGrid(player),
                   _buildInfoCard(player),
                   if (_dailyStats.isNotEmpty) _buildRecent5Games(player),
                   if (_pitchStats != null) _buildPitchStatsCard(),
@@ -559,9 +561,43 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       const SizedBox(height: 6),
                       Text('$team · $posOrType · #$number',
                           style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.82))),
-                      if (player['roster_status'] != null) ...[
+                      if (player['roster_status'] != null || player['insta_handle'] != null) ...[
                         const SizedBox(height: 8),
-                        _buildRosterBadge(player['roster_status']),
+                        Wrap(spacing: 7, runSpacing: 6, children: [
+                          if (player['roster_status'] != null)
+                            _buildRosterBadge(player['roster_status']),
+                          // 인스타 버튼 (insta_handle 등록된 선수만)
+                          if (player['insta_handle'] != null)
+                            GestureDetector(
+                              onTap: () async {
+                                final url = Uri.parse('https://instagram.com/${player['insta_handle']}');
+                                if (await canLaunchUrl(url)) {
+                                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+                                ),
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  ShaderMask(
+                                    shaderCallback: (b) => const LinearGradient(
+                                      begin: Alignment.bottomLeft, end: Alignment.topRight,
+                                      colors: [Color(0xFFF09433), Color(0xFFDC2743), Color(0xFFBC1888)],
+                                    ).createShader(b),
+                                    child: const Icon(Icons.camera_alt_outlined, size: 12, color: Colors.white),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text('@${player['insta_handle']}',
+                                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700,
+                                          color: Colors.white.withValues(alpha: 0.92))),
+                                ]),
+                              ),
+                            ),
+                        ]),
                       ],
                     ],
                   ),
@@ -571,6 +607,82 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           ),
         ]),
       ),
+    );
+  }
+
+  // 핵심 2x2 + 세부 3열 그리드 (mockup, 현재 시즌 스탯)
+  Widget _buildCoreStatsGrid(Map<String, dynamic> player) {
+    final stats = (player['stats'] as List?) ?? [];
+    if (stats.isEmpty) return const SizedBox.shrink();
+    // 최신 시즌
+    Map cur = stats.first as Map;
+    for (final s in stats) {
+      if (((s as Map)['season'] as num? ?? 0) > (cur['season'] as num? ?? 0)) cur = s;
+    }
+    final isPitcher = (player['player_type'] as String? ?? '') == '투수';
+    final code = player['team_code'] as String? ?? '';
+    final rawTc = teamColor(code);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tc = isDark ? Color.lerp(rawTc, Colors.white, 0.25)! : rawTc;
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+
+    String f3(dynamic v) => (v as num?)?.toStringAsFixed(3) ?? '-';
+    String f2(dynamic v) => (v as num?)?.toStringAsFixed(2) ?? '-';
+    String i0(dynamic v) => '${(v as num?)?.toInt() ?? 0}';
+    String ip(dynamic v) => v == null ? '-' : '$v';
+
+    final main = isPitcher
+        ? [('ERA', f2(cur['era'])), ('탈삼진', i0(cur['strikeouts'])), ('승', i0(cur['wins'])), ('WHIP', f2(cur['whip']))]
+        : [('타율', f3(cur['avg'])), ('홈런', i0(cur['home_runs'])), ('타점', i0(cur['rbis'])), ('OPS', f3(cur['ops']))];
+    final detail = isPitcher
+        ? [('이닝', ip(cur['innings_pitched'])), ('세이브', i0(cur['saves'])), ('홀드', i0(cur['holds'])),
+           ('패', i0(cur['losses'])), ('피안타율', f3(cur['avg_against'])), ('QS', i0(cur['qs']))]
+        : [('안타', i0(cur['hits'])), ('도루', i0(cur['stolen_bases'])), ('볼넷', i0(cur['walks'])),
+           ('삼진', i0(cur['strikeouts'])), ('출루율', f3(cur['obp'])), ('장타율', f3(cur['slg']))];
+
+    Widget statCard((String, String) s, {bool highlight = false, bool small = false}) => Container(
+      padding: EdgeInsets.all(small ? 12 : 14),
+      decoration: BoxDecoration(
+        color: paper,
+        borderRadius: BorderRadius.circular(small ? 12 : 14),
+        border: Border.all(color: highlight ? tc.withValues(alpha: 0.4) : line),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05),
+            blurRadius: small ? 4 : 6, offset: Offset(0, small ? 1 : 2))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(s.$1, style: TextStyle(fontSize: 9, color: sub)),
+        SizedBox(height: small ? 7 : 8),
+        Text(s.$2,
+            style: TextStyle(fontSize: small ? 20 : 28, fontWeight: FontWeight.w800,
+                color: highlight ? tc : ink, letterSpacing: 0,
+                fontFeatures: const [FontFeature.tabularFigures()])),
+      ]),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('${cur['season'] ?? ''} 시즌 핵심 기록',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
+        const SizedBox(height: 12),
+        GridView.count(
+          crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 1.6,
+          children: [for (int i = 0; i < main.length; i++) statCard(main[i], highlight: i == 0)],
+        ),
+        const SizedBox(height: 20),
+        Text('세부 기록',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
+        const SizedBox(height: 12),
+        GridView.count(
+          crossAxisCount: 3, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 8, crossAxisSpacing: 8, childAspectRatio: 1.1,
+          children: [for (final s in detail) statCard(s, small: true)],
+        ),
+      ]),
     );
   }
 

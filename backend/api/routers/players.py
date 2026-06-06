@@ -546,7 +546,8 @@ def get_player_detail(player_id: int):
         SELECT p.id, p.name, p.player_type, p.position,
             p.number, p.birth_date, t.name AS team,
             p.profile_image, p.height, p.weight,
-            p.throws, p.bats
+            p.throws, p.bats, t.short_name AS team_code,
+            p.insta_handle
         FROM players p
         JOIN teams t ON p.team_id = t.id
         WHERE p.id = %s
@@ -564,6 +565,8 @@ def get_player_detail(player_id: int):
         "team": player[6], "profile_image": player[7],
         "height": player[8], "weight": player[9],
         "throws": player[10], "bats": player[11],
+        "team_code": player[12],
+        "insta_handle": player[13],
         "stats": []
     }
 
