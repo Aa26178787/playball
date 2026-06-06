@@ -228,7 +228,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       if (cachedPreview    != null) _previewData     = Map<String, dynamic>.from(cachedPreview);
       if (cachedRecord     != null) _recordDetailData= Map<String, dynamic>.from(cachedRecord);
       if (cachedHL         != null) _highlights      = cachedHL['highlights'] as List? ?? [];
-      if (cachedRelayState != null) _relayData       = Map<String, dynamic>.from(cachedRelayState);
+      // relay_state는 진행중일 때만 복원 — 종료 후 stale 라이브 필드뷰 고정 방지 (06-06 한화-롯데 오재원 타석 멈춤)
+      if (cachedRelayState != null &&
+          (cachedDetail?['game']?['status'] as String? ?? '') == '진행') {
+        _relayData = Map<String, dynamic>.from(cachedRelayState);
+      }
       if (cachedWeather    != null) _weatherData     = Map<String, dynamic>.from(cachedWeather);
       if (cachedPitchTypes != null) _pitchTypesData  = Map<String, dynamic>.from(cachedPitchTypes);
       if (cachedRankings   != null) _rankMap = {for (final r in cachedRankings) (r['id'] as int): (r['rank'] as int? ?? 0)};
@@ -244,7 +248,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       final gameData = await ApiService.getGameDetail(widget.gameId);
       ApiService.setGameDetailMem(widget.gameId, gameData);
       if (!mounted) return;
-      setState(() { _gameData = gameData; _isLoading = false; });
+      setState(() {
+        _gameData = gameData;
+        _isLoading = false;
+        // 비진행 경기에 stale 라이브 relay 잔존 시 무효화 → 정적 라인업 필드뷰 경로
+        if ((gameData['game']?['status'] as String? ?? '') != '진행' && _relayData != null) {
+          _relayData = null;
+        }
+      });
+      if ((gameData['game']?['status'] as String? ?? '') != '진행') {
+        LocalCache.remove(_ck('relay_state'));
+      }
 
       // 1회성 hint — 진행중 게임 처음 진입 시 베이스 탭 안내 (핀 힌트 제거 — 필드뷰 항상 고정)
       final status = gameData['game']?['status'] as String? ?? '';
