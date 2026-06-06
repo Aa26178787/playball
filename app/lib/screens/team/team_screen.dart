@@ -26,6 +26,7 @@ class _TeamScreenState extends State<TeamScreen>
   Set<int> _favoriteTeamIds = {};
   final Set<int> _expandedTeamIds = {};
   String _period = 'full'; // 'full' | 'first_half' | 'last_10'
+  bool _showPsView = false; // 팀 순위 탭 내 PS 확률 보기 토글
   List _odds = [];
   Timer? _autoRefreshTimer;
 
@@ -34,7 +35,7 @@ class _TeamScreenState extends State<TeamScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     ApiService.favoriteTeamsChanged.addListener(_loadFavoriteTeams);
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadTeams();
     _loadFavoriteTeams();
     _loadOdds();
@@ -135,13 +136,10 @@ class _TeamScreenState extends State<TeamScreen>
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
           dividerColor: Colors.transparent,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
           tabs: const [
             Tab(text: '팀 순위'),
             Tab(text: '부문별 순위'),
             Tab(text: '팀 기록'),
-            Tab(text: 'PS 확률'),
           ],
         ),
       ),
@@ -151,7 +149,6 @@ class _TeamScreenState extends State<TeamScreen>
           _buildTeamRankings(),
           const PlayerRankingsTab(),
           const TeamStatsTab(),
-          _buildPostseasonTab(),
         ],
       ),
     );
@@ -214,24 +211,29 @@ class _TeamScreenState extends State<TeamScreen>
             // ── 필터 chip (stub: mv/전반기/최근10 백엔드 미지원) ──
             _buildFilterChips(isDark),
             const SizedBox(height: 8),
-            // ── 1~5위 ──
-            ..._teams.where((t) => (t['rank'] as int? ?? 99) <= 5).map((t) {
-              final id = t['id'] as int? ?? 0;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 9),
-                child: _buildCardRow(t, oddsById[id], isDark),
-              );
-            }),
-            // ── CutLine (가을야구 진출선) ──
-            _buildCutLine(isDark),
-            // ── 6~10위 ──
-            ..._teams.where((t) => (t['rank'] as int? ?? 0) > 5).map((t) {
-              final id = t['id'] as int? ?? 0;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 9),
-                child: _buildCardRow(t, oddsById[id], isDark),
-              );
-            }),
+            if (_showPsView)
+              // ── PS 확률 보기 (세부 카테고리) ──
+              ..._psChildren(isDark)
+            else ...[
+              // ── 1~5위 ──
+              ..._teams.where((t) => (t['rank'] as int? ?? 99) <= 5).map((t) {
+                final id = t['id'] as int? ?? 0;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 9),
+                  child: _buildCardRow(t, oddsById[id], isDark),
+                );
+              }),
+              // ── CutLine (가을야구 진출선) ──
+              _buildCutLine(isDark),
+              // ── 6~10위 ──
+              ..._teams.where((t) => (t['rank'] as int? ?? 0) > 5).map((t) {
+                final id = t['id'] as int? ?? 0;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 9),
+                  child: _buildCardRow(t, oddsById[id], isDark),
+                );
+              }),
+            ],
             const SizedBox(height: 8),
           ],
         ),
@@ -268,6 +270,26 @@ class _TeamScreenState extends State<TeamScreen>
         ),
       );
     }
+    // PS 확률 — 기간 필터와 별개 view 토글 chip
+    Widget psChip() {
+      final active = _showPsView;
+      return GestureDetector(
+        onTap: () => setState(() => _showPsView = !_showPsView),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            color: active ? ink : Colors.transparent,
+            border: Border.all(color: active ? ink : line, width: 1),
+          ),
+          child: Text('PS 확률',
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600,
+                  color: active ? (isDark ? Colors.black : Colors.white) : sub)),
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(children: [
@@ -276,6 +298,8 @@ class _TeamScreenState extends State<TeamScreen>
         chip('전반기', 'first_half'),
         const SizedBox(width: 8),
         chip('최근 10경기', 'last_10'),
+        const SizedBox(width: 8),
+        psChip(),
       ]),
     );
   }
@@ -958,11 +982,15 @@ class _TeamScreenState extends State<TeamScreen>
     );
   }
 
-  // ── PS 확률 별도 탭 (2026-06-06 카드에서 분리) ──
-  Widget _buildPostseasonTab() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  // ── PS 확률 — 팀 순위 탭 내 세부 카테고리 (chip 토글) ──
+  List<Widget> _psChildren(bool isDark) {
     if (_teams.isEmpty || _odds.isEmpty) {
-      return Center(child: CircularProgressIndicator(color: SemColor.brand(context), strokeWidth: 2.5));
+      return [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 60),
+          child: Center(child: CircularProgressIndicator(color: SemColor.brand(context), strokeWidth: 2.5)),
+        ),
+      ];
     }
     final oddsById = <int, Map>{for (final o in _odds) (o['id'] as int? ?? -1): o};
     final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
@@ -975,12 +1003,7 @@ class _TeamScreenState extends State<TeamScreen>
           Text(label, style: TextStyle(fontSize: 11, color: ink3, fontWeight: FontWeight.w600)),
         ]);
 
-    return RefreshIndicator(
-      onRefresh: _loadOdds,
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(16, 12, 16,
-            (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
-        children: [
+    return [
           Text('포스트시즌 진출 확률 — Monte Carlo 100,000회',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ink3)),
           const SizedBox(height: 8),
@@ -1040,9 +1063,7 @@ class _TeamScreenState extends State<TeamScreen>
               ),
             );
           }),
-        ],
-      ),
-    );
+        ];
   }
 
   // ──────────────── DEPRECATED below ────────────────
