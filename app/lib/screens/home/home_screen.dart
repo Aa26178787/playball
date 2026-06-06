@@ -1674,8 +1674,9 @@ class GameCard extends StatelessWidget {
       Color homeColor, Color awayColor, Color myColor) {
     final cardBd = isMyTeam ? myColor : t.line;
     final showScore = isFinished || isLive;
+    // 시간만 (status는 2층 라벨 — 중복 방지)
     final timeText = (!showScore && !isCancelled)
-        ? (game.startTime ?? game.status) : '';
+        ? (game.startTime ?? '') : '';
 
     Widget statusBadge() {
       if (isLive) {
@@ -1700,7 +1701,9 @@ class GameCard extends StatelessWidget {
       if (isFinished) {
         return Text('종료', style: TextStyle(fontSize: 11, color: t.ink3, fontWeight: FontWeight.w700));
       }
-      return Text(timeText, style: TextStyle(fontSize: 11, color: t.ink2, fontWeight: FontWeight.w700));
+      // 예정: status 라벨 (시간은 1층 스코어 자리) — 종료와 동일 스타일
+      return Text(game.status.isEmpty ? '예정' : game.status,
+          style: TextStyle(fontSize: 11, color: t.ink3, fontWeight: FontWeight.w700));
     }
 
     final semanticLabel = isFinished
@@ -1788,8 +1791,10 @@ class GameCard extends StatelessWidget {
                                             color: awayWon ? awayColor : t.ink,
                                             fontFeatures: const [FontFeature.tabularFigures()])),
                                   ])
-                              : Text('vs',
-                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: t.ink3)),
+                              // 예정: 시간을 스코어 자리 — 종료 스코어와 동일 크기(18) 일관성
+                              : Text(timeText.isEmpty ? 'vs' : timeText,
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: t.ink,
+                                      fontFeatures: const [FontFeature.tabularFigures()])),
                           // ── 2층: 상태 ──
                           const SizedBox(height: 5),
                           statusBadge(),
