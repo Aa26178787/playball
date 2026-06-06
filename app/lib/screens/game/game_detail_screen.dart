@@ -2206,7 +2206,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         final logoBox = first ? logo : const SizedBox(width: 20);
         final name = Text(p.batter, maxLines: 1, overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: inkS));
-        final desc = Flexible(
+        // Expanded — desc 길이 무관 badge를 카드 가장자리 고정 컬럼으로 (배열 일관성)
+        final desc = Expanded(
           child: Text(p.desc, maxLines: 1, overflow: TextOverflow.ellipsis,
               textAlign: isHome ? TextAlign.left : TextAlign.right,
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink2S)),
