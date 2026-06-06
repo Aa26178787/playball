@@ -594,7 +594,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.easeOutCubic,
-                      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 486 : 416) : 408,
+                      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 498 : 428) : 408,
                     ),
                     Expanded(
                       // gameHeader skip — 핀 시 panel 바로 아래 TabBarView (득점요약/이닝중계)만 표시
@@ -1439,8 +1439,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
-      // 스트립 토글: 펼침 486 / 접힘 416 (셀 mainAxisExtent 62 고정 → 결정론적). 스트립 없으면 408
-      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 486 : 416) : 408,
+      // 스트립 토글: 펼침 498 / 접힘 428 (실기 11px overflow 보정 +12). 스트립 없으면 408
+      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 498 : 428) : 408,
       decoration: BoxDecoration(
         color: paper,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
