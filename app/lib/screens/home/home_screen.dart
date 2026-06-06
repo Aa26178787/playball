@@ -1721,15 +1721,15 @@ class GameCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis),
       );
-      // 홈팀만 미니 '홈' 칩 (원정은 무표시 — 대칭 노이즈 절반)
-      final homeTag = Container(
-        margin: const EdgeInsets.only(left: 3),
+      // 홈/원정 미니 칩
+      Widget sideTag(String label) => Container(
+        margin: EdgeInsets.only(left: isHomeSide ? 3 : 0, right: isHomeSide ? 0 : 3),
         padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
         decoration: BoxDecoration(
           color: t.paper2,
           borderRadius: BorderRadius.circular(3),
         ),
-        child: Text('홈', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: t.sub)),
+        child: Text(label, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: t.sub)),
       );
       return Expanded(
         child: Row(
@@ -1737,13 +1737,14 @@ class GameCard extends StatelessWidget {
           children: [
             if (!isHomeSide) ...[
               txt,
+              sideTag('원정'),
               const SizedBox(width: 8),
             ],
             Opacity(opacity: dim ? 0.45 : 1.0, child: TeamLogo(teamCode: code, size: 22)),
             if (isHomeSide) ...[
               const SizedBox(width: 8),
               txt,
-              homeTag,
+              sideTag('홈'),
             ],
           ],
         ),
@@ -1811,16 +1812,18 @@ class GameCard extends StatelessWidget {
                         teamSide(game.awayTeamCode, game.awayTeam, game.awayScore, awayWon, false),
                       ],
                     ),
-                    // ── 2층: 상태 · 구장 ──
+                    // ── 2층: 상태 + 구장 (구분점 대신 간격 — live pill과 혼합 시 어색함 회피) ──
                     const SizedBox(height: 6),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         statusBadge(),
-                        if (game.stadium != null)
-                          Text(' · ${game.stadium}',
+                        if (game.stadium != null) ...[
+                          const SizedBox(width: 7),
+                          Text('${game.stadium}',
                               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
+                        ],
                       ],
                     ),
                     // ── 3층: 승패투수 또는 선발 ──
