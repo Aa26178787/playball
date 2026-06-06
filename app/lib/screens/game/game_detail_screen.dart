@@ -572,7 +572,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ? Column(
                   children: [
                     // panel-spacer: transparent → panel rounded 끝점 보이게 (paper 노출 X)
-                    SizedBox(height: _sameDayGames.isNotEmpty ? 478 : 404),
+                    SizedBox(height: _sameDayGames.isNotEmpty ? 482 : 408),
                     Expanded(
                       // gameHeader skip — 핀 시 panel 바로 아래 TabBarView (득점요약/이닝중계)만 표시
                       child: TabBarView(
@@ -1413,8 +1413,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
 
     return Container(
-      // 하단 빈 여백 축소 (505/410 → 478/404) + rounded bottom + 분리 그림자 (2026-06-06)
-      height: _sameDayGames.isNotEmpty ? 478 : 404,
+      // 하단 빈 여백 축소 + rounded bottom + 분리 그림자 (2026-06-06, overflow 2.4px 보정 +4)
+      height: _sameDayGames.isNotEmpty ? 482 : 408,
       decoration: BoxDecoration(
         color: paper,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
