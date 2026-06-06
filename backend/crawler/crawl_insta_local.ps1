@@ -1,26 +1,32 @@
-# 나무위키 인스타 핸들 수집 (로컬 PC 실행용 — 서버 IP는 403)
-# 출력: insta_candidates.csv (검수 후 crawl_insta_handles.py --apply)
+# Namu wiki insta handle crawler (run from LOCAL PC - server IP gets 403)
+# Output: insta_candidates.csv (review, then crawl_insta_handles.py --apply)
+# NOTE: ASCII-only messages (PS5.1 reads no-BOM UTF8 as ANSI)
 $ErrorActionPreference = 'Continue'
 $H = @{'User-Agent'='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'}
 $base = 'https://playball.duckdns.org'
 
-# 선수 목록 (타자 + 투수, 시즌 기록 보유 현역)
 $players = @()
 foreach ($kind in @('hitters','pitchers')) {
-  $d = Invoke-RestMethod -Uri "$base/players/$($kind)?limit=500&sort_by=$(if($kind -eq 'hitters'){'avg'}else{'era'})" -TimeoutSec 30
-  foreach ($p in $d.$kind) {
-    $players += [pscustomobject]@{ id=$p.id; name=$p.name; team=$p.team_name; code=$p.team_code }
+  $sort = if ($kind -eq 'hitters') { 'avg' } else { 'era' }
+  # PS5.1 charset bug: manual UTF-8 decode (Invoke-RestMethod mojibakes korean)
+  $raw = Invoke-WebRequest -UseBasicParsing -Uri "$base/players/$($kind)?limit=500&sort_by=$sort" -TimeoutSec 30
+  $json = [Text.Encoding]::UTF8.GetString($raw.RawContentStream.ToArray()) | ConvertFrom-Json
+  foreach ($p in $json.$kind) {
+    $tname = if ($p.team_name) { $p.team_name } elseif ($p.team) { $p.team } else { '' }
+    $players += [pscustomobject]@{ id=$p.id; name=$p.name; team=$tname }
   }
 }
-Write-Output "대상 $($players.Count)명"
+Write-Output "total players: $($players.Count)"
 
 $reserved = @('p','reel','reels','explore','accounts','stories','tv','about','directory')
+$kw = [char]0xC57C + [char]0xAD6C   # 'yagu' korean word for baseball-doc guard
+$suffix = '(' + $kw + [char]0xC120 + [char]0xC218 + ')'  # (yagu-seonsu)
 $rows = New-Object System.Collections.Generic.List[object]
 $i = 0
 foreach ($p in $players) {
   $i++
   $handle = ''; $src = 'none'
-  foreach ($title in @($p.name, "$($p.name)(야구선수)")) {
+  foreach ($title in @($p.name, ($p.name + $suffix))) {
     try {
       $enc = [uri]::EscapeDataString($title)
       $r = Invoke-WebRequest -UseBasicParsing -Uri "https://namu.wiki/w/$enc" -Headers $H -TimeoutSec 12
@@ -30,17 +36,20 @@ foreach ($p in $players) {
           $h = $m.Groups[1].Value.TrimEnd('.')
           if ($reserved -notcontains $h.ToLower()) { $handle = $h; $src = "namu:$title"; break }
         }
-        # 야구 문서인지 약식 확인 (동명이인 가드)
-        if ($handle -and ($r.Content -notmatch '야구')) { $handle = ''; $src = 'not_baseball' }
+        if ($handle -and ($r.Content -notmatch $kw)) { $handle = ''; $src = 'not_baseball' }
         if ($handle) { break }
       }
-    } catch { $src = "err:$($_.Exception.Message.Substring(0,[math]::Min(30,$_.Exception.Message.Length)))" }
+    } catch {
+      $msg = $_.Exception.Message
+      $src = 'err:' + $msg.Substring(0, [math]::Min(30, $msg.Length))
+    }
     Start-Sleep -Milliseconds 1500
   }
   $rows.Add([pscustomobject]@{ player_id=$p.id; name=$p.name; team=$p.team; handle=$handle; source=$src })
-  Write-Output "[$i/$($players.Count)] $($p.team) $($p.name) -> $(if($handle){$handle}else{'-'}) ($src)"
+  $shown = if ($handle) { $handle } else { '-' }
+  Write-Output "[$i/$($players.Count)] $($p.team) $($p.name) -> $shown ($src)"
   Start-Sleep -Milliseconds 1800
 }
 $rows | Export-Csv -Path "$PSScriptRoot\insta_candidates.csv" -NoTypeInformation -Encoding UTF8
 $found = ($rows | Where-Object { $_.handle }).Count
-Write-Output "완료 — $found/$($rows.Count) 후보. insta_candidates.csv 검수 필요"
+Write-Output "DONE - $found/$($rows.Count) candidates. review insta_candidates.csv then --apply"
