@@ -1769,9 +1769,11 @@ class GameCard extends StatelessWidget {
                     if (game.losePitcher != null) '패 ${game.losePitcher}',
                   ].join('  ·  ');
                 }
+                // 3층 구조: 1층 로고/팀명/스코어 · 2층 상태 · 3층 승패투수(선발)
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // ── 1층: 홈로고 팀명 | 스코어(vs) | 팀명 어웨이로고 ──
                     Row(
                       children: [
                         teamSide(game.homeTeamCode, game.homeTeam, game.homeScore, homeWon, true),
@@ -1784,24 +1786,25 @@ class GameCard extends StatelessWidget {
                                           fontWeight: FontWeight.w800,
                                           color: homeWon ? homeColor : t.ink,
                                           fontFeatures: const [FontFeature.tabularFigures()])),
-                                  const Text(' : ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                                  Text(' : ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: t.ink3)),
                                   Text('${game.awayScore}',
                                       style: TextStyle(fontSize: 18,
                                           fontWeight: FontWeight.w800,
                                           color: awayWon ? awayColor : t.ink,
                                           fontFeatures: const [FontFeature.tabularFigures()])),
                                 ])
-                              : statusBadge(),
+                              : Text('vs',
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: t.ink3)),
                         ),
                         teamSide(game.awayTeamCode, game.awayTeam, game.awayScore, awayWon, false),
-                        if (showScore) ...[
-                          const SizedBox(width: 8),
-                          statusBadge(),
-                        ],
                       ],
                     ),
+                    // ── 2층: 상태 (종료 / N회 초말 / 시간) ──
+                    const SizedBox(height: 6),
+                    statusBadge(),
+                    // ── 3층: 승패투수 또는 선발 ──
                     if (subLine != null) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 5),
                       Text(subLine,
                           textAlign: TextAlign.center,
                           maxLines: 1, overflow: TextOverflow.ellipsis,
