@@ -1579,7 +1579,8 @@ class GameCard extends StatelessWidget {
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: 0),
             maxLines: 1, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 5),
-        Text(rank != null ? '$rank위' : (isHome ? '홈' : '원정'),
+        // 순위 + 홈/원정 병기 (rank 있을 때 홈/원정 정보 소실 방지)
+        Text(rank != null ? '$rank위 · ${isHome ? '홈' : '원정'}' : (isHome ? '홈' : '원정'),
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
         const SizedBox(height: 7),
         // 각 팀 mini5 W 박스 = 자기 팀 컬러 (라이트/다크 모드 보정)
