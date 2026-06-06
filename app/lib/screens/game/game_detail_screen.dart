@@ -1565,7 +1565,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   if (!_stripExpanded) ...[
-                    Text('오늘의 다른 경기',
+                    Text('다른 구장 경기',
                         style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
                             color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73))),
                     const SizedBox(width: 4),
