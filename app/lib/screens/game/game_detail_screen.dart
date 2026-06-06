@@ -2111,6 +2111,20 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         if (desc.isEmpty) desc = isHR ? '홈런' : '적시타';
         out.add((batter: batter, desc: desc, rbi: rbi, isHR: isHR));
       }
+      if (out.isEmpty) {
+        // 타점 텍스트 없는 득점 (폭투/밀어내기/실책 등) — 홈인 이벤트에서 주자 추출
+        for (final r in halfRelays) {
+          final rtype = r['type'] as int?;
+          if (rtype != 14 && rtype != 24 && rtype != 31) continue;
+          final txt = (r['title'] as String? ?? r['text'] as String? ?? '').trim();
+          if (!txt.contains('홈인') && !txt.contains('득점')) continue;
+          final nm = RegExp(r'([가-힣]{2,4})(?:이|가)?\s*홈인').firstMatch(txt);
+          // desc = 주자명 제거한 잔여 설명
+          var desc = txt;
+          if (nm != null) desc = txt.replaceFirst(nm.group(0)!, '홈인').trim();
+          out.add((batter: nm?.group(1) ?? '', desc: desc, rbi: 0, isHR: false));
+        }
+      }
       return out;
     }
 
@@ -2141,7 +2155,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
       final logo = TeamLogo(teamCode: teamCode, size: 20);
 
-      // ── 고정 컬럼 그리드 (이름 가변 길이 → 정렬 유지): [칩 28][로고 20][이름 56][타구 Expanded][N타점 48] ──
+      // ── 홈=좌측 / 원정=우측 미러 정렬, 이름 natural width (여백 축소) ──
+      final isHome = half == 'bottom';
       final plays = extractPlays(halfRelays);
 
       Widget rbiBadge(int rbi, bool isHR) => Container(
@@ -2152,33 +2167,35 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           color: isHR ? const Color(0xFFD97706).withValues(alpha: 0.14) : paper2S,
           borderRadius: BorderRadius.circular(6),
         ),
-        child: Text('$rbi타점',
+        child: Text(rbi > 0 ? '$rbi타점' : '득점',
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800,
                 color: isHR ? const Color(0xFFD97706) : inkS,
                 fontFeatures: const [FontFeature.tabularFigures()])),
       );
 
-      Widget playRow(({String batter, String desc, int rbi, bool isHR}) p, bool first) => Padding(
-        padding: EdgeInsets.only(top: first ? 0 : 6),
-        child: Row(children: [
-          if (first) inningChip else const SizedBox(width: 28),
-          const SizedBox(width: 8),
-          if (first) logo else const SizedBox(width: 20),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 56,
-            child: Text(p.batter, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: inkS)),
+      Widget playRow(({String batter, String desc, int rbi, bool isHR}) p, bool first) {
+        final chipBox = first ? inningChip : const SizedBox(width: 28);
+        final logoBox = first ? logo : const SizedBox(width: 20);
+        final name = Text(p.batter, maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: inkS));
+        final desc = Flexible(
+          child: Text(p.desc, maxLines: 1, overflow: TextOverflow.ellipsis,
+              textAlign: isHome ? TextAlign.left : TextAlign.right,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink2S)),
+        );
+        final badge = rbiBadge(p.rbi, p.isHR);
+        return Padding(
+          padding: EdgeInsets.only(top: first ? 0 : 6),
+          child: Row(
+            mainAxisAlignment: isHome ? MainAxisAlignment.start : MainAxisAlignment.end,
+            children: isHome
+                ? [chipBox, const SizedBox(width: 8), logoBox, const SizedBox(width: 8),
+                   name, const SizedBox(width: 6), desc, const SizedBox(width: 8), badge]
+                : [badge, const SizedBox(width: 8), desc, const SizedBox(width: 6),
+                   name, const SizedBox(width: 8), logoBox, const SizedBox(width: 8), chipBox],
           ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(p.desc, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink2S)),
-          ),
-          const SizedBox(width: 8),
-          rbiBadge(p.rbi, p.isHR),
-        ]),
-      );
+        );
+      }
 
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
@@ -2186,16 +2203,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           border: isLast ? null : Border(bottom: BorderSide(color: lineRow, width: 1)),
         ),
         child: plays.isEmpty
-            ? Row(children: [
-                inningChip,
-                const SizedBox(width: 8),
-                logo,
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text('득점', maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink2S)),
-                ),
-              ])
+            ? Row(
+                mainAxisAlignment: isHome ? MainAxisAlignment.start : MainAxisAlignment.end,
+                children: [
+                  if (isHome) ...[inningChip, const SizedBox(width: 8), logo, const SizedBox(width: 8)],
+                  Text('득점', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink2S)),
+                  if (!isHome) ...[const SizedBox(width: 8), logo, const SizedBox(width: 8), inningChip],
+                ],
+              )
             : Column(children: [
                 for (int i = 0; i < plays.length; i++) playRow(plays[i], i == 0),
               ]),
