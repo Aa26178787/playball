@@ -535,6 +535,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                     ),
                     IconButton(
                       icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                      tooltip: '닫기',
                       onPressed: () => Navigator.pop(context),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -791,6 +792,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.close, size: 20),
+                  tooltip: '닫기',
                   onPressed: () => Navigator.pop(context),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),

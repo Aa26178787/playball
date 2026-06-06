@@ -228,6 +228,7 @@ class _PostListTabState extends State<_PostListTab>
               suffixIcon: _searchQ.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear, size: 18),
+                      tooltip: '검색어 지우기',
                       onPressed: () {
                         _searchCtrl.clear();
                         setState(() => _searchQ = '');
@@ -851,6 +852,7 @@ class _FoodSubmitSheetState extends State<_FoodSubmitSheet> {
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.close, size: 20),
+                    tooltip: '닫기',
                     onPressed: () => Navigator.pop(context),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),

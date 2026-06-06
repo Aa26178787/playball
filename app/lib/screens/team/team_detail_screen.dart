@@ -322,6 +322,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
               ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
               : IconButton(
                   icon: Icon(_isFav ? Icons.star : Icons.star_border, color: Colors.white),
+                  tooltip: _isFav ? '마이팀 해제' : '마이팀 등록',
                   onPressed: _toggleFav,
                 ),
         ],

@@ -166,6 +166,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
                 icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+                tooltip: _obscure ? '비밀번호 표시' : '비밀번호 숨기기',
                 onPressed: () => setState(() => _obscure = !_obscure),
               ),
             ),

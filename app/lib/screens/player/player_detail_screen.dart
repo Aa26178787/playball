@@ -207,9 +207,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             : null,
         actions: [
           _favLoading
-              ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: SemColor.panelDark)))
+              ? Padding(padding: const EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: SemColor.brand(context))))
               : IconButton(
                   icon: Icon(_isFav ? Icons.star : Icons.star_border, color: Colors.amber),
+                  tooltip: _isFav ? '즐겨찾기 해제' : '즐겨찾기 추가',
                   onPressed: _toggleFav,
                 ),
         ],
@@ -335,6 +336,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.search),
+                        tooltip: '검색',
                         onPressed: () => doSearch(searchCtrl.text),
                       ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

@@ -560,6 +560,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ),
         actions: [
           IconButton(
+            tooltip: '경기 공유',
             icon: const Icon(Icons.share),
             onPressed: () => showModalBottomSheet(
               context: context,

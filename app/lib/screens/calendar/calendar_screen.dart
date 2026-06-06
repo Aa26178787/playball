@@ -510,12 +510,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(icon: const Icon(Icons.chevron_left), onPressed: _prevMonth),
+                IconButton(icon: const Icon(Icons.chevron_left), tooltip: '이전 달', onPressed: _prevMonth),
                 Text(
                   '${_focusedMonth.year}년 ${_focusedMonth.month}월',
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                IconButton(icon: const Icon(Icons.chevron_right), onPressed: _nextMonth),
+                IconButton(icon: const Icon(Icons.chevron_right), tooltip: '다음 달', onPressed: _nextMonth),
               ],
             ),
           ),
@@ -829,6 +829,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         trailing: id != null
             ? IconButton(
                 icon: const Icon(Icons.delete_outline, size: 18, color: Colors.grey),
+                tooltip: '일정 삭제',
                 onPressed: () => _confirmDeleteEvent(id),
               )
             : null,

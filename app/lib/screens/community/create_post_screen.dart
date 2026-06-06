@@ -228,6 +228,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.cancel, color: Colors.white),
+                    tooltip: '이미지 제거',
                     onPressed: _removeImage,
                   ),
                 ],

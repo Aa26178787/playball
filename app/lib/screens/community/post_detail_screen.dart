@@ -172,6 +172,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             return IconButton(
               icon: Icon(liked ? Icons.favorite : Icons.favorite_border,
                   color: liked ? Colors.red : null),
+              tooltip: liked ? '좋아요 취소' : '좋아요',
               onPressed: () async {
                 await ApiService.toggleLike(widget.postId);
                 _loadPost();
@@ -291,6 +292,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         if (isMyComment)
                           IconButton(
                             icon: const Icon(Icons.delete_outline, size: 18, color: Colors.grey),
+                            tooltip: '댓글 삭제',
                             onPressed: () => _deleteComment(c['id']),
                           ),
                       ],
@@ -321,6 +323,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.send),
+                  tooltip: '댓글 등록',
                   onPressed: _submitComment,
                 ),
               ],

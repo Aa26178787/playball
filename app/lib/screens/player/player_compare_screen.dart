@@ -123,6 +123,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
             suffixIcon: ctrl.text.isNotEmpty
                 ? IconButton(
                     icon: const Icon(Icons.clear, size: 16),
+                    tooltip: '지우기',
                     onPressed: () {
                       ctrl.clear();
                       setState(() {

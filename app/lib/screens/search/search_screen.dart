@@ -104,6 +104,7 @@ class _SearchScreenState extends State<SearchScreen> {
           if (_ctrl.text.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.clear),
+              tooltip: '검색어 지우기',
               onPressed: () {
                 _ctrl.clear();
                 setState(() { _players = []; _teams = []; _searched = false; });
@@ -111,6 +112,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           IconButton(
             icon: const Icon(Icons.search),
+            tooltip: '검색',
             onPressed: () => _search(_ctrl.text),
           ),
         ],
@@ -166,6 +168,7 @@ class _SearchScreenState extends State<SearchScreen> {
               title: Text(h),
               trailing: IconButton(
                 icon: const Icon(Icons.close, size: 16, color: Colors.grey),
+                tooltip: '기록에서 삭제',
                 onPressed: () => _removeHistory(h),
               ),
               onTap: () {
