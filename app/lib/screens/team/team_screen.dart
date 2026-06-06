@@ -964,7 +964,7 @@ class _TeamScreenState extends State<TeamScreen>
     if (_teams.isEmpty || _odds.isEmpty) {
       return Center(child: CircularProgressIndicator(color: SemColor.brand(context), strokeWidth: 2.5));
     }
-    final oddsById = <int, Map>{for (final o in _odds) (o['team_id'] as int? ?? -1): o};
+    final oddsById = <int, Map>{for (final o in _odds) (o['id'] as int? ?? -1): o};
     final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);

@@ -4,6 +4,7 @@ OpenWeatherMap 날씨 서비스
 - 5분 캐시 (과도한 API 호출 방지)
 """
 import os
+import threading
 import time
 import requests
 
@@ -40,6 +41,29 @@ ICON_MAP = {
 _cache: dict = {}
 CACHE_TTL = 300  # 5분
 
+# stale-while-revalidate — 요청 스레드 블로킹 금지 (cold 시 구장 5곳 × 5s timeout = 홈 5초+ 지연 원인)
+_refreshing: set = set()
+_refresh_lock = threading.Lock()
+
+
+def _spawn(key, fetch_fn):
+    """백그라운드 1회 갱신 (동일 key 중복 spawn 방지)"""
+    with _refresh_lock:
+        if key in _refreshing:
+            return
+        _refreshing.add(key)
+
+    def run():
+        try:
+            fetch_fn()
+        except Exception as e:
+            print(f'[Weather] 백그라운드 갱신 실패 {key}: {e}')
+        finally:
+            with _refresh_lock:
+                _refreshing.discard(key)
+
+    threading.Thread(target=run, daemon=True).start()
+
 
 def _icon_emoji(icon_code: str) -> str:
     return ICON_MAP.get(icon_code[:2], '🌡️')
@@ -61,7 +85,7 @@ def get_weather(stadium_id: int) -> dict | None:
     if cached and now - cached[0] < CACHE_TTL:
         return cached[1]
 
-    try:
+    def fetch():
         resp = requests.get(f'{BASE_URL}/weather', params={
             'lat': lat, 'lon': lon,
             'appid': API_KEY,
@@ -69,13 +93,11 @@ def get_weather(stadium_id: int) -> dict | None:
             'lang': 'kr',
         }, timeout=5)
         resp.raise_for_status()
-        d = resp.json()
-        result = _parse_current(d)
-        _cache[stadium_id] = (now, result)
-        return result
-    except Exception as e:
-        print(f'[Weather] 현재날씨 조회 실패 stadium={stadium_id}: {e}')
-        return None
+        _cache[stadium_id] = (time.time(), _parse_current(resp.json()))
+
+    # 만료/부재 → 백그라운드 갱신 spawn, 즉시 stale(or None) 반환 (요청 비블로킹)
+    _spawn(f'w{stadium_id}', fetch)
+    return cached[1] if cached else None
 
 
 def get_forecast_at(stadium_id: int, target_hour_kst: int) -> dict | None:
@@ -92,23 +114,26 @@ def get_forecast_at(stadium_id: int, target_hour_kst: int) -> dict | None:
     cache_key = f'{stadium_id}_fc'
     now = time.time()
     cached = _cache.get(cache_key)
+
+    def fetch():
+        resp = requests.get(f'{BASE_URL}/forecast', params={
+            'lat': lat, 'lon': lon,
+            'appid': API_KEY,
+            'units': 'metric',
+            'lang': 'kr',
+            'cnt': 40,  # 5일치 (3시간 간격 × 40 = 120h)
+        }, timeout=5)
+        resp.raise_for_status()
+        _cache[cache_key] = (time.time(), resp.json().get('list', []))
+
     if cached and now - cached[0] < CACHE_TTL:
         fc_list = cached[1]
     else:
-        try:
-            resp = requests.get(f'{BASE_URL}/forecast', params={
-                'lat': lat, 'lon': lon,
-                'appid': API_KEY,
-                'units': 'metric',
-                'lang': 'kr',
-                'cnt': 40,  # 5일치 (3시간 간격 × 40 = 120h)
-            }, timeout=5)
-            resp.raise_for_status()
-            fc_list = resp.json().get('list', [])
-            _cache[cache_key] = (now, fc_list)
-        except Exception as e:
-            print(f'[Weather] 예보 조회 실패 stadium={stadium_id}: {e}')
+        # 비블로킹 — stale 사용, 백그라운드 갱신 (없으면 None)
+        _spawn(cache_key, fetch)
+        if not cached:
             return None
+        fc_list = cached[1]
 
     # target_hour_kst에 가장 가까운 예보 선택
     best = None
