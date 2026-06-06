@@ -500,24 +500,34 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  // 팀컬러 원 + 등번호 아바타 (mockup PlayerAvatar)
+  // 선수 이미지 원형 아바타 (팀컬러 테두리, 이미지 없으면 등번호 fallback)
   Widget _numAvatar(Map p, double size) {
     final code = p['team_code'] as String? ?? '';
     final c = teamColor(code);
+    final img = p['profile_image'] as String?;
+    Widget fallback = Container(
+      color: c.withValues(alpha: 0.88),
+      child: Center(
+        child: Text('#${p['number'] ?? '-'}',
+            style: TextStyle(color: Colors.white, fontSize: size * 0.28,
+                fontWeight: FontWeight.w800, letterSpacing: 0)),
+      ),
+    );
     return Hero(
       tag: 'player_${p['id']}',
       child: Container(
         width: size, height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: c.withValues(alpha: 0.88),
-          border: Border.all(color: c.withValues(alpha: 0.28), width: 2),
+          border: Border.all(color: c.withValues(alpha: 0.45), width: 2),
         ),
-        child: Center(
-          child: Text('#${p['number'] ?? '-'}',
-              style: TextStyle(color: Colors.white, fontSize: size * 0.30,
-                  fontWeight: FontWeight.w800, letterSpacing: 0)),
-        ),
+        clipBehavior: Clip.antiAlias,
+        child: (img != null && img.isNotEmpty)
+            ? CachedNetworkImage(
+                imageUrl: img, fit: BoxFit.cover,
+                errorWidget: (_, _, _) => fallback,
+              )
+            : fallback,
       ),
     );
   }
@@ -625,8 +635,15 @@ class _PlayerScreenState extends State<PlayerScreen>
                     color: Colors.white.withValues(alpha: 0.15),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.32), width: 2),
                   ),
-                  child: Center(child: Text('#${p['number'] ?? '-'}',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white))),
+                  clipBehavior: Clip.antiAlias,
+                  child: ((p['profile_image'] as String?)?.isNotEmpty ?? false)
+                      ? CachedNetworkImage(
+                          imageUrl: p['profile_image'] as String, fit: BoxFit.cover,
+                          errorWidget: (_, _, _) => Center(child: Text('#${p['number'] ?? '-'}',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white))),
+                        )
+                      : Center(child: Text('#${p['number'] ?? '-'}',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white))),
                 ),
                 const SizedBox(height: 7),
                 Text(p['name'] ?? '',

@@ -236,7 +236,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 children: [
                   _buildHeader(player),
                   _buildCoreStatsGrid(player),
-                  _buildInfoCard(player),
+                  // InfoCard 제거 — 기본 정보 헤더 통합 (2026-06-07)
                   if (_dailyStats.isNotEmpty) _buildRecent5Games(player),
                   if (_pitchStats != null) _buildPitchStatsCard(),
                   if (_dailyStats.isNotEmpty) _buildTrendCard(player),
@@ -492,7 +492,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       label: '$team $name 선수, 등번호 $number, $posOrType',
       header: true,
       child: Container(
-        height: 200,
+        height: 216,
         width: double.infinity,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
@@ -513,10 +513,11 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       color: Colors.white, height: 1)),
             ),
           ),
-          // 팀 로고 오버레이 (좌하단)
-          Positioned(
-            left: -30, bottom: -30,
-            child: Opacity(opacity: 0.15, child: TeamLogo(teamCode: code, size: 200)),
+          // 팀 로고 오버레이 — 대형 가운데 정렬
+          Positioned.fill(
+            child: Center(
+              child: Opacity(opacity: 0.13, child: TeamLogo(teamCode: code, size: 280)),
+            ),
           ),
           // 블렌드 radial
           Container(
@@ -561,6 +562,23 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       const SizedBox(height: 6),
                       Text('$team · $posOrType · #$number',
                           style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.82))),
+                      // 기본 정보 (InfoCard → 헤더 통합)
+                      Builder(builder: (_) {
+                        final parts = <String>[
+                          if (player['height'] != null || player['weight'] != null)
+                            '${player['height'] ?? '-'}cm ${player['weight'] ?? '-'}kg',
+                          if (player['throws'] != null || player['bats'] != null)
+                            '${player['throws'] ?? ''}${player['bats'] ?? ''}',
+                          if (player['birth_date'] != null)
+                            (player['birth_date'] as String).replaceAll('-', '.'),
+                        ];
+                        if (parts.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(parts.join(' · '),
+                              style: TextStyle(fontSize: 10.5, color: Colors.white.withValues(alpha: 0.62))),
+                        );
+                      }),
                       if (player['roster_status'] != null || player['insta_handle'] != null) ...[
                         const SizedBox(height: 8),
                         Wrap(spacing: 7, runSpacing: 6, children: [
@@ -686,6 +704,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildInfoCard(Map<String, dynamic> player) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
