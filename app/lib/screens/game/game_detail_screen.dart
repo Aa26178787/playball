@@ -68,6 +68,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   bool _scoringExpanded = true;
   // 필드뷰 항상 상단 고정 (토글 버튼 제거 — 2026-06-06)
   final bool _fieldPinned = true;
+  // 다른 경기 스트립 접기/펴기 (영구 기억)
+  bool _stripExpanded = true;
   List _sameDayGames = [];
   int _lineupSubIndex = 0;
   int _statsSubIndex = 0;
@@ -107,6 +109,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   @override
   void initState() {
     super.initState();
+    LocalCache.getStale('other_strip_expanded').then((v) {
+      if (mounted && v is bool && v != _stripExpanded) setState(() => _stripExpanded = v);
+    });
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       _restorableTabIndex.value = _tabController.index;
@@ -572,7 +577,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ? Column(
                   children: [
                     // panel-spacer: transparent → panel rounded 끝점 보이게 (paper 노출 X)
-                    SizedBox(height: _sameDayGames.isNotEmpty ? 482 : 408),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 510 : 444) : 408,
+                    ),
                     Expanded(
                       // gameHeader skip — 핀 시 panel 바로 아래 TabBarView (득점요약/이닝중계)만 표시
                       child: TabBarView(
@@ -1412,9 +1421,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final awayScore = _liveScore(game, 'away_score');
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
 
-    return Container(
-      // 하단 빈 여백 축소 + rounded bottom + 분리 그림자 (2026-06-06, overflow 2.4px 보정 +4)
-      height: _sameDayGames.isNotEmpty ? 482 : 408,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      // 스트립 토글: 펼침 510 / 접힘 444 (+헤더 28). 스트립 없으면 408
+      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 510 : 444) : 408,
       decoration: BoxDecoration(
         color: paper,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
@@ -1525,7 +1536,26 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             ),
           ),
-          if (_sameDayGames.isNotEmpty) _buildSameDayStrip(),
+          // ── 다른 경기 접기/펴기 헤더 ──
+          if (_sameDayGames.isNotEmpty)
+            InkWell(
+              onTap: () {
+                setState(() => _stripExpanded = !_stripExpanded);
+                LocalCache.set('other_strip_expanded', _stripExpanded);
+              },
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 6, 14, 2),
+                child: Row(children: [
+                  Text('다른 경기 ${_sameDayGames.length}',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2))),
+                  const Spacer(),
+                  Icon(_stripExpanded ? Icons.expand_less : Icons.expand_more,
+                      size: 16, color: isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2)),
+                ]),
+              ),
+            ),
+          if (_sameDayGames.isNotEmpty && _stripExpanded) _buildSameDayStrip(),
           const SizedBox(height: 4),
         ],
       ),
