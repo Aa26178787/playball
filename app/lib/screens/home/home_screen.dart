@@ -1951,20 +1951,30 @@ class GameCard extends StatelessWidget {
           child: Stack(
             children: [
               // ── 승팀 overlay (헤더~score 영역. chip/footer는 opaque bg로 paint 위로 가림) ──
+              // 작은 팀로고(46px) 중심 수직선에 overlay 중심 정렬 (화면폭 무관)
               if (winnerColor != null)
-                Positioned(
-                  top: 0, height: 200,
-                  left: homeWon ? -70 : null,
-                  right: awayWon ? -70 : null,
+                Positioned.fill(
                   child: IgnorePointer(
-                    child: Opacity(
-                      opacity: isDark ? 0.13 : 0.11,
-                      // ImageFiltered: Gaussian blur (sigma 1.2)
-                      child: ImageFiltered(
-                        imageFilter: ui.ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2),
-                        child: TeamLogo(teamCode: homeWon ? game.homeTeamCode : game.awayTeamCode, size: 290),
-                      ),
-                    ),
+                    child: LayoutBuilder(builder: (_, c) {
+                      // 메인 grid: padding 15 | Expanded(side) | 86 score | Expanded(side) | padding 15
+                      final side = (c.maxWidth - 30 - 86) / 2;
+                      final logoCenterX = homeWon ? 15 + side / 2 : c.maxWidth - 15 - side / 2;
+                      const overlaySize = 290.0;
+                      return Stack(children: [
+                        Positioned(
+                          top: 0, height: 200,
+                          left: logoCenterX - overlaySize / 2,
+                          child: Opacity(
+                            opacity: isDark ? 0.13 : 0.11,
+                            // ImageFiltered: Gaussian blur (sigma 1.2)
+                            child: ImageFiltered(
+                              imageFilter: ui.ImageFilter.blur(sigmaX: 1.2, sigmaY: 1.2),
+                              child: TeamLogo(teamCode: homeWon ? game.homeTeamCode : game.awayTeamCode, size: overlaySize),
+                            ),
+                          ),
+                        ),
+                      ]);
+                    }),
                   ),
                 ),
               Padding(
