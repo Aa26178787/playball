@@ -72,6 +72,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   bool _stripExpanded = true;
   // 이닝별 중계 — 선택 이닝 (null = 자동: 라이브 현재 이닝 / 종료 1회)
   int? _selectedRelayInning;
+  int _relaySwipeDir = 1; // 슬라이드 방향 (1=다음: 우→좌, -1=이전: 좌→우)
   List _sameDayGames = [];
   int _lineupSubIndex = 0;
   int _statsSubIndex = 0;
@@ -1855,7 +1856,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       final hasRun = scoringInnings.contains(n);
                       final isCur = isLiveGame && n == curInning;
                       return GestureDetector(
-                        onTap: () => setState(() => _selectedRelayInning = n),
+                        onTap: () => setState(() {
+                          _relaySwipeDir = n >= selected ? 1 : -1;
+                          _selectedRelayInning = n;
+                        }),
                         child: Container(
                           margin: const EdgeInsets.only(right: 6),
                           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
@@ -1907,20 +1911,29 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                             final idx = sortedInnings.indexOf(selected);
                             final next = v < 0 ? idx + 1 : idx - 1; // 좌 스와이프 = 다음
                             if (next < 0 || next >= sortedInnings.length) return;
-                            setState(() => _selectedRelayInning = sortedInnings[next]);
+                            setState(() {
+                              _relaySwipeDir = v < 0 ? 1 : -1;
+                              _selectedRelayInning = sortedInnings[next];
+                            });
                           },
                           child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 180),
+                          duration: const Duration(milliseconds: 220),
                           switchInCurve: Curves.easeOutCubic,
-                          transitionBuilder: (child, anim) => FadeTransition(
-                            opacity: anim,
-                            child: SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0.06, 0), end: Offset.zero,
-                              ).animate(anim),
-                              child: child,
-                            ),
-                          ),
+                          switchOutCurve: Curves.easeInCubic,
+                          // 방향성 슬라이드: 다음 = 우→좌 진입, 이전 = 좌→우 진입
+                          transitionBuilder: (child, anim) {
+                            final isIncoming = child.key == ValueKey(selected);
+                            final beginX = isIncoming ? 0.22 * _relaySwipeDir : -0.22 * _relaySwipeDir;
+                            return FadeTransition(
+                              opacity: anim,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: Offset(beginX, 0), end: Offset.zero,
+                                ).animate(anim),
+                                child: child,
+                              ),
+                            );
+                          },
                           child: Container(
                           key: ValueKey(selected),
                           width: double.infinity,
