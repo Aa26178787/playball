@@ -689,11 +689,40 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               final isDone = status == '종료';
               final isCurrent = g['id'] == widget.gameId;
 
-              String scoreText;
+              final aScore = (awayScore as int?) ?? 0;
+              final hScore = (homeScore as int?) ?? 0;
+              final awayWin = isDone && aScore > hScore;
+              final homeWin = isDone && hScore > aScore;
+              final aColor = teamColor(awayCode);
+              final hColor = teamColor(homeCode);
+
+              // 스코어/시간 위젯 — 종료: 승팀 강조 / 라이브: 빨강 / 예정: 시간
+              Widget scoreWidget;
               if (isDone || isLive) {
-                scoreText = '${awayScore ?? 0}:${homeScore ?? 0}';
+                Color cA = isLive ? live : (awayWin ? ink : sub);
+                Color cH = isLive ? live : (homeWin ? ink : sub);
+                scoreWidget = Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isLive) ...[
+                      Container(width: 4, height: 4,
+                          decoration: const BoxDecoration(color: live, shape: BoxShape.circle)),
+                      const SizedBox(width: 3),
+                    ],
+                    Text('$aScore',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: cA,
+                            fontFeatures: const [FontFeature.tabularFigures()])),
+                    Text(' : ', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: sub)),
+                    Text('$hScore',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: cH,
+                            fontFeatures: const [FontFeature.tabularFigures()])),
+                  ],
+                );
               } else {
-                scoreText = g['start_time'] as String? ?? '-';
+                scoreWidget = Text(g['start_time'] as String? ?? '-',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: sub,
+                        fontFeatures: const [FontFeature.tabularFigures()]));
               }
 
               return GestureDetector(
@@ -701,42 +730,47 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     : () => Navigator.pushReplacement(context,
                         MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: g['id'] as int))),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                  clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: isCurrent ? paper2 : paper,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: isCurrent ? ink : line, width: isCurrent ? 1.5 : 1),
+                    border: Border.all(
+                      color: isLive ? live.withValues(alpha: 0.55) : (isCurrent ? ink : line),
+                      width: (isLive || isCurrent) ? 1.3 : 1,
+                    ),
+                    boxShadow: isCurrent ? null : [
+                      BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05),
+                          blurRadius: 3, offset: const Offset(0, 1)),
+                    ],
                   ),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          TeamLogo(teamCode: awayCode, size: 16),
-                          const SizedBox(width: 3),
-                          Text('vs', style: TextStyle(fontSize: 9, color: sub, fontWeight: FontWeight.w600)),
-                          const SizedBox(width: 3),
-                          TeamLogo(teamCode: homeCode, size: 16),
-                        ],
+                      // 팀컬러 듀얼 띠 (away → home)
+                      SizedBox(
+                        height: 3,
+                        child: Row(children: [
+                          Expanded(child: ColoredBox(color: aColor.withValues(alpha: 0.85))),
+                          Expanded(child: ColoredBox(color: hColor.withValues(alpha: 0.85))),
+                        ]),
                       ),
-                      const SizedBox(height: 3),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (isLive) ...[
-                            Container(width: 4, height: 4,
-                                decoration: const BoxDecoration(color: live, shape: BoxShape.circle)),
-                            const SizedBox(width: 3),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Opacity(opacity: homeWin ? 0.45 : 1.0, child: TeamLogo(teamCode: awayCode, size: 16)),
+                                const SizedBox(width: 3),
+                                Text('vs', style: TextStyle(fontSize: 9, color: sub, fontWeight: FontWeight.w600)),
+                                const SizedBox(width: 3),
+                                Opacity(opacity: awayWin ? 0.45 : 1.0, child: TeamLogo(teamCode: homeCode, size: 16)),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            scoreWidget,
                           ],
-                          Text(scoreText,
-                              style: TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w800,
-                                color: isLive ? live : ink,
-                                fontFeatures: const [FontFeature.tabularFigures()],
-                              )),
-                        ],
+                        ),
                       ),
                     ],
                   ),
