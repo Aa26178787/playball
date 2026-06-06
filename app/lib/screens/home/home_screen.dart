@@ -1721,6 +1721,16 @@ class GameCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis),
       );
+      // 홈팀만 미니 '홈' 칩 (원정은 무표시 — 대칭 노이즈 절반)
+      final homeTag = Container(
+        margin: const EdgeInsets.only(left: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+        decoration: BoxDecoration(
+          color: t.paper2,
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Text('홈', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: t.sub)),
+      );
       return Expanded(
         child: Row(
           mainAxisAlignment: isHomeSide ? MainAxisAlignment.start : MainAxisAlignment.end,
@@ -1733,6 +1743,7 @@ class GameCard extends StatelessWidget {
             if (isHomeSide) ...[
               const SizedBox(width: 8),
               txt,
+              homeTag,
             ],
           ],
         ),
@@ -1800,9 +1811,18 @@ class GameCard extends StatelessWidget {
                         teamSide(game.awayTeamCode, game.awayTeam, game.awayScore, awayWon, false),
                       ],
                     ),
-                    // ── 2층: 상태 (종료 / N회 초말 / 시간) ──
+                    // ── 2층: 상태 · 구장 ──
                     const SizedBox(height: 6),
-                    statusBadge(),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        statusBadge(),
+                        if (game.stadium != null)
+                          Text(' · ${game.stadium}',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
+                      ],
+                    ),
                     // ── 3층: 승패투수 또는 선발 ──
                     if (subLine != null) ...[
                       const SizedBox(height: 5),
