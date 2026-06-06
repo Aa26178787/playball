@@ -1550,46 +1550,52 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             ),
           ),
-          // AnimatedSize — 패널 높이 애니메이션과 동기화 (펼침 중 Column overflow 방지)
-          if (_sameDayGames.isNotEmpty)
-            ClipRect(
-              child: AnimatedSize(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.topCenter,
-                child: _stripExpanded
-                    ? _buildSameDayStrip()
-                    : const SizedBox(width: double.infinity, height: 0),
-              ),
+          // Spacer — 핸들 블록을 패널 바닥 정착 (하단 잉여 여백 제거)
+          const Spacer(),
+          // 상시 마운트 AnimatedSize — 스트립/핸들 등장·토글 모두 패널 높이 애니메이션(200ms)과 동기화
+          // (진입 시 콘텐츠 즉시 삽입 → 일시 overflow 방지)
+          ClipRect(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.bottomCenter,
+              child: _sameDayGames.isEmpty
+                  ? const SizedBox(width: double.infinity, height: 0)
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_stripExpanded) _buildSameDayStrip(),
+                        // ── 블라인드 핸들 (패널 중앙 하단) — 접힘: 라벨+▼ / 펼침: ▲만 ──
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            setState(() => _stripExpanded = !_stripExpanded);
+                            LocalCache.set('other_strip_expanded', _stripExpanded);
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(top: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                            ),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              if (!_stripExpanded) ...[
+                                Text('다른 구장 경기',
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                                        color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73))),
+                                const SizedBox(width: 4),
+                              ],
+                              Icon(_stripExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                  size: 16,
+                                  color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73)),
+                            ]),
+                          ),
+                        ),
+                      ],
+                    ),
             ),
-          // ── 블라인드 핸들 (패널 중앙 하단) — 접힘: 라벨+▼ / 펼침: ▲만 ──
-          if (_sameDayGames.isNotEmpty)
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                setState(() => _stripExpanded = !_stripExpanded);
-                LocalCache.set('other_strip_expanded', _stripExpanded);
-              },
-              child: Container(
-                margin: const EdgeInsets.only(top: 3),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  if (!_stripExpanded) ...[
-                    Text('다른 구장 경기',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
-                            color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73))),
-                    const SizedBox(width: 4),
-                  ],
-                  Icon(_stripExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                      size: 16,
-                      color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73)),
-                ]),
-              ),
-            ),
+          ),
         ],
       ),
     );
