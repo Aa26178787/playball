@@ -594,7 +594,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.easeOutCubic,
-                      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 504 : 438) : 408,
+                      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 486 : 416) : 408,
                     ),
                     Expanded(
                       // gameHeader skip — 핀 시 panel 바로 아래 TabBarView (득점요약/이닝중계)만 표시
@@ -674,7 +674,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
               mainAxisSpacing: 6, crossAxisSpacing: 6,
-              childAspectRatio: 1.4,
+              // 비율(1.4) → 고정 높이: 화면폭 무관 스트립 높이 결정론화 (패널 고정높이 정합)
+              mainAxisExtent: 62,
             ),
             itemCount: _sameDayGames.length,
             itemBuilder: (_, i) {
@@ -1438,8 +1439,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
-      // 스트립 토글: 펼침 504 / 접힘 438 (+블라인드 핸들 ~23). 스트립 없으면 408
-      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 504 : 438) : 408,
+      // 스트립 토글: 펼침 486 / 접힘 416 (셀 mainAxisExtent 62 고정 → 결정론적). 스트립 없으면 408
+      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 486 : 416) : 408,
       decoration: BoxDecoration(
         color: paper,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
