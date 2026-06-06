@@ -20,7 +20,6 @@ import '../community/community_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../mypage/my_page_screen.dart';
 import '../search/search_screen.dart';
-import '../stadium/stadium_screen.dart';
 import '../notifications/notifications_screen.dart';
 
 // 공통 디자인 토큰 (mockup hi-fi)
@@ -1534,69 +1533,21 @@ class GameCard extends StatelessWidget {
     );
   }
 
-  Widget _stadiumChip(BuildContext context, _Tok t) {
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => StadiumScreen(
-          initialIndex: game.stadiumId != null ? game.stadiumId! - 1 : null,
-        )),
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: t.paper2,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: t.line2, width: 1),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.map_outlined, size: 11, color: t.ink3),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text('지도 · ${game.stadium!}',
-                maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false,
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2)),
-          ),
-          const SizedBox(width: 2),
-          Icon(Icons.chevron_right, size: 12, color: t.ink3),
-        ]),
-      ),
-    );
-  }
-
-  Widget _weatherChip(_Tok t) {
+  // 날씨 텍스트 라벨 (chip 제거 — plain text, 지도 기능 비활성 2026-06-06)
+  String? _weatherText() {
     final w = game.weather;
-    if (w == null) return const SizedBox.shrink();
-    String label;
-    if (w['indoor'] == true) {
-      label = '실내';
-    } else {
-      final emoji = w['emoji'] ?? '';
-      final temp = w['temp'];
-      final pop = w['pop'];
-      final popVal = pop is num ? pop.toInt() : null;
-      final parts = <String>[
-        if (emoji.isNotEmpty) emoji,
-        if (temp != null) '$temp°',
-        if (popVal != null && popVal > 0) '$popVal%',
-      ];
-      if (parts.isEmpty) return const SizedBox.shrink();
-      label = parts.join(' ');
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: t.paper2,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: t.line2, width: 1),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 5, height: 5,
-            decoration: BoxDecoration(color: t.line2, shape: BoxShape.circle)),
-        const SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.ink3)),
-      ]),
-    );
+    if (w == null) return null;
+    if (w['indoor'] == true) return '실내';
+    final emoji = w['emoji'] ?? '';
+    final temp = w['temp'];
+    final pop = w['pop'];
+    final popVal = pop is num ? pop.toInt() : null;
+    final parts = <String>[
+      if (emoji.isNotEmpty) emoji,
+      if (temp != null) '$temp°',
+      if (popVal != null && popVal > 0) '$popVal%',
+    ];
+    return parts.isEmpty ? null : parts.join(' ');
   }
 
   Widget _teamSide({
@@ -1804,35 +1755,61 @@ class GameCard extends StatelessWidget {
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: game.id))),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              child: Row(
-                children: [
-                  teamSide(game.homeTeamCode, game.homeTeam, game.homeScore, homeWon, true),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: showScore
-                        ? Row(mainAxisSize: MainAxisSize.min, children: [
-                            Text('${game.homeScore}',
-                                style: TextStyle(fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    color: homeWon ? homeColor : t.ink,
-                                    fontFeatures: const [FontFeature.tabularFigures()])),
-                            const Text(' : ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                            Text('${game.awayScore}',
-                                style: TextStyle(fontSize: 18,
-                                    fontWeight: FontWeight.w800,
-                                    color: awayWon ? awayColor : t.ink,
-                                    fontFeatures: const [FontFeature.tabularFigures()])),
-                          ])
-                        : statusBadge(),
-                  ),
-                  teamSide(game.awayTeamCode, game.awayTeam, game.awayScore, awayWon, false),
-                  if (showScore) ...[
-                    const SizedBox(width: 8),
-                    statusBadge(),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Builder(builder: (_) {
+                // 보조 줄: 선발투수 (예정/진행) 또는 승/패투수 (종료) — "선발투수 정도까지만"
+                String? subLine;
+                if (!isFinished && !isCancelled &&
+                    ((game.homeStarter?.isNotEmpty ?? false) || (game.awayStarter?.isNotEmpty ?? false))) {
+                  subLine = '선발  ${game.homeStarter ?? '-'} vs ${game.awayStarter ?? '-'}';
+                } else if (isFinished &&
+                    (game.winPitcher != null || game.losePitcher != null)) {
+                  subLine = [
+                    if (game.winPitcher != null) '승 ${game.winPitcher}',
+                    if (game.losePitcher != null) '패 ${game.losePitcher}',
+                  ].join('  ·  ');
+                }
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        teamSide(game.homeTeamCode, game.homeTeam, game.homeScore, homeWon, true),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: showScore
+                              ? Row(mainAxisSize: MainAxisSize.min, children: [
+                                  Text('${game.homeScore}',
+                                      style: TextStyle(fontSize: 18,
+                                          fontWeight: FontWeight.w800,
+                                          color: homeWon ? homeColor : t.ink,
+                                          fontFeatures: const [FontFeature.tabularFigures()])),
+                                  const Text(' : ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                                  Text('${game.awayScore}',
+                                      style: TextStyle(fontSize: 18,
+                                          fontWeight: FontWeight.w800,
+                                          color: awayWon ? awayColor : t.ink,
+                                          fontFeatures: const [FontFeature.tabularFigures()])),
+                                ])
+                              : statusBadge(),
+                        ),
+                        teamSide(game.awayTeamCode, game.awayTeam, game.awayScore, awayWon, false),
+                        if (showScore) ...[
+                          const SizedBox(width: 8),
+                          statusBadge(),
+                        ],
+                      ],
+                    ),
+                    if (subLine != null) ...[
+                      const SizedBox(height: 6),
+                      Text(subLine,
+                          textAlign: TextAlign.center,
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.ink3)),
+                    ],
                   ],
-                ],
-              ),
+                );
+              }),
             ),
           ),
         ),
@@ -2127,20 +2104,21 @@ class GameCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                // ── 날씨 + 구장 칩 (스코어 아래 중앙) — 2026-06-06 헤더에서 이동 ──
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 15),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _weatherChip(t),
-                      if (game.stadium != null) ...[
-                        const SizedBox(width: 6),
-                        Flexible(child: _stadiumChip(context, t)),
-                      ],
-                    ],
-                  ),
-                ),
+                // ── 날씨 + 구장 (스코어 아래, plain text — 지도 비활성) ──
+                Builder(builder: (_) {
+                  final parts = <String>[
+                    if (_weatherText() != null) _weatherText()!,
+                    if (game.stadium != null) game.stadium!,
+                  ];
+                  if (parts.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    child: Text(parts.join('  ·  '),
+                        textAlign: TextAlign.center,
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.ink3)),
+                  );
+                }),
                 // ── divider + 선발 + 다음 시리즈 (opaque cardBg로 overlay 가림) ──
                 // 부모 Padding horizontal 0 → Container 자체 카드 전체 너비, 내부 padding 15만 적용
                 if (hasPitchers || hasStarters || nextHomeSeries != null || nextAwaySeries != null)

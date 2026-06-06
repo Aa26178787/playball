@@ -572,7 +572,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ? Column(
                   children: [
                     // panel-spacer: transparent → panel rounded 끝점 보이게 (paper 노출 X)
-                    SizedBox(height: _sameDayGames.isNotEmpty ? 505 : 410),
+                    SizedBox(height: _sameDayGames.isNotEmpty ? 478 : 404),
                     Expanded(
                       // gameHeader skip — 핀 시 panel 바로 아래 TabBarView (득점요약/이닝중계)만 표시
                       child: TabBarView(
@@ -1412,11 +1412,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final awayScore = _liveScore(game, 'away_score');
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-      child: Container(
-      height: _sameDayGames.isNotEmpty ? 505 : 410,
-      color: paper,
+    return Container(
+      // 하단 빈 여백 축소 (505/410 → 478/404) + rounded bottom + 분리 그림자 (2026-06-06)
+      height: _sameDayGames.isNotEmpty ? 478 : 404,
+      decoration: BoxDecoration(
+        color: paper,
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.10), blurRadius: 8, offset: const Offset(0, 3)),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1520,9 +1526,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             ),
           ),
           if (_sameDayGames.isNotEmpty) _buildSameDayStrip(),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
         ],
-      ),
       ),
     );
   }
