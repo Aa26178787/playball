@@ -35,6 +35,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   List _teams = [];
   int? _selectedTeamId;
+  bool _isListView = true; // 리스트 / 카드 토글
 
   List _searchResults = [];
   bool _isSearching = false;
@@ -356,191 +357,306 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
   }
 
+  // ── 팀 필터 칩 — 팀컬러 tint 스타일 (mockup) ──
   Widget _buildTeamFilterChips(VoidCallback onSelect) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final paper2 = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
+    final ink2 = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
+
+    Widget chip({required String label, required bool active, required Color color, required VoidCallback onTap}) {
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.only(right: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+          decoration: BoxDecoration(
+            color: active ? color.withValues(alpha: isDark ? 0.22 : 0.12) : paper2,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: active ? color.withValues(alpha: 0.45) : line),
+          ),
+          child: Text(label,
+              style: TextStyle(fontSize: 11,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                  color: active ? color : ink2)),
+        ),
+      );
+    }
+
     return SizedBox(
       height: 34,
-      child: ListView.builder(
+      child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(12, 2, 12, 0),
-        itemCount: _teams.length + 1,
-        itemBuilder: (_, i) {
-          if (i == 0) {
-            final sel = _selectedTeamId == null;
-            return GestureDetector(
+        padding: const EdgeInsets.fromLTRB(18, 2, 18, 0),
+        children: [
+          chip(label: '전체', active: _selectedTeamId == null, color: ink, onTap: () {
+            setState(() => _selectedTeamId = null);
+            onSelect();
+          }),
+          ..._teams.map((t) {
+            final tm = t as Map;
+            final tid = tm['id'] as int?;
+            final code = tm['short_name'] as String? ?? '';
+            final raw = teamColor(code);
+            final c = isDark ? Color.lerp(raw, Colors.white, 0.25)! : raw;
+            return chip(
+              label: tm['name'] ?? '',
+              active: _selectedTeamId == tid,
+              color: c,
               onTap: () {
-                setState(() => _selectedTeamId = null);
+                setState(() => _selectedTeamId = _selectedTeamId == tid ? null : tid);
                 onSelect();
               },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                margin: const EdgeInsets.only(right: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: sel ? SemColor.panelDark : Colors.grey.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text('전체',
-                    style: TextStyle(fontSize: 11, color: sel ? Colors.white : Colors.black87,
-                        fontWeight: sel ? FontWeight.bold : FontWeight.normal)),
-              ),
             );
-          }
-          final t = _teams[i - 1] as Map;
-          final tid = t['id'] as int?;
-          final code = t['short_name'] as String? ?? '';
-          final sel = _selectedTeamId == tid;
-          return GestureDetector(
-            onTap: () {
-              setState(() => _selectedTeamId = tid);
-              onSelect();
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              margin: const EdgeInsets.only(right: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: sel ? teamColor(code) : Colors.grey.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
-                border: sel ? null : Border.all(color: Colors.grey.withValues(alpha: 0.25)),
-              ),
-              child: Text(t['name'] ?? '',
-                  style: TextStyle(fontSize: 11, color: sel ? Colors.white : Colors.black87,
-                      fontWeight: sel ? FontWeight.bold : FontWeight.normal)),
-            ),
-          );
-        },
+          }),
+        ],
       ),
     );
   }
 
+  // ── 스탯 칩 + 리스트/카드 토글 (mockup) ──
   Widget _buildSortChips(
     List<Map<String, String>> sorts,
     String selected,
     void Function(String) onSelect,
   ) {
-    return SizedBox(
-      height: 38,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-        itemCount: sorts.length,
-        itemBuilder: (_, i) {
-          final s = sorts[i];
-          final sel = selected == s['value'];
-          return GestureDetector(
-            onTap: () => onSelect(s['value']!),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-              decoration: BoxDecoration(
-                color: sel ? SemColor.panelDark : Colors.grey.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                s['label']!,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: sel ? FontWeight.bold : FontWeight.normal,
-                  color: sel ? Colors.white : null,
-                ),
-              ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final inkOn = isDark ? Colors.black : Colors.white;
+    final line = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final paper2 = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
+    final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+
+    Widget variantBtn(String label, bool active, VoidCallback onTap) => GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? ink : Colors.transparent,
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Text(label,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                color: active ? inkOn : sub)),
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
+      child: Row(children: [
+        Expanded(
+          child: SizedBox(
+            height: 32,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: sorts.map((s) {
+                final sel = selected == s['value'];
+                return GestureDetector(
+                  onTap: () => onSelect(s['value']!),
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: sel ? ink : paper,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: sel ? ink : line),
+                    ),
+                    child: Text(s['label']!,
+                        style: TextStyle(fontSize: 12,
+                            fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                            color: sel ? inkOn : sub)),
+                  ),
+                );
+              }).toList(),
             ),
-          );
-        },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: paper2,
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: line.withValues(alpha: 0.6)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            variantBtn('리스트', _isListView, () => setState(() => _isListView = true)),
+            variantBtn('카드', !_isListView, () => setState(() => _isListView = false)),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  void _openDetail(Map p) {
+    final code = p['team_code'] as String? ?? '';
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PlayerDetailScreen(
+        playerId: p['id'],
+        initialData: {'name': p['name'], 'team': teamDisplayName(code), 'profile_image': p['profile_image'], 'number': p['number'], 'player_type': p['player_type'], 'team_code': code},
+      )),
+    );
+  }
+
+  // 팀컬러 원 + 등번호 아바타 (mockup PlayerAvatar)
+  Widget _numAvatar(Map p, double size) {
+    final code = p['team_code'] as String? ?? '';
+    final c = teamColor(code);
+    return Hero(
+      tag: 'player_${p['id']}',
+      child: Container(
+        width: size, height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: c.withValues(alpha: 0.88),
+          border: Border.all(color: c.withValues(alpha: 0.28), width: 2),
+        ),
+        child: Center(
+          child: Text('#${p['number'] ?? '-'}',
+              style: TextStyle(color: Colors.white, fontSize: size * 0.30,
+                  fontWeight: FontWeight.w800, letterSpacing: 0)),
+        ),
       ),
     );
   }
 
-  Widget _buildPlayerCard(Map p, String statVal, String statLabel) {
+  // ── 순위 리스트 행 (mockup _RankListRow) ──
+  Widget _buildRankRow(int rank, Map p, String statVal, String statLabel) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final ink2 = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
+    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final code = p['team_code'] as String? ?? '';
-    final img = p['profile_image'] as String?;
-    final color = teamColor(code);
-    final number = p['number'];
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => PlayerDetailScreen(
-          playerId: p['id'],
-          initialData: {'name': p['name'], 'team': teamDisplayName(code), 'profile_image': p['profile_image'], 'number': p['number'], 'player_type': p['player_type']},
-        )),
+    final raw = teamColor(code);
+    final tc = isDark ? Color.lerp(raw, Colors.white, 0.25)! : raw;
+    final isTop3 = rank <= 3;
+    final position = p['position'] as String? ?? p['player_type'] as String? ?? '';
+
+    return InkWell(
+      onTap: () => _openDetail(p),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: line))),
+          child: Row(children: [
+            SizedBox(
+              width: 28,
+              child: Text('$rank', textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: isTop3 ? 18 : 14, fontWeight: FontWeight.w800,
+                      color: isTop3 ? tc : sub,
+                      fontFeatures: const [FontFeature.tabularFigures()])),
+            ),
+            const SizedBox(width: 11),
+            _numAvatar(p, 42),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(p['name'] ?? '',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ink)),
+                const SizedBox(height: 4),
+                Text('${teamDisplayName(code)} · $position',
+                    style: TextStyle(fontSize: 10, color: ink2)),
+              ]),
+            ),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text(statVal,
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800,
+                      color: isTop3 ? tc : ink, letterSpacing: 0,
+                      fontFeatures: const [FontFeature.tabularFigures()])),
+              Text(statLabel, style: TextStyle(fontSize: 9, color: sub)),
+            ]),
+          ]),
+        ),
       ),
+    );
+  }
+
+  // ── 카드 그리드 셀 (mockup _PlayerCard — 팀컬러 헤더 + 등번호) ──
+  Widget _buildStatCard(int rank, Map p, String statVal, String statLabel) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final code = p['team_code'] as String? ?? '';
+    final raw = teamColor(code);
+    final tcText = isDark ? Color.lerp(raw, Colors.white, 0.25)! : raw;
+    final position = p['position'] as String? ?? p['player_type'] as String? ?? '';
+
+    return GestureDetector(
+      onTap: () => _openDetail(p),
       child: Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 2))],
+          color: paper,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: line),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04), blurRadius: 4, offset: const Offset(0, 1))],
         ),
-        child: Column(
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Hero(
-                    tag: 'player_${p['id']}',
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                      child: (img != null && img.isNotEmpty)
-                          ? CachedNetworkImage(
-                              imageUrl: img,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              errorWidget: (_, _, _) => _playerPlaceholder(code, color),
-                            )
-                          : _playerPlaceholder(code, color),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(0, 14, 0, 11),
+            color: raw.withValues(alpha: 0.9),
+            child: Stack(children: [
+              if (rank <= 3)
+                Positioned(
+                  right: 9, top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(5),
                     ),
+                    child: Text('#$rank',
+                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white70)),
                   ),
-                  if (number != null)
-                    Positioned(
-                      top: 4, left: 5,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        child: Text('#$number',
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  Positioned(
-                    top: 4, right: 4,
-                    child: TeamLogo(teamCode: code, size: 18, logoUrl: p['logo_url']),
+                ),
+              Center(child: Column(children: [
+                Container(
+                  width: 50, height: 50,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.15),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.32), width: 2),
                   ),
-                ],
-              ),
+                  child: Center(child: Text('#${p['number'] ?? '-'}',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white))),
+                ),
+                const SizedBox(height: 7),
+                Text(p['name'] ?? '',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
+              ])),
+            ]),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+                  Flexible(
+                    child: Text(statVal,
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: tcText,
+                            letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()])),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(statLabel, style: TextStyle(fontSize: 10, color: sub)),
+                ]),
+                const SizedBox(height: 5),
+                Text('${teamDisplayName(code)} · $position',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 10, color: ink3)),
+              ]),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
-              child: Column(
-                children: [
-                  Text(p['name'] ?? '',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(statVal,
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
-                      const SizedBox(width: 3),
-                      Text(statLabel,
-                          style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _playerPlaceholder(String code, Color color) {
-    return Container(
-      color: color.withValues(alpha: 0.12),
-      child: Center(
-        child: Icon(Icons.person, size: 40, color: color.withValues(alpha: 0.4)),
+          ),
+        ]),
       ),
     );
   }
@@ -549,25 +665,51 @@ class _PlayerScreenState extends State<PlayerScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final base = isDark ? Colors.grey[800]! : Colors.grey[300]!;
     final highlight = isDark ? Colors.grey[700]! : Colors.grey[100]!;
-    return GridView.builder(
-      padding: EdgeInsets.fromLTRB(12, 8, 12, (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.72,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemCount: 12,
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 100),
+      itemCount: 10,
       itemBuilder: (_, _) => Shimmer.fromColors(
         baseColor: base,
         highlightColor: highlight,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-          ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          child: Row(children: [
+            Container(width: 28, height: 16, color: Colors.white),
+            const SizedBox(width: 11),
+            Container(width: 42, height: 42,
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+            const SizedBox(width: 11),
+            Expanded(child: Container(height: 14, color: Colors.white)),
+            const SizedBox(width: 30),
+            Container(width: 50, height: 22, color: Colors.white),
+          ]),
         ),
       ),
+    );
+  }
+
+  Widget _buildRankedBody(List players, String Function(Map) statOf, String label) {
+    final navBottom = (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom;
+    if (_isListView) {
+      return ListView.builder(
+        padding: EdgeInsets.only(bottom: navBottom),
+        itemCount: players.length,
+        itemBuilder: (_, i) {
+          final p = players[i] as Map;
+          return _buildRankRow(i + 1, p, statOf(p), label);
+        },
+      );
+    }
+    return GridView.builder(
+      padding: EdgeInsets.fromLTRB(18, 4, 18, navBottom),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 0.82,
+      ),
+      itemCount: players.length,
+      itemBuilder: (_, i) {
+        final p = players[i] as Map;
+        return _buildStatCard(i + 1, p, statOf(p), label);
+      },
     );
   }
 
@@ -575,34 +717,14 @@ class _PlayerScreenState extends State<PlayerScreen>
     if (_hitterLoading) return _buildPlayerShimmer(context);
     if (_hitters.isEmpty) return const Center(child: Text('데이터가 없습니다'));
     final label = _hitterSorts.firstWhere((s) => s['value'] == _hitterSort)['label']!;
-    return GridView.builder(
-      padding: EdgeInsets.fromLTRB(12, 8, 12, (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.72,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemCount: _hitters.length,
-      itemBuilder: (_, i) => _buildPlayerCard(_hitters[i] as Map, _hitterStat(_hitters[i] as Map), label),
-    );
+    return _buildRankedBody(_hitters, (p) => _hitterStat(p), label);
   }
 
   Widget _buildPitcherList() {
     if (_pitcherLoading) return _buildPlayerShimmer(context);
     if (_pitchers.isEmpty) return const Center(child: Text('데이터가 없습니다'));
     final label = _pitcherSorts.firstWhere((s) => s['value'] == _pitcherSort)['label']!;
-    return GridView.builder(
-      padding: EdgeInsets.fromLTRB(12, 8, 12, (ApiService.myTeamData.value.isNotEmpty ? 144.0 : 92.0) + MediaQuery.of(context).padding.bottom),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.72,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemCount: _pitchers.length,
-      itemBuilder: (_, i) => _buildPlayerCard(_pitchers[i] as Map, _pitcherStat(_pitchers[i] as Map), label),
-    );
+    return _buildRankedBody(_pitchers, (p) => _pitcherStat(p), label);
   }
 
   Widget _buildSearchResults() {

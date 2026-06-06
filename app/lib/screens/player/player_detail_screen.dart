@@ -6,6 +6,7 @@ import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import 'player_stats_section.dart';
 import 'player_compare_screen.dart';
+import '../../utils/team_theme.dart';
 import '../../widgets/common_widgets.dart';
 
 class PlayerDetailScreen extends StatefulWidget {
@@ -476,44 +477,99 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     );
   }
 
+  // 히어로 헤더 (mockup 디자인, 2026-06-07): 팀컬러 그라디언트 + 등번호 워터마크 + 팀로고 오버레이
   Widget _buildHeader(Map<String, dynamic> player) {
     final name = player['name'] ?? '';
     final team = player['team'] ?? '';
     final posOrType = (player['position'] != null && player['position'].toString().isNotEmpty)
         ? player['position'] : (player['player_type'] ?? '');
     final number = player['number'] ?? '-';
+    final code = player['team_code'] as String? ?? '';
+    final tc = teamColor(code);
     return Semantics(
       label: '$team $name 선수, 등번호 $number, $posOrType',
       header: true,
       child: Container(
-        padding: const EdgeInsets.all(20),
-        color: SemColor.panelDark,
-        child: Row(
-          children: [
-            Hero(
-              tag: 'player_${widget.playerId}',
-              child: PlayerAvatar(
-                imageUrl: player['profile_image'] as String?,
-                teamCode: player['team_code'] as String?,
-                size: 76,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text('$team | $posOrType',
-                      style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                  Text('#$number', style: const TextStyle(color: Colors.white54, fontSize: 13)),
-                  if (player['roster_status'] != null)
-                    _buildRosterBadge(player['roster_status']),
-                ],
-              ),
-            ),
-          ],
+        height: 200,
+        width: double.infinity,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [tc, tc.withValues(alpha: 0.72), const Color(0xFF1A1A22)],
+            stops: const [0.0, 0.55, 1.0],
+          ),
         ),
+        child: Stack(children: [
+          // 등번호 워터마크 (우상단)
+          Positioned(
+            right: -14, top: -18,
+            child: Opacity(
+              opacity: 0.07,
+              child: Text('$number',
+                  style: const TextStyle(fontSize: 150, fontWeight: FontWeight.w900,
+                      color: Colors.white, height: 1)),
+            ),
+          ),
+          // 팀 로고 오버레이 (좌하단)
+          Positioned(
+            left: -30, bottom: -30,
+            child: Opacity(opacity: 0.15, child: TeamLogo(teamCode: code, size: 200)),
+          ),
+          // 블렌드 radial
+          Container(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(-0.8, 1.1), radius: 0.6,
+                colors: [Colors.black.withValues(alpha: 0.38), Colors.transparent],
+              ),
+            ),
+          ),
+          // 본문: 프로필 + 이름/팀/포지션
+          Positioned(
+            left: 18, right: 18, bottom: 16,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Hero(
+                  tag: 'player_${widget.playerId}',
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2.5),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 4))],
+                    ),
+                    child: PlayerAvatar(
+                      imageUrl: player['profile_image'] as String?,
+                      teamCode: code,
+                      size: 88,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(name,
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
+                              color: Colors.white, letterSpacing: 0, height: 1.15)),
+                      const SizedBox(height: 6),
+                      Text('$team · $posOrType · #$number',
+                          style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.82))),
+                      if (player['roster_status'] != null) ...[
+                        const SizedBox(height: 8),
+                        _buildRosterBadge(player['roster_status']),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ]),
       ),
     );
   }
