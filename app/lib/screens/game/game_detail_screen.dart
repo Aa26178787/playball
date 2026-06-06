@@ -70,6 +70,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   final bool _fieldPinned = true;
   // 다른 경기 스트립 접기/펴기 (영구 기억)
   bool _stripExpanded = true;
+  // 이닝별 중계 — 선택 이닝 (null = 자동: 라이브 현재 이닝 / 종료 1회)
+  int? _selectedRelayInning;
   List _sameDayGames = [];
   int _lineupSubIndex = 0;
   int _statsSubIndex = 0;
@@ -1828,64 +1830,120 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     child: Text('이닝별 중계',
                         style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: ink, letterSpacing: 0)),
                   ),
-                  ...sortedInnings.map((inningNum) {
-                    final items = grouped[inningNum]!;
+                  // ── 디자인 B: 이닝 칩 가로 네비 + 선택 이닝 단일 표시 (2026-06-07) ──
+                  Builder(builder: (_) {
+                    final isLiveGame = (_gameData?['game']['status'] as String? ?? '') == '진행';
+                    final curInning = _gameData?['game']['current_inning'] as int?;
+                    final scoringInnings = <int>{
+                      for (final inn in innings)
+                        if (((inn['away_runs'] as int?) ?? 0) + ((inn['home_runs'] as int?) ?? 0) > 0)
+                          (inn['inning'] as int? ?? 0),
+                    };
+                    int selected = _selectedRelayInning ??
+                        (isLiveGame && curInning != null && grouped.containsKey(curInning)
+                            ? curInning
+                            : (sortedInnings.isNotEmpty ? sortedInnings.first : 1));
+                    if (!grouped.containsKey(selected) && sortedInnings.isNotEmpty) {
+                      selected = sortedInnings.last;
+                    }
+                    final items = grouped[selected] ?? [];
                     final topItems = items.where((r) => (r['inning_half']?.toString() ?? '0') == '0').toList();
                     final botItems = items.where((r) => (r['inning_half']?.toString() ?? '0') == '1').toList();
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        color: paper,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: line, width: 1),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Theme(
-                        data: Theme.of(context).copyWith(
-                          dividerColor: Colors.transparent,
-                          splashColor: Colors.transparent,
-                          highlightColor: Colors.transparent,
-                        ),
-                        child: ExpansionTile(
-                          initiallyExpanded: false,
-                          tilePadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
-                          title: Text('$inningNum회',
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: ink, letterSpacing: 0)),
-                          iconColor: ink3,
-                          collapsedIconColor: ink3,
-                          children: [
-                            if (topItems.isNotEmpty) ...[
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.fromLTRB(15, 10, 15, 6),
-                                decoration: BoxDecoration(
-                                  border: Border(top: BorderSide(color: line, width: 1)),
-                                ),
-                                child: Text('$inningNum회초 $awayTeam 공격',
-                                    style: TextStyle(
-                                        fontSize: 12, fontWeight: FontWeight.w700,
-                                        color: Color(0xFF1976D2))),
-                              ),
-                              ...groupByBatter(topItems).map((e) => _buildBatterRelayTile(e)),
+                    Widget chip(int n) {
+                      final isSel = n == selected;
+                      final hasRun = scoringInnings.contains(n);
+                      final isCur = isLiveGame && n == curInning;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedRelayInning = n),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: isSel ? ink : paper,
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                                color: isSel ? ink : (isCur ? const Color(0xFFE53935) : line),
+                                width: isCur && !isSel ? 1.3 : 1),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text('$n',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
+                                    color: isSel ? (isDark ? Colors.black : Colors.white) : ink,
+                                    fontFeatures: const [FontFeature.tabularFigures()])),
+                            // 득점 이닝 dot (amber)
+                            if (hasRun) ...[
+                              const SizedBox(width: 4),
+                              Container(width: 5, height: 5,
+                                  decoration: BoxDecoration(
+                                      color: isSel ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
+                                      shape: BoxShape.circle)),
                             ],
-                            if (botItems.isNotEmpty) ...[
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.fromLTRB(15, 10, 15, 6),
-                                decoration: BoxDecoration(
-                                  border: Border(top: BorderSide(color: line, width: 1)),
-                                ),
-                                child: Text('$inningNum회말 $homeTeam 공격',
-                                    style: TextStyle(
-                                        fontSize: 12, fontWeight: FontWeight.w700,
-                                        color: Color(0xFFC62828))),
-                              ),
-                              ...groupByBatter(botItems).map((e) => _buildBatterRelayTile(e)),
+                            // 라이브 현재 이닝 dot (red)
+                            if (isCur) ...[
+                              const SizedBox(width: 4),
+                              Container(width: 5, height: 5,
+                                  decoration: const BoxDecoration(
+                                      color: Color(0xFFE53935), shape: BoxShape.circle)),
                             ],
-                          ],
+                          ]),
                         ),
-                      ),
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(children: [for (final n in sortedInnings) chip(n)]),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: paper,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: line, width: 1),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (topItems.isEmpty && botItems.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Text('기록이 없습니다',
+                                      style: TextStyle(fontSize: 12, color: ink3, fontWeight: FontWeight.w600)),
+                                ),
+                              if (topItems.isNotEmpty) ...[
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.fromLTRB(15, 12, 15, 6),
+                                  child: Text('$selected회초 $awayTeam 공격',
+                                      style: const TextStyle(
+                                          fontSize: 12, fontWeight: FontWeight.w700,
+                                          color: Color(0xFF1976D2))),
+                                ),
+                                ...groupByBatter(topItems).map((e) => _buildBatterRelayTile(e)),
+                              ],
+                              if (botItems.isNotEmpty) ...[
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.fromLTRB(15, 12, 15, 6),
+                                  decoration: topItems.isNotEmpty
+                                      ? BoxDecoration(border: Border(top: BorderSide(color: line, width: 1)))
+                                      : null,
+                                  child: Text('$selected회말 $homeTeam 공격',
+                                      style: const TextStyle(
+                                          fontSize: 12, fontWeight: FontWeight.w700,
+                                          color: Color(0xFFC62828))),
+                                ),
+                                ...groupByBatter(botItems).map((e) => _buildBatterRelayTile(e)),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
                     );
                   }),
                 ],
