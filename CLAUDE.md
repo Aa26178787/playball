@@ -17,8 +17,10 @@ KBO 야구 앱 | Flutter + FastAPI + PostgreSQL
 ## 주요 명령어
 ```bash
 ssh -i "C:\Users\qq772\Downloads\ssh-key-2026-03-28 (2).key" ubuntu@168.107.61.147
-cd ~/playball && git pull origin main --rebase && sudo systemctl restart playball
-sudo journalctl -u playball -f
+# ⚠️ scheduler는 별도 서비스 — 백엔드 배포 시 반드시 둘 다 재시작 (06-06 발견: 미재시작으로 패치 미적용 사고)
+cd ~/playball && git pull origin main --rebase && sudo systemctl restart playball && sudo systemctl restart playball-scheduler
+sudo journalctl -u playball -f          # API 로그
+sudo journalctl -u playball-scheduler -f # 크롤러/알림 로그
 sudo -u postgres psql -d playball
 cd C:\Users\qq772\playball && git add . && git commit -m "msg" && git push origin main --force
 ```
@@ -818,6 +820,67 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - Hero 전환 (사각 카드 → 원형 아바타 morph 어색하면 롤백)
 - ElevatedButton 다크 반전 전체 화면 영향
 - post_detail 당겨새로고침 / 커뮤니티 랭킹 시트
+
+## 세션 변경사항 요약 (2026-06-06 저녁) — 게임카드/필드뷰/득점요약 개편 + scheduler 근본이슈
+
+### 🔑 근본 이슈: playball-scheduler 별도 서비스 미재시작
+- scheduler = **별도 systemd 서비스** (`playball-scheduler.service`, `-u` python 직접 실행)
+- 기존 배포 루틴이 `restart playball`(API)만 → **06-04~06 scheduler 패치 전부 메모리 미적용**
+  - game_summary MVP-only 발송 (result 대기 gate 미적용 — 종료 9초 만에 발송 로그로 확인)
+  - 류현진 "5승 달성" 오보 (stale 임계값 일괄 발송)
+- 주요 명령어의 배포 커맨드에 양 서비스 재시작 반영됨 — **백엔드 수정 시 반드시 둘 다 재시작**
+
+### 백엔드
+- **user.py 라우트 순서**: `DELETE /notifications/read`를 `/{notif_id}`보다 먼저 (read→int 파싱 422 → "삭제 실패" fix)
+- **마일스톤 '통과' 조건**: `>= threshold` → `prev < t <= curr` (이번 경기 기여분 차감: 타자 gb 컬럼, 투수 result/K). 시즌+통산+young 전부. 첫 평가 시 지난 임계값 일괄 발송 차단
+- **weather_service stale-while-revalidate**: cold/만료 시 요청 스레드 직렬 외부 API(구장 5곳×5s timeout) → **홈 당일 5초 지연 원인**. daemon 스레드 배경 갱신 + stale 즉시 반환 (`_spawn` + `_refreshing` set)
+- **field_view.next_batter**: 현재 타자 batting_order+1 (대타 최신 row), `order` 포함
+- **field_view.batter.bats** 추가 (좌/우/양)
+
+### 게임카드 (home_screen)
+- **마이팀만 풀(hero) 카드, 일반 = compact 행** (`compact: _compactMode || (_favoriteTeamIds.isNotEmpty && !isMyTeam)`)
+- **compact 3층 구조**: 1층 로고+팀명+스코어(vs) / 2층 상태(종료·N회·시간) / 3층 승패투수·선발
+- 날씨/구장: chip → **plain text 한 줄** (스코어 아래 중앙, `☀️ 24° · 잠실`), 지도 탭 기능 제거 (`_weatherText()` helper)
+- 스코어 `:` 가시성: line2 → ink3 w600
+- 라이브 회차 중복 제거: 헤더 pill `● LIVE`만, 회차는 스코어 밑 단일
+- 승팀 오버레이 로고: 고정 left:-70 → LayoutBuilder 동적 — **작은 팀로고(46px) 수직선 정렬** (`로고중심 = 15 + side/2`)
+- **경기 없는 날 날짜 스트립 비활성**: calendar API 월별 lazy 로드 (`_gameDates`/`_loadedMonths`), 없는 날 opacity 0.35 + 탭 차단
+
+### 경기 상세 (game_detail)
+- **필드뷰 항상 상단 고정**: `_fieldPinned = true` final, 고정 토글 캡슐 2곳 제거, 핀 힌트 SnackBar 제거 (베이스 탭 힌트만 유지 `base_hint_shown`)
+- 핀 패널: 높이 505/410 → **482/408** (하단 빈 여백 제거, overflow 2.4px 보정 포함), rounded bottom 16 + 분리 그림자
+- '다른 경기' 라벨 삭제, BSO `B1` → `B` (dots만)
+- **다음타석 오버레이** (우하단 2층 텍스트): `다음타석 ↵ N번 타자 ○○○` (black α0.55, rounded 8)
+- 필드뷰 주자 dot = painter 베이스 중심 좌표 일치 (base1 208,208 / base2 150,150 / base3 92,208)
+- **좌/우타 배터박스**: bats 좌/양 → x=168 mirror (우타 132, 홈플레이트 150 대칭)
+
+### 득점요약 전면 재설계 (한화-롯데 429 실데이터 검증)
+- 발견 1: **Naver relay title에 (N타점) 표기 부재** → 텍스트 파서가 적시타 누락
+- 발견 2: **relay archive 동일 이벤트 이중 저장** (비인접 [타석][홈인][타석][홈인] 패턴) → 행 중복
+- **타점 산정 = 타석 뒤 홈인 이벤트 수 + (홈런 시 본인 1)** — 텍스트 표기 무관
+- byHalf 구성 시 최근 4개 윈도우 동일 (type,title,text) dedup
+- 표기: `[5말][로고] 김현수 우중간 적시 2루타 [2타점]` — 홈=좌 / 원정=우 미러, 이름 natural width, 타점 badge 48px (홈런 amber), desc 괄호 보조설명 제거
+- standalone 홈인(폭투 등): `주자명 홈인 (타석 외)` + 득점 badge
+- 누적 스코어(2:0) badge / 상세 play rows(playWidgets dead code ~120줄) 제거
+
+### 순위 탭
+- **PS 확률 = 팀 순위 탭 내 세부 카테고리 chip** (시즌/전반기/최근10 옆 토글, `_showPsView`) — 별도 탭/카드 내 bar 제거
+- `_psChildren(isDark)` — 범례 + 팀별 stacked bar 리스트 (같은 ListView 영역 전환)
+- **PS 0% 버그**: odds API 키 `team_id` 아님 → **`id`** (oddsById lookup miss)
+- 순위 카드에서 PS bar/TOP2 라벨/범례 제거 (stages 계산 삭제)
+
+### 진단 노트
+- 서버 응답: warm 4ms / PC HTTPS 67ms (첫 요청만 DNS 0.7s) — 서버는 문제 아님
+- 이닝별 중계 vs 필드뷰 속도차: relay TTL 10s vs relay_all 30s + Naver textRelays 타석 종료 후 일괄 발행 (소스 지연). 진행 이닝만 TTL 단축 옵션 보류
+- 알림함 body는 user_notifications에 전체 저장 — MVP-only는 발송 시점 데이터 문제였음 (위 scheduler 이슈)
+
+### 실기 확인 필요 (저녁 세션분)
+- compact/hero 혼합 리스트 + compact 3층 (마이팀 미설정 = 전부 풀 카드 유지 확인)
+- 날짜 스트립 월요일(06-08) 비활성 + 미래 월 lazy 로드
+- 다음타석 오버레이 (라이브), 좌타자 배터박스 mirror
+- 득점요약 — 다른 경기들 (밀어내기/실책 득점 케이스)
+- PS 확률 chip 토글 + % 표시
+- 핀 패널 478→482 후 overflow 재발 여부 (좁은 화면)
 
 ## 진행 예정 기능
 
