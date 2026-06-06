@@ -2043,23 +2043,40 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 타석 헤더: 배터 + vs 투수 + result chip + 투구위치
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 7, runSpacing: 5,
+          // 타석 헤더 — 고정 컬럼 Row: [타자 64][vs투수 80][결과 chip Expanded][투구위치 우측 고정]
+          // (Wrap 가변 흐름 → 타일 간 세로 정렬, 2026-06-07)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(batterName,
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink, letterSpacing: 0)),
-              if (pitcherName != null)
-                Text('vs $pitcherName',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: sub)),
-              if (result.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(color: resultBg, borderRadius: BorderRadius.circular(999)),
-                  child: Text(result,
-                      style: TextStyle(fontSize: 11, color: resultFg, fontWeight: FontWeight.w700)),
-                ),
+              SizedBox(
+                width: 64,
+                child: Text(batterName,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink, letterSpacing: 0)),
+              ),
+              SizedBox(
+                width: 80,
+                child: pitcherName != null
+                    ? Text('vs $pitcherName',
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: sub))
+                    : const SizedBox.shrink(),
+              ),
+              Expanded(
+                child: result.isNotEmpty
+                    ? Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(color: resultBg, borderRadius: BorderRadius.circular(999)),
+                          child: Text(result,
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 11, color: resultFg, fontWeight: FontWeight.w700)),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              const SizedBox(width: 6),
               if (pitches.isNotEmpty)
                 GestureDetector(
                   onTap: () {
