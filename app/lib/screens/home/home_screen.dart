@@ -1790,16 +1790,17 @@ class GameCard extends StatelessWidget {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
+                                    // 승팀 ink / 패팀 sub — 팀컬러 미적용 (풀카드 규칙 통일, 마이팀 강조는 외곽선만)
                                     Text('${game.homeScore}',
                                         style: TextStyle(fontSize: 18,
                                             fontWeight: FontWeight.w800,
-                                            color: homeWon ? homeColor : t.ink,
+                                            color: awayWon ? t.sub : t.ink,
                                             fontFeatures: const [FontFeature.tabularFigures()])),
                                     Text(' : ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: t.ink3)),
                                     Text('${game.awayScore}',
                                         style: TextStyle(fontSize: 18,
                                             fontWeight: FontWeight.w800,
-                                            color: awayWon ? awayColor : t.ink,
+                                            color: homeWon ? t.sub : t.ink,
                                             fontFeatures: const [FontFeature.tabularFigures()])),
                                   ])
                               // 예정: 시간을 스코어 자리 — 종료 스코어와 동일 크기(18) 일관성
