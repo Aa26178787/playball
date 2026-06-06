@@ -1555,7 +1555,18 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 ]),
               ),
             ),
-          if (_sameDayGames.isNotEmpty && _stripExpanded) _buildSameDayStrip(),
+          // AnimatedSize — 패널 높이 애니메이션과 동기화 (펼침 중 Column overflow 방지)
+          if (_sameDayGames.isNotEmpty)
+            ClipRect(
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: _stripExpanded
+                    ? _buildSameDayStrip()
+                    : const SizedBox(width: double.infinity, height: 0),
+              ),
+            ),
           const SizedBox(height: 4),
         ],
       ),
