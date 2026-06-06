@@ -4297,33 +4297,29 @@ class _FullFieldView extends StatelessWidget {
               ),
               68, 40,
             ),
-          // ── 다음 타석 오버레이 (우하단) ──
+          // ── 다음 타석 오버레이 (우하단, 2층 텍스트) ──
           if (nextBatter != null)
             Positioned(
               right: 4, bottom: 4,
               child: Container(
-                padding: const EdgeInsets.fromLTRB(5, 3, 9, 3),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  ClipOval(
-                    child: SizedBox(
-                      width: 16, height: 16,
-                      child: (nextBatter['image'] as String?)?.isNotEmpty == true
-                          ? CachedNetworkImage(
-                              imageUrl: nextBatter['image'] as String,
-                              fit: BoxFit.cover,
-                              errorWidget: (_, _, _) => const Icon(Icons.person, size: 12, color: Colors.white70),
-                            )
-                          : const Icon(Icons.person, size: 12, color: Colors.white70),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('다음타석',
+                        style: TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 1),
+                    Text(
+                      '${nextBatter['order'] != null ? '${nextBatter['order']}번 타자 ' : ''}${nextBatter['name'] ?? ''}',
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
                     ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text('다음 ${nextBatter['name'] ?? ''}',
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
-                ]),
+                  ],
+                ),
               ),
             ),
         ],

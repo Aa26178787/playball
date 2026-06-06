@@ -1407,7 +1407,8 @@ def get_game_relay(game_id: int):
                             """, (game_id, batting_side, nxt_order))
                             nb = fcur.fetchone()
                             if nb:
-                                next_batter = {"player_id": nb[0], "name": nb[1], "image": nb[2], "jersey": nb[3]}
+                                next_batter = {"player_id": nb[0], "name": nb[1], "image": nb[2],
+                                               "jersey": nb[3], "order": nxt_order}
                 except Exception:
                     next_batter = None
 
