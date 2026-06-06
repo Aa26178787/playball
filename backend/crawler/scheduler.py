@@ -1505,9 +1505,12 @@ def smart_update():
                         continue
                     naver_gid = row_tmp[0]
                     max_inn = int(row_tmp[1])
-                    # 투구 데이터
+                    # 투구 데이터 — 직전 이닝도 재저장 (Naver textRelays 타석 일괄 발행 지연 →
+                    # 이닝 전환 직후 마지막 타석 누락 방지, 429 손호영 6구 사례. ON CONFLICT UPDATE라 안전)
                     try:
                         save_game_pitches(gid, naver_gid, max_inn)
+                        if max_inn > 1:
+                            save_game_pitches(gid, naver_gid, max_inn - 1)
                     except Exception as sgp_err:
                         print(f"[{datetime.now()}] save_game_pitches 오류: {sgp_err}")
                     # 동명이인 자동 정정 (game_pitchers + game_batters)

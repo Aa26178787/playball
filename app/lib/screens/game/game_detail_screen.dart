@@ -2053,20 +2053,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(
-                width: 64,
-                child: Text(batterName,
+              // 타자/vs투수 = 가변 폭 (2026-06-07 — 고정폭 잘림 회피)
+              Text(batterName,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink, letterSpacing: 0)),
+              if (pitcherName != null) ...[
+                const SizedBox(width: 6),
+                Text('vs $pitcherName',
                     maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink, letterSpacing: 0)),
-              ),
-              SizedBox(
-                width: 80,
-                child: pitcherName != null
-                    ? Text('vs $pitcherName',
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: sub))
-                    : const SizedBox.shrink(),
-              ),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: sub)),
+              ],
+              const SizedBox(width: 7),
               Expanded(
                 child: result.isNotEmpty
                     ? Align(

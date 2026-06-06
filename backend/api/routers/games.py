@@ -128,10 +128,13 @@ def get_game_relay_all(game_id: int):
                 pass
             return inning, None
 
-        # 완료 이닝 중 캐시 미보유 + 현재 이닝만 fetch
+        # 완료 이닝 중 캐시 미보유 + 현재/직전 이닝 fetch
+        # 직전 이닝(max-1)도 항상 재fetch — Naver textRelays 타석 일괄 발행 지연으로
+        # 이닝 전환 직후 부분 데이터가 영구 캐시되는 race 방지 (429 손호영 6구 누락 사례)
+        is_game_live = (status == '진행')
         innings_to_fetch = [
             i for i in range(1, max_inning_live + 1)
-            if i == max_inning_live or i not in game_inning_raw
+            if i >= max_inning_live - (1 if is_game_live else 0) or i not in game_inning_raw
         ]
 
         if innings_to_fetch:
@@ -141,9 +144,10 @@ def get_game_relay_all(game_id: int):
         else:
             freshly_fetched = {}
 
-        # 완료 이닝 캐시 저장 (현재 이닝 제외)
+        # 완료 이닝 캐시 저장 (라이브 시 현재+직전 이닝 제외 — 발행 지연 유예)
+        _cache_cutoff = max_inning_live - (1 if is_game_live else 0)
         for i, data in freshly_fetched.items():
-            if i < max_inning_live and data is not None:
+            if i < _cache_cutoff and data is not None:
                 game_inning_raw[i] = data
 
         # 완료 이닝: 캐시, 현재 이닝: 신규 fetch 조합
