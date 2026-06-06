@@ -348,6 +348,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             .then((d) async {
               if (mounted) setState(() => _relayData = d);
               await LocalCache.set(_ck('relay_state'), d);
+              _maybeShowBaseTapHint();
             })
             .catchError((_) {});
 
@@ -423,6 +424,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     } finally {
       if (mounted) setState(() => _isRelayRefreshing = false);
     }
+  }
+
+  /// 필드뷰 베이스 탭 affordance — 라이브 첫 진입 1회 힌트
+  Future<void> _maybeShowBaseTapHint() async {
+    if (await LocalCache.hasFlag('hint_base_tap')) return;
+    await LocalCache.setFlag('hint_base_tap');
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('💡 필드뷰의 베이스를 누르면 주자 정보를 볼 수 있어요'),
+      duration: Duration(seconds: 4),
+    ));
   }
 
   void _scheduleRelayRetry() {
@@ -1117,12 +1129,15 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                 color: Colors.black.withValues(alpha: 0.55),
                                 borderRadius: BorderRadius.circular(999),
                               ),
-                              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                                    size: 14, color: _fieldPinned ? const Color(0xFFFFA000) : Colors.white),
-                                const SizedBox(width: 3),
-                                const Text('고정', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
-                              ]),
+                              child: Tooltip(
+                                message: '필드뷰를 화면 상단에 고정',
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                                      size: 14, color: _fieldPinned ? const Color(0xFFFFA000) : Colors.white),
+                                  const SizedBox(width: 3),
+                                  const Text('고정', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                                ]),
+                              ),
                             ),
                           ),
                         ),
@@ -1559,12 +1574,15 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                             color: Colors.black.withValues(alpha: 0.55),
                             borderRadius: BorderRadius.circular(999),
                           ),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                                size: 14, color: _fieldPinned ? const Color(0xFFFFA000) : Colors.white),
-                            const SizedBox(width: 3),
-                            const Text('고정', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
-                          ]),
+                          child: Tooltip(
+                            message: '필드뷰를 화면 상단에 고정',
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                                  size: 14, color: _fieldPinned ? const Color(0xFFFFA000) : Colors.white),
+                              const SizedBox(width: 3),
+                              const Text('고정', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                            ]),
+                          ),
                         ),
                       ),
                     ),

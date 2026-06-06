@@ -32,7 +32,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   Future<void> _loadPost() async {
-    setState(() => _isLoading = true);
+    // pull-to-refresh 시 전체 스피너 재표시 방지 (첫 로드만)
+    if (_post == null) setState(() => _isLoading = true);
     try {
       final data = await ApiService.getPostDetail(widget.postId);
       setState(() {
@@ -222,7 +223,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ListView(
+            child: RefreshIndicator(
+              onRefresh: _loadPost,
+              child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 Text(
@@ -300,6 +303,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   );
                 }),
               ],
+            ),
             ),
           ),
           Container(

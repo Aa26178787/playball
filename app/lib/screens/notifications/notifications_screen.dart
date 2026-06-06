@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
+import '../../utils/local_cache.dart';
 import '../game/game_detail_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -25,9 +26,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     try {
       final data = await ApiService.getNotifications();
       if (mounted) setState(() { _notifications = data['notifications'] ?? []; _loading = false; _error = false; });
+      if (mounted && _notifications.isNotEmpty) _maybeShowSwipeHint();
     } catch (_) {
       if (mounted) setState(() { _loading = false; _error = true; });
     }
+  }
+
+  /// 스와이프 삭제 발견성 — 첫 방문 1회 힌트
+  Future<void> _maybeShowSwipeHint() async {
+    if (await LocalCache.hasFlag('hint_notif_swipe')) return;
+    await LocalCache.setFlag('hint_notif_swipe');
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('💡 알림을 왼쪽으로 밀면 삭제할 수 있어요'),
+      duration: Duration(seconds: 4),
+    ));
   }
 
   Future<void> _readAll() async {

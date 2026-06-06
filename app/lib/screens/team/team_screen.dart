@@ -221,7 +221,7 @@ class _TeamScreenState extends State<TeamScreen>
                   const SizedBox(width: 6),
                   Text('Monte Carlo 100,000회',
                       style: TextStyle(fontSize: 9.5, fontFamilyFallback: const ['monospace'],
-                          color: isDark ? Colors.white24 : const Color(0xFFE0E0E4))),
+                          color: isDark ? Colors.white38 : const Color(0xFF9A9AA2))),
                 ],
               ),
             ),

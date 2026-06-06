@@ -5,6 +5,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import 'player_stats_section.dart';
+import 'player_compare_screen.dart';
 import '../../widgets/common_widgets.dart';
 
 class PlayerDetailScreen extends StatefulWidget {
@@ -206,6 +207,12 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 child: LinearProgressIndicator())
             : null,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.compare_arrows),
+            tooltip: '선수 비교',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const PlayerCompareScreen())),
+          ),
           _favLoading
               ? Padding(padding: const EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: SemColor.brand(context))))
               : IconButton(

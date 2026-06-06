@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import '../mypage/my_page_screen.dart';
+import '../../widgets/stadium_ranking_sheet.dart';
 import 'post_detail_screen.dart';
 import 'create_post_screen.dart';
 
@@ -42,6 +43,11 @@ class _CommunityScreenState extends State<CommunityScreen>
         scrolledUnderElevation: 0,
         title: const Text('커뮤니티'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.emoji_events_outlined),
+            tooltip: '직관승률 랭킹',
+            onPressed: () => StadiumRankingSheet.show(context),
+          ),
           IconButton(
             icon: const Icon(Icons.person_outline),
             tooltip: '마이페이지',

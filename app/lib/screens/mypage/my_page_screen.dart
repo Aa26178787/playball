@@ -434,9 +434,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       bottom: 0,
                       child: Container(
                         padding: const EdgeInsets.all(3),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: SemColor.panelDark,
                           shape: BoxShape.circle,
+                          // 다크 배경 + panelDark 배지 윤곽 소실 방지
+                          border: Border.all(color: Colors.white, width: 1.2),
                         ),
                         child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
                       ),
