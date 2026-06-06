@@ -776,6 +776,49 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - AppBar breadcrumb maxLines:1 + ellipsis
 - GameCard stadium chip 외부 Flexible + 내부 Text Flexible + softWrap false
 
+## 세션 변경사항 요약 (2026-06-06 오후) — UX 버그 + 디자인/발견성 (커밋 8a8974b~decb85f)
+
+### UX 버그 수정
+- notifications Dismissible: onDismissed 단독 → `confirmDismiss`에서 API 호출, 실패 시 false ("dismissed widget still in tree" 크래시 방지)
+- notifications `_readAll` try/catch + 실패 스낵바
+- post_detail `created_at.substring(0,10)` length 가드 (RangeError)
+- search 오류 상태 분리 (`_error` flag) — 네트워크 실패가 "검색 결과가 없습니다"로 오인되던 것 해소 + 재시도 버튼
+
+### 다크모드 가시성
+- `CircularProgressIndicator(color: SemColor.panelDark)` → `SemColor.brand(context)` 4곳 (search/player/player_detail/mypage)
+- notifications 미읽음 bg/dot isDark 분기
+- post_detail 댓글바 border → `Theme.dividerColor`
+- **theme ElevatedButton 다크 반전** (밝은 버튼+어두운 텍스트) — 검정 on 검정 윤곽 소실 fix
+- focusedBorder 다크 primaryDark 분기
+- 프로필 카메라 배지 흰 테두리 1.2
+
+### 디자인 토큰/일관성
+- `AppColors.live/win/lose` 삭제 (사용처 0, SemColor.live와 색 상충 #22C55E vs #E53935)
+- `SemColor.info = success` alias 명시
+- `circular(99)` → `999` 통일 (7곳)
+- 극소 폰트 상향: 7→8 (필드뷰 라벨, W/L 뱃지), 8.5→9/9.5 (필드뷰 이름, 게임차)
+- 메타텍스트 `grey[400]`(대비 1.95:1) → `grey[600]`(4.6:1) 12곳
+- PS 확률 범례 `#E0E0E4`(1.1:1) → `#9A9AA2`
+- 알림 emoji 아이콘 → Material icon + 타입색 원형 칩 36px (`_typeIcon` → `(IconData, Color)` record)
+- Hero 전환: player_screen 카드 ↔ player_detail 아바타 (`tag: 'player_$id'`)
+
+### 발견성 (affordance)
+- IconButton tooltip 21곳 (TalkBack 겸용): 비밀번호 표시, 월 이동, 삭제, 지우기, 공유, 좋아요, 즐겨찾기/마이팀, 닫기 등
+- 핀 캡슐 Tooltip "필드뷰를 화면 상단에 고정" 2곳
+- 1회 힌트 (LocalCache flag 패턴, onboarding_helper 동일): `hint_notif_swipe` (알림 스와이프 삭제), `hint_base_tap` (필드뷰 베이스 탭)
+- post_detail RefreshIndicator + `_loadPost` 첫 로드만 스피너 (refresh 깜빡임 방지)
+- player_detail AppBar `compare_arrows` → PlayerCompareScreen 진입점
+- **`widgets/stadium_ranking_sheet.dart` 신규** — 직관승률 랭킹 시트 공용 추출, 캘린더 + 커뮤니티 AppBar(emoji_events) 양쪽 진입
+
+### 보류 (대량 치환 — 실기 검증 선행 필수, letterSpacing 사고 전례)
+- fontSize 11→12 (239곳), `Colors.grey` 무지정 토큰화 (123곳), w800 정리 (81곳), 인라인 height 1.4 — 화면 단위 점진 권장
+
+### 실기 확인 필요 (이번 세션분)
+- 알림 아이콘 칩 시인성 + 스와이프 1회 힌트
+- Hero 전환 (사각 카드 → 원형 아바타 morph 어색하면 롤백)
+- ElevatedButton 다크 반전 전체 화면 영향
+- post_detail 당겨새로고침 / 커뮤니티 랭킹 시트
+
 ## 진행 예정 기능
 
 ### 즉시 (단순 수정 / 한 세션 내 완료 가능)
