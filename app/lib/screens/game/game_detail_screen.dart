@@ -2604,7 +2604,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       Icons.video_library_outlined,
     ];
 
-    return Column(
+    // 플로팅 바 좌우 스와이프 → 인접 탭 이동 (2026-06-07)
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragEnd: (d) {
+        final v = d.primaryVelocity ?? 0;
+        if (v.abs() < 150) return;
+        final next = _tabController.index + (v < 0 ? 1 : -1);
+        if (next < 0 || next >= _tabController.length) return;
+        _tabController.animateTo(next);
+      },
+      child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (subLabels != null) ...[
@@ -2686,6 +2696,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           ),
         ),
       ],
+      ),
     );
   }
 
@@ -2703,7 +2714,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final awayStarter = _previewData!['away_starter'];
     final homeTop = _previewData!['home_top_player'];
     final awayTop = _previewData!['away_top_player'];
-    final seasonVs = _previewData!['season_vs'];
+    // seasonVs 사용 안 함 (상대전적 섹션 삭제 — 2026-06-07)
 
     return SingleChildScrollView(
       // 하단 플로팅 탭(nav)에 가림 방지 — bottom 여유 패딩

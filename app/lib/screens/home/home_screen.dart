@@ -146,14 +146,25 @@ class _HomeScreenState extends State<HomeScreen> {
             left: 20,
             right: 20,
             bottom: 16 + bottomInset,
-            child: _FloatingNavBar(
-              currentIndex: _currentIndex,
-              isDark: isDark,
-              onTap: (i) => setState(() => _currentIndex = i),
-              items: _navItems,
-              myTeamItems: _myTeamChips,
-              onMyTeamTap: (item) => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => TeamDetailScreen(team: item['ranking'] as Map<String, dynamic>)),
+            // 플로팅 바 자체 좌우 스와이프 → 인접 탭 이동 (2026-06-07)
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragEnd: (d) {
+                final v = d.primaryVelocity ?? 0;
+                if (v.abs() < 150) return;
+                final next = _currentIndex + (v < 0 ? 1 : -1);
+                if (next < 0 || next >= _screens.length) return;
+                setState(() => _currentIndex = next);
+              },
+              child: _FloatingNavBar(
+                currentIndex: _currentIndex,
+                isDark: isDark,
+                onTap: (i) => setState(() => _currentIndex = i),
+                items: _navItems,
+                myTeamItems: _myTeamChips,
+                onMyTeamTap: (item) => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => TeamDetailScreen(team: item['ranking'] as Map<String, dynamic>)),
+                ),
               ),
             ),
           ),
