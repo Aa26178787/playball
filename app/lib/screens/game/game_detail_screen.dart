@@ -1899,7 +1899,31 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           child: Row(children: [for (final n in sortedInnings) chip(n)]),
                         ),
                         const SizedBox(height: 10),
-                        Container(
+                        // 좌우 스와이프 = 이전/다음 이닝 (칩 = 점프, 스와이프 = 순차)
+                        GestureDetector(
+                          onHorizontalDragEnd: (d) {
+                            final v = d.primaryVelocity ?? 0;
+                            if (v.abs() < 150) return;
+                            final idx = sortedInnings.indexOf(selected);
+                            final next = v < 0 ? idx + 1 : idx - 1; // 좌 스와이프 = 다음
+                            if (next < 0 || next >= sortedInnings.length) return;
+                            setState(() => _selectedRelayInning = sortedInnings[next]);
+                          },
+                          child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 180),
+                          switchInCurve: Curves.easeOutCubic,
+                          transitionBuilder: (child, anim) => FadeTransition(
+                            opacity: anim,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0.06, 0), end: Offset.zero,
+                              ).animate(anim),
+                              child: child,
+                            ),
+                          ),
+                          child: Container(
+                          key: ValueKey(selected),
+                          width: double.infinity,
                           decoration: BoxDecoration(
                             color: paper,
                             borderRadius: BorderRadius.circular(14),
@@ -1941,6 +1965,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                 ...groupByBatter(botItems).map((e) => _buildBatterRelayTile(e)),
                               ],
                             ],
+                          ),
+                          ),
                           ),
                         ),
                       ],
