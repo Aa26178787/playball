@@ -7,9 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
+import 'package:provider/provider.dart';
+import '../../providers/theme_provider.dart';
 import 'player_detail_screen.dart';
-import 'player_compare_screen.dart';
-import '../mypage/my_page_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -320,14 +320,22 @@ class _PlayerScreenState extends State<PlayerScreen>
   int _cmpDesc(dynamic b, dynamic a) =>
       ((b as num?) ?? 0).compareTo((a as num?) ?? 0);
 
+  Timer? _searchDebounce;
+
+  void _onSearchChanged(String q) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () => _search(q));
+    setState(() {}); // clear 버튼 표시 갱신
+  }
+
   Future<void> _search(String query) async {
     if (query.isEmpty) {
-      setState(() { _isSearching = false; _searchResults = []; });
+      if (mounted) setState(() => _searchResults = []);
       return;
     }
     try {
       final data = await ApiService.searchPlayers(query);
-      if (mounted) setState(() { _searchResults = data['players'] ?? []; _isSearching = true; });
+      if (mounted) setState(() => _searchResults = data['players'] ?? []);
     } catch (_) {}
   }
 
@@ -744,31 +752,6 @@ class _PlayerScreenState extends State<PlayerScreen>
     return _buildRankedBody(_pitchers, (p) => _pitcherStat(p), label);
   }
 
-  Widget _buildSearchResults() {
-    if (_searchResults.isEmpty) return const Center(child: Text('검색 결과가 없습니다'));
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: _searchResults.length,
-      itemBuilder: (_, i) {
-        final p = _searchResults[i] as Map;
-        final img = p['profile_image'] as String?;
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundImage: (img != null && img.isNotEmpty) ? CachedNetworkImageProvider(img) : null,
-            child: (img == null || img.isEmpty) ? const Icon(Icons.person) : null,
-          ),
-          title: Text('${p['name']}', style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text('${p['team'] ?? ''} | ${p['player_type'] ?? ''} | #${p['number'] ?? '-'}'),
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => PlayerDetailScreen(
-                playerId: p['id'],
-                initialData: {'name': p['name'], 'team': p['team'], 'profile_image': p['profile_image'], 'number': p['number'], 'player_type': p['player_type']},
-              ))),
-        );
-      },
-    );
-  }
-
   Widget _buildPopularityTab() {
     if (_popularLoading) {
       return Center(child: CircularProgressIndicator(color: SemColor.brand(context), strokeWidth: 2.5));
@@ -977,118 +960,229 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
+  // ── 헤더 아이콘 버튼 (mockup 32×32 rounded10 border) ──
+  Widget _headerIconBtn(IconData icon, String tip, VoidCallback onTap) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final line = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
+    final sub3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    return Padding(
+      padding: const EdgeInsets.only(right: 7),
+      child: Tooltip(
+        message: tip,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: line),
+            ),
+            child: Icon(icon, size: 16, color: sub3),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── 검색 풀스크린 오버레이 (mockup _SearchOverlay) ──
+  Widget _buildSearchOverlay() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final bg = isDark ? const Color(0xFF111113) : const Color(0xFFFAFAFB);
+    final bar = isDark ? const Color(0xFF18181C) : Colors.white;
+    final paper2 = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+
+    return Material(
+      color: bg,
+      child: SafeArea(
+        child: Column(children: [
+          Container(
+            color: bar,
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 12),
+            child: Row(children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: paper2,
+                    borderRadius: BorderRadius.circular(13),
+                    border: Border.all(color: line),
+                  ),
+                  child: Row(children: [
+                    Icon(Icons.search, size: 16, color: sub),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: _onSearchChanged,
+                        autofocus: true,
+                        style: TextStyle(fontSize: 14, color: ink),
+                        decoration: InputDecoration(
+                          hintText: '선수 이름 검색',
+                          border: InputBorder.none, isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          hintStyle: TextStyle(color: sub, fontSize: 14),
+                        ),
+                      ),
+                    ),
+                    if (_searchController.text.isNotEmpty)
+                      GestureDetector(
+                        onTap: () {
+                          _searchController.clear();
+                          setState(() => _searchResults = []);
+                        },
+                        child: Icon(Icons.close, size: 16, color: sub),
+                      ),
+                  ]),
+                ),
+              ),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: () {
+                  _searchController.clear();
+                  setState(() { _isSearching = false; _searchResults = []; });
+                },
+                child: Text('취소',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ink3)),
+              ),
+            ]),
+          ),
+          Expanded(
+            child: _searchController.text.isEmpty
+                ? Center(child: Text('선수 이름이나 팀명을 입력해주세요', style: TextStyle(color: sub)))
+                : _searchResults.isEmpty
+                    ? Center(child: Text('검색 결과가 없습니다', style: TextStyle(color: sub)))
+                    : ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        itemCount: _searchResults.length,
+                        separatorBuilder: (_, _) => Divider(height: 1, color: line),
+                        itemBuilder: (_, i) {
+                          final p = _searchResults[i] as Map;
+                          return InkWell(
+                            onTap: () {
+                              _openDetail(p);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Row(children: [
+                                _numAvatar(p, 42),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    Text(p['name'] ?? '',
+                                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ink)),
+                                    const SizedBox(height: 4),
+                                    Text('${p['team'] ?? ''} · ${p['position'] ?? p['player_type'] ?? ''} · #${p['number'] ?? '-'}',
+                                        style: TextStyle(fontSize: 10, color: ink3)),
+                                  ]),
+                                ),
+                              ]),
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ]),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final sub = isDark ? const Color(0xFF9A9AA2) : const Color(0xFF9A9AA2);
+    final bar = isDark ? const Color(0xFF18181C) : Colors.white;
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final themeProv = context.watch<ThemeProvider>();
+
     return Scaffold(
-      appBar: AppBar(
-        scrolledUnderElevation: 0,
-        title: const Text('선수 기록'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.compare_arrows),
-            tooltip: '선수 비교',
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const PlayerCompareScreen())),
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            tooltip: '마이페이지',
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
-          ),
-        ],
-        surfaceTintColor: Colors.transparent,
-        bottom: _isSearching
-            ? null
-            : TabBar(
+      body: Stack(children: [
+        Column(children: [
+          // ── 헤더 (mockup): '선수' 타이틀 + 검색/테마 아이콘 버튼 + TabBar ──
+          Container(
+            color: bar,
+            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+            child: Column(children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 8, 6, 0),
+                child: Row(children: [
+                  Text('선수',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800,
+                          letterSpacing: 0, color: ink)),
+                  const Spacer(),
+                  _headerIconBtn(Icons.search, '검색',
+                      () => setState(() => _isSearching = true)),
+                  _headerIconBtn(
+                      isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                      isDark ? '라이트 모드' : '다크 모드',
+                      () => themeProv.toggle()),
+                  const SizedBox(width: 6),
+                ]),
+              ),
+              TabBar(
                 controller: _tabController,
-                indicatorColor: SemColor.panelDark,
-                indicatorWeight: 2.5,
-                labelColor: SemColor.panelDark,
-                unselectedLabelColor: Colors.grey,
-                labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
-                dividerColor: Colors.transparent,
                 tabs: const [Tab(text: '타자'), Tab(text: '투수'), Tab(text: '인기투표')],
+                labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                labelColor: ink,
+                unselectedLabelColor: sub,
+                indicatorColor: ink,
+                indicatorWeight: 2,
+                dividerColor: line,
               ),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _search,
-              decoration: InputDecoration(
-                hintText: '선수 이름 검색',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        tooltip: '검색어 지우기',
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() { _isSearching = false; _searchResults = []; });
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                isDense: true,
-              ),
+            ]),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                Column(
+                  children: [
+                    const SizedBox(height: 6),
+                    _buildSortChips(_hitterSorts, _hitterSort, (val) {
+                      setState(() {
+                        _hitterSort = val;
+                        _applyHitterFilter();
+                      });
+                    }),
+                    const SizedBox(height: 4),
+                    _buildTeamFilterChips(() {
+                      setState(_applyHitterFilter);
+                    }),
+                    const SizedBox(height: 4),
+                    const Divider(height: 1),
+                    Expanded(child: _buildHitterList()),
+                  ],
+                ),
+                Column(
+                  children: [
+                    const SizedBox(height: 6),
+                    _buildSortChips(_pitcherSorts, _pitcherSort, (val) {
+                      setState(() {
+                        _pitcherSort = val;
+                        _applyPitcherFilter();
+                      });
+                    }),
+                    const SizedBox(height: 4),
+                    _buildTeamFilterChips(() {
+                      setState(_applyPitcherFilter);
+                    }),
+                    const SizedBox(height: 4),
+                    const Divider(height: 1),
+                    Expanded(child: _buildPitcherList()),
+                  ],
+                ),
+                _buildPopularityTab(),
+              ],
             ),
           ),
-          if (!_isSearching) ...[
-            const Divider(height: 1, thickness: 1),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  Column(
-                    children: [
-                      const SizedBox(height: 6),
-                      _buildSortChips(_hitterSorts, _hitterSort, (val) {
-                        setState(() {
-                          _hitterSort = val;
-                          _applyHitterFilter();
-                        });
-                      }),
-                      const SizedBox(height: 4),
-                      _buildTeamFilterChips(() {
-                        setState(_applyHitterFilter);
-                      }),
-                      const SizedBox(height: 4),
-                      const Divider(height: 1),
-                      Expanded(child: _buildHitterList()),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      const SizedBox(height: 6),
-                      _buildSortChips(_pitcherSorts, _pitcherSort, (val) {
-                        setState(() {
-                          _pitcherSort = val;
-                          _applyPitcherFilter();
-                        });
-                      }),
-                      const SizedBox(height: 4),
-                      _buildTeamFilterChips(() {
-                        setState(_applyPitcherFilter);
-                      }),
-                      const SizedBox(height: 4),
-                      const Divider(height: 1),
-                      Expanded(child: _buildPitcherList()),
-                    ],
-                  ),
-                  _buildPopularityTab(),
-                ],
-              ),
-            ),
-          ] else ...[
-            const Divider(height: 1, thickness: 1),
-            Expanded(child: _buildSearchResults()),
-          ],
-        ],
-      ),
+        ]),
+        if (_isSearching) Positioned.fill(child: _buildSearchOverlay()),
+      ]),
     );
   }
 }
