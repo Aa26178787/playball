@@ -1711,8 +1711,10 @@ class GameCard extends StatelessWidget {
 
     Widget teamSide(String code, String name, int score, bool won, bool isHomeSide) {
       final dim = (homeWon || awayWon) && !won;
-      final txt = Flexible(
+      // Expanded 이름 — 로고(카드 가장자리)/이름 시작/칩(스코어 경계) 전부 고정 x = 카드 간 수직선 정렬
+      final txt = Expanded(
         child: Text(name,
+            textAlign: isHomeSide ? TextAlign.left : TextAlign.right,
             style: TextStyle(
               fontSize: 13,
               fontWeight: won ? FontWeight.w800 : FontWeight.w600,
@@ -1721,9 +1723,8 @@ class GameCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis),
       );
-      // 홈/원정 미니 칩
+      // 홈/원정 미니 칩 — 항상 스코어 쪽 경계 (바깥쪽: 홈=우측끝, 원정=좌측끝)
       Widget sideTag(String label) => Container(
-        margin: EdgeInsets.only(left: isHomeSide ? 3 : 0, right: isHomeSide ? 0 : 3),
         padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
         decoration: BoxDecoration(
           color: t.paper2,
@@ -1733,20 +1734,21 @@ class GameCard extends StatelessWidget {
       );
       return Expanded(
         child: Row(
-          mainAxisAlignment: isHomeSide ? MainAxisAlignment.start : MainAxisAlignment.end,
-          children: [
-            if (!isHomeSide) ...[
-              txt,
-              sideTag('원정'),
-              const SizedBox(width: 8),
-            ],
-            Opacity(opacity: dim ? 0.45 : 1.0, child: TeamLogo(teamCode: code, size: 22)),
-            if (isHomeSide) ...[
-              const SizedBox(width: 8),
-              txt,
-              sideTag('홈'),
-            ],
-          ],
+          children: isHomeSide
+              ? [
+                  Opacity(opacity: dim ? 0.45 : 1.0, child: TeamLogo(teamCode: code, size: 22)),
+                  const SizedBox(width: 8),
+                  txt,
+                  const SizedBox(width: 3),
+                  sideTag('홈'),
+                ]
+              : [
+                  sideTag('원정'),
+                  const SizedBox(width: 3),
+                  txt,
+                  const SizedBox(width: 8),
+                  Opacity(opacity: dim ? 0.45 : 1.0, child: TeamLogo(teamCode: code, size: 22)),
+                ],
         ),
       );
     }
@@ -1812,20 +1814,9 @@ class GameCard extends StatelessWidget {
                         teamSide(game.awayTeamCode, game.awayTeam, game.awayScore, awayWon, false),
                       ],
                     ),
-                    // ── 2층: 상태 + 구장 (구분점 대신 간격 — live pill과 혼합 시 어색함 회피) ──
+                    // ── 2층: 상태 (구장명 제거 — 홈/원정 칩으로 충분) ──
                     const SizedBox(height: 6),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        statusBadge(),
-                        if (game.stadium != null) ...[
-                          const SizedBox(width: 7),
-                          Text('${game.stadium}',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
-                        ],
-                      ],
-                    ),
+                    statusBadge(),
                     // ── 3층: 승패투수 또는 선발 ──
                     if (subLine != null) ...[
                       const SizedBox(height: 5),
