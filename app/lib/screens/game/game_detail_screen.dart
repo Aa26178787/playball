@@ -2053,20 +2053,24 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Flexible(
-                child: Text(batterName,
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink, letterSpacing: 0)),
+              // 단일 Expanded — 투구위치 chip 우측 끝 고정 (Flexible+Spacer flex 분배 슬랙 방지)
+              Expanded(
+                child: Row(children: [
+                  Flexible(
+                    child: Text(batterName,
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink, letterSpacing: 0)),
+                  ),
+                  if (pitcherName != null) ...[
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text('vs $pitcherName',
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: sub)),
+                    ),
+                  ],
+                ]),
               ),
-              if (pitcherName != null) ...[
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text('vs $pitcherName',
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: sub)),
-                ),
-              ],
-              const Spacer(),
               const SizedBox(width: 6),
               if (pitches.isNotEmpty)
                 GestureDetector(
