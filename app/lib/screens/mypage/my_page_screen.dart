@@ -54,6 +54,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   bool _notifyTeamMilestone = true;
   bool _notifyAllstarVote   = true;
   bool _settingsLoaded      = false;
+  final Set<int> _expandedCats = {0}; // 알림 카테고리 펼침 (기본 경기 알림)
 
   @override
   void initState() {
@@ -339,629 +340,720 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
+  // ── build (Option A 디자인) ────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final cs = _C(context);
+    final myCode = _favoriteTeams.isNotEmpty ? (_favoriteTeams[0]['short_name'] as String? ?? '') : '';
+    final myColor = myCode.isNotEmpty ? teamColor(myCode) : SemColor.brand(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('마이페이지'),
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: '로그아웃',
-            onPressed: _logout,
+      backgroundColor: cs.bg,
+      body: SafeArea(
+        child: Column(children: [
+          // ── 헤더 (탭 공통 규격) ──
+          Container(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+            decoration: BoxDecoration(color: cs.paper, border: Border(bottom: BorderSide(color: cs.line))),
+            child: Row(children: [
+              Text('마이페이지', style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5)),
+              const Spacer(),
+              _Btn32(border: cs.line2, onTap: _logout,
+                child: Icon(Icons.logout_outlined, size: 17, color: cs.ink3)),
+            ]),
           ),
-        ],
+          Expanded(
+            child: _loading
+                ? Center(child: CircularProgressIndicator(color: myColor, strokeWidth: 2.5))
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: ListView(padding: EdgeInsets.zero, children: [
+                      _buildProfile(cs),
+                      if (_favoriteTeams.isNotEmpty) _buildMyTeam(cs, myColor),
+                      _buildFavPlayers(cs),
+                      _buildVisitRecord(cs, myColor),
+                      _buildMyPosts(cs),
+                      if (_myLikes.isNotEmpty) _buildMyLikes(cs),
+                      if (_myComments.isNotEmpty) _buildMyComments(cs),
+                      if (_settingsLoaded) _buildNotifSettings(cs, myColor),
+                      _buildDarkMode(cs, myColor),
+                      const SizedBox(height: 8),
+                      Center(child: TextButton(
+                        onPressed: _deleteAccount,
+                        child: Text('회원탈퇴',
+                            style: TextStyle(color: SemColor.live.withValues(alpha: 0.7), fontSize: 12)),
+                      )),
+                      const SizedBox(height: 24),
+                    ]),
+                  ),
+          ),
+        ]),
       ),
-      body: _loading
-          ? Center(child: CircularProgressIndicator(color: SemColor.brand(context), strokeWidth: 2.5))
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _buildProfile(),
-                  const SizedBox(height: 16),
-                  _buildPhoneVerify(),
-                  const SizedBox(height: 16),
-                  _buildFavoriteTeams(),
-                  const SizedBox(height: 16),
-                  _buildFavoritePlayers(),
-                  const SizedBox(height: 16),
-                  _buildStadiumRecord(),
-                  const SizedBox(height: 16),
-                  _buildMyPosts(),
-                  const SizedBox(height: 16),
-                  _buildMyLikes(),
-                  const SizedBox(height: 16),
-                  _buildMyComments(),
-                  const SizedBox(height: 16),
-                  _buildNotificationSettings(),
-                  const SizedBox(height: 8),
-                  Consumer<ThemeProvider>(
-                    builder: (ctx, tp, _) => SwitchListTile(
-                      title: const Text('다크 모드'),
-                      secondary: Icon(tp.isDark ? Icons.dark_mode : Icons.light_mode),
-                      value: tp.isDark,
-                      onChanged: (_) => tp.toggle(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: _deleteAccount,
-                    child: const Text('회원탈퇴',
-                        style: TextStyle(color: Colors.red, fontSize: 13)),
-                  ),
-                ],
-              ),
-            ),
     );
   }
 
-  Widget _buildProfile() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            GestureDetector(
-              onTap: _pickAndUploadImage,
-              child: Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 36,
-                    backgroundColor: SemColor.panelDark,
-                    backgroundImage: _user?['profile_image'] != null
-                        ? CachedNetworkImageProvider(_user!['profile_image'])
-                        : null,
-                    child: _user?['profile_image'] == null
-                        ? const Icon(Icons.person, color: Colors.white, size: 36)
-                        : null,
-                  ),
-                  if (_uploadingImage)
-                    const Positioned.fill(
-                      child: CircleAvatar(
-                        radius: 36,
-                        backgroundColor: Colors.black45,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      ),
-                    )
-                  else
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          color: SemColor.panelDark,
-                          shape: BoxShape.circle,
-                          // 다크 배경 + panelDark 배지 윤곽 소실 방지
-                          border: Border.all(color: Colors.white, width: 1.2),
-                        ),
-                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        _user?['nickname'] ?? '-',
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(width: 6),
-                      GestureDetector(
-                        onTap: _editNickname,
-                        child: const Icon(Icons.edit, size: 16, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(_user?['email'] ?? '',
-                      style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                ],
-              ),
-            ),
-          ],
+  BoxDecoration _cardDeco(_C cs) => BoxDecoration(
+    color: cs.paper, border: Border.all(color: cs.line),
+    borderRadius: BorderRadius.circular(Radii.lg),
+    boxShadow: cs.dark ? null : [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 3, offset: const Offset(0, 1))],
+  );
+
+  Widget _sectionLabel(_C cs, String label, {String? action, VoidCallback? onAction}) => Padding(
+    padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
+    child: Row(children: [
+      Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
+      if (action != null) ...[
+        const Spacer(),
+        GestureDetector(
+          onTap: onAction,
+          child: Text(action, style: TextStyle(fontSize: 11, color: cs.ink3)),
         ),
-      ),
-    );
-  }
+      ],
+    ]),
+  );
 
-  Widget _buildPhoneVerify() {
+  // ── 프로필 (이미지 업로드 + 닉네임 수정 + 이메일 인증 배지) ──
+  Widget _buildProfile(_C cs) {
     final verified = _user?['phone_verified'] == true;
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: Icon(
-          Icons.email_outlined,
-          color: verified ? Colors.green : Colors.orange,
-        ),
-        title: Text(verified ? '이메일 인증 완료' : '이메일 미인증'),
-        subtitle: Text(verified
-            ? (_user?['email'] ?? '')
-            : '커뮤니티 글쓰기를 위해 이메일 인증하세요',
-            style: const TextStyle(fontSize: 12)),
-        trailing: verified
-            ? const Icon(Icons.check_circle, color: Colors.green)
-            : ElevatedButton(
-                onPressed: () async {
-                  final ok = await Navigator.push<bool>(context,
-                      MaterialPageRoute(builder: (_) => const PhoneVerifyScreen()));
+    final img = _user?['profile_image'] as String?;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: _cardDeco(cs),
+        child: Row(children: [
+          GestureDetector(
+            onTap: _pickAndUploadImage,
+            child: Stack(children: [
+              Container(
+                width: 64, height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle, color: cs.paper2,
+                  border: Border.all(color: cs.line2, width: 2),
+                  image: (img != null && img.isNotEmpty)
+                      ? DecorationImage(image: CachedNetworkImageProvider(img), fit: BoxFit.cover)
+                      : null,
+                ),
+                child: (img == null || img.isEmpty) ? Icon(Icons.person_outline, size: 28, color: cs.sub) : null,
+              ),
+              if (_uploadingImage)
+                Positioned.fill(child: Container(
+                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.black45),
+                  child: const Center(child: SizedBox(width: 20, height: 20,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))),
+                ))
+              else
+                Positioned(bottom: 0, right: 0, child: Container(
+                  width: 20, height: 20,
+                  decoration: BoxDecoration(color: cs.ink, shape: BoxShape.circle, border: Border.all(color: cs.paper, width: 2)),
+                  child: Icon(Icons.camera_alt_outlined, size: 10, color: cs.dark ? const Color(0xFF0F0F12) : Colors.white),
+                )),
+            ]),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            GestureDetector(
+              onTap: _editNickname,
+              child: Row(children: [
+                Flexible(child: Text(_user?['nickname'] ?? '-', maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5))),
+                const SizedBox(width: 7),
+                Icon(Icons.edit_outlined, size: 14, color: cs.sub),
+              ]),
+            ),
+            const SizedBox(height: 5),
+            Text(_user?['email'] ?? '', style: TextStyle(fontSize: 12, color: cs.ink3)),
+            const SizedBox(height: 7),
+            if (verified)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(color: const Color(0xFF22C55E).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.check, size: 10, color: Color(0xFF22C55E)),
+                  SizedBox(width: 4),
+                  Text('이메일 인증 완료', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF22C55E))),
+                ]),
+              )
+            else
+              GestureDetector(
+                onTap: () async {
+                  final ok = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const PhoneVerifyScreen()));
                   if (ok == true) _load();
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: SemColor.panelDark,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  textStyle: const TextStyle(fontSize: 12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(color: SemColor.warning.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(6)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.error_outline, size: 10, color: SemColor.warning),
+                    const SizedBox(width: 4),
+                    Text('이메일 인증하기', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: SemColor.warning)),
+                  ]),
                 ),
-                child: const Text('인증하기'),
               ),
+          ])),
+        ]),
       ),
     );
   }
 
-  Widget _buildFavoriteTeams() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8),
-          child: Text('마이팀', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ),
-        if (_favoriteTeams.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(
-                child: Text('즐겨찾기한 팀이 없습니다', style: TextStyle(color: Colors.grey)),
-              ),
-            ),
-          )
-        else
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Column(
-              children: _favoriteTeams.asMap().entries.map((e) {
-                final t = e.value;
-                final code = t['short_name'] ?? '';
-                return ListTile(
-                  leading: TeamLogo(teamCode: code, size: 36),
-                  title: Text(t['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text(
-                    '${t['rank'] ?? '-'}위  ${t['wins'] ?? 0}승 ${t['losses'] ?? 0}패'
-                    '  승률 ${((t['win_rate'] ?? 0) * 100).toStringAsFixed(1)}%',
-                    style: const TextStyle(fontSize: 12),
+  // ── 마이팀 ──
+  Widget _buildMyTeam(_C cs, Color myColor) {
+    final t = _favoriteTeams[0] as Map;
+    final code = t['short_name'] as String? ?? '';
+    final wins = t['wins'] ?? 0;
+    final losses = t['losses'] ?? 0;
+    final rank = t['rank'] ?? '-';
+    final winRate = ((t['win_rate'] ?? 0) * 100).toStringAsFixed(1);
+    void openTeam() => Navigator.push(context, MaterialPageRoute(
+        builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(t))));
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _sectionLabel(cs, '마이팀', action: '팀 상세 →', onAction: openTeam),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: GestureDetector(
+          onTap: openTeam,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: _cardDeco(cs),
+            child: Row(children: [
+              Stack(clipBehavior: Clip.none, children: [
+                TeamLogo(teamCode: code, size: 48),
+                Positioned(top: -4, right: -4, child: Container(
+                  width: 18, height: 18,
+                  decoration: BoxDecoration(color: myColor, shape: BoxShape.circle, border: Border.all(color: cs.paper, width: 1.5)),
+                  child: const Center(child: Text('★', style: TextStyle(fontSize: 9, color: Colors.white, height: 1))),
+                )),
+              ]),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Flexible(child: Text(t['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 16, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4))),
+                  const SizedBox(width: 7),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(color: myColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(5)),
+                    child: Text('$rank위', style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: myColor)),
                   ),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(t)))),
-                );
-              }).toList(),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildFavoritePlayers() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8),
-          child: Text('즐겨찾기 선수', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ),
-        if (_favoritePlayers.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(
-                child: Text('즐겨찾기한 선수가 없습니다', style: TextStyle(color: Colors.grey)),
-              ),
-            ),
-          )
-        else
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Column(
-              children: _favoritePlayers.map((p) {
-                return ListTile(
-                  leading: CircleAvatar(
-                    radius: 20,
-                    backgroundImage: p['profile_image'] != null
-                        ? CachedNetworkImageProvider(p['profile_image'])
-                        : null,
-                    backgroundColor: Colors.grey[200],
-                    child: p['profile_image'] == null
-                        ? const Icon(Icons.person, size: 20)
-                        : null,
-                  ),
-                  title: Text(p['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text('${p['team'] ?? ''} | ${p['position'] ?? ''}',
-                      style: const TextStyle(fontSize: 12)),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => PlayerDetailScreen(
-                        playerId: p['id'],
-                        initialData: {'name': p['name'], 'team': p['team'], 'profile_image': p['profile_image'], 'position': p['position']},
-                      ))),
-                );
-              }).toList(),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildStadiumRecord() {
-    final wins   = _stadiumVisits.where((v) => v['result'] == 'win').length;
-    final losses = _stadiumVisits.where((v) => v['result'] == 'loss').length;
-    final draws  = _stadiumVisits.where((v) => v['result'] == 'draw').length;
-    final total  = wins + losses + draws;
-    final winPct = total > 0 ? (wins / total * 100).toStringAsFixed(1) : '-';
-
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.stadium, size: 18),
-                const SizedBox(width: 8),
-                const Text('직관 기록', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _stadiumStat('승', wins, Colors.blue),
-                _stadiumStat('패', losses, Colors.red),
-                _stadiumStat('무', draws, Colors.grey),
-                Column(children: [
-                  Text(winPct == '-' ? '-' : '$winPct%',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  const Text('직관 승률', style: TextStyle(fontSize: 11, color: Colors.grey)),
                 ]),
-              ],
-            ),
-            if (_stadiumVisits.isNotEmpty) ...[
-              const Divider(height: 20),
-              ..._stadiumVisits.take(5).map((v) => _buildVisitTile(v)),
+                const SizedBox(height: 5),
+                Text('$wins승 $losses패 · 승률 $winRate%', style: TextStyle(fontSize: 12, color: cs.ink3)),
+              ])),
+              Icon(Icons.chevron_right, size: 18, color: cs.sub),
+            ]),
+          ),
+        ),
+      ),
+    ]);
+  }
+
+  // ── 즐겨찾기 선수 (가로 스크롤) ──
+  Widget _buildFavPlayers(_C cs) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _sectionLabel(cs, '즐겨찾기 선수', action: _favoritePlayers.isEmpty ? null : '${_favoritePlayers.length}명'),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: Container(
+          decoration: _cardDeco(cs),
+          child: _favoritePlayers.isEmpty
+              ? Padding(padding: const EdgeInsets.all(20),
+                  child: Center(child: Text('즐겨찾기한 선수가 없습니다', style: TextStyle(fontSize: 12, color: cs.sub))))
+              : SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.all(14),
+                  child: Row(children: _favoritePlayers.map((p) {
+                    final code = p['team_code'] as String? ?? '';
+                    final c = code.isNotEmpty ? teamColor(code) : cs.sub;
+                    final img = p['profile_image'] as String?;
+                    return GestureDetector(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => PlayerDetailScreen(
+                            playerId: p['id'],
+                            initialData: {'name': p['name'], 'team': p['team'], 'profile_image': img, 'position': p['position'], 'team_code': code},
+                          ))),
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: SizedBox(width: 54, child: Column(children: [
+                          Container(
+                            width: 44, height: 44,
+                            decoration: BoxDecoration(
+                              color: c.withValues(alpha: cs.dark ? 0.18 : 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: c.withValues(alpha: 0.25)),
+                              image: (img != null && img.isNotEmpty)
+                                  ? DecorationImage(image: CachedNetworkImageProvider(img), fit: BoxFit.cover)
+                                  : null,
+                            ),
+                            child: (img == null || img.isEmpty) ? Center(child: Icon(Icons.person, size: 22, color: c)) : null,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(p['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: cs.ink)),
+                          const SizedBox(height: 3),
+                          Text(p['position'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 9, color: cs.sub)),
+                        ])),
+                      ),
+                    );
+                  }).toList()),
+                ),
+        ),
+      ),
+    ]);
+  }
+
+  // ── 직관 기록 ──
+  Widget _buildVisitRecord(_C cs, Color myColor) {
+    final wins = _stadiumVisits.where((v) => v['result'] == 'win').length;
+    final losses = _stadiumVisits.where((v) => v['result'] == 'loss').length;
+    final draws = _stadiumVisits.where((v) => v['result'] == 'draw').length;
+    final total = wins + losses + draws;
+    final winPct = total > 0 ? (wins / total * 100).round() : 0;
+    final shown = _stadiumVisits.take(5).toList();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _sectionLabel(cs, '직관 기록'),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: Container(
+          decoration: _cardDeco(cs),
+          child: Column(children: [
+            IntrinsicHeight(child: Row(children: [
+              _visitStat(cs, '$wins', '승', const Color(0xFF2563EB)),
+              VerticalDivider(width: 1, color: cs.line),
+              _visitStat(cs, '$losses', '패', SemColor.live),
+              VerticalDivider(width: 1, color: cs.line),
+              _visitStat(cs, '$draws', '무', cs.sub),
+              VerticalDivider(width: 1, color: cs.line),
+              _visitStat(cs, total > 0 ? '$winPct%' : '-', '직관승률', myColor),
+            ])),
+            if (shown.isEmpty)
+              Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                  child: Text('캘린더에서 직관 기록을 추가해보세요', style: TextStyle(fontSize: 11, color: cs.sub)))
+            else ...[
+              Divider(height: 1, color: cs.line),
+              ...shown.asMap().entries.map((e) => _visitTile(cs, e.value as Map, e.key == shown.length - 1)),
             ],
-            if (_stadiumVisits.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Center(
-                  child: Text('캘린더에서 직관 기록을 추가해보세요',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+          ]),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _visitStat(_C cs, String value, String label, Color color) => Expanded(child: Padding(
+    padding: const EdgeInsets.symmetric(vertical: 14),
+    child: Column(children: [
+      Text(value, style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: color)),
+      const SizedBox(height: 5),
+      Text(label, style: TextStyle(fontSize: 10, color: cs.sub)),
+    ]),
+  ));
+
+  Widget _visitTile(_C cs, Map v, bool last) {
+    final result = v['result'] as String? ?? '';
+    final c = result == 'win' ? const Color(0xFF2563EB) : result == 'loss' ? SemColor.live : cs.sub;
+    final lb = result == 'win' ? '승' : result == 'loss' ? '패' : '무';
+    final rawDate = (v['game_date'] as String? ?? '');
+    final date = rawDate.length >= 10 ? rawDate.substring(0, 10).replaceAll('-', '.') : rawDate;
+    final home = v['home_team'] as String? ?? '';
+    final away = v['away_team'] as String? ?? '';
+    final hs = v['home_score'] as int? ?? 0;
+    final as_ = v['away_score'] as int? ?? 0;
+    final memo = v['memo'] as String?;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+      decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
+      child: Row(children: [
+        Container(
+          width: 28, height: 28,
+          decoration: BoxDecoration(color: c.withValues(alpha: 0.12), shape: BoxShape.circle),
+          child: Center(child: Text(lb, style: TextStyle(fontSize: 12, fontWeight: Typo.extra, color: c))),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('$away $as_ : $hs $home',
+              style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink, height: 1.4)),
+          if (memo != null && memo.isNotEmpty)
+            Text(memo, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10, color: cs.sub)),
+        ])),
+        Text(date, style: TextStyle(fontSize: 10, color: cs.sub)),
+      ]),
+    );
+  }
+
+  // ── 내 게시글 / 좋아요 / 댓글 ──
+  Widget _buildMyPosts(_C cs) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _sectionLabel(cs, '내 게시글'),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: Container(
+          decoration: _cardDeco(cs),
+          child: _myPosts.isEmpty
+              ? Padding(padding: const EdgeInsets.all(20),
+                  child: Center(child: Text('작성한 게시글이 없습니다', style: TextStyle(fontSize: 12, color: cs.sub))))
+              : Column(children: _myPosts.take(5).toList().asMap().entries.map((e) {
+                  final p = e.value as Map;
+                  final last = e.key == _myPosts.take(5).length - 1;
+                  return _postRow(cs,
+                    title: p['title'] ?? '',
+                    chip: p['category'] as String?,
+                    likes: p['likes'] ?? 0,
+                    comments: p['comment_count'] ?? 0,
+                    date: _shortDate(p['created_at']),
+                    last: last,
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PostDetailScreen(postId: p['id']))),
+                  );
+                }).toList()),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _buildMyLikes(_C cs) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _sectionLabel(cs, '좋아요한 게시글'),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: Container(
+          decoration: _cardDeco(cs),
+          child: Column(children: _myLikes.take(5).toList().asMap().entries.map((e) {
+            final p = e.value as Map;
+            final last = e.key == _myLikes.take(5).length - 1;
+            return _postRow(cs,
+              title: p['title'] ?? '',
+              chip: p['author'] as String?,
+              likes: p['likes'] ?? 0,
+              comments: p['comment_count'] ?? 0,
+              date: _shortDate(p['created_at']),
+              last: last,
+              leadingHeart: true,
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PostDetailScreen(postId: p['id']))),
+            );
+          }).toList()),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _buildMyComments(_C cs) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _sectionLabel(cs, '내 댓글'),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: Container(
+          decoration: _cardDeco(cs),
+          child: Column(children: _myComments.take(5).toList().asMap().entries.map((e) {
+            final c = e.value as Map;
+            final last = e.key == _myComments.take(5).length - 1;
+            return GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PostDetailScreen(postId: c['post_id']))),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(c['content'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, color: cs.ink, height: 1.45)),
+                  const SizedBox(height: 6),
+                  Row(children: [
+                    Expanded(child: Text(c['post_title'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 10, color: cs.sub))),
+                    const SizedBox(width: 8),
+                    Text(_shortDate(c['created_at']), style: TextStyle(fontSize: 10, color: cs.sub)),
+                  ]),
+                ]),
+              ),
+            );
+          }).toList()),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _postRow(_C cs, {required String title, String? chip, required int likes,
+      required int comments, required String date, required bool last,
+      bool leadingHeart = false, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            if (leadingHeart) ...[
+              Icon(Icons.favorite, size: 13, color: SemColor.live),
+              const SizedBox(width: 6),
+            ],
+            Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink, height: 1.45))),
+          ]),
+          const SizedBox(height: 6),
+          Row(children: [
+            if (chip != null && chip.isNotEmpty) ...[
+              _SmallChip(label: chip, color: cs.ink3, bg: cs.paper2, border: cs.line),
+              const SizedBox(width: 8),
+            ],
+            Text('♡ $likes', style: TextStyle(fontSize: 10, color: cs.sub)),
+            const SizedBox(width: 8),
+            Text('💬 $comments', style: TextStyle(fontSize: 10, color: cs.sub)),
+            const Spacer(),
+            Text(date, style: TextStyle(fontSize: 10, color: cs.sub)),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  String _shortDate(dynamic v) {
+    final s = (v ?? '').toString();
+    return s.length >= 10 ? s.substring(0, 10).replaceAll('-', '.') : s;
+  }
+
+  // ── 알림 설정 (Option A 접이식 카테고리) ──
+  Widget _buildNotifSettings(_C cs, Color myColor) {
+    final cats = <Map<String, dynamic>>[
+      {'icon': '⚾', 'label': '경기 알림', 'items': [
+        {'label': '경기 시작', 'desc': '선발 발표·경기 취소 알림 포함', 'value': _notifyGameStart,
+         'on': (bool v) { _notifyGameStart = v; }},
+        {'label': '득점 변경', 'desc': '역전·연장전 포함', 'value': _notifyScoreChange,
+         'on': (bool v) { _notifyScoreChange = v; }},
+        {'label': '경기 종료', 'desc': '경기 결과 요약 포함', 'value': _notifyGameEnd,
+         'on': (bool v) { _notifyGameEnd = v; }},
+        {'label': '끝내기 승리', 'desc': '끝내기 득점으로 승리 시', 'value': _notifyWalkoff,
+         'on': (bool v) { _notifyWalkoff = v; }},
+        {'label': '투수 교체', 'desc': '선발 조기강판·투수 교체 시', 'value': _notifyStarterKo,
+         'on': (bool v) { _notifyStarterKo = v; }},
+        {'label': '마이팀 경기만', 'desc': _notifyMyTeamOnly ? '즐겨찾기 팀 경기에만 알림' : '모든 경기 알림',
+         'value': _notifyMyTeamOnly, 'on': (bool v) { _notifyMyTeamOnly = v; }},
+      ]},
+      {'icon': '📊', 'label': '팀 알림', 'items': [
+        {'label': '연승/연패', 'desc': '마이팀 5연승·연패 이상 시', 'value': _notifyStreak,
+         'on': (bool v) { _notifyStreak = v; }},
+        {'label': '순위 변동', 'desc': '마이팀 순위 변동·동률 1위 달성 시', 'value': _notifyRankChange,
+         'on': (bool v) { _notifyRankChange = v; }},
+        {'label': '선두 추격', 'desc': '마이팀 1위일 때 2위와 격차 좁혀질 때', 'value': _notifyPennantRace,
+         'on': (bool v) { _notifyPennantRace = v; }},
+        {'label': '팀 선수 대기록', 'desc': '마이팀 선수 시즌·월간·단일경기 기록', 'value': _notifyTeamMilestone,
+         'on': (bool v) { _notifyTeamMilestone = v; }},
+        {'label': '1군 등록/말소', 'desc': '마이팀 선수 등록 변경 시', 'value': _notifyRoster,
+         'on': (bool v) { _notifyRoster = v; }},
+      ]},
+      {'icon': '🏃', 'label': '선수 알림', 'items': [
+        {'label': '통산 대기록', 'desc': '즐겨찾기 선수 통산 기록 달성 시', 'value': _notifyMilestone,
+         'on': (bool v) { _notifyMilestone = v; }},
+        {'label': '오늘의 활약', 'desc': '즐겨찾기 선수 매일 출전 결과 요약', 'value': _notifyPlayerDaily,
+         'on': (bool v) { _notifyPlayerDaily = v; }},
+        {'label': '선수 뉴스', 'desc': '트레이드·방출·은퇴·FA·부상·시상', 'value': _notifyPlayerNews,
+         'on': (bool v) { _notifyPlayerNews = v; }},
+      ]},
+      {'icon': '⭐', 'label': '올스타 팬투표', 'items': [
+        {'label': '투표 기간 알림', 'desc': '투표 시작·마감 D-3·D-1 + 상위권 진입', 'value': _notifyAllstarVote,
+         'on': (bool v) { _notifyAllstarVote = v; }},
+      ]},
+      {'icon': '💬', 'label': '커뮤니티', 'items': [
+        {'label': '댓글', 'desc': '내 글에 댓글이 달릴 때', 'value': _notifyComment,
+         'on': (bool v) { _notifyComment = v; }},
+      ]},
+    ];
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _sectionLabel(cs, '알림 설정'),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: Container(
+          decoration: _cardDeco(cs),
+          child: Column(children: cats.asMap().entries.map((e) {
+            final i = e.key;
+            final cat = e.value;
+            final items = cat['items'] as List;
+            final expanded = _expandedCats.contains(i);
+            final isLast = i == cats.length - 1;
+            return Column(children: [
+              GestureDetector(
+                onTap: () => setState(() => expanded ? _expandedCats.remove(i) : _expandedCats.add(i)),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                  decoration: BoxDecoration(
+                    border: (!isLast || expanded) ? Border(bottom: BorderSide(color: cs.line)) : null,
+                  ),
+                  child: Row(children: [
+                    Text(cat['icon'] as String, style: const TextStyle(fontSize: 16)),
+                    const SizedBox(width: 10),
+                    Text(cat['label'] as String, style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink)),
+                    const Spacer(),
+                    AnimatedRotation(
+                      turns: expanded ? 0.25 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(Icons.chevron_right, size: 16, color: cs.sub),
+                    ),
+                  ]),
                 ),
               ),
-          ],
+              if (expanded)
+                ...items.asMap().entries.map((ie) {
+                  final ii = ie.key;
+                  final item = ie.value as Map;
+                  final itemLast = ii == items.length - 1;
+                  final showBefore = item['label'] == '경기 시작';
+                  return Column(children: [
+                    Container(
+                      padding: const EdgeInsets.only(left: 44, right: 16, top: 11, bottom: 11),
+                      decoration: BoxDecoration(
+                        border: (!itemLast || !isLast || showBefore) ? Border(bottom: BorderSide(color: cs.line)) : null,
+                      ),
+                      child: Row(children: [
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(item['label'] as String, style: TextStyle(fontSize: 13, fontWeight: Typo.medium, color: cs.ink)),
+                          const SizedBox(height: 3),
+                          Text(item['desc'] as String, style: TextStyle(fontSize: 10, color: cs.sub, height: 1.4)),
+                        ])),
+                        const SizedBox(width: 12),
+                        _AppToggle(
+                          on: item['value'] as bool,
+                          color: myColor,
+                          track: cs.track,
+                          onChanged: (v) { setState(() => (item['on'] as Function)(v)); _saveSettings(); },
+                        ),
+                      ]),
+                    ),
+                    // 경기 시작 ON 시 알림 시간 선택 노출
+                    if (showBefore && _notifyGameStart)
+                      _buildBeforeMinutes(cs, myColor, itemLast && isLast),
+                  ]);
+                }),
+            ]);
+          }).toList()),
         ),
       ),
-    );
+    ]);
   }
 
-  Widget _buildVisitTile(Map visit) {
-    final result = visit['result'] as String;
-    final color = result == 'win' ? Colors.blue : result == 'loss' ? Colors.red : Colors.grey;
-    final label = result == 'win' ? '승' : result == 'loss' ? '패' : '무';
-    final date = (visit['game_date'] as String? ?? '').replaceAll('-', '.').substring(0, 10);
-    final home = visit['home_team'] as String? ?? '';
-    final away = visit['away_team'] as String? ?? '';
-    final hs = visit['home_score'] as int? ?? 0;
-    final as_ = visit['away_score'] as int? ?? 0;
-    final memo = visit['memo'] as String?;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Container(
-            width: 28, height: 28,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.15), shape: BoxShape.circle),
-            child: Center(child: Text(label,
-                style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13))),
+  Widget _buildBeforeMinutes(_C cs, Color myColor, bool last) {
+    Widget chip(int v, String label) {
+      final sel = _notifyBeforeMinutes == v;
+      return GestureDetector(
+        onTap: () { setState(() => _notifyBeforeMinutes = v); _saveSettings(); },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: sel ? myColor : cs.paper2,
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(color: sel ? myColor : cs.line),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('$away $as_  :  $hs $home',
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-                Text(date, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
-                if (memo != null && memo.isNotEmpty)
-                  Text(memo, style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _stadiumStat(String label, int value, Color color) {
-    return Column(
-      children: [
-        Text('$value', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-      ],
-    );
-  }
-
-  Widget _buildMyPosts() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8),
-          child: Text('내 게시글', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          child: Text(label, style: TextStyle(fontSize: 11, fontWeight: sel ? Typo.bold : Typo.medium,
+              color: sel ? Colors.white : cs.sub)),
         ),
-        if (_myPosts.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(
-                child: Text('작성한 게시글이 없습니다', style: TextStyle(color: Colors.grey)),
-              ),
-            ),
-          )
-        else
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Column(
-              children: _myPosts.take(5).map((p) {
-                return ListTile(
-                  title: Text(p['title'] ?? '',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(
-                    '${p['category'] ?? ''}  ❤️${p['likes'] ?? 0}  💬${p['comment_count'] ?? 0}',
-                    style: const TextStyle(fontSize: 11)),
-                  trailing: Text(
-                    (p['created_at'] ?? '').toString().length >= 10
-                        ? (p['created_at'] as String).substring(0, 10)
-                        : '',
-                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => PostDetailScreen(postId: p['id']))),
-                );
-              }).toList(),
-            ),
-          ),
-      ],
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.only(left: 44, right: 16, top: 4, bottom: 12),
+      decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
+      child: Row(children: [
+        Text('알림 시간', style: TextStyle(fontSize: 12, color: cs.ink3)),
+        const Spacer(),
+        chip(30, '30분'), const SizedBox(width: 6),
+        chip(60, '1시간'), const SizedBox(width: 6),
+        chip(120, '2시간'),
+      ]),
     );
   }
 
-  Widget _buildMyLikes() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8),
-          child: Text('좋아요한 게시글', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+  // ── 다크 모드 ──
+  Widget _buildDarkMode(_C cs, Color myColor) {
+    final tp = context.watch<ThemeProvider>();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _sectionLabel(cs, '화면'),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          decoration: _cardDeco(cs),
+          child: Row(children: [
+            Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(color: cs.paper2, borderRadius: BorderRadius.circular(9)),
+              child: Icon(tp.isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined, size: 17, color: cs.ink3),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Text('다크 모드', style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink))),
+            _AppToggle(on: tp.isDark, color: myColor, track: cs.track, onChanged: (_) => tp.toggle()),
+          ]),
         ),
-        if (_myLikes.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(
-                child: Text('좋아요한 게시글이 없습니다', style: TextStyle(color: Colors.grey)),
-              ),
-            ),
-          )
-        else
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Column(
-              children: _myLikes.take(5).map((p) {
-                return ListTile(
-                  leading: const Icon(Icons.favorite, size: 16, color: Colors.red),
-                  title: Text(p['title'] ?? '',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(
-                    '${p['author'] ?? ''}  ❤️${p['likes'] ?? 0}  💬${p['comment_count'] ?? 0}',
-                    style: const TextStyle(fontSize: 11)),
-                  trailing: Text(
-                    (p['created_at'] ?? '').toString().length >= 10
-                        ? (p['created_at'] as String).substring(0, 10)
-                        : '',
-                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => PostDetailScreen(postId: p['id']))),
-                );
-              }).toList(),
-            ),
-          ),
-      ],
-    );
+      ),
+    ]);
   }
+}
 
-  Widget _buildMyComments() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8),
-          child: Text('내 댓글', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+// ── 공통 소형 위젯 ─────────────────────────────────────────────────────────────
+class _SmallChip extends StatelessWidget {
+  final String label;
+  final Color color, bg;
+  final Color? border;
+  const _SmallChip({required this.label, required this.color, required this.bg, this.border});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+    decoration: BoxDecoration(
+      color: bg, borderRadius: BorderRadius.circular(Radii.xs),
+      border: border != null ? Border.all(color: border!) : null,
+    ),
+    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.medium, color: color)),
+  );
+}
+
+class _AppToggle extends StatelessWidget {
+  final bool on;
+  final Color color, track;
+  final ValueChanged<bool> onChanged;
+  const _AppToggle({required this.on, required this.color, required this.track, required this.onChanged});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: () => onChanged(!on),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: 40, height: 24,
+      decoration: BoxDecoration(color: on ? color : track, borderRadius: BorderRadius.circular(12)),
+      child: AnimatedAlign(
+        duration: const Duration(milliseconds: 200),
+        alignment: on ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          width: 20, height: 20, margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white,
+              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 1))]),
         ),
-        if (_myComments.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(
-                child: Text('작성한 댓글이 없습니다', style: TextStyle(color: Colors.grey)),
-              ),
-            ),
-          )
-        else
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Column(
-              children: _myComments.take(5).map((c) {
-                return ListTile(
-                  title: Text(c['content'] ?? '',
-                      style: const TextStyle(fontSize: 14),
-                      maxLines: 2, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(
-                    c['post_title'] ?? '',
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: Text(
-                    (c['created_at'] ?? '').toString().length >= 10
-                        ? (c['created_at'] as String).substring(0, 10)
-                        : '',
-                    style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => PostDetailScreen(postId: c['post_id']))),
-                );
-              }).toList(),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildNotificationSettings() {
-    if (!_settingsLoaded) return const SizedBox.shrink();
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Text('알림 설정',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          ),
-          _notifCategory(Icons.sports_baseball, '경기 알림', [
-            _notifTile('경기 시작', '선발 발표·경기 취소 알림 포함', _notifyGameStart,
-                (v) { setState(() => _notifyGameStart = v); _saveSettings(); }),
-            _buildBeforeMinutesTile(),
-            _notifTile('득점 변경', '역전·연장전 포함', _notifyScoreChange,
-                (v) { setState(() => _notifyScoreChange = v); _saveSettings(); }),
-            _notifTile('경기 종료', '경기 결과 요약 포함', _notifyGameEnd,
-                (v) { setState(() => _notifyGameEnd = v); _saveSettings(); }),
-            _notifTile('끝내기 승리', '끝내기 득점으로 승리 시', _notifyWalkoff,
-                (v) { setState(() => _notifyWalkoff = v); _saveSettings(); }),
-            _notifTile('투수 교체', '선발 조기강판·투수 교체 시', _notifyStarterKo,
-                (v) { setState(() => _notifyStarterKo = v); _saveSettings(); }),
-            _notifTile(
-              '마이팀 경기만',
-              _notifyMyTeamOnly ? '즐겨찾기 팀 경기에만 알림' : '모든 경기 알림',
-              _notifyMyTeamOnly,
-              (v) { setState(() => _notifyMyTeamOnly = v); _saveSettings(); },
-            ),
-          ]),
-          _notifCategory(Icons.leaderboard, '팀 알림', [
-            _notifTile('연승/연패', '마이팀 5연승·연패 이상 시', _notifyStreak,
-                (v) { setState(() => _notifyStreak = v); _saveSettings(); }),
-            _notifTile('순위 변동', '마이팀 순위 변동·동률 1위 달성 시', _notifyRankChange,
-                (v) { setState(() => _notifyRankChange = v); _saveSettings(); }),
-            _notifTile('선두 추격', '마이팀 1위일 때 2위와 격차 좁혀질 때', _notifyPennantRace,
-                (v) { setState(() => _notifyPennantRace = v); _saveSettings(); }),
-            _notifTile('팀 선수 대기록', '마이팀 선수 시즌·월간·단일경기 기록 (홈런/타점/탈삼진 등)',
-                _notifyTeamMilestone,
-                (v) { setState(() => _notifyTeamMilestone = v); _saveSettings(); }),
-            _notifTile('1군 등록/말소', '마이팀 선수 등록 변경 시', _notifyRoster,
-                (v) { setState(() => _notifyRoster = v); _saveSettings(); }),
-          ]),
-          _notifCategory(Icons.person_outline, '선수 알림', [
-            _notifTile('통산 대기록', '즐겨찾기 선수 통산 기록 달성 시 (홈런·안타·승·세이브 등)',
-                _notifyMilestone,
-                (v) { setState(() => _notifyMilestone = v); _saveSettings(); }),
-            _notifTile('오늘의 활약', '즐겨찾기 선수 매일 출전 결과 요약', _notifyPlayerDaily,
-                (v) { setState(() => _notifyPlayerDaily = v); _saveSettings(); }),
-            _notifTile('선수 뉴스', '트레이드·방출·은퇴·FA·부상·시상·올스타·연속안타',
-                _notifyPlayerNews,
-                (v) { setState(() => _notifyPlayerNews = v); _saveSettings(); }),
-          ]),
-          _notifCategory(Icons.how_to_vote, '올스타 팬투표', [
-            _notifTile('투표 기간 알림', '투표 시작·마감 D-3·D-1 + 즐겨찾기 선수 상위권 진입',
-                _notifyAllstarVote,
-                (v) { setState(() => _notifyAllstarVote = v); _saveSettings(); }),
-          ]),
-          _notifCategory(Icons.forum, '커뮤니티 알림', [
-            _notifTile('댓글', '내 글에 댓글이 달릴 때', _notifyComment,
-                (v) { setState(() => _notifyComment = v); _saveSettings(); }),
-          ]),
-        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
-  Widget _notifCategory(IconData icon, String title, List<Widget> children) {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        leading: Icon(icon, size: 20),
-        title: Text(title,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-        childrenPadding: EdgeInsets.zero,
-        children: children,
-      ),
-    );
-  }
+class _Btn32 extends StatelessWidget {
+  final Widget child;
+  final Color border;
+  final VoidCallback onTap;
+  const _Btn32({required this.child, required this.border, required this.onTap});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 32, height: 32,
+      decoration: BoxDecoration(border: Border.all(color: border), borderRadius: BorderRadius.circular(10)),
+      child: child,
+    ),
+  );
+}
 
-  Widget _buildBeforeMinutesTile() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(32, 4, 16, 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text('알림 시간',
-                style: TextStyle(fontSize: 13, color: _notifyGameStart ? null : Colors.grey)),
-          ),
-          SegmentedButton<int>(
-            segments: const [
-              ButtonSegment(value: 30, label: Text('30분', style: TextStyle(fontSize: 11))),
-              ButtonSegment(value: 60, label: Text('1시간', style: TextStyle(fontSize: 11))),
-              ButtonSegment(value: 120, label: Text('2시간', style: TextStyle(fontSize: 11))),
-            ],
-            selected: {_notifyBeforeMinutes},
-            onSelectionChanged: _notifyGameStart
-                ? (s) { setState(() => _notifyBeforeMinutes = s.first); _saveSettings(); }
-                : null,
-            style: ButtonStyle(
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _notifTile(
-      String title, String? subtitle, bool value, ValueChanged<bool> onChanged) {
-    return SwitchListTile(
-      dense: true,
-      contentPadding: const EdgeInsets.only(left: 32, right: 16),
-      title: Text(title, style: const TextStyle(fontSize: 13)),
-      subtitle: subtitle != null
-          ? Text(subtitle,
-              style: TextStyle(fontSize: 11, color: Colors.grey[600]))
-          : null,
-      value: value,
-      onChanged: onChanged,
-    );
-  }
+// ── 색상 헬퍼 ─────────────────────────────────────────────────────────────────
+class _C {
+  final Color bg, paper, paper2, ink, ink2, ink3, sub, line, line2, track;
+  final bool dark;
+  _C(BuildContext ctx)
+    : dark   = Theme.of(ctx).brightness == Brightness.dark,
+      bg     = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF0F0F12) : const Color(0xFFFAFAFB),
+      paper  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF18181C) : Colors.white,
+      paper2 = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
+      ink    = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFFF4F4F5) : const Color(0xFF111113),
+      ink2   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46),
+      ink3   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73),
+      sub    = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2),
+      line   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
+      line2  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4),
+      track  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);
 }
