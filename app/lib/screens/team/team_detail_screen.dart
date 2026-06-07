@@ -28,6 +28,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   List _communityPosts = [];
   List _monthlyStats = [];
   List _h2hRecords = [];
+  List _battingOrderStats = [];
   Map<String, dynamic>? _seasonStats;
   bool _playersLoading = true;
   bool _gamesLoading = false;
@@ -36,6 +37,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   bool _communityLoading = false;
   bool _monthlyLoading = false;
   bool _h2hLoading = false;
+  bool _battingOrderLoading = false;
   bool _isFav = false;
   bool _favLoading = false;
   num? _gamesBehind;
@@ -64,6 +66,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     setState(() => _gameSubIndex = idx);
     if (idx == 1 && _monthlyStats.isEmpty && !_monthlyLoading) _loadMonthlyStats();
     if (idx == 2 && _h2hRecords.isEmpty && !_h2hLoading) _loadH2H();
+    if (idx == 3 && _battingOrderStats.isEmpty && !_battingOrderLoading) _loadBattingOrder();
   }
 
   Future<void> _loadGamesBehind() async {
@@ -277,6 +280,25 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     }
   }
 
+  Future<void> _loadBattingOrder() async {
+    final teamId = widget.team['id'] as int;
+    final ck = 'team_batting_order_$teamId';
+    final cached = await LocalCache.get(ck, maxAgeSeconds: 1800) as List?;
+    if (cached != null && mounted) {
+      setState(() { _battingOrderStats = cached; _battingOrderLoading = false; });
+    } else if (mounted) {
+      setState(() => _battingOrderLoading = true);
+    }
+    try {
+      final data = await ApiService.getTeamBattingOrder(teamId);
+      final stats = data['stats'] as List? ?? [];
+      await LocalCache.set(ck, stats);
+      if (mounted) setState(() { _battingOrderStats = stats; _battingOrderLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _battingOrderLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final team = widget.team;
@@ -479,7 +501,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   Widget _buildGamesTab() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = teamColor(widget.team['short_name'] as String? ?? '');
-    const subLabels = ['최근경기', '월별성적', '상대전적'];
+    const subLabels = ['최근경기', '월별성적', '상대전적', '타순별'];
     return Column(
       children: [
         Container(
@@ -517,7 +539,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         Expanded(
           child: IndexedStack(
             index: _gameSubIndex,
-            children: [_buildGames(), _buildMonthlyStats(), _buildHeadToHead()],
+            children: [_buildGames(), _buildMonthlyStats(), _buildHeadToHead(), _buildBattingOrder()],
           ),
         ),
       ],
@@ -1237,6 +1259,118 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             ]),
           );
         }).toList(),
+      ),
+    ]);
+  }
+
+  // ── 타순별 (Option A) ──
+  Widget _buildBattingOrder() {
+    final cs = _C(context);
+    final tc = teamColor(widget.team['short_name'] as String? ?? '');
+    if (_battingOrderLoading) return Center(child: CircularProgressIndicator(color: tc, strokeWidth: 2.5));
+    if (_battingOrderStats.isEmpty) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text('타순별 성적 데이터가 없습니다', style: TextStyle(color: cs.sub)),
+        const SizedBox(height: 12),
+        TextButton.icon(onPressed: _loadBattingOrder, icon: const Icon(Icons.refresh, size: 16), label: const Text('다시 시도')),
+      ]));
+    }
+    final stats = _battingOrderStats.cast<Map>();
+    final avgs = stats.map((s) => (s['avg'] as num?)?.toDouble() ?? 0).toList();
+    final maxAvg = avgs.fold<double>(0.001, (a, b) => b > a ? b : a);
+    final minAvg = avgs.fold<double>(1.0, (a, b) => b < a ? b : a);
+    String fmt3(double v) => v.toStringAsFixed(3).replaceFirst('0.', '.');
+
+    return ListView(padding: const EdgeInsets.all(18), children: [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Text('2026 시즌 타순별 누적 성적',
+            style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
+      ),
+      // 타순 리스트 카드
+      Container(
+        decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.lg)),
+        child: Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
+            child: Row(children: [
+              const SizedBox(width: 32),
+              Expanded(flex: 4, child: Text('주요 타자', style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub))),
+              Expanded(flex: 2, child: Text('타율', textAlign: TextAlign.right, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub))),
+              Expanded(flex: 2, child: Text('출루율', textAlign: TextAlign.right, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub))),
+              Expanded(flex: 2, child: Text('HR', textAlign: TextAlign.right, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub))),
+              Expanded(flex: 2, child: Text('타점', textAlign: TextAlign.right, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub))),
+            ]),
+          ),
+          Divider(height: 1, color: cs.line),
+          ...stats.asMap().entries.map((e) {
+            final s = e.value;
+            final last = e.key == stats.length - 1;
+            final order = (s['batting_order'] as num?)?.toInt() ?? 0;
+            final avg = (s['avg'] as num?)?.toDouble() ?? 0;
+            final obp = (s['obp'] as num?)?.toDouble() ?? 0;
+            final hr = (s['home_runs'] as num?)?.toInt() ?? 0;
+            final rbi = (s['rbis'] as num?)?.toInt() ?? 0;
+            final topName = s['top_player'] as String? ?? '-';
+            final topId = s['top_player_id'] as int?;
+            final topImg = s['top_player_image'] as String?;
+            final t = maxAvg > minAvg ? (avg - minAvg) / (maxAvg - minAvg) : 0.5;
+            final rowBg = Color.lerp(Colors.transparent, tc.withValues(alpha: cs.dark ? 0.16 : 0.10), t);
+            return GestureDetector(
+              onTap: topId != null
+                  ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: topId)))
+                  : null,
+              child: Container(
+                decoration: BoxDecoration(color: rowBg, border: last ? null : Border(bottom: BorderSide(color: cs.line))),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(children: [
+                  Container(width: 26, height: 26,
+                    decoration: BoxDecoration(color: tc, shape: BoxShape.circle),
+                    alignment: Alignment.center,
+                    child: Text('$order', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white))),
+                  const SizedBox(width: 6),
+                  Expanded(flex: 4, child: Row(children: [
+                    CircleAvatar(radius: 11, backgroundColor: tc.withValues(alpha: 0.15),
+                      backgroundImage: (topImg != null && topImg.isNotEmpty) ? CachedNetworkImageProvider(topImg) : null,
+                      child: (topImg == null || topImg.isEmpty) ? Icon(Icons.person, size: 13, color: tc) : null),
+                    const SizedBox(width: 5),
+                    Expanded(child: Text(topName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 11, fontWeight: Typo.medium, color: cs.ink))),
+                  ])),
+                  Expanded(flex: 2, child: Text(fmt3(avg), textAlign: TextAlign.right,
+                      style: TextStyle(fontSize: 12, fontWeight: Typo.bold,
+                          color: avg >= 0.300 ? const Color(0xFF2563EB) : avg < 0.230 ? SemColor.live : cs.ink))),
+                  Expanded(flex: 2, child: Text(fmt3(obp), textAlign: TextAlign.right, style: TextStyle(fontSize: 12, color: cs.ink3))),
+                  Expanded(flex: 2, child: Text('$hr', textAlign: TextAlign.right,
+                      style: TextStyle(fontSize: 12, color: hr >= 5 ? const Color(0xFF9333EA) : cs.ink3))),
+                  Expanded(flex: 2, child: Text('$rbi', textAlign: TextAlign.right, style: TextStyle(fontSize: 12, color: cs.ink3))),
+                ]),
+              ),
+            );
+          }),
+        ]),
+      ),
+      const SizedBox(height: 14),
+      // 타순별 타율 막대 차트
+      Container(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+        decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.lg)),
+        child: Column(children: [
+          Text('타순별 타율', style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
+          const SizedBox(height: 14),
+          SizedBox(height: 110, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: stats.map((s) {
+            final order = (s['batting_order'] as num?)?.toInt() ?? 0;
+            final avg = (s['avg'] as num?)?.toDouble() ?? 0;
+            return Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+              Text(fmt3(avg), style: TextStyle(fontSize: 9, color: cs.sub)),
+              const SizedBox(height: 3),
+              Container(height: maxAvg > 0 ? avg / maxAvg * 80 : 0.0, margin: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: BoxDecoration(color: tc.withValues(alpha: cs.dark ? 0.75 : 0.8), borderRadius: const BorderRadius.vertical(top: Radius.circular(4)))),
+              const SizedBox(height: 5),
+              Text('$order', style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.ink)),
+            ]));
+          }).toList())),
+        ]),
       ),
     ]);
   }
