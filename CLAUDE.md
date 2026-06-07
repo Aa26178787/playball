@@ -11,7 +11,7 @@ KBO 야구 앱 | Flutter + FastAPI + PostgreSQL
 - 서비스 2개: `playball`(API uvicorn) + `playball-scheduler`(크롤러/알림 — 별도 프로세스)
 
 ## 폴더 구조
-- 로컬: `C:\Users\qq772\playball\` → `app\`(Flutter), `backend\`(FastAPI)
+- 로컬: `C:\Users\qq772\playball\` → `app\`(Flutter), `backend\`(FastAPI), `ui\`(mockup 원본 — 이식 완료분 보관)
 - 서버: `~/playball/backend/` ← WorkingDirectory (api/, database/, crawler/, models/)
 
 ## 주요 명령어
@@ -75,7 +75,9 @@ flutter build apk --debug|--release  # → build/app/outputs/flutter-apk/
 - screens/game/{game_detail_screen,pitch_location_chart}.dart
 - screens/player/{player_screen,player_detail_screen,player_compare_screen,player_stats_section}.dart
 - screens/team/{team_screen,team_detail_screen}.dart
-- screens/{calendar,auth,mypage,community,notifications,stadium,search}/...
+- screens/calendar/{calendar_screen,cal_event_add_screen,visit_record_screen}.dart
+- screens/community/{community_screen,create_post_screen,post_detail_screen,food_add_screen}.dart
+- screens/{auth,mypage,notifications,stadium,search}/...
 - widgets/{mention_text,common_widgets,stadium_ranking_sheet,onboarding_helper}.dart
 - providers/{auth,game,team,theme}_provider.dart
 
@@ -123,7 +125,7 @@ GET /teams/popularity | POST /teams/{id}/vote
 GET/POST/DELETE /user/favorite-teams|favorite-players
 GET/PUT /user/settings, PUT /user/nickname, POST /user/email/send-code|verify
 POST /user/push-token, POST /user/profile-image
-GET/POST/DELETE /user/calendar-events
+GET/POST/DELETE /user/calendar-events + PUT /{id} (수정) — start_time/end_time HH:MM (null=종일)
 GET /user/notifications?limit= | POST read-all | PATCH {id}/read
 DELETE /user/notifications/read (read보다 {id} 라우트 뒤!) | DELETE /user/notifications/{id} | DELETE /user/notifications
 GET /user/stadium-ranking (5회 이상, 비로그인 가능) | /user/stadium-stats
@@ -169,7 +171,7 @@ pitcher: era,whip,fip,k_per_9,bb_per_9,babip,war,qs,blown_saves,avg_against …
 - user_notifications: type = game_start/score_change/comeback/game_end/extra_innings/cancelled/rank_change/winning·losing_streak/roster_change/new_comment
 - notification_log: UNIQUE(game_id,type,sub_id) — scheduler 영속 dedup. **새 알림 추가 시 동일 패턴 필수**
 - player_milestone_alerts: 마일스톤 dedup (UNIQUE player,type,value,season,month)
-- player/team_popularity_votes, stadium_food_places/votes, user_calendar_events(color 6종), player_daily_stats, player_roster_changes
+- player/team_popularity_votes, stadium_food_places/votes, user_calendar_events(color 6종 + start_time/end_time TIME nullable), player_daily_stats, player_roster_changes
 - 신규 테이블 생성 시 `GRANT ALL ... TO playball_user;` 필수
 
 ## Flutter 앱 구조 (2026-06-07 기준)
@@ -205,9 +207,22 @@ pitcher: era,whip,fip,k_per_9,bb_per_9,babip,war,qs,blown_saves,avg_against …
 ### 순위 탭 (team_screen)
 - 탭 3: 팀 순위(필터 칩에 **PS 확률** 토글 — 별도 리스트 뷰) / 부문별 / 팀 기록
 
+### 캘린더 탭 (Option A 디자인, 06-07 이식)
+- 커스텀 헤더(별=마이팀 필터, ＋=추가 메뉴 시트, 마이페이지) + 월 네비 + 직관승률 배너(통계/랭킹 pill) + 달력 그리드(선택=ink, 오늘=마이팀 tint, 직관 승/패 보더, 멀티데이 이벤트 바) + 선택일 상세(KBO 게임 타일 — 마이팀 tint+배지, LIVE/종료/취소 캡슐 / 개인 일정 타일 — 컬러 엣지+시간+X 삭제)
+- **cal_event_add_screen**: 일정 추가/수정 풀스크린 — 날짜 헤더 카드(액센트=색상), 날짜 범위 픽커, **시간 설정 토글**(off=종일, on=TimePicker 18:30→21:30 기본), 색상 6종, 메모. `event` 파라미터 주면 수정 모드(프리필+PUT)
+- **visit_record_screen**: 직관 기록 추가 풀스크린 — 경기 카드(로고 VS), 승리/패배/무승부 3버튼(액센트 연동), 메모, 사진. 기존 기록은 조회/삭제 다이얼로그 유지
+- 일정 타일 탭=수정, 마이팀 색 = favorite_teams 첫 팀 short_name → teamColor
+
+### 커뮤니티 탭 (Option A 디자인, 06-07 이식)
+- 커스텀 헤더(랭킹/마이페이지 _Btn32) + 탭 4(전체/팀별/인기/맛집)
+- 전체/인기: 검색 박스(paper2)+카테고리 칩(선택=ink)+게시글 카드(팀 태그=team_id→코드 팀컬러, 무한스크롤/캐시 유지)
+- 팀별: 정적 팀 칩(로고+팀컬러, LG 기본 선택) → _PostListTab 재사용
+- 맛집: 구장 칩 + 타일(인증=SemColor.live) + '맛집 제안' pill FAB(nav 위) → **food_add_screen** 풀스크린(구장 칩+카카오 검색→선택 카드→한줄 추천→제출, 자유입력 아님)
+- **create_post_screen**: 글 작성 풀 restyle — 카테고리/팀 칩, 보더리스 제목(60자)+본문, 이미지 박스, 하단 툴바(이미지·@삽입·글자수), 멘션 도움말 유지
+
 ### 기타 화면
-- 캘린더: KBO+개인일정+직관기록/승률, 랭킹 시트(StadiumRankingSheet — 커뮤니티 AppBar에도)
-- 커뮤니티/마이페이지/구장(KakaoMap 키 f5b365c3d6aff5eb4640ab80783797ac)/알림(Material 아이콘 칩, 스와이프 삭제)
+- 마이페이지/구장(KakaoMap 키 f5b365c3d6aff5eb4640ab80783797ac)/알림(Material 아이콘 칩, 스와이프 삭제)
+- Option A `_C` 색상 헬퍼(bg/paper/paper2/ink~sub/line/track) — 화면별 private 클래스로 복제 사용 (calendar/community/선수 계열)
 
 ### local_cache.dart
 `set/get(maxAgeSeconds)/getStale/remove/hasFlag/setFlag/clearUser`
@@ -258,6 +273,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - PgBouncer 6432 유지 / 커뮤니티 조회수 _view_cache 재시작 초기화(의도)
 - 새 알림 = notification_log dedup 패턴 필수
 - 테마 splashFactory = InkRipple (InkSparkle 반짝임 제거됨 — 되돌리지 말 것)
+- **showDatePicker/showTimePicker 직접 호출 금지** — 전역 `MediaQuery.withClampedTextScaling(min 0.85)`과 picker 내부 clamp 충돌 → `'maxScale > minScale'` assert 크래시. 반드시 `builder:`로 linear scaler 재설정 (cal_event_add_screen `_pickerBuilder` 패턴 복사)
 
 ## FCM (활성화 완료)
 google-services.json(앱) / firebase_options.dart / firebase-service-account.json(서버) / firebase-admin 7.4.0 / push_tokens·user_settings notify 컬럼 — 전부 ✅. AndroidConfig high priority + channel playball_default.
@@ -279,6 +295,14 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - **인스타 339명** (나무위키 로컬 크롤 + 팀명 검증 — Instagram 직접 크롤 불가)
 - 선발 확정 status, 스파클 제거, 등번호 배지, 날씨 워머, 과제 스크립트(1_train/2_evaluate)
 
+### 06-07b~08: 캘린더·커뮤니티 Option A 이식 + 일정 기능 확장
+- ui/ mockup 5개 이식: 캘린더 탭, 커뮤니티 탭(4탭 전부), 일정추가/글작성/맛집제안 풀스크린화 (cal_event_add·food_add 신규, 기존 다이얼로그/바텀시트 제거)
+- **직관기록 풀스크린** (visit_record_screen — 결과 3버튼+메모+사진, 다이얼로그 대체)
+- **일정 시간 선택** 풀스택: DB start_time/end_time TIME + API + 시간 토글 UI + 타일 시간 표시
+- **일정 수정**: PUT /user/calendar-events/{id} + CalEventAddScreen 수정 모드(타일 탭 진입)
+- 🔑 **DatePicker textScaler 크래시** 발견·수정 (전역 clamp min 0.85 충돌 → picker builder 가드, 주의사항 등재)
+- 맛집 FAB nav 위 정렬, 일정 색 팔레트 Option A 교체(gray 키=틸 표시), adb 원격 조작으로 실기 검증 루틴 확립 (screencap+uiautomator dump+input tap)
+
 ## 진행 예정 / 백로그
 
 ### 검증 도구 (권장)
@@ -296,11 +320,14 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - [ ] state restoration 추가 화면 / 동적 시간 표시 / i18n은 skip 확정
 
 ## 실기 확인 대기 (최신)
+- ✅ 확인됨(06-07): 캘린더 새 디자인, 일정추가 화면+날짜/시간 픽커, 직관기록 풀스크린 렌더
+- 일정 시간 포함 저장→타일 표시, 일정 수정 저장 플로우, 맛집 제안 풀스크린 제출, 글작성 새 디자인 제출, 커뮤니티 다크모드
 - compact/hero 혼합 + 3층 compact + 선발 확정 pill (경기 2h 전)
 - 이닝 칩 네비+스와이프(라이브 추적), 타석 2행 헤더, tonal dot, 득점요약 중앙 정렬
 - 블라인드 핸들 애니메이션 + 좁은 화면 overflow
 - 선수탭 리스트/카드+검색 오버레이+다크 토글, 상세 그리드/피칭디자인/존 히트맵(3x3 외곽선)
 - 인스타 버튼, 로스터 후보/불펜, 다음타석 오버레이, 알림 스와이프/아이콘 칩
+- ※ 06-07 검증 중단 잔여물: 6/7에 'test' 일정 생성됐을 수 있음 — 보이면 삭제
 
 ## 알려진 이슈
 - push_tokens 사용자 1명 — 다수 유저 알림 시나리오 미검증
