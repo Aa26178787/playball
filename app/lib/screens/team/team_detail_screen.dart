@@ -310,43 +310,53 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final ar = (team['away_record'] as Map?)?.cast<String, dynamic>() ?? {};
     final vp = MediaQuery.of(context).viewPadding.bottom;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(team['name'] ?? ''),
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        actions: [
-          _favLoading
-              ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
-              : IconButton(
-                  icon: Icon(_isFav ? Icons.star : Icons.star_border, color: Colors.white),
-                  tooltip: _isFav ? '마이팀 해제' : '마이팀 등록',
-                  onPressed: _toggleFav,
+      backgroundColor: isDark ? const Color(0xFF0F0F12) : const Color(0xFFFAFAFB),
+      body: SafeArea(
+        bottom: false,
+        child: Column(children: [
+          // ── 팀컬러 헤더 (Option A: 흰색 _Btn32 back/star) ──
+          Container(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+            color: color,
+            child: Row(children: [
+              _WhiteBtn32(icon: Icons.chevron_left, onTap: () => Navigator.maybePop(context)),
+              const SizedBox(width: 10),
+              Expanded(child: Text(team['name'] ?? '',
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5))),
+              _favLoading
+                  ? const SizedBox(width: 32, height: 32,
+                      child: Padding(padding: EdgeInsets.all(7),
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
+                  : _WhiteBtn32(
+                      icon: _isFav ? Icons.star_rounded : Icons.star_border_rounded,
+                      onTap: _toggleFav),
+            ]),
+          ),
+          Expanded(
+            child: Stack(children: [
+              Padding(
+                padding: EdgeInsets.only(bottom: 64 + vp),
+                child: IndexedStack(
+                  index: _mainTabIndex,
+                  children: [
+                    _buildOverviewTab(team, code, color, wins, losses, draws, hr, ar),
+                    _buildPlayers(),
+                    _buildGamesTab(),
+                    _buildCommunity(),
+                  ],
                 ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Padding(
-            padding: EdgeInsets.only(bottom: 64 + vp),
-            child: IndexedStack(
-              index: _mainTabIndex,
-              children: [
-                _buildOverviewTab(team, code, color, wins, losses, draws, hr, ar),
-                _buildPlayers(),
-                _buildGamesTab(),
-                _buildCommunity(),
-              ],
-            ),
+              ),
+              Positioned(
+                left: 16, right: 16,
+                bottom: 12 + vp,
+                child: _buildMainFloatingNav(color),
+              ),
+            ]),
           ),
-          Positioned(
-            left: 16, right: 16,
-            bottom: 12 + vp,
-            child: _buildMainFloatingNav(color),
-          ),
-        ],
+        ]),
       ),
     );
   }
@@ -498,11 +508,12 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
   Widget _buildGamesTab() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = teamColor(widget.team['short_name'] as String? ?? '');
     const subLabels = ['최근경기', '월별성적', '상대전적', '타순별'];
     return Column(
       children: [
         Container(
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          color: isDark ? const Color(0xFF18181C) : Colors.white,
           child: SizedBox(
             height: 40,
             child: Row(
@@ -515,9 +526,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         border: Border(bottom: BorderSide(
-                          color: selected
-                              ? (isDark ? AppColors.primaryDark : SemColor.panelDark)
-                              : Colors.transparent,
+                          color: selected ? color : Colors.transparent,
                           width: 2.5,
                         )),
                       ),
@@ -525,7 +534,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                         fontSize: 12,
                         fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
                         color: selected
-                            ? (isDark ? AppColors.primaryDark : SemColor.panelDark)
+                            ? color
                             : (isDark ? Colors.grey[400] : Colors.grey),
                       )),
                     ),
@@ -1665,4 +1674,24 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       ),
     );
   }
+}
+
+// ── 팀컬러 헤더용 흰색 32px 버튼 (Option A) ──
+class _WhiteBtn32 extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _WhiteBtn32({required this.icon, required this.onTap});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 32, height: 32,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+      ),
+      child: Icon(icon, size: 18, color: Colors.white),
+    ),
+  );
 }
