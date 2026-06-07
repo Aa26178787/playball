@@ -1,3 +1,4 @@
+// create_post_screen.dart — 게시글 작성 (Option A 디자인 시스템)
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
@@ -19,6 +20,7 @@ const _kTeams = [
   (id: 10, code: 'SK', name: 'SSG'),
   (id: 11, code: 'SS', name: '삼성'),
 ];
+const _kCategories = ['자유', '팀별', '분석', '유머'];
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -42,6 +44,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     _titleController.dispose();
     _contentController.dispose();
     super.dispose();
+  }
+
+  Color _accent(BuildContext context) {
+    if (_category == '팀별' && _selectedTeamId != null) {
+      final t = _kTeams.where((t) => t.id == _selectedTeamId);
+      if (t.isNotEmpty) return teamColor(t.first.code);
+    }
+    return SemColor.brand(context);
   }
 
   Future<void> _pickImage() async {
@@ -117,70 +127,118 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     setState(() => _isLoading = false);
   }
 
+  // 커서 위치에 '@' 삽입
+  void _insertMention() {
+    final text = _contentController.text;
+    final sel = _contentController.selection;
+    final pos = sel.isValid ? sel.start : text.length;
+    _contentController.value = TextEditingValue(
+      text: text.replaceRange(pos, sel.isValid ? sel.end : pos, '@'),
+      selection: TextSelection.collapsed(offset: pos + 1),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final cs = _C(context);
+    final accent = _accent(context);
+    // 팀컬러 액센트는 흰 글자, brand(다크=밝은색)는 어두운 글자
+    final accentFg = (_category == '팀별' && _selectedTeamId != null)
+        ? Colors.white
+        : (cs.dark ? const Color(0xFF0F0F12) : Colors.white);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('게시글 작성'),
-        actions: [
-          TextButton(
-            onPressed: _isLoading ? null : _submit,
-            child: const Text('등록', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            DropdownButtonFormField<String>(
-              initialValue: _category,
-              decoration: const InputDecoration(labelText: '카테고리', border: OutlineInputBorder()),
-              items: ['자유', '팀별', '분석', '유머']
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                  .toList(),
-              onChanged: (v) => setState(() {
-                _category = v!;
-                if (_category != '팀별') _selectedTeamId = null;
-              }),
+      backgroundColor: cs.bg,
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(child: Column(children: [
+        // AppBar
+        Container(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+          decoration: BoxDecoration(color: cs.paper, border: Border(bottom: BorderSide(color: cs.line))),
+          child: Row(children: [
+            _Btn32(onTap: () => Navigator.maybePop(context), border: cs.line2,
+              child: Icon(Icons.chevron_left, size: 20, color: cs.ink2)),
+            const SizedBox(width: 10),
+            Text('글 작성', style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4)),
+            const Spacer(),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: accent,
+                disabledBackgroundColor: cs.line2,
+                foregroundColor: accentFg,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
+                textStyle: const TextStyle(fontSize: 13, fontWeight: Typo.extra),
+              ),
+              child: _isLoading
+                  ? SizedBox(width: 14, height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: accentFg))
+                  : const Text('완료'),
             ),
+          ]),
+        ),
+        // Content
+        Expanded(child: SingleChildScrollView(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // 카테고리
+            _SectionLabel(label: '카테고리', cs: cs),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Wrap(spacing: 6, runSpacing: 6, children: _kCategories.map((c) {
+                final act = c == _category;
+                return GestureDetector(
+                  onTap: () => setState(() {
+                    _category = c;
+                    if (_category != '팀별') _selectedTeamId = null;
+                  }),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: act ? cs.ink : cs.paper,
+                      borderRadius: BorderRadius.circular(Radii.pill),
+                      border: Border.all(color: act ? cs.ink : cs.line2),
+                    ),
+                    child: Text(c, style: TextStyle(
+                      fontSize: 12, fontWeight: act ? Typo.bold : Typo.medium,
+                      color: act ? (cs.dark ? const Color(0xFF0F0F12) : Colors.white) : cs.ink3,
+                    )),
+                  ),
+                );
+              }).toList()),
+            ),
+            // 팀 선택 (팀별 카테고리)
             if (_category == '팀별') ...[
-              const SizedBox(height: 10),
+              _SectionLabel(label: '팀 선택', cs: cs),
               SizedBox(
-                height: 56,
+                height: 44,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
                   itemCount: _kTeams.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  separatorBuilder: (_, _) => const SizedBox(width: 6),
                   itemBuilder: (_, i) {
                     final t = _kTeams[i];
-                    final sel = _selectedTeamId == t.id;
-                    final tc = teamColor(t.code);
+                    final act = _selectedTeamId == t.id;
+                    final c = teamColor(t.code);
                     return GestureDetector(
                       onTap: () => setState(() => _selectedTeamId = t.id),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
                         decoration: BoxDecoration(
-                          color: sel ? tc.withValues(alpha: 0.14) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: sel ? tc : Colors.grey.shade300,
-                            width: sel ? 1.6 : 1,
-                          ),
+                          color: act ? c.withValues(alpha: cs.dark ? 0.22 : 0.10) : cs.paper,
+                          borderRadius: BorderRadius.circular(Radii.pill),
+                          border: Border.all(color: act ? c.withValues(alpha: 0.45) : cs.line2),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            TeamLogo(teamCode: t.code, size: 22),
-                            const SizedBox(width: 6),
-                            Text(t.name,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: sel ? FontWeight.w800 : FontWeight.w600,
-                                  color: sel ? tc : Colors.black87,
-                                )),
-                          ],
-                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          TeamLogo(teamCode: t.code, size: 15),
+                          const SizedBox(width: 5),
+                          Text(t.name, style: TextStyle(fontSize: 12,
+                            fontWeight: act ? Typo.bold : Typo.medium,
+                            color: act ? c : cs.ink3)),
+                        ]),
                       ),
                     );
                   },
@@ -188,74 +246,167 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
             ],
             const SizedBox(height: 16),
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(labelText: '제목', border: OutlineInputBorder()),
+            Divider(height: 1, color: cs.line),
+            const SizedBox(height: 12),
+            // 제목
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: TextField(
+                controller: _titleController,
+                maxLength: 60,
+                style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: cs.ink),
+                cursorColor: accent,
+                decoration: InputDecoration(
+                  hintText: '제목을 입력하세요',
+                  hintStyle: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: cs.sub),
+                  border: InputBorder.none,
+                  counterStyle: TextStyle(fontSize: 10, color: cs.sub),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
             ),
-            const SizedBox(height: 16),
-            Expanded(
+            Divider(height: 1, color: cs.line),
+            const SizedBox(height: 12),
+            // 본문
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               child: TextField(
                 controller: _contentController,
                 maxLines: null,
-                expands: true,
-                decoration: const InputDecoration(
-                  labelText: '내용',
-                  border: OutlineInputBorder(),
-                  alignLabelWithHint: true,
-                  hintText: '@경기, @선수, @팀, @구장 으로 링크를 삽입할 수 있습니다',
-                  hintStyle: TextStyle(fontSize: 12),
+                minLines: 8,
+                style: TextStyle(fontSize: 14, color: cs.ink, height: 1.7),
+                cursorColor: accent,
+                decoration: InputDecoration(
+                  hintText: '야구 팬 여러분과 이야기 나눠보세요…',
+                  hintStyle: TextStyle(fontSize: 14, color: cs.sub, height: 1.7),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
                 ),
               ),
             ),
-            const SizedBox(height: 6),
-            _MentionHelpRow(),
-            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: _MentionHelpRow(),
+            ),
             // 이미지 첨부
-            if (_imageFile != null)
-              Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: _imageUploading
-                        ? Container(
-                            height: 120,
-                            width: double.infinity,
-                            color: Colors.grey[200],
-                            child: const Center(child: CircularProgressIndicator()),
-                          )
-                        : Image.file(_imageFile!, height: 120, width: double.infinity, fit: BoxFit.cover),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.cancel, color: Colors.white),
-                    tooltip: '이미지 제거',
-                    onPressed: _removeImage,
-                  ),
-                ],
-              ),
-            Row(
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _imageUploading ? null : _pickImage,
-                  icon: const Icon(Icons.image_outlined, size: 18),
-                  label: const Text('이미지 첨부'),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: SemColor.brand(context)),
-                    foregroundColor: SemColor.brand(context),
-                  ),
-                ),
-                if (_uploadedImageUrl != null)
-                  const Padding(
-                    padding: EdgeInsets.only(left: 8),
-                    child: Icon(Icons.check_circle, color: Colors.green, size: 20),
-                  ),
-              ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
+              child: _imageFile != null
+                  ? Stack(
+                      alignment: Alignment.topRight,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(Radii.md),
+                          child: _imageUploading
+                              ? Container(
+                                  height: 120,
+                                  width: double.infinity,
+                                  color: cs.paper2,
+                                  child: const Center(child: CircularProgressIndicator()),
+                                )
+                              : Image.file(_imageFile!, height: 120, width: double.infinity, fit: BoxFit.cover),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.cancel, color: Colors.white),
+                          tooltip: '이미지 제거',
+                          onPressed: _removeImage,
+                        ),
+                      ],
+                    )
+                  : GestureDetector(
+                      onTap: _imageUploading ? null : _pickImage,
+                      child: Container(
+                        height: 88,
+                        decoration: BoxDecoration(
+                          color: cs.paper2,
+                          border: Border.all(color: cs.line2, width: 1.5),
+                          borderRadius: BorderRadius.circular(Radii.md),
+                        ),
+                        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(Icons.add_photo_alternate_outlined, size: 20, color: cs.sub),
+                          const SizedBox(width: 8),
+                          Text('이미지 추가', style: TextStyle(fontSize: 12, color: cs.sub)),
+                        ]),
+                      ),
+                    ),
             ),
-          ],
+          ]),
+        )),
+        // 하단 툴바
+        Container(
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
+          decoration: BoxDecoration(color: cs.paper, border: Border(top: BorderSide(color: cs.line))),
+          child: Row(children: [
+            Tooltip(
+              message: '이미지 첨부',
+              child: _ToolBtn(icon: Icons.image_outlined, cs: cs,
+                  onTap: _imageUploading ? null : _pickImage),
+            ),
+            const SizedBox(width: 4),
+            Tooltip(
+              message: '@ 멘션 삽입',
+              child: _ToolBtn(icon: Icons.alternate_email, cs: cs, onTap: _insertMention),
+            ),
+            if (_uploadedImageUrl != null) ...[
+              const SizedBox(width: 8),
+              const Icon(Icons.check_circle, color: Colors.green, size: 18),
+            ],
+            const Spacer(),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _contentController,
+              builder: (_, v, _) => Text('${v.text.length} 자',
+                style: TextStyle(fontSize: Typo.caption, color: v.text.isNotEmpty ? cs.ink3 : cs.sub)),
+            ),
+          ]),
         ),
-      ),
+      ])),
     );
   }
+}
+
+// ── 소형 위젯 ─────────────────────────────────────────────────────────────────
+
+class _ToolBtn extends StatelessWidget {
+  final IconData icon;
+  final _C cs;
+  final VoidCallback? onTap;
+  const _ToolBtn({required this.icon, required this.cs, this.onTap});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 36, height: 36,
+      decoration: BoxDecoration(border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(9)),
+      child: Icon(icon, size: 18, color: cs.ink3),
+    ),
+  );
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  final _C cs;
+  const _SectionLabel({required this.label, required this.cs});
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
+  );
+}
+
+class _Btn32 extends StatelessWidget {
+  final Widget child;
+  final Color border;
+  final VoidCallback onTap;
+  const _Btn32({required this.child, required this.border, required this.onTap});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 32, height: 32,
+      decoration: BoxDecoration(border: Border.all(color: border), borderRadius: BorderRadius.circular(10)),
+      child: child,
+    ),
+  );
 }
 
 class _MentionHelpRow extends StatefulWidget {
@@ -327,4 +478,20 @@ class _MentionHelpRowState extends State<_MentionHelpRow> {
       ],
     );
   }
+}
+
+class _C {
+  final Color bg, paper, paper2, ink, ink2, ink3, sub, line, line2;
+  final bool dark;
+  _C(BuildContext ctx)
+    : dark   = Theme.of(ctx).brightness == Brightness.dark,
+      bg     = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF0F0F12) : const Color(0xFFFAFAFB),
+      paper  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF18181C) : Colors.white,
+      paper2 = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
+      ink    = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFFF4F4F5) : const Color(0xFF111113),
+      ink2   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46),
+      ink3   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73),
+      sub    = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2),
+      line   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
+      line2  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
 }

@@ -1,15 +1,37 @@
+// community_screen.dart — Option A 디자인 시스템 반영
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
+import '../../utils/team_theme.dart';
 import '../mypage/my_page_screen.dart';
 import '../../widgets/stadium_ranking_sheet.dart';
 import 'post_detail_screen.dart';
 import 'create_post_screen.dart';
+import 'food_add_screen.dart';
 
 const _categories = ['전체', '자유', '분석', '유머'];
+
+const _kTeams = [
+  (id: 9,  code: 'LG', name: 'LG'),
+  (id: 1,  code: 'KT', name: 'KT'),
+  (id: 10, code: 'SK', name: 'SSG'),
+  (id: 6,  code: 'NC', name: 'NC'),
+  (id: 7,  code: 'OB', name: '두산'),
+  (id: 2,  code: 'HT', name: 'KIA'),
+  (id: 4,  code: 'LT', name: '롯데'),
+  (id: 11, code: 'SS', name: '삼성'),
+  (id: 5,  code: 'HH', name: '한화'),
+  (id: 8,  code: 'WO', name: '키움'),
+];
+
+// 게시글 team_id → 팀컬러 코드
+const _kTeamIdToCode = {
+  1: 'KT', 2: 'HT', 4: 'LT', 5: 'HH', 6: 'NC',
+  7: 'OB', 8: 'WO', 9: 'LG', 10: 'SK', 11: 'SS',
+};
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -38,32 +60,9 @@ class _CommunityScreenState extends State<CommunityScreen>
 
   @override
   Widget build(BuildContext context) {
+    final cs = _C(context);
     return Scaffold(
-      appBar: AppBar(
-        scrolledUnderElevation: 0,
-        title: const Text('커뮤니티'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.emoji_events_outlined),
-            tooltip: '직관승률 랭킹',
-            onPressed: () => StadiumRankingSheet.show(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            tooltip: '마이페이지',
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabCtrl,
-          tabs: const [
-            Tab(text: '전체'),
-            Tab(text: '팀별'),
-            Tab(text: '인기'),
-            Tab(text: '맛집'),
-          ],
-        ),
-      ),
+      backgroundColor: cs.bg,
       floatingActionButton: _tabCtrl.index == 3 ? null : Padding(
         padding: EdgeInsets.only(
           bottom: (ApiService.myTeamData.value.isNotEmpty ? 142.0 : 90.0) + MediaQuery.of(context).viewPadding.bottom,
@@ -74,19 +73,62 @@ class _CommunityScreenState extends State<CommunityScreen>
                 MaterialPageRoute(builder: (_) => const CreatePostScreen()));
             if (created == true) _latestKey.currentState?._load();
           },
-          backgroundColor: SemColor.brand(context),
-          foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white,
-          child: Icon(Icons.edit, color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white),
+          backgroundColor: cs.ink,
+          foregroundColor: cs.dark ? const Color(0xFF0F0F12) : Colors.white,
+          child: Icon(Icons.edit_outlined, color: cs.dark ? const Color(0xFF0F0F12) : Colors.white),
         ),
       ),
-      body: TabBarView(
-        controller: _tabCtrl,
-        children: [
-          _PostListTab(key: _latestKey, sort: 'latest'),
-          const _TeamTab(),
-          const _PostListTab(sort: 'hot'),
-          const _FoodTab(),
-        ],
+      body: SafeArea(
+        bottom: false,
+        child: Column(children: [
+          // AppBar
+          Container(
+            color: cs.paper,
+            child: Column(children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 13),
+                child: Row(children: [
+                  Text('커뮤니티', style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5)),
+                  const Spacer(),
+                  Tooltip(
+                    message: '직관승률 랭킹',
+                    child: _Btn32(border: cs.line2,
+                      onTap: () => StadiumRankingSheet.show(context),
+                      child: Icon(Icons.emoji_events_outlined, size: 18, color: cs.ink3)),
+                  ),
+                  const SizedBox(width: 7),
+                  Tooltip(
+                    message: '마이페이지',
+                    child: _Btn32(border: cs.line2,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
+                      child: Icon(Icons.person_outline, size: 18, color: cs.ink3)),
+                  ),
+                ]),
+              ),
+              TabBar(
+                controller: _tabCtrl,
+                labelColor: cs.ink,
+                unselectedLabelColor: cs.sub,
+                indicatorColor: cs.ink,
+                indicatorWeight: 2,
+                dividerColor: cs.line,
+                labelStyle: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra),
+                unselectedLabelStyle: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.medium),
+                tabs: const [Tab(text: '전체'), Tab(text: '팀별'), Tab(text: '인기'), Tab(text: '맛집')],
+              ),
+            ]),
+          ),
+          // Content
+          Expanded(child: TabBarView(
+            controller: _tabCtrl,
+            children: [
+              _PostListTab(key: _latestKey, sort: 'latest'),
+              const _TeamTab(),
+              const _PostListTab(sort: 'hot'),
+              const _FoodTab(),
+            ],
+          )),
+        ]),
       ),
     );
   }
@@ -218,62 +260,71 @@ class _PostListTabState extends State<_PostListTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final cs = _C(context);
     return Column(
       children: [
         // 검색바
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-          child: TextField(
-            controller: _searchCtrl,
-            decoration: InputDecoration(
-              hintText: '검색',
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-              prefixIcon: const Icon(Icons.search, size: 20),
-              suffixIcon: _searchQ.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, size: 18),
-                      tooltip: '검색어 지우기',
-                      onPressed: () {
-                        _searchCtrl.clear();
-                        setState(() => _searchQ = '');
-                        _load();
-                      })
-                  : null,
-            ),
-            onSubmitted: (v) { setState(() => _searchQ = v.trim()); _load(); },
+        Container(
+          margin: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+          decoration: BoxDecoration(
+            color: cs.paper2, border: Border.all(color: cs.line),
+            borderRadius: BorderRadius.circular(13),
           ),
+          child: Row(children: [
+            Icon(Icons.search, size: 16, color: cs.sub),
+            const SizedBox(width: 9),
+            Expanded(child: TextField(
+              controller: _searchCtrl,
+              style: TextStyle(fontSize: 13, color: cs.ink),
+              cursorColor: cs.ink,
+              decoration: InputDecoration(
+                hintText: '게시글 검색',
+                hintStyle: TextStyle(fontSize: 13, color: cs.sub),
+                border: InputBorder.none, isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              onSubmitted: (v) { setState(() => _searchQ = v.trim()); _load(); },
+            )),
+            if (_searchQ.isNotEmpty)
+              GestureDetector(
+                onTap: () {
+                  _searchCtrl.clear();
+                  setState(() => _searchQ = '');
+                  _load();
+                },
+                child: Icon(Icons.close, size: 16, color: cs.sub),
+              ),
+          ]),
         ),
         // 카테고리 칩
         SizedBox(
           height: 44,
-          child: ListView(
+          child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            children: _categories.map((c) {
-              final selected = _category == c;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Builder(builder: (ctx) {
-                  final isDark = Theme.of(ctx).brightness == Brightness.dark;
-                  return ChoiceChip(
-                  label: Text(c),
-                  selected: selected,
-                  selectedColor: SemColor.brand(ctx),
-                  labelStyle: TextStyle(
-                    color: selected
-                        ? (isDark ? Colors.black : Colors.white)
-                        : (isDark ? Colors.white70 : Colors.black87),
-                    fontSize: 12,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+            itemCount: _categories.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 6),
+            itemBuilder: (_, i) {
+              final act = _categories[i] == _category;
+              return GestureDetector(
+                onTap: () {
+                  setState(() => _category = _categories[i]);
+                  _load();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: act ? cs.ink : cs.paper,
+                    borderRadius: BorderRadius.circular(Radii.pill),
+                    border: Border.all(color: act ? cs.ink : cs.line2),
                   ),
-                  onSelected: (_) {
-                    setState(() => _category = c);
-                    _load();
-                  },
-                ); }),
+                  child: Text(_categories[i], style: TextStyle(fontSize: 12,
+                      fontWeight: act ? Typo.bold : Typo.medium,
+                      color: act ? (cs.dark ? const Color(0xFF0F0F12) : Colors.white) : cs.ink3)),
+                ),
               );
-            }).toList(),
+            },
           ),
         ),
         Expanded(
@@ -282,13 +333,13 @@ class _PostListTabState extends State<_PostListTab>
               : RefreshIndicator(
                   onRefresh: _load,
                   child: _posts.isEmpty
-                      ? ListView(children: const [
-                          SizedBox(height: 80),
-                          Center(child: Text('게시글이 없습니다', style: TextStyle(color: Colors.grey))),
+                      ? ListView(children: [
+                          const SizedBox(height: 80),
+                          Center(child: Text('게시글이 없습니다', style: TextStyle(fontSize: Typo.body, color: cs.sub))),
                         ])
                       : ListView.builder(
                           controller: _scrollCtrl,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.only(bottom: 80),
                           itemCount: _posts.length + (_loadingMore || (!_hasMore && _posts.isNotEmpty) ? 1 : 0),
                           itemBuilder: (_, i) {
                             if (i == _posts.length) {
@@ -303,11 +354,11 @@ class _PostListTabState extends State<_PostListTab>
                                 padding: const EdgeInsets.symmetric(vertical: 24),
                                 child: Center(
                                   child: Text('— 마지막 글입니다 —',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                                      style: TextStyle(fontSize: 12, color: cs.sub)),
                                 ),
                               );
                             }
-                            return _PostCard(post: _posts[i], onRefresh: _load);
+                            return _PostCard(post: _posts[i], cs: cs, onRefresh: _load);
                           },
                         ),
                 ),
@@ -327,79 +378,49 @@ class _TeamTab extends StatefulWidget {
 }
 
 class _TeamTabState extends State<_TeamTab> {
-  int? _selectedTeamId;
-  List<Map<String, dynamic>> _teams = [];
-  bool _teamsLoaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTeams();
-  }
-
-  Future<void> _loadTeams() async {
-    try {
-      final data = await ApiService.getTeams();
-      if (mounted) {
-        setState(() {
-          _teams = List<Map<String, dynamic>>.from(data['teams'] ?? []);
-          _teamsLoaded = true;
-        });
-      }
-    } catch (_) {
-      setState(() => _teamsLoaded = true);
-    }
-  }
+  int _selectedTeamId = 9; // LG 기본
 
   @override
   Widget build(BuildContext context) {
-    if (!_teamsLoaded) return const Center(child: CircularProgressIndicator());
+    final cs = _C(context);
     return Column(
       children: [
-        // 팀 선택 가로 스크롤
-        SizedBox(
-          height: 72,
-          child: ListView.builder(
+        // 팀 칩 스크롤
+        Container(
+          height: 50,
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
+          child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            itemCount: _teams.length,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            itemCount: _kTeams.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 6),
             itemBuilder: (_, i) {
-              final t = _teams[i];
-              final selected = _selectedTeamId == t['id'];
-              final isDark = Theme.of(context).brightness == Brightness.dark;
-              final brand = SemColor.brand(context);
+              final t = _kTeams[i];
+              final active = _selectedTeamId == t.id;
+              final c = teamColor(t.code);
               return GestureDetector(
-                onTap: () => setState(() => _selectedTeamId = t['id']),
+                onTap: () => setState(() => _selectedTeamId = t.id),
                 child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: selected ? brand : (isDark ? Colors.white12 : Colors.grey[100]),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: selected ? brand : (isDark ? Colors.white24 : Colors.grey[300]!)),
+                    color: active ? c.withValues(alpha: cs.dark ? 0.22 : 0.1) : cs.paper2,
+                    borderRadius: BorderRadius.circular(Radii.pill),
+                    border: Border.all(color: active ? c.withValues(alpha: 0.4) : cs.line),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(t['name'] ?? '',
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: selected
-                                  ? (isDark ? Colors.black : Colors.white)
-                                  : (isDark ? Colors.white70 : Colors.black87),
-                              fontWeight: FontWeight.bold)),
-                    ],
-                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    TeamLogo(teamCode: t.code, size: 14),
+                    const SizedBox(width: 5),
+                    Text(t.name, style: TextStyle(fontSize: 11,
+                        fontWeight: active ? Typo.bold : Typo.medium,
+                        color: active ? c : cs.ink2)),
+                  ]),
                 ),
               );
             },
           ),
         ),
         Expanded(
-          child: _selectedTeamId == null
-              ? const Center(child: Text('팀을 선택하세요', style: TextStyle(color: Colors.grey)))
-              : _PostListTab(sort: 'latest', teamId: _selectedTeamId),
+          child: _PostListTab(key: ValueKey(_selectedTeamId), sort: 'latest', teamId: _selectedTeamId),
         ),
       ],
     );
@@ -410,126 +431,116 @@ class _TeamTabState extends State<_TeamTab> {
 
 class _PostCard extends StatelessWidget {
   final Map post;
+  final _C cs;
   final VoidCallback onRefresh;
-  const _PostCard({required this.post, required this.onRefresh});
+  const _PostCard({required this.post, required this.cs, required this.onRefresh});
 
-  Widget _tagChip(String text, {Color? color}) {
-    return Container(
-      margin: const EdgeInsets.only(right: 5),
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: (color ?? Colors.grey).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(text,
-          style: TextStyle(fontSize: 11, color: color ?? Colors.grey[600], fontWeight: FontWeight.w600)),
-    );
-  }
+  Widget _meta(IconData icon, dynamic value) => Row(mainAxisSize: MainAxisSize.min, children: [
+    Icon(icon, size: 12, color: cs.sub),
+    const SizedBox(width: 3),
+    Text('${value ?? 0}', style: TextStyle(fontSize: 10, color: cs.sub)),
+  ]);
 
-  Widget _engagementBar() {
-    return Row(
-      children: [
-        Text(post['author'] ?? '',
-            style: const TextStyle(fontSize: 11, color: Colors.grey)),
-        const Spacer(),
-        const Icon(Icons.favorite_border, size: 13, color: Colors.grey),
-        const SizedBox(width: 2),
-        Text('${post['likes'] ?? 0}',
-            style: const TextStyle(fontSize: 11, color: Colors.grey)),
-        const SizedBox(width: 8),
-        const Icon(Icons.chat_bubble_outline, size: 13, color: Colors.grey),
-        const SizedBox(width: 2),
-        Text('${post['comment_count'] ?? 0}',
-            style: const TextStyle(fontSize: 11, color: Colors.grey)),
-        const SizedBox(width: 8),
-        const Icon(Icons.remove_red_eye_outlined, size: 13, color: Colors.grey),
-        const SizedBox(width: 2),
-        Text('${post['views'] ?? 0}',
-            style: const TextStyle(fontSize: 11, color: Colors.grey)),
-      ],
-    );
+  Widget _bottomRow() => Row(children: [
+    Text(post['author'] as String? ?? '', style: TextStyle(fontSize: 10, color: cs.sub)),
+    const Spacer(),
+    _meta(Icons.favorite_border, post['likes']),
+    const SizedBox(width: 10),
+    _meta(Icons.chat_bubble_outline, post['comment_count']),
+    const SizedBox(width: 10),
+    _meta(Icons.visibility_outlined, post['views']),
+  ]);
+
+  Widget _tags(BuildContext context) {
+    final teamName = post['team_name'] as String?;
+    final teamCode = _kTeamIdToCode[post['team_id'] as int?];
+    final tc = teamCode != null ? teamColor(teamCode) : SemColor.brand(context);
+    return Wrap(spacing: 5, runSpacing: 5, children: [
+      if (teamName != null) _Tag(label: teamName, color: tc, cs: cs),
+      _Tag(label: post['category'] as String? ?? '', color: cs.ink3, cs: cs, muted: true),
+    ]);
   }
 
   @override
   Widget build(BuildContext context) {
     final imageUrl = post['image_url'] as String?;
     final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+    final content = post['content'] as String?;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () async {
-          await Navigator.push(context,
-              MaterialPageRoute(builder: (_) => PostDetailScreen(postId: post['id'])));
-          onRefresh();
-        },
-        child: hasImage
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 이미지 먼저
-                  AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, _, _) => Container(
-                        color: Colors.grey[100],
-                        child: const Icon(Icons.broken_image, color: Colors.grey),
-                      ),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+      decoration: BoxDecoration(
+        color: cs.paper, border: Border.all(color: cs.line),
+        borderRadius: BorderRadius.circular(Radii.lg),
+        boxShadow: cs.dark ? null : [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 2, offset: const Offset(0, 1))],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(Radii.lg),
+          onTap: () async {
+            await Navigator.push(context,
+                MaterialPageRoute(builder: (_) => PostDetailScreen(postId: post['id'])));
+            onRefresh();
+          },
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (hasImage)
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) => Container(
+                      color: cs.paper2,
+                      child: Icon(Icons.broken_image, color: cs.sub),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          if (post['team_name'] != null)
-                            _tagChip(post['team_name'], color: SemColor.brand(context)),
-                          _tagChip(post['category'] ?? ''),
-                        ]),
-                        const SizedBox(height: 6),
-                        Text(post['title'] ?? '',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                            maxLines: 2, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 8),
-                        _engagementBar(),
-                      ],
-                    ),
-                  ),
-                ],
-              )
-            : Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      if (post['team_name'] != null)
-                        _tagChip(post['team_name'], color: SemColor.brand(context)),
-                      _tagChip(post['category'] ?? ''),
-                    ]),
-                    const SizedBox(height: 6),
-                    Text(post['title'] ?? '',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                        maxLines: 2, overflow: TextOverflow.ellipsis),
-                    if (post['content'] != null && (post['content'] as String).isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(post['content'] ?? '',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                          maxLines: 2, overflow: TextOverflow.ellipsis),
-                    ],
-                    const SizedBox(height: 8),
-                    _engagementBar(),
-                  ],
                 ),
               ),
+            Padding(
+              padding: const EdgeInsets.all(13),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _tags(context),
+                const SizedBox(height: 7),
+                Text(post['title'] as String? ?? '',
+                    style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink, height: 1.45),
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                if (!hasImage && content != null && content.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(content,
+                      style: TextStyle(fontSize: 12, color: cs.ink3),
+                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                ],
+                const SizedBox(height: 9),
+                _bottomRow(),
+              ]),
+            ),
+          ]),
+        ),
       ),
     );
   }
+}
+
+class _Tag extends StatelessWidget {
+  final String label;
+  final Color color;
+  final _C cs;
+  final bool muted;
+  const _Tag({required this.label, required this.color, required this.cs, this.muted = false});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: muted ? cs.paper2 : color.withValues(alpha: cs.dark ? 0.22 : 0.1),
+      borderRadius: BorderRadius.circular(Radii.xs),
+      border: muted ? Border.all(color: cs.line) : null,
+    ),
+    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.bold,
+        color: muted ? cs.ink3 : color)),
+  );
 }
 
 // ===== 맛집 탭 =====
@@ -605,62 +616,58 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
     if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
-  void _showSubmit() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (_) => _FoodSubmitSheet(
-        stadiumId: _stadiumId,
-        onSubmitted: _load,
-      ),
-    );
+  Future<void> _openSubmit() async {
+    final submitted = await Navigator.push<bool>(context,
+        MaterialPageRoute(builder: (_) => FoodAddScreen(initialStadiumId: _stadiumId)));
+    if (submitted == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('제안이 등록되었습니다. 팬 5명의 추천을 받으면 목록에 표시됩니다.')),
+      );
+      _load();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activeColor = SemColor.brand(context);
+    final cs = _C(context);
     final navBottom = (ApiService.myTeamData.value.isNotEmpty ? 142.0 : 90.0)
-        + MediaQuery.of(context).viewPadding.bottom + 56; // FAB 없으므로 nav only
+        + MediaQuery.of(context).viewPadding.bottom + 56;
 
     return Column(
       children: [
-        // 구장 선택 칩
-        SizedBox(
-          height: 48,
-          child: ListView.builder(
+        // 구장 칩
+        Container(
+          height: 50,
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
+          child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             itemCount: _stadiums.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 6),
             itemBuilder: (_, i) {
               final s = _stadiums[i];
-              final sel = s.id == _stadiumId;
-              return Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(
-                  label: Text(s.name),
-                  selected: sel,
-                  onSelected: (_) {
-                    setState(() { _stadiumId = s.id; _places = []; });
-                    _load();
-                  },
-                  selectedColor: activeColor,
-                  labelStyle: TextStyle(
-                    fontSize: 12,
-                    fontWeight: sel ? FontWeight.bold : FontWeight.normal,
-                    color: sel ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+              final act = s.id == _stadiumId;
+              return GestureDetector(
+                onTap: () {
+                  setState(() { _stadiumId = s.id; _places = []; });
+                  _load();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: act ? cs.ink : cs.paper2,
+                    borderRadius: BorderRadius.circular(Radii.pill),
+                    border: Border.all(color: act ? cs.ink : cs.line),
                   ),
-                  backgroundColor: isDark ? Colors.white10 : Colors.grey[100],
-                  side: BorderSide.none,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(s.name, style: TextStyle(fontSize: 12,
+                      fontWeight: act ? Typo.bold : Typo.medium,
+                      color: act ? (cs.dark ? const Color(0xFF0F0F12) : Colors.white) : cs.ink3)),
                 ),
               );
             },
           ),
         ),
-        Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
         // 목록
         Expanded(
           child: Stack(
@@ -672,81 +679,30 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.restaurant_menu, size: 48, color: Colors.grey[300]),
+                      Icon(Icons.restaurant_menu, size: 48, color: cs.line2),
                       const SizedBox(height: 12),
                       Text('아직 팬 추천 맛집이 없습니다\n첫 번째로 추천해보세요!',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                          style: TextStyle(color: cs.sub, fontSize: 13)),
                     ],
                   ),
                 )
               else
-                ListView.separated(
+                ListView.builder(
                   padding: EdgeInsets.only(bottom: navBottom),
                   itemCount: _places.length,
-                  separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey.withValues(alpha: 0.12)),
                   itemBuilder: (_, i) {
                     final p = _places[i];
                     final isApproved = p['status'] == 'approved';
                     final votes = p['upvote_count'] as int? ?? 0;
                     final voted = _myVotes.contains(p['id'] as int);
-                    return ListTile(
-                      leading: Container(
-                        width: 38, height: 38,
-                        decoration: BoxDecoration(
-                          color: isApproved
-                              ? activeColor.withValues(alpha: 0.12)
-                              : Colors.grey.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          isApproved ? Icons.verified : Icons.restaurant,
-                          color: isApproved ? activeColor : Colors.grey,
-                          size: 18,
-                        ),
-                      ),
-                      title: Row(
-                        children: [
-                          Expanded(
-                            child: Text(p['name'] as String? ?? '',
-                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                          ),
-                          if (isApproved)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: activeColor.withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text('인증',
-                                  style: TextStyle(fontSize: 11, color: activeColor, fontWeight: FontWeight.bold)),
-                            ),
-                        ],
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('${p['category'] ?? ''} · ${p['submitted_by'] ?? ''} 추천',
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-                          if ((p['memo'] as String? ?? '').isNotEmpty)
-                            Text('"${p['memo']}"',
-                                style: TextStyle(fontSize: 11, color: Colors.grey[500],
-                                    fontStyle: FontStyle.italic)),
-                        ],
-                      ),
-                      isThreeLine: (p['memo'] as String? ?? '').isNotEmpty,
-                      trailing: GestureDetector(
-                        onTap: () => _vote(p['id'] as int),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(voted ? Icons.thumb_up : Icons.thumb_up_outlined,
-                                size: 18, color: voted ? activeColor : Colors.grey),
-                            Text('$votes',
-                                style: TextStyle(fontSize: 11, color: voted ? activeColor : Colors.grey)),
-                          ],
-                        ),
-                      ),
+                    return _FoodTile(
+                      place: p,
+                      cs: cs,
+                      approved: isApproved,
+                      votes: votes,
+                      voted: voted,
+                      onVote: () => _vote(p['id'] as int),
                       onTap: () => _openUrl(p['url'] as String? ?? ''),
                     );
                   },
@@ -754,14 +710,22 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
               // 맛집 제안 FAB
               Positioned(
                 bottom: 16 + MediaQuery.of(context).viewPadding.bottom,
-                right: 16,
-                child: FloatingActionButton.extended(
-                  heroTag: 'food_fab',
-                  onPressed: _showSubmit,
-                  backgroundColor: activeColor,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('맛집 제안', style: TextStyle(fontSize: 13)),
+                right: 18,
+                child: GestureDetector(
+                  onTap: _openSubmit,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: cs.ink, borderRadius: BorderRadius.circular(16),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 14, offset: const Offset(0, 4))],
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.add, size: 14, color: cs.dark ? const Color(0xFF0F0F12) : Colors.white),
+                      const SizedBox(width: 7),
+                      Text('맛집 제안', style: TextStyle(fontSize: 12, fontWeight: Typo.bold,
+                          color: cs.dark ? const Color(0xFF0F0F12) : Colors.white)),
+                    ]),
+                  ),
                 ),
               ),
             ],
@@ -772,203 +736,112 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
   }
 }
 
-// ===== 맛집 제안 시트 =====
-
-class _FoodSubmitSheet extends StatefulWidget {
-  final int stadiumId;
-  final VoidCallback onSubmitted;
-
-  const _FoodSubmitSheet({required this.stadiumId, required this.onSubmitted});
-
-  @override
-  State<_FoodSubmitSheet> createState() => _FoodSubmitSheetState();
-}
-
-class _FoodSubmitSheetState extends State<_FoodSubmitSheet> {
-  final _searchCtrl = TextEditingController();
-  final _memoCtrl = TextEditingController();
-  List _results = [];
-  bool _searching = false;
-  Map? _selected;
-  bool _submitting = false;
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    _memoCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _search() async {
-    final q = _searchCtrl.text.trim();
-    if (q.isEmpty) return;
-    setState(() { _searching = true; _results = []; _selected = null; });
-    try {
-      final data = await ApiService.searchFoodPlace(widget.stadiumId, q);
-      if (mounted) setState(() { _results = data['places'] ?? []; _searching = false; });
-    } catch (_) {
-      if (mounted) setState(() => _searching = false);
-    }
-  }
-
-  Future<void> _submit() async {
-    if (_selected == null) return;
-    setState(() => _submitting = true);
-    try {
-      await ApiService.submitFoodPlace(widget.stadiumId, {
-        'kakao_place_id': _selected!['id'],
-        'name': _selected!['name'],
-        'category': _selected!['category'],
-        'address': _selected!['address'],
-        'phone': _selected!['phone'],
-        'url': _selected!['url'],
-        'memo': _memoCtrl.text.trim(),
-      });
-      widget.onSubmitted();
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('제안이 등록되었습니다. 팬 5명의 추천을 받으면 목록에 표시됩니다.')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _submitting = false);
-        final msg = e.toString().contains('409') ? '이미 등록된 장소입니다' : '제안 실패. 로그인 상태를 확인해주세요';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-      }
-    }
-  }
+class _FoodTile extends StatelessWidget {
+  final Map place;
+  final _C cs;
+  final bool approved, voted;
+  final int votes;
+  final VoidCallback onVote, onTap;
+  const _FoodTile({
+    required this.place, required this.cs, required this.approved,
+    required this.votes, required this.voted, required this.onVote, required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final color = SemColor.brand(context);
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Text('맛집 제안', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    tooltip: '닫기',
-                    onPressed: () => Navigator.pop(context),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text('구장 2km 이내 음식점만 등록 가능합니다',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchCtrl,
-                      decoration: InputDecoration(
-                        hintText: '가게 이름 검색',
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                        isDense: true,
-                      ),
-                      onSubmitted: (_) => _search(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _searching ? null : _search,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: color,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                    child: _searching
-                        ? const SizedBox(width: 16, height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('검색'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              if (_selected != null) ...[
+    final memo = place['memo'] as String? ?? '';
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(
+              color: approved ? SemColor.live.withValues(alpha: 0.1) : cs.paper2,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: approved ? SemColor.live.withValues(alpha: 0.25) : cs.line),
+            ),
+            child: Icon(
+              approved ? Icons.verified : Icons.restaurant,
+              size: 17, color: approved ? SemColor.live : cs.sub,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Flexible(child: Text(place['name'] as String? ?? '',
+                  style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink),
+                  overflow: TextOverflow.ellipsis)),
+              if (approved) ...[
+                const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: color.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.check_circle, color: color, size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(_selected!['name'] as String,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _memoCtrl,
-                  decoration: InputDecoration(
-                    hintText: '한줄 추천 이유 (선택)',
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    isDense: true,
-                  ),
-                  maxLength: 60,
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _submitting ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: color,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: _submitting
-                        ? const SizedBox(width: 18, height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('제안 등록'),
-                  ),
-                ),
-              ] else if (_results.isNotEmpty) ...[
-                Expanded(
-                  child: ListView.separated(
-                    itemCount: _results.length,
-                    separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
-                    itemBuilder: (_, i) {
-                      final p = _results[i];
-                      return ListTile(
-                        dense: true,
-                        title: Text(p['name'] as String,
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                        subtitle: Text(p['category'] as String? ?? '',
-                            style: const TextStyle(fontSize: 11)),
-                        trailing: Icon(Icons.add, size: 18, color: color),
-                        onTap: () => setState(() => _selected = p),
-                      );
-                    },
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: SemColor.live.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(Radii.xs)),
+                  child: const Text('인증', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: SemColor.live)),
                 ),
               ],
+            ]),
+            const SizedBox(height: 3),
+            Text('${place['category'] ?? ''} · ${place['submitted_by'] ?? ''} 추천',
+                style: TextStyle(fontSize: Typo.caption, color: cs.ink3)),
+            if (memo.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              Text('"$memo"', style: TextStyle(fontSize: Typo.caption, color: cs.sub, fontStyle: FontStyle.italic, height: 1.4)),
             ],
+          ])),
+          GestureDetector(
+            onTap: onVote,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Column(children: [
+                Icon(voted ? Icons.thumb_up : Icons.thumb_up_outlined,
+                    size: 18, color: voted ? SemColor.live : cs.sub),
+                const SizedBox(height: 3),
+                Text('$votes', style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold,
+                    color: voted ? SemColor.live : cs.ink3)),
+              ]),
+            ),
           ),
-        ),
+        ]),
       ),
     );
   }
+}
+
+// ===== 공통 위젯 =====
+
+class _Btn32 extends StatelessWidget {
+  final Widget child;
+  final Color border;
+  final VoidCallback onTap;
+  const _Btn32({required this.child, required this.border, required this.onTap});
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 32, height: 32,
+      decoration: BoxDecoration(border: Border.all(color: border), borderRadius: BorderRadius.circular(10)),
+      child: child,
+    ),
+  );
+}
+
+// ── 색상 헬퍼 ─────────────────────────────────────────────────────────────────
+
+class _C {
+  final Color bg, paper, paper2, ink, ink2, ink3, sub, line, line2;
+  final bool dark;
+  _C(BuildContext ctx)
+    : dark   = Theme.of(ctx).brightness == Brightness.dark,
+      bg     = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF0F0F12) : const Color(0xFFFAFAFB),
+      paper  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF18181C) : Colors.white,
+      paper2 = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
+      ink    = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFFF4F4F5) : const Color(0xFF111113),
+      ink2   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46),
+      ink3   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73),
+      sub    = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2),
+      line   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
+      line2  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
 }

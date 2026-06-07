@@ -201,7 +201,8 @@
       "Bash(git -C /c/Users/qq772/playball commit -m 'docs: CLAUDE.md 세션 변경사항 + 앞으로 해야할 것 추가 *)",
       "Bash(git -C /c/Users/qq772/playball log origin/main..HEAD --oneline)",
       "Bash(git -C /c/Users/qq772/playball fetch origin main)",
-      "Bash(git -C /c/Users/qq772/playball log HEAD..origin/main --oneline)"
+      "Bash(git -C /c/Users/qq772/playball log HEAD..origin/main --oneline)",
+      "Bash(git -C /c/Users/qq772/playball log --oneline -10)"
     ]
   }
 }
