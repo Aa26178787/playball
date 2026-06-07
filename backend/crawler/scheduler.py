@@ -1368,6 +1368,18 @@ def smart_update():
                                       start_time=curr.get('start_time', ''),
                                       home_starter=_hs, away_starter=_ls)
                     _mark_notified(gid, 'game_start')
+                    # 경기 시작 시 entry 로스터 1회 보강 — 후보/불펜은 relay 발행 후에만 존재
+                    try:
+                        _c3 = get_connection()
+                        if _c3:
+                            _cur3 = _c3.cursor()
+                            _cur3.execute("SELECT naver_game_id FROM games WHERE id = %s", (gid,))
+                            _ngrow = _cur3.fetchone()
+                            _cur3.close(); _c3.close()
+                            if _ngrow and _ngrow[0]:
+                                save_entry_roster(gid, _ngrow[0])
+                    except Exception as _er_err:
+                        print(f"entry 로스터(start) 오류 game={gid}: {_er_err}")
                     # 즐겨찾기 선수 선발 출전 알림 — 비활성화
                     # (notify_starter_announced에 선발투수 + game_start에 라인업 정보 이미 포함)
 
