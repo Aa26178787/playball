@@ -534,6 +534,85 @@ def get_matchup_stats(batter_id: int, pitcher_id: int):
     }
 
 
+@router.get("/{player_id}/pitch-design")
+@cached(3600)
+def get_pitch_design(player_id: int, season: int = 2026, stance: str = ''):
+    """피칭 디자인 — 투수의 구종별 로케이션 5x5 존 분포 (2026-06-07)
+    zone index: row*5+col, row0=상단 밖, col0=좌측 밖(포수 시점), 내부 = 1..3
+    stance: '' 전체 / 'R' vs우타 / 'L' vs좌타"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM players WHERE id = %s", (player_id,))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        raise HTTPException(status_code=404, detail="선수를 찾을 수 없습니다")
+    name = row[0]
+
+    params = [name, season]
+    stance_sql = ""
+    if stance in ('R', 'L'):
+        stance_sql = " AND gpl.stance = %s"
+        params.append(stance)
+    cur.execute(f"""
+        SELECT gpl.pitch_type, gpl.x, gpl.z, gpl.top_sz, gpl.bot_sz, gpl.stance
+        FROM game_pitch_locations gpl
+        JOIN games g ON g.id = gpl.game_id
+        WHERE gpl.pitcher_name = %s
+          AND EXTRACT(YEAR FROM g.game_date) = %s
+          AND gpl.x IS NOT NULL AND gpl.z IS NOT NULL{stance_sql}
+    """, params)
+    rows = cur.fetchall()
+    cur.close(); conn.close()
+
+    PLATE_HALF = 8.5 / 12.0  # ft — 앱 투구위치 차트와 동일 상수
+
+    def zone_idx(x, z, top, bot):
+        third = (PLATE_HALF * 2) / 3
+        if x < -PLATE_HALF:
+            c = 0
+        elif x > PLATE_HALF:
+            c = 4
+        else:
+            c = 1 + min(2, int((x + PLATE_HALF) / third))
+        if not top or not bot or top <= bot:
+            top, bot = 3.5, 1.5  # ABS 존 미기록 시 표준값
+        h3 = (top - bot) / 3
+        if z > top:
+            r = 0
+        elif z < bot:
+            r = 4
+        else:
+            r = 1 + min(2, int((top - z) / h3))
+        return r * 5 + c
+
+    by_type: dict = {}
+    stance_counts = {'R': 0, 'L': 0}
+    for pt, x, z, top, bot, st in rows:
+        pt = pt or '기타'
+        d = by_type.setdefault(pt, {'count': 0, 'zones': [0] * 25})
+        d['count'] += 1
+        d['zones'][zone_idx(float(x), float(z), top, bot)] += 1
+        if st in stance_counts:
+            stance_counts[st] += 1
+
+    total = len(rows)
+    pitch_types = [
+        {'type': k, 'count': v['count'],
+         'pct': round(v['count'] * 100 / total, 1) if total else 0,
+         'zones': v['zones']}
+        for k, v in sorted(by_type.items(), key=lambda e: -e[1]['count'])
+    ]
+    return {
+        'player_id': player_id, 'name': name, 'season': season,
+        'stance': stance or 'all', 'total': total,
+        'stance_counts': stance_counts,
+        'pitch_types': pitch_types,
+    }
+
+
 @router.get("/{player_id}")
 @cached(300)
 def get_player_detail(player_id: int):

@@ -24,6 +24,17 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   Map<String, dynamic>? _playerData;
   List<dynamic> _dailyStats = [];
   Map<String, dynamic>? _pitchStats;
+  // 피칭 디자인 (구종별 5x5 존 분포)
+  Map<String, dynamic>? _pitchDesign;
+  String _pdStance = ''; // '' 전체 / 'R' vs우타 / 'L' vs좌타
+  String? _pdType;       // 선택 구종 (null = 최다 구종)
+
+  Future<void> _loadPitchDesign() async {
+    try {
+      final d = await ApiService.getPitchDesign(widget.playerId, stance: _pdStance);
+      if (mounted) setState(() => _pitchDesign = d);
+    } catch (_) {}
+  }
   bool _isLoading = true;   // 전체 shimmer (initialData 없을 때)
   bool _bodyLoading = false; // 바디 shimmer (initialData 있어서 헤더만 먼저 표시할 때)
   bool _isFav = false;
@@ -161,6 +172,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           final ps = await ApiService.getPlayerPitchStats(widget.playerId);
           if (mounted) setState(() => _pitchStats = ps);
         } catch (_) {}
+        _loadPitchDesign();
       }
     } catch (e) {
       if (mounted) setState(() { _isLoading = false; _bodyLoading = false; });
@@ -238,6 +250,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   _buildDetailStatsGrids(player),
                   if (_dailyStats.isNotEmpty) _buildTrendCard(player),
                   if (_pitchStats != null) _buildPitchStatsCard(),
+                  if (_pitchDesign != null && (_pitchDesign!['total'] as int? ?? 0) > 0)
+                    _buildPitchDesignCard(player),
                   // PlayerStatsSection(시즌별 표) 제거 — 3열 그리드로 대체 (2026-06-07)
                   const SizedBox(height: 80),
                 ],
@@ -726,6 +740,135 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       _seasonGridSection('고급 지표', advanced),
       if (hasDefense) _seasonGridSection('수비', defense),
     ]);
+  }
+
+  // ── 피칭 디자인 카드 — 구종별 로케이션 5x5 히트맵 (2026-06-07) ──
+  Widget _buildPitchDesignCard(Map<String, dynamic> player) {
+    final d = _pitchDesign!;
+    final types = (d['pitch_types'] as List? ?? []).cast<Map>();
+    if (types.isEmpty) return const SizedBox.shrink();
+    final selType = _pdType ?? types.first['type'] as String;
+    final sel = types.firstWhere((t) => t['type'] == selType, orElse: () => types.first);
+    final zones = (sel['zones'] as List? ?? List.filled(25, 0)).cast<num>();
+    final total = (d['total'] as num?)?.toInt() ?? 0;
+    final selCount = (sel['count'] as num?)?.toInt() ?? 0;
+    final maxZ = zones.fold<num>(1, (m, v) => v > m ? v : m);
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final rawTc = teamColor(player['team_code'] as String? ?? '');
+    final tc = isDark ? Color.lerp(rawTc, Colors.white, 0.2)! : rawTc;
+
+    Widget chip(String label, bool active, VoidCallback onTap) => GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 6, bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? ink : paper,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: active ? ink : line),
+        ),
+        child: Text(label,
+            style: TextStyle(fontSize: 11, fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                color: active ? (isDark ? Colors.black : Colors.white) : ink3)),
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('피칭 디자인 — 구종별 로케이션',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: paper,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: line),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05),
+                  blurRadius: 6, offset: const Offset(0, 2))],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // stance 토글
+                Row(children: [
+                  chip('전체', _pdStance == '', () {
+                    setState(() => _pdStance = '');
+                    _loadPitchDesign();
+                  }),
+                  chip('vs 우타', _pdStance == 'R', () {
+                    setState(() => _pdStance = 'R');
+                    _loadPitchDesign();
+                  }),
+                  chip('vs 좌타', _pdStance == 'L', () {
+                    setState(() => _pdStance = 'L');
+                    _loadPitchDesign();
+                  }),
+                ]),
+                const SizedBox(height: 4),
+                // 구종 칩 (구사율 %)
+                Wrap(children: [
+                  for (final t in types)
+                    chip('${t['type']} ${t['pct']}%', selType == t['type'],
+                        () => setState(() => _pdType = t['type'] as String)),
+                ]),
+                const SizedBox(height: 10),
+                // 5x5 히트맵 (포수 시점, 내부 3x3 존 보더 강조)
+                Center(
+                  child: SizedBox(
+                    width: 230, height: 230,
+                    child: Column(children: [
+                      for (int r = 0; r < 5; r++)
+                        Expanded(child: Row(children: [
+                          for (int c = 0; c < 5; c++)
+                            Expanded(child: Builder(builder: (_) {
+                              final v = zones[r * 5 + c];
+                              final ratio = v / maxZ;
+                              final inner = r >= 1 && r <= 3 && c >= 1 && c <= 3;
+                              final pct = selCount > 0 ? v * 100 / selCount : 0.0;
+                              return Container(
+                                margin: const EdgeInsets.all(1),
+                                decoration: BoxDecoration(
+                                  color: v == 0
+                                      ? (isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6))
+                                      : tc.withValues(alpha: 0.10 + 0.80 * ratio),
+                                  borderRadius: BorderRadius.circular(3),
+                                  border: inner
+                                      ? Border.all(color: ink.withValues(alpha: 0.35), width: 1)
+                                      : null,
+                                ),
+                                alignment: Alignment.center,
+                                child: pct >= 2
+                                    ? Text('${pct.round()}',
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800,
+                                            color: ratio > 0.55 ? Colors.white : ink,
+                                            fontFeatures: const [FontFeature.tabularFigures()]))
+                                    : null,
+                              );
+                            })),
+                        ])),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text('$selType $selCount구 · 전체 $total구 · 셀 숫자 = 해당 구종 내 비율(%)',
+                    style: TextStyle(fontSize: 10, color: sub)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ignore: unused_element
