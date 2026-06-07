@@ -472,7 +472,7 @@ def get_team_players(team_id: int):
         raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
 
     cur.execute("""
-        SELECT id, name, player_type, position, number
+        SELECT id, name, player_type, position, number, throws
         FROM players
         WHERE team_id = %s AND is_active = TRUE
         ORDER BY player_type, number
@@ -486,7 +486,8 @@ def get_team_players(team_id: int):
         "team_name": team[1],
         "count":     len(rows),
         "players": [
-            {"id": r[0], "name": r[1], "player_type": r[2], "position": r[3], "number": r[4]}
+            {"id": r[0], "name": r[1], "player_type": r[2], "position": r[3],
+             "number": r[4], "throws": r[5]}
             for r in rows
         ]
     }
@@ -509,7 +510,9 @@ def get_team_games(team_id: int, limit: int = 10):
             g.id, g.game_date, g.status,
             g.home_score, g.away_score,
             ht.name AS home_team,
-            at.name AS away_team
+            at.name AS away_team,
+            ht.short_name AS home_code,
+            at.short_name AS away_code
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
@@ -535,6 +538,8 @@ def get_team_games(team_id: int, limit: int = 10):
                 "away_score": r[4],
                 "home_team":  r[5],
                 "away_team":  r[6],
+                "home_code":  r[7],
+                "away_code":  r[8],
             }
             for r in rows
         ]

@@ -1,26 +1,35 @@
-// team_detail_screen.dart — Option A 디자인 시스템 반영 (2026-06)
-// team_detail_screen.dart 기반 재구성
+// team_detail_screen.dart — Option A 디자인 시스템 반영 (2026-06 최종)
+// 선수탭: 타자/투수 2열 + 포지션/구위 필터
+// 경기탭: 시리즈 카드(3등분) + 월별 막대차트 + 상대전적 2열 그리드
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
 import '../../utils/team_theme.dart';
 
 // ── 모델 ──────────────────────────────────────────────────────────────────────
 
-class _RosterChange {
-  final String type, name, pos, date;
-  const _RosterChange({required this.type, required this.name, required this.pos, required this.date});
+class _Batter {
+  final String name, pos, posType;
+  final int no;
+  const _Batter({required this.name, required this.pos, required this.posType, required this.no});
 }
 
-class _NewsItem {
-  final String title, media, date;
-  const _NewsItem({required this.title, required this.media, required this.date});
+class _Pitcher {
+  final String name, arm, type;
+  final int no;
+  const _Pitcher({required this.name, required this.arm, required this.type, required this.no});
 }
 
-class _RecentGame {
-  final String home, away, result, date, stadium;
+class _GameSeries {
+  final String opp, code, stadium, dates;
+  final List<_SeriesGame> games;
+  const _GameSeries({required this.opp, required this.code, required this.stadium,
+      required this.dates, required this.games});
+}
+
+class _SeriesGame {
+  final String date, result;
   final int hs, as_;
-  const _RecentGame({required this.home, required this.away, required this.result,
-      required this.date, required this.stadium, required this.hs, required this.as_});
+  const _SeriesGame({required this.date, required this.result, required this.hs, required this.as_});
 }
 
 class _H2HRecord {
@@ -31,21 +40,21 @@ class _H2HRecord {
 }
 
 class _MonthStat {
-  final String month;
+  final String month, avg;
   final int wins, losses;
-  final String avg;
   final double era;
   const _MonthStat({required this.month, required this.wins, required this.losses,
       required this.avg, required this.era});
 }
 
-class _Player {
-  final String name, pos;
-  final int no;
-  final String? avg, era;
-  final int? hr, rbi, w, l, sv;
-  const _Player({required this.name, required this.pos, required this.no,
-      this.avg, this.era, this.hr, this.rbi, this.w, this.l, this.sv});
+class _RosterChange {
+  final String type, name, pos, date;
+  const _RosterChange({required this.type, required this.name, required this.pos, required this.date});
+}
+
+class _NewsItem {
+  final String title, media, date;
+  const _NewsItem({required this.title, required this.media, required this.date});
 }
 
 class _TeamData {
@@ -66,20 +75,46 @@ const _kTeam = _TeamData(
   avg:.285, era:3.42, whip:1.18, rs:312, ra:264, hr:72,
 );
 
-const _kPlayers = [
-  _Player(name:'홍창기', pos:'외야', no:52, avg:'.312', hr:8,  rbi:42),
-  _Player(name:'오스틴', pos:'1루',  no:40, avg:'.298', hr:18, rbi:58),
-  _Player(name:'박해민', pos:'외야', no:10, avg:'.274', hr:3,  rbi:28),
-  _Player(name:'임찬규', pos:'투수', no:30, era:'3.12', w:9,  l:4),
-  _Player(name:'이우찬', pos:'투수', no:48, era:'2.85', sv:14, w:3, l:2),
+const _kBatters = [
+  _Batter(name:'홍창기',  pos:'우익수',   posType:'외야', no:52),
+  _Batter(name:'오스틴',  pos:'1루수',    posType:'내야', no:40),
+  _Batter(name:'박해민',  pos:'중견수',   posType:'외야', no:10),
+  _Batter(name:'문성주',  pos:'좌익수',   posType:'외야', no:22),
+  _Batter(name:'오지환',  pos:'유격수',   posType:'내야', no:21),
+  _Batter(name:'강문성',  pos:'포수',     posType:'포수', no:2),
+  _Batter(name:'김범석',  pos:'2루수',    posType:'내야', no:5),
+  _Batter(name:'구도혁',  pos:'3루수',    posType:'내야', no:7),
+  _Batter(name:'신민재',  pos:'지명타자', posType:'DH',   no:36),
+  _Batter(name:'김현수',  pos:'지명타자', posType:'DH',   no:25),
 ];
 
-const _kGames = [
-  _RecentGame(home:'LG', away:'KIA', hs:5, as_:3, result:'win',  date:'06.07', stadium:'잠실'),
-  _RecentGame(home:'LG', away:'두산', hs:7, as_:2, result:'win',  date:'06.06', stadium:'잠실'),
-  _RecentGame(home:'LG', away:'두산', hs:3, as_:5, result:'loss', date:'06.05', stadium:'잠실'),
-  _RecentGame(home:'삼성', away:'LG', hs:2, as_:6, result:'win',  date:'06.03', stadium:'대구'),
-  _RecentGame(home:'삼성', away:'LG', hs:4, as_:1, result:'loss', date:'06.02', stadium:'대구'),
+const _kPitchers = [
+  _Pitcher(name:'임찬규', arm:'우완', type:'선발',   no:30),
+  _Pitcher(name:'손주영', arm:'우완', type:'선발',   no:34),
+  _Pitcher(name:'유수청', arm:'우완', type:'선발',   no:17),
+  _Pitcher(name:'이우찬', arm:'좌완', type:'마무리', no:48),
+  _Pitcher(name:'강태우', arm:'좌완', type:'불펜',   no:46),
+  _Pitcher(name:'정우영', arm:'우완', type:'불펜',   no:35),
+  _Pitcher(name:'이민호', arm:'우완', type:'불펜',   no:55),
+  _Pitcher(name:'한자영', arm:'언더', type:'불펜',   no:53),
+];
+
+const _kSeries = [
+  _GameSeries(opp:'KIA', code:'HT', stadium:'잠실', dates:'06.05~07', games:[
+    _SeriesGame(date:'06.07', hs:5, as_:3, result:'win'),
+    _SeriesGame(date:'06.06', hs:4, as_:4, result:'draw'),
+    _SeriesGame(date:'06.05', hs:3, as_:5, result:'loss'),
+  ]),
+  _GameSeries(opp:'삼성', code:'SS', stadium:'대구', dates:'06.02~04', games:[
+    _SeriesGame(date:'06.04', hs:8, as_:2, result:'win'),
+    _SeriesGame(date:'06.03', hs:6, as_:2, result:'win'),
+    _SeriesGame(date:'06.02', hs:1, as_:4, result:'loss'),
+  ]),
+  _GameSeries(opp:'한화', code:'HH', stadium:'대전', dates:'05.30~06.01', games:[
+    _SeriesGame(date:'06.01', hs:2, as_:3, result:'loss'),
+    _SeriesGame(date:'05.31', hs:7, as_:1, result:'win'),
+    _SeriesGame(date:'05.30', hs:5, as_:3, result:'win'),
+  ]),
 ];
 
 const _kH2H = [
@@ -116,7 +151,6 @@ const _kNews = [
 // ── 메인 화면 ─────────────────────────────────────────────────────────────────
 
 class TeamDetailScreen extends StatefulWidget {
-  /// 실제 앱에서는 team 데이터를 주입받아 사용
   final Map<String, dynamic>? team;
   const TeamDetailScreen({super.key, this.team});
   @override State<TeamDetailScreen> createState() => _TeamDetailScreenState();
@@ -143,7 +177,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     return Scaffold(
       backgroundColor: cs.bg,
       body: SafeArea(child: Column(children: [
-        // ── AppBar (팀컬러 배경) ──────────────────────────────────────────────
+        // ── AppBar ──────────────────────────────────────────────────────────
         Container(
           padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
           color: tc,
@@ -151,16 +185,17 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             _WhiteBtn32(icon: Icons.chevron_left, onTap: () => Navigator.maybePop(context)),
             const SizedBox(width: 10),
             Expanded(child: Text(_kTeam.name,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5))),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
+                    color: Colors.white, letterSpacing: -0.5))),
             _WhiteBtn32(
               icon: _isFav ? Icons.star_rounded : Icons.star_border_rounded,
               onTap: () => setState(() => _isFav = !_isFav),
             ),
           ]),
         ),
-        // ── Content ──────────────────────────────────────────────────────────
+        // ── Content ─────────────────────────────────────────────────────────
         Expanded(child: _buildTabContent(cs, tc)),
-        // ── 플로팅 탭바 (_buildMainFloatingNav 기반) ──────────────────────────
+        // ── 플로팅 탭바 ─────────────────────────────────────────────────────
         _buildFloatingNav(cs, tc),
       ])),
     );
@@ -169,8 +204,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   Widget _buildTabContent(_C cs, Color tc) {
     switch (_tab) {
       case 0: return _buildOverview(cs, tc);
-      case 1: return _buildPlayers(cs, tc);
-      case 2: return _buildGames(cs, tc);
+      case 1: return _PlayersTab(tc: tc, cs: cs);
+      case 2: return _GamesTab(tc: tc, cs: cs, gameSub: _gameSub,
+                  onGameSubChange: (i) => setState(() => _gameSub = i));
       case 3: return _buildCommunity(cs, tc);
       default: return const SizedBox();
     }
@@ -179,7 +215,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   // ── 개요 탭 ───────────────────────────────────────────────────────────────
   Widget _buildOverview(_C cs, Color tc) {
     return ListView(padding: EdgeInsets.zero, children: [
-      // 팀 헤더
       Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
@@ -208,47 +243,36 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           const SizedBox(height: 14),
           // 시즌 스탯 6칸 그리드
           Container(
-            decoration: BoxDecoration(
-              color: cs.paper, border: Border.all(color: cs.line),
-              borderRadius: BorderRadius.circular(Radii.md),
-            ),
-            child: IntrinsicHeight(
-              child: Row(children: [
-                _StatBlock(label: '팀타율', value: _kTeam.avg.toStringAsFixed(3), cs: cs),
-                VerticalDivider(width: 1, color: cs.line),
-                _StatBlock(label: '방어율', value: _kTeam.era.toStringAsFixed(2), cs: cs),
-                VerticalDivider(width: 1, color: cs.line),
-                _StatBlock(label: 'WHIP',  value: _kTeam.whip.toStringAsFixed(2), cs: cs),
-                VerticalDivider(width: 1, color: cs.line),
-                _StatBlock(label: '득점',  value: '${_kTeam.rs}', cs: cs),
-                VerticalDivider(width: 1, color: cs.line),
-                _StatBlock(label: '실점',  value: '${_kTeam.ra}', cs: cs),
-                VerticalDivider(width: 1, color: cs.line),
-                _StatBlock(label: '홈런',  value: '${_kTeam.hr}', cs: cs),
-              ]),
-            ),
+            decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.md)),
+            child: IntrinsicHeight(child: Row(children: [
+              _StatBlock(label: '팀타율', value: _kTeam.avg.toStringAsFixed(3), cs: cs),
+              VerticalDivider(width: 1, color: cs.line),
+              _StatBlock(label: '방어율', value: _kTeam.era.toStringAsFixed(2), cs: cs),
+              VerticalDivider(width: 1, color: cs.line),
+              _StatBlock(label: 'WHIP',  value: _kTeam.whip.toStringAsFixed(2), cs: cs),
+              VerticalDivider(width: 1, color: cs.line),
+              _StatBlock(label: '득점',  value: '${_kTeam.rs}', cs: cs),
+              VerticalDivider(width: 1, color: cs.line),
+              _StatBlock(label: '실점',  value: '${_kTeam.ra}', cs: cs),
+              VerticalDivider(width: 1, color: cs.line),
+              _StatBlock(label: '홈런',  value: '${_kTeam.hr}', cs: cs),
+            ])),
           ),
         ]),
       ),
-      // 등록말소
       _SectionLabel(label: '최근 등록말소', cs: cs),
       _CardWrap(cs: cs, child: Column(
         children: _kRosterChanges.asMap().entries.map((e) {
           final c = e.value;
           final last = e.key == _kRosterChanges.length - 1;
+          final color = c.type == '등록' ? const Color(0xFF2563EB) : SemColor.live;
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
             decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
             child: Row(children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: c.type == '등록' ? const Color(0xFF2563EB).withOpacity(0.1) : SemColor.live.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Text(c.type, style: TextStyle(fontSize: 10, fontWeight: Typo.bold,
-                    color: c.type == '등록' ? const Color(0xFF2563EB) : SemColor.live)),
-              ),
+              Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(5)),
+                child: Text(c.type, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: color))),
               const SizedBox(width: 10),
               Expanded(child: Text(c.name, style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink))),
               Text(c.pos,  style: TextStyle(fontSize: 11, color: cs.sub)),
@@ -258,7 +282,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           );
         }).toList(),
       )),
-      // 뉴스
       _SectionLabel(label: '최근 뉴스', cs: cs),
       _CardWrap(cs: cs, child: Column(
         children: _kNews.asMap().entries.map((e) {
@@ -273,7 +296,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
               Row(children: [
                 Text(n.media, style: TextStyle(fontSize: 10, color: cs.sub)),
                 const SizedBox(width: 8),
-                Text(n.date,  style: TextStyle(fontSize: 10, color: cs.sub)),
+                Text(n.date, style: TextStyle(fontSize: 10, color: cs.sub)),
               ]),
             ]),
           );
@@ -283,270 +306,596 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     ]);
   }
 
-  // ── 선수 탭 ───────────────────────────────────────────────────────────────
-  Widget _buildPlayers(_C cs, Color tc) {
-    return ListView(padding: const EdgeInsets.only(bottom: 24), children: [
-      _SectionLabel(label: '선발 로스터', cs: cs),
-      _CardWrap(cs: cs, child: Column(
-        children: _kPlayers.asMap().entries.map((e) {
-          final p = e.value;
-          final last = e.key == _kPlayers.length - 1;
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
-            child: Row(children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: tc.withOpacity(cs.dark ? 0.18 : 0.08),
-                  border: Border.all(color: tc.withOpacity(0.2)),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(child: Text('#${p.no}',
-                    style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: tc))),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(p.name, style: TextStyle(fontSize: 14, fontWeight: Typo.extra, color: cs.ink)),
-                const SizedBox(height: 4),
-                Text(p.pos,  style: TextStyle(fontSize: 11, color: cs.sub)),
-              ])),
-              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                if (p.avg != null)
-                  Text(p.avg!,  style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: tc)),
-                if (p.era != null)
-                  Text('ERA ${p.era!}', style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: tc)),
-                const SizedBox(height: 2),
-                Text(p.hr  != null ? '${p.hr}HR ${p.rbi}RBI'
-                   : p.sv != null ? '${p.w}승 ${p.sv}세'
-                   : '',
-                    style: TextStyle(fontSize: 10, color: cs.sub)),
-              ]),
-            ]),
-          );
-        }).toList(),
-      )),
-    ]);
+  // ── 커뮤니티 탭 ───────────────────────────────────────────────────────────
+  Widget _buildCommunity(_C cs, Color tc) {
+    const posts = [
+      {'cat':'자유', 'title':'오늘도 응원합니다!',              'author':'팬',      'likes':42,  'comments':8},
+      {'cat':'분석', 'title':'이번 시즌 불펜 분석 — 개선점은?', 'author':'야구분석가', 'likes':31, 'comments':15},
+      {'cat':'유머', 'title':'오늘 수비 GIF 모음',              'author':'웃긴야구', 'likes':97,  'comments':28},
+    ];
+    return ListView(padding: const EdgeInsets.all(18), children: posts.map((p) => Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line),
+          borderRadius: BorderRadius.circular(Radii.lg)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Wrap(spacing: 5, children: [
+          _SmallChip(label: _kTeam.name.split(' ')[0], color: tc, bg: tc.withOpacity(0.1)),
+          _SmallChip(label: p['cat'] as String, color: cs.ink3, bg: cs.paper2, border: cs.line),
+        ]),
+        const SizedBox(height: 7),
+        Text(p['title'] as String, style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink, height: 1.45)),
+        const SizedBox(height: 8),
+        Row(children: [
+          Text(p['author'] as String, style: TextStyle(fontSize: 10, color: cs.sub)),
+          const Spacer(),
+          Text('♡ ${p['likes']}', style: TextStyle(fontSize: 10, color: cs.sub)),
+          const SizedBox(width: 10),
+          Text('💬 ${p['comments']}', style: TextStyle(fontSize: 10, color: cs.sub)),
+        ]),
+      ]),
+    )).toList());
   }
 
-  // ── 경기 탭 ───────────────────────────────────────────────────────────────
-  Widget _buildGames(_C cs, Color tc) {
+  // ── 플로팅 탭바 ───────────────────────────────────────────────────────────
+  Widget _buildFloatingNav(_C cs, Color tc) => Padding(
+    padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+    child: Container(
+      height: 52,
+      decoration: BoxDecoration(
+        color: cs.paper, borderRadius: BorderRadius.circular(26),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(cs.dark ? 0.4 : 0.12), blurRadius: 16, offset: const Offset(0, 4))],
+      ),
+      child: Row(children: List.generate(_tabLabels.length, (i) {
+        final sel = _tab == i;
+        return Expanded(child: GestureDetector(
+          onTap: () => setState(() => _tab = i),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: sel ? tc.withOpacity(cs.dark ? 0.22 : 0.1) : Colors.transparent,
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(_tabIcons[i], size: 18, color: sel ? tc : cs.sub),
+              const SizedBox(height: 1),
+              Text(_tabLabels[i], style: TextStyle(fontSize: 11,
+                  fontWeight: sel ? Typo.bold : Typo.medium, color: sel ? tc : cs.sub)),
+            ]),
+          ),
+        ));
+      })),
+    ),
+  );
+}
+
+// ── 선수 탭 (2열: 타자 | 투수) ───────────────────────────────────────────────
+
+class _PlayersTab extends StatefulWidget {
+  final Color tc;
+  final _C cs;
+  const _PlayersTab({required this.tc, required this.cs});
+  @override State<_PlayersTab> createState() => _PlayersTabState();
+}
+
+class _PlayersTabState extends State<_PlayersTab> {
+  String _batFilter = '전체';
+  String _pitFilter = '전체';
+
+  static const _batFilters = ['전체','포수','내야','외야','DH'];
+  static const _pitFilters = ['전체','우완','좌완','언더'];
+
+  List<_Batter> get _filteredBat => _batFilter == '전체'
+      ? _kBatters : _kBatters.where((p) => p.posType == _batFilter).toList();
+
+  List<_Pitcher> get _filteredPit => _pitFilter == '전체'
+      ? _kPitchers : _kPitchers.where((p) => p.arm == _pitFilter).toList();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = widget.cs;
+    final tc = widget.tc;
+    return Row(children: [
+      // ── 왼쪽: 타자 ──────────────────────────────────────────────────────
+      Expanded(child: Container(
+        decoration: BoxDecoration(border: Border(right: BorderSide(color: cs.line))),
+        child: Column(children: [
+          _ColumnHeader(title: '타자', filters: _batFilters, selected: _batFilter, tc: tc, cs: cs,
+              onSelect: (f) => setState(() => _batFilter = f)),
+          Expanded(child: ListView.builder(
+            itemCount: _filteredBat.length,
+            itemBuilder: (_, i) {
+              final p = _filteredBat[i];
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
+                child: Row(children: [
+                  _NumChip(no: p.no, tc: tc, cs: cs),
+                  const SizedBox(width: 8),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(p.name, style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink)),
+                    const SizedBox(height: 2),
+                    Text(p.pos, style: TextStyle(fontSize: 10, color: cs.sub)),
+                  ])),
+                ]),
+              );
+            },
+          )),
+        ]),
+      )),
+      // ── 오른쪽: 투수 ────────────────────────────────────────────────────
+      Expanded(child: Column(children: [
+        _ColumnHeader(title: '투수', filters: _pitFilters, selected: _pitFilter, tc: tc, cs: cs,
+            onSelect: (f) => setState(() => _pitFilter = f)),
+        Expanded(child: ListView.builder(
+          itemCount: _filteredPit.length,
+          itemBuilder: (_, i) {
+            final p = _filteredPit[i];
+            final armColor = p.arm == '우완' ? tc
+                : p.arm == '좌완' ? const Color(0xFF2563EB)
+                : const Color(0xFF9333EA);
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
+              child: Row(children: [
+                _NumChip(no: p.no, tc: tc, cs: cs),
+                const SizedBox(width: 8),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(p.name, style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink)),
+                  const SizedBox(height: 3),
+                  Row(children: [
+                    Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(color: armColor.withOpacity(0.12), borderRadius: BorderRadius.circular(3)),
+                      child: Text(p.arm, style: TextStyle(fontSize: 9, fontWeight: Typo.bold, color: armColor))),
+                    const SizedBox(width: 4),
+                    Text(p.type, style: TextStyle(fontSize: 9, color: cs.sub)),
+                  ]),
+                ])),
+              ]),
+            );
+          },
+        )),
+      ])),
+    ]);
+  }
+}
+
+class _ColumnHeader extends StatelessWidget {
+  final String title, selected;
+  final List<String> filters;
+  final Color tc;
+  final _C cs;
+  final ValueChanged<String> onSelect;
+  const _ColumnHeader({required this.title, required this.filters, required this.selected,
+      required this.tc, required this.cs, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+    decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(title, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)),
+      const SizedBox(height: 8),
+      Wrap(spacing: 4, runSpacing: 4, children: filters.map((f) => GestureDetector(
+        onTap: () => onSelect(f),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: f == selected ? tc : cs.paper2,
+            borderRadius: BorderRadius.circular(Radii.pill),
+            border: Border.all(color: f == selected ? tc : cs.line),
+          ),
+          child: Text(f, style: TextStyle(fontSize: 10,
+              fontWeight: f == selected ? Typo.bold : Typo.medium,
+              color: f == selected ? (cs.dark ? const Color(0xFF0F0F12) : Colors.white) : cs.ink3)),
+        ),
+      )).toList()),
+    ]),
+  );
+}
+
+// ── 경기 탭 ───────────────────────────────────────────────────────────────────
+
+class _GamesTab extends StatelessWidget {
+  final Color tc;
+  final _C cs;
+  final int gameSub;
+  final ValueChanged<int> onGameSubChange;
+  const _GamesTab({required this.tc, required this.cs,
+      required this.gameSub, required this.onGameSubChange});
+
+  @override
+  Widget build(BuildContext context) {
     const subLabels = ['최근경기', '월별성적', '상대전적'];
     return Column(children: [
-      // 서브탭
       Container(
         decoration: BoxDecoration(color: cs.paper, border: Border(bottom: BorderSide(color: cs.line))),
         child: Row(children: List.generate(subLabels.length, (i) {
-          final sel = _gameSub == i;
+          final sel = gameSub == i;
           return Expanded(child: GestureDetector(
-            onTap: () => setState(() => _gameSub = i),
+            onTap: () => onGameSubChange(i),
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 11),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: sel ? tc : Colors.transparent, width: 2)),
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 11), alignment: Alignment.center,
+              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: sel ? tc : Colors.transparent, width: 2))),
               child: Text(subLabels[i], style: TextStyle(fontSize: 12,
-                  fontWeight: sel ? Typo.extra : Typo.medium,
-                  color: sel ? tc : cs.sub)),
+                  fontWeight: sel ? Typo.extra : Typo.medium, color: sel ? tc : cs.sub)),
             ),
           ));
         })),
       ),
       Expanded(child: ListView(padding: const EdgeInsets.all(18), children: [
-        if (_gameSub == 0) ..._buildRecentGames(cs, tc),
-        if (_gameSub == 1) ..._buildMonthlyStats(cs, tc),
-        if (_gameSub == 2) ..._buildH2H(cs, tc),
+        if (gameSub == 0) ..._buildRecentGames(),
+        if (gameSub == 1) ..._buildMonthly(),
+        if (gameSub == 2) ..._buildH2H(),
       ])),
     ]);
   }
 
-  List<Widget> _buildRecentGames(_C cs, Color tc) => _kGames.map((g) {
-    final isWin = g.result == 'win';
-    final c = isWin ? const Color(0xFF2563EB) : SemColor.live;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: cs.paper, border: Border.all(color: cs.line),
-        borderRadius: BorderRadius.circular(Radii.md),
+  // ── 최근경기: 연속결과 스트립 + 시리즈 카드(3등분) ───────────────────────
+  List<Widget> _buildRecentGames() {
+    final allGames = _kSeries.expand((s) => s.games).toList();
+    return [
+      // 연속결과 스트립
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line),
+            borderRadius: BorderRadius.circular(12)),
+        child: Row(children: [
+          Text('최근', style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub)),
+          const SizedBox(width: 8),
+          ...allGames.map((g) {
+            final isWin = g.result == 'win', isDraw = g.result == 'draw';
+            final c = isWin ? tc : isDraw ? cs.sub : SemColor.live;
+            return Expanded(child: Container(
+              height: 28, margin: const EdgeInsets.only(left: 3),
+              decoration: BoxDecoration(
+                color: isWin ? tc.withOpacity(cs.dark ? 0.25 : 0.12)
+                    : isDraw ? cs.paper2 : SemColor.live.withOpacity(cs.dark ? 0.22 : 0.08),
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(color: isWin ? tc.withOpacity(0.4)
+                    : isDraw ? cs.line2 : SemColor.live.withOpacity(0.3)),
+              ),
+              child: Center(child: Text(isWin ? '승' : isDraw ? '무' : '패',
+                  style: TextStyle(fontSize: 11, fontWeight: Typo.extra, color: c))),
+            ));
+          }),
+        ]),
       ),
-      child: Row(children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-          decoration: BoxDecoration(color: c.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-          child: Text(isWin ? '승' : '패', style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: c)),
-        ),
-        const SizedBox(width: 10),
-        Text(g.date, style: TextStyle(fontSize: 11, color: cs.sub)),
-        Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text(g.home, style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink)),
-          const SizedBox(width: 8),
-          Text('${g.hs} : ${g.as_}', style: TextStyle(fontSize: 14, fontWeight: Typo.extra, color: cs.ink)),
-          const SizedBox(width: 8),
-          Text(g.away, style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink)),
-        ])),
-        Text(g.stadium, style: TextStyle(fontSize: 10, color: cs.sub)),
-      ]),
-    );
-  }).toList();
+      // 시리즈 카드들
+      ..._kSeries.map((s) => _SeriesCard(series: s, tc: tc, cs: cs)),
+    ];
+  }
 
-  List<Widget> _buildMonthlyStats(_C cs, Color tc) => [
-    Container(
-      decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.lg)),
-      child: Column(children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(children: ['월','승','패','타율','방어율'].map((h) =>
-            Expanded(child: Text(h, textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub)))).toList(),
-        ),
-        Divider(height: 1, color: cs.line),
-        ..._kMonthly.asMap().entries.map((e) {
-          final m = e.value;
-          final last = e.key == _kMonthly.length - 1;
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-            decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
-            child: Row(children: [
-              Expanded(child: Text(m.month, style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink))),
-              Expanded(child: Text('${m.wins}', textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: const Color(0xFF2563EB)))),
-              Expanded(child: Text('${m.losses}', textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: SemColor.live))),
-              Expanded(child: Text(m.avg, textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: cs.ink3))),
-              Expanded(child: Text(m.era.toStringAsFixed(2), textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: cs.ink3))),
-            ]),
-          );
-        }),
-      ]),
-    ),
-  ];
+  // ── 월별성적: 요약칩 + 막대차트 + 테이블 ─────────────────────────────────
+  List<Widget> _buildMonthly() {
+    final totalW = _kMonthly.fold(0, (s, m) => s + m.wins);
+    final totalL = _kMonthly.fold(0, (s, m) => s + m.losses);
+    final maxG = _kMonthly.map((m) => m.wins + m.losses).reduce((a, b) => a > b ? a : b);
 
-  List<Widget> _buildH2H(_C cs, Color tc) => [
-    Container(
-      decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.lg)),
-      child: Column(
-        children: _kH2H.asMap().entries.map((e) {
-          final h = e.value;
-          final last = e.key == _kH2H.length - 1;
-          final pct = (h.wins / h.games * 100).round();
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-            decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
-            child: Row(children: [
-              TeamLogo(teamCode: h.code, size: 32),
+    return [
+      // 요약 칩
+      Row(children: [
+        _SummaryChip(value: '$totalW승', color: const Color(0xFF2563EB), cs: cs),
+        const SizedBox(width: 8),
+        _SummaryChip(value: '$totalL패', color: SemColor.live, cs: cs),
+        const SizedBox(width: 8),
+        _SummaryChip(value: _kMonthly.last.avg, color: tc, cs: cs, label: '시즌 타율'),
+      ]),
+      const SizedBox(height: 14),
+      // 막대 차트
+      Container(
+        padding: const EdgeInsets.fromLTRB(14, 16, 14, 12),
+        decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line),
+            borderRadius: BorderRadius.circular(Radii.lg)),
+        child: Column(children: [
+          Text('월별 승/패', style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 120,
+            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: _kMonthly.map((m) {
+              final total = m.wins + m.losses;
+              final pct = total > 0 ? (m.wins / total * 100).round() : 0;
+              final winH = (m.wins / maxG * 100).roundToDouble();
+              final lossH = (m.losses / maxG * 100).roundToDouble();
+              return Expanded(child: Column(children: [
+                Text('$pct%', style: TextStyle(fontSize: 10, fontWeight: Typo.bold,
+                    color: pct >= 50 ? tc : SemColor.live)),
+                const SizedBox(height: 4),
+                Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+                  if (m.wins > 0) Container(
+                    height: winH * 0.9,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: tc.withOpacity(cs.dark ? 0.75 : 0.85),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                    ),
+                    child: Center(child: Text('${m.wins}',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white))),
+                  ),
+                  if (m.losses > 0) Container(
+                    height: lossH * 0.9,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: SemColor.live.withOpacity(cs.dark ? 0.65 : 0.75),
+                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
+                    ),
+                    child: Center(child: Text('${m.losses}',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white))),
+                  ),
+                ])),
+                const SizedBox(height: 6),
+                Text(m.month, style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: cs.ink)),
+              ]));
+            }).toList()),
+          ),
+          const SizedBox(height: 10),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            _LegendDot(color: tc, label: '승'),
+            const SizedBox(width: 14),
+            _LegendDot(color: SemColor.live.withOpacity(0.8), label: '패'),
+          ]),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      // 타율/방어율 테이블
+      Container(
+        decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line),
+            borderRadius: BorderRadius.circular(Radii.lg)),
+        child: Column(children: [
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(children: ['월','팀타율','방어율'].map((h) => Expanded(child: Text(h,
+                textAlign: h == '월' ? TextAlign.left : TextAlign.center,
+                style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub)))).toList())),
+          Divider(height: 1, color: cs.line),
+          ..._kMonthly.asMap().entries.map((e) {
+            final m = e.value;
+            final last = e.key == _kMonthly.length - 1;
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+              decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
+              child: Row(children: [
+                Expanded(child: Text(m.month, style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink))),
+                Expanded(child: Text(m.avg, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: cs.ink3))),
+                Expanded(child: Text(m.era.toStringAsFixed(2), textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: cs.ink3))),
+              ]),
+            );
+          }),
+        ]),
+      ),
+    ];
+  }
+
+  // ── 상대전적: 원형 게이지 + 2열 카드 그리드 ─────────────────────────────
+  List<Widget> _buildH2H() {
+    final totalW = _kH2H.fold(0, (s, h) => s + h.wins);
+    final totalL = _kH2H.fold(0, (s, h) => s + h.losses);
+    final totalG = totalW + totalL;
+    final overallPct = totalG > 0 ? (totalW / totalG * 100).round() : 0;
+
+    return [
+      // 전체 요약
+      Container(
+        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line),
+            borderRadius: BorderRadius.circular(Radii.lg)),
+        child: Row(children: [
+          SizedBox(width: 64, height: 64, child: Stack(children: [
+            CustomPaint(size: const Size(64, 64),
+                painter: _RingPainter(pct: overallPct / 100, color: tc, bg: cs.paper2)),
+            Center(child: Text('$overallPct%',
+                style: TextStyle(fontSize: 14, fontWeight: Typo.extra, color: tc))),
+          ])),
+          const SizedBox(width: 14),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('상대 전적 종합', style: TextStyle(fontSize: 16, fontWeight: Typo.extra, color: cs.ink)),
+            const SizedBox(height: 5),
+            Row(children: [
+              Text('$totalW승', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF2563EB))),
               const SizedBox(width: 10),
-              SizedBox(width: 36, child: Text(h.opp,
-                  style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink))),
+              Text('$totalL패', style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: SemColor.live)),
               const SizedBox(width: 8),
-              Expanded(child: ClipRRect(
-                borderRadius: BorderRadius.circular(3),
-                child: LinearProgressIndicator(
-                  value: pct / 100,
-                  minHeight: 6,
-                  backgroundColor: cs.paper2,
-                  valueColor: AlwaysStoppedAnimation<Color>(tc),
-                ),
+              Text('($totalG경기)', style: TextStyle(fontSize: 11, color: cs.sub)),
+            ]),
+          ]),
+        ]),
+      ),
+      // 2열 그리드
+      GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+        crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 1.5,
+        children: _kH2H.map((h) {
+          final pct = (h.wins / h.games * 100).round();
+          final isWinning = h.wins >= h.losses;
+          return Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: cs.paper,
+              border: Border.all(color: isWinning ? tc.withOpacity(0.3) : cs.line),
+              borderRadius: BorderRadius.circular(Radii.lg),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                TeamLogo(teamCode: h.code, size: 28),
+                const SizedBox(width: 7),
+                Text(h.opp, style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink)),
+              ]),
+              const SizedBox(height: 8),
+              Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+                Text('${h.wins}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF2563EB))),
+                Text('승', style: TextStyle(fontSize: 11, color: cs.sub)),
+                const SizedBox(width: 6),
+                Text('${h.losses}', style: TextStyle(fontSize: 20, fontWeight: Typo.extra, color: SemColor.live)),
+                Text('패', style: TextStyle(fontSize: 11, color: cs.sub)),
+              ]),
+              const SizedBox(height: 6),
+              ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(
+                value: pct / 100, minHeight: 5, backgroundColor: cs.paper2,
+                valueColor: AlwaysStoppedAnimation<Color>(isWinning ? tc : SemColor.live),
               )),
-              const SizedBox(width: 8),
-              SizedBox(width: 28, child: Text('$pct%',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, fontWeight: Typo.extra, color: tc))),
-              const SizedBox(width: 8),
-              SizedBox(width: 40, child: Text('${h.wins}승${h.losses}패',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(fontSize: 11, color: cs.sub))),
+              const SizedBox(height: 4),
+              Text('$pct%', style: TextStyle(fontSize: 11, fontWeight: Typo.bold,
+                  color: isWinning ? tc : SemColor.live)),
             ]),
           );
         }).toList(),
       ),
-    ),
-  ];
-
-  // ── 커뮤니티 탭 ───────────────────────────────────────────────────────────
-  Widget _buildCommunity(_C cs, Color tc) {
-    const posts = [
-      {'cat':'자유', 'title':'오늘도 응원합니다!',         'author':'팬',    'likes':42,  'comments':8},
-      {'cat':'분석', 'title':'이번 시즌 불펜 분석 — 개선점은?', 'author':'야구분석가', 'likes':31, 'comments':15},
-      {'cat':'유머', 'title':'오늘 수비 GIF 모음',         'author':'웃긴야구', 'likes':97, 'comments':28},
-      {'cat':'자유', 'title':'직관 후기 — 오늘 날씨 최고',  'author':'직관러', 'likes':19,  'comments':6},
     ];
-    return ListView(
-      padding: const EdgeInsets.all(18),
-      children: posts.map((p) => Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: cs.paper, border: Border.all(color: cs.line),
-          borderRadius: BorderRadius.circular(Radii.lg),
-          boxShadow: cs.dark ? null : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 2, offset: const Offset(0,1))],
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Wrap(spacing: 5, children: [
-            _SmallChip(label: _kTeam.name.split(' ')[0], color: tc, bg: tc.withOpacity(0.1)),
-            _SmallChip(label: p['cat'] as String, color: cs.ink3, bg: cs.paper2, border: cs.line),
-          ]),
-          const SizedBox(height: 7),
-          Text(p['title'] as String, style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink, height: 1.45)),
-          const SizedBox(height: 8),
-          Row(children: [
-            Text(p['author'] as String, style: TextStyle(fontSize: 10, color: cs.sub)),
-            const Spacer(),
-            Text('♡ ${p['likes']}', style: TextStyle(fontSize: 10, color: cs.sub)),
-            const SizedBox(width: 10),
-            Text('💬 ${p['comments']}', style: TextStyle(fontSize: 10, color: cs.sub)),
-          ]),
-        ]),
-      )).toList(),
-    );
   }
+}
 
-  // ── 플로팅 탭바 (_buildMainFloatingNav 기반) ─────────────────────────────
-  Widget _buildFloatingNav(_C cs, Color tc) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
-      child: Container(
-        height: 52,
-        decoration: BoxDecoration(
-          color: cs.paper,
-          borderRadius: BorderRadius.circular(26),
-          boxShadow: [BoxShadow(
-            color: Colors.black.withOpacity(cs.dark ? 0.4 : 0.12),
-            blurRadius: 16, offset: const Offset(0, 4),
-          )],
-        ),
-        child: Row(children: List.generate(_tabLabels.length, (i) {
-          final sel = _tab == i;
-          return Expanded(child: GestureDetector(
-            onTap: () => setState(() => _tab = i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: sel ? tc.withOpacity(cs.dark ? 0.22 : 0.1) : Colors.transparent,
-                borderRadius: BorderRadius.circular(22),
-              ),
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(_tabIcons[i], size: 18, color: sel ? tc : cs.sub),
-                const SizedBox(height: 1),
-                Text(_tabLabels[i], style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: sel ? Typo.bold : Typo.medium,
-                  color: sel ? tc : cs.sub,
-                )),
-              ]),
-            ),
-          ));
-        })),
+// ── 시리즈 카드 (3등분) ───────────────────────────────────────────────────────
+
+class _SeriesCard extends StatelessWidget {
+  final _GameSeries series;
+  final Color tc;
+  final _C cs;
+  const _SeriesCard({required this.series, required this.tc, required this.cs});
+
+  Color _resultColor(String r) =>
+      r == 'win' ? tc : r == 'draw' ? cs.sub : SemColor.live;
+
+  @override
+  Widget build(BuildContext context) {
+    final wins   = series.games.where((g) => g.result == 'win').length;
+    final losses = series.games.where((g) => g.result == 'loss').length;
+    final draws  = series.games.where((g) => g.result == 'draw').length;
+    final isWinning = wins > losses;
+    final label  = wins == series.games.length ? '스윕승'
+        : losses == series.games.length ? '스윕패'
+        : wins > losses ? '위닝' : wins < losses ? '루징' : '스플릿';
+    final labelColor = isWinning ? tc : wins < losses ? SemColor.live : cs.sub;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: cs.paper,
+        border: Border.all(color: isWinning ? tc.withOpacity(0.3) : cs.line),
+        borderRadius: BorderRadius.circular(Radii.lg),
+        boxShadow: cs.dark ? null : [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 2, offset: const Offset(0,1))],
       ),
+      child: Column(children: [
+        // 헤더
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
+          child: Row(children: [
+            Text('${series.dates} · ${series.stadium}',
+                style: TextStyle(fontSize: 11, color: cs.sub)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+              decoration: BoxDecoration(
+                color: labelColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(Radii.pill),
+              ),
+              child: Text(label, style: TextStyle(fontSize: 11, fontWeight: Typo.extra, color: labelColor)),
+            ),
+          ]),
+        ),
+        // 3등분
+        IntrinsicHeight(child: Row(children: [
+          // ① 상대팀
+          Expanded(child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              TeamLogo(teamCode: series.code, size: 44),
+              const SizedBox(height: 7),
+              Text('vs ${series.opp}', style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)),
+            ]),
+          )),
+          VerticalDivider(width: 1, color: cs.line),
+          // ② 경기별 스코어
+          Expanded(child: Column(children: series.games.asMap().entries.map((e) {
+            final g = e.value;
+            final last = e.key == series.games.length - 1;
+            final isWin = g.result == 'win', isDraw = g.result == 'draw';
+            final rc = _resultColor(g.result);
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
+              child: Row(children: [
+                SizedBox(width: 30, child: Text(g.date, style: TextStyle(fontSize: 10, color: cs.sub))),
+                Expanded(child: Text('${g.hs} : ${g.as_}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 15, fontWeight: Typo.extra, color: cs.ink))),
+                Container(width: 18, height: 18,
+                  decoration: BoxDecoration(color: rc, borderRadius: BorderRadius.circular(5)),
+                  child: Center(child: Text(isWin ? '승' : isDraw ? '무' : '패',
+                      style: TextStyle(fontSize: 10, fontWeight: Typo.extra,
+                          color: cs.dark ? const Color(0xFF0F0F12) : Colors.white)))),
+              ]),
+            );
+          }).toList())),
+          VerticalDivider(width: 1, color: cs.line),
+          // ③ 시리즈 요약
+          Expanded(child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: series.games.map((g) {
+                return Container(
+                  width: 14, height: 14, margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: BoxDecoration(color: _resultColor(g.result), borderRadius: BorderRadius.circular(4)),
+                );
+              }).toList()),
+              const SizedBox(height: 8),
+              Text('$wins승$losses패${draws > 0 ? "${draws}무" : ""}',
+                  style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: labelColor)),
+              const SizedBox(height: 4),
+              Text('${series.games.length}연전', style: TextStyle(fontSize: 10, color: cs.sub)),
+            ]),
+          )),
+        ])),
+      ]),
     );
   }
 }
 
+// ── 원형 게이지 CustomPainter ─────────────────────────────────────────────────
+
+class _RingPainter extends CustomPainter {
+  final double pct;
+  final Color color, bg;
+  const _RingPainter({required this.pct, required this.color, required this.bg});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2, cy = size.height / 2, r = cx - 4;
+    final paint = Paint()..style = PaintingStyle.stroke..strokeWidth = 7..strokeCap = StrokeCap.round;
+    paint.color = bg;
+    canvas.drawCircle(Offset(cx, cy), r, paint);
+    paint.color = color;
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(cx, cy), radius: r),
+      -1.5707963267948966, // -π/2
+      pct * 6.283185307179586, // pct * 2π
+      false, paint,
+    );
+  }
+
+  @override bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
 // ── 공통 소형 위젯 ─────────────────────────────────────────────────────────────
+
+class _NumChip extends StatelessWidget {
+  final int no;
+  final Color tc;
+  final _C cs;
+  const _NumChip({required this.no, required this.tc, required this.cs});
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 30, height: 30,
+    decoration: BoxDecoration(
+      color: tc.withOpacity(cs.dark ? 0.18 : 0.08),
+      border: Border.all(color: tc.withOpacity(0.2)),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Center(child: Text('#$no', style: TextStyle(fontSize: 10, fontWeight: Typo.extra, color: tc))),
+  );
+}
 
 class _WhiteBtn32 extends StatelessWidget {
   final IconData icon;
@@ -555,15 +904,10 @@ class _WhiteBtn32 extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
-    child: Container(
-      width: 32, height: 32,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withOpacity(0.3)),
-      ),
-      child: Icon(icon, size: 18, color: Colors.white),
-    ),
+    child: Container(width: 32, height: 32,
+      decoration: BoxDecoration(color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white.withOpacity(0.3))),
+      child: Icon(icon, size: 18, color: Colors.white)),
   );
 }
 
@@ -586,11 +930,8 @@ class _CardWrap extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 18),
     child: Container(
-      decoration: BoxDecoration(
-        color: cs.paper, border: Border.all(color: cs.line),
-        borderRadius: BorderRadius.circular(Radii.lg),
-        boxShadow: cs.dark ? null : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 2, offset: const Offset(0,1))],
-      ),
+      decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line),
+          borderRadius: BorderRadius.circular(Radii.lg)),
       child: child,
     ),
   );
@@ -619,12 +960,43 @@ class _SmallChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(
-      color: bg, borderRadius: BorderRadius.circular(Radii.xs),
-      border: border != null ? Border.all(color: border!) : null,
-    ),
+    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(Radii.xs),
+        border: border != null ? Border.all(color: border!) : null),
     child: Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: color)),
   );
+}
+
+class _SummaryChip extends StatelessWidget {
+  final String value;
+  final Color color;
+  final _C cs;
+  final String? label;
+  const _SummaryChip({required this.value, required this.color, required this.cs, this.label});
+  @override
+  Widget build(BuildContext context) => Expanded(child: Container(
+    padding: const EdgeInsets.symmetric(vertical: 10),
+    decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line),
+        borderRadius: BorderRadius.circular(Radii.md)),
+    child: Column(children: [
+      Text(value, style: TextStyle(fontSize: 15, fontWeight: Typo.extra, color: color)),
+      if (label != null) ...[
+        const SizedBox(height: 4),
+        Text(label!, style: TextStyle(fontSize: 10, color: cs.sub)),
+      ],
+    ]),
+  ));
+}
+
+class _LegendDot extends StatelessWidget {
+  final Color color;
+  final String label;
+  const _LegendDot({required this.color, required this.label});
+  @override
+  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+    Container(width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
+    const SizedBox(width: 5),
+    Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+  ]);
 }
 
 // ── 색상 헬퍼 ─────────────────────────────────────────────────────────────────

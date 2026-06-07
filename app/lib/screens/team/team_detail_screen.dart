@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
-import '../../utils/app_theme.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../api/api_service.dart';
@@ -30,7 +28,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   List _communityPosts = [];
   List _monthlyStats = [];
   List _h2hRecords = [];
-  List _battingOrderStats = [];
   Map<String, dynamic>? _seasonStats;
   bool _playersLoading = true;
   bool _gamesLoading = false;
@@ -39,10 +36,12 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   bool _communityLoading = false;
   bool _monthlyLoading = false;
   bool _h2hLoading = false;
-  bool _battingOrderLoading = false;
   bool _isFav = false;
   bool _favLoading = false;
   num? _gamesBehind;
+  // 선수 탭 필터 (타자 포지션 / 투수 구위)
+  String _batFilter = '전체';
+  String _pitFilter = '전체';
 
   @override
   void initState() {
@@ -65,7 +64,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     setState(() => _gameSubIndex = idx);
     if (idx == 1 && _monthlyStats.isEmpty && !_monthlyLoading) _loadMonthlyStats();
     if (idx == 2 && _h2hRecords.isEmpty && !_h2hLoading) _loadH2H();
-    if (idx == 3 && _battingOrderStats.isEmpty && !_battingOrderLoading) _loadBattingOrder();
   }
 
   Future<void> _loadGamesBehind() async {
@@ -279,25 +277,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     }
   }
 
-  Future<void> _loadBattingOrder() async {
-    final teamId = widget.team['id'] as int;
-    final ck = 'team_batting_order_$teamId';
-    final cached = await LocalCache.get(ck, maxAgeSeconds: 1800) as List?;
-    if (cached != null && mounted) {
-      setState(() { _battingOrderStats = cached; _battingOrderLoading = false; });
-    } else if (mounted) {
-      setState(() => _battingOrderLoading = true);
-    }
-    try {
-      final data = await ApiService.getTeamBattingOrder(teamId);
-      final stats = data['stats'] as List? ?? [];
-      await LocalCache.set(ck, stats);
-      if (mounted) setState(() { _battingOrderStats = stats; _battingOrderLoading = false; });
-    } catch (_) {
-      if (mounted) setState(() => _battingOrderLoading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final team = widget.team;
@@ -500,7 +479,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   Widget _buildGamesTab() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = teamColor(widget.team['short_name'] as String? ?? '');
-    const subLabels = ['최근경기', '월별성적', '상대전적', '타순별'];
+    const subLabels = ['최근경기', '월별성적', '상대전적'];
     return Column(
       children: [
         Container(
@@ -538,7 +517,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         Expanded(
           child: IndexedStack(
             index: _gameSubIndex,
-            children: [_buildGames(), _buildMonthlyStats(), _buildHeadToHead(), _buildBattingOrder()],
+            children: [_buildGames(), _buildMonthlyStats(), _buildHeadToHead()],
           ),
         ),
       ],
@@ -612,6 +591,20 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     );
   }
 
+  // 타자 position → 필터 그룹 (포수/내야/외야/DH)
+  String _posType(String pos) {
+    if (pos.contains('포수')) return '포수';
+    if (pos.contains('지명')) return 'DH';
+    if (pos.contains('외야') || pos.contains('좌익') || pos.contains('중견') || pos.contains('우익')) return '외야';
+    return '내야';
+  }
+  // 투수 throws → 구위 (우완/좌완/언더)
+  String _armType(String throws) {
+    if (throws.contains('좌')) return '좌완';
+    if (throws.contains('언') || throws.contains('사')) return '언더';
+    return '우완';
+  }
+
   Widget _buildPlayers() {
     final cs = _C(context);
     final color = teamColor(widget.team['short_name'] as String? ?? '');
@@ -630,76 +623,72 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       );
     }
 
-    final pitchers = _players.where((p) => p['player_type'] == '투수').toList();
     final batters = _players.where((p) => p['player_type'] == '타자').toList();
+    final pitchers = _players.where((p) => p['player_type'] == '투수').toList();
+    final batF = _batFilter == '전체' ? batters
+        : batters.where((p) => _posType(((p as Map)['position'] ?? '').toString()) == _batFilter).toList();
+    final pitF = _pitFilter == '전체' ? pitchers
+        : pitchers.where((p) => _armType(((p as Map)['throws'] ?? '').toString()) == _pitFilter).toList();
 
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 24),
-      children: [
-        if (pitchers.isNotEmpty) ...[
-          _SectionLabel(label: '투수 ${pitchers.length}', cs: cs),
-          _CardWrap(cs: cs, child: Column(children: pitchers.asMap().entries.map((e) =>
-              _playerRow(cs, color, e.value as Map, e.key == pitchers.length - 1)).toList())),
-        ],
-        if (batters.isNotEmpty) ...[
-          _SectionLabel(label: '타자 ${batters.length}', cs: cs),
-          _CardWrap(cs: cs, child: Column(children: batters.asMap().entries.map((e) =>
-              _playerRow(cs, color, e.value as Map, e.key == batters.length - 1)).toList())),
-        ],
-      ],
-    );
-  }
-
-  Widget _playerRow(_C cs, Color color, Map p, bool last) {
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => PlayerDetailScreen(
-          playerId: p['id'],
-          initialData: {'name': p['name'], 'team': widget.team['name'], 'profile_image': p['profile_image'], 'position': p['position'], 'player_type': p['player_type'], 'number': p['number'], 'team_code': widget.team['short_name']},
+    return Row(children: [
+      // 타자 열
+      Expanded(child: Container(
+        decoration: BoxDecoration(border: Border(right: BorderSide(color: cs.line))),
+        child: Column(children: [
+          _ColumnHeader(title: '타자', filters: const ['전체', '포수', '내야', '외야', 'DH'],
+              selected: _batFilter, tc: color, cs: cs, onSelect: (f) => setState(() => _batFilter = f)),
+          Expanded(child: ListView.builder(
+            padding: const EdgeInsets.only(bottom: 80),
+            itemCount: batF.length,
+            itemBuilder: (_, i) => _teamPlayerRow(cs, color, batF[i] as Map, isPitcher: false),
+          )),
+        ]),
+      )),
+      // 투수 열
+      Expanded(child: Column(children: [
+        _ColumnHeader(title: '투수', filters: const ['전체', '우완', '좌완', '언더'],
+            selected: _pitFilter, tc: color, cs: cs, onSelect: (f) => setState(() => _pitFilter = f)),
+        Expanded(child: ListView.builder(
+          padding: const EdgeInsets.only(bottom: 80),
+          itemCount: pitF.length,
+          itemBuilder: (_, i) => _teamPlayerRow(cs, color, pitF[i] as Map, isPitcher: true),
         )),
-      ),
+      ])),
+    ]);
+  }
+
+  Widget _teamPlayerRow(_C cs, Color color, Map p, {required bool isPitcher}) {
+    final arm = isPitcher ? _armType((p['throws'] ?? '').toString()) : '';
+    final armColor = arm == '좌완' ? const Color(0xFF2563EB)
+        : arm == '언더' ? const Color(0xFF9333EA) : color;
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(
+        playerId: p['id'],
+        initialData: {'name': p['name'], 'team': widget.team['name'], 'position': p['position'],
+          'player_type': p['player_type'], 'number': p['number'], 'team_code': widget.team['short_name']},
+      ))),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
-        child: Row(
-          children: [
-            Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: cs.dark ? 0.18 : 0.08),
-                border: Border.all(color: color.withValues(alpha: 0.2)),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(child: Text('#${p['number'] ?? '-'}',
-                  style: TextStyle(fontSize: 12, fontWeight: Typo.extra, color: color))),
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Text(p['name'] ?? '',
-                style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.ink))),
-            Text(p['position'] ?? '', style: TextStyle(fontSize: 11, color: cs.sub)),
-          ],
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
+        child: Row(children: [
+          _NumChip(no: p['number'] as int?, tc: color, cs: cs),
+          const SizedBox(width: 8),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(p['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink)),
+            const SizedBox(height: 3),
+            if (isPitcher)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(color: armColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(3)),
+                child: Text(arm, style: TextStyle(fontSize: 9, fontWeight: Typo.bold, color: armColor)),
+              )
+            else
+              Text(p['position'] ?? '', style: TextStyle(fontSize: 10, color: cs.sub)),
+          ])),
+        ]),
       ),
     );
-  }
-
-  String? _seriesLabel(int wins, int losses, int total) {
-    if (losses == 0 && wins >= 3) return '스윕 승';
-    if (wins >= 2 && losses > 0 && wins > losses) return '위닝 시리즈';
-    if (wins == losses && total >= 2) return '스플릿';
-    if (wins == 0 && losses >= 3) return '스윕 패';
-    if (losses > wins && losses >= 2) return '루징 시리즈';
-    return null;
-  }
-
-  Color _seriesLabelColor(String label) {
-    if (label.contains('스윕 승')) return const Color(0xFF1565C0);
-    if (label.contains('위닝')) return const Color(0xFF1976D2);
-    if (label.contains('스플릿')) return Colors.grey;
-    if (label.contains('루징')) return const Color(0xFFE53935);
-    if (label.contains('스윕 패')) return const Color(0xFFC62828);
-    return Colors.grey;
   }
 
   List<List<Map>> _groupIntoSeries(List games, String teamName) {
@@ -735,133 +724,173 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     return series.reversed.toList();
   }
 
+  String _gResult(Map g, String teamName) {
+    final isHome = g['home_team'] == teamName;
+    final my = isHome ? (g['home_score'] ?? 0) : (g['away_score'] ?? 0);
+    final opp = isHome ? (g['away_score'] ?? 0) : (g['home_score'] ?? 0);
+    if ((my as num) > (opp as num)) return 'win';
+    if (my < opp) return 'loss';
+    return 'draw';
+  }
+
   Widget _buildGames() {
     final cs = _C(context);
-    final tColor = teamColor(widget.team['short_name'] as String? ?? '');
-    if (_gamesLoading) return Center(child: CircularProgressIndicator(color: tColor, strokeWidth: 2.5));
+    final tc = teamColor(widget.team['short_name'] as String? ?? '');
+    if (_gamesLoading) return Center(child: CircularProgressIndicator(color: tc, strokeWidth: 2.5));
     if (_games.isEmpty) return Center(child: Text('경기 정보가 없습니다', style: TextStyle(color: cs.sub)));
 
     final teamName = widget.team['name'] as String? ?? '';
-    final seriesList = _groupIntoSeries(_games, teamName);
+    final seriesList = _groupIntoSeries(_games, teamName); // 최근 시리즈 우선
+    // 연속결과 스트립 — 최근 12경기 (최신 → 좌측)
+    final strip = (List<Map>.from(_games.cast<Map>())
+          ..sort((a, b) => (b['game_date'] as String? ?? '').compareTo(a['game_date'] as String? ?? '')))
+        .take(12).toList();
 
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
-      itemCount: seriesList.length,
-      itemBuilder: (context, idx) {
-        final s = seriesList[idx];
-        final firstG = s.first;
-        final firstIsHome = firstG['home_team'] == teamName;
-        final oppName = firstIsHome ? firstG['away_team'] : firstG['home_team'];
-
-        int wins = 0, losses = 0, draws = 0;
-        for (final g in s) {
-          final isHome = g['home_team'] == teamName;
-          final my = isHome ? (g['home_score'] ?? 0) : (g['away_score'] ?? 0);
-          final opp = isHome ? (g['away_score'] ?? 0) : (g['home_score'] ?? 0);
-          if ((my as num) > (opp as num)) {
-            wins++;
-          } else if (my < opp) {
-            losses++;
-          } else {
-            draws++;
-          }
-        }
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(
-            color: cs.paper,
-            border: Border.all(color: cs.line),
-            borderRadius: BorderRadius.circular(Radii.lg),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return ListView(
+      padding: const EdgeInsets.all(18),
+      children: [
+        // 연속결과 스트립
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          margin: const EdgeInsets.only(bottom: 14),
+          decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line),
+              borderRadius: BorderRadius.circular(12)),
+          child: Row(children: [
+            Text('최근', style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub)),
+            const SizedBox(width: 8),
+            ...strip.map((g) {
+              final r = _gResult(g, teamName);
+              final isWin = r == 'win', isDraw = r == 'draw';
+              final c = isWin ? tc : isDraw ? cs.sub : SemColor.live;
+              return Expanded(child: Container(
+                height: 28, margin: const EdgeInsets.only(left: 3),
                 decoration: BoxDecoration(
-                  color: cs.paper2,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
+                  color: isWin ? tc.withValues(alpha: cs.dark ? 0.25 : 0.12)
+                      : isDraw ? cs.paper2 : SemColor.live.withValues(alpha: cs.dark ? 0.22 : 0.08),
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(color: isWin ? tc.withValues(alpha: 0.4)
+                      : isDraw ? cs.line2 : SemColor.live.withValues(alpha: 0.3)),
                 ),
-                child: Row(
-                  children: [
-                    Text('vs $oppName',
-                        style: TextStyle(fontWeight: Typo.bold, fontSize: 14, color: cs.ink)),
-                    const Spacer(),
-                    if (wins > 0)
-                      Text('$wins승 ', style: const TextStyle(color: Color(0xFF2563EB), fontSize: 13, fontWeight: FontWeight.bold)),
-                    if (losses > 0)
-                      Text('$losses패', style: TextStyle(color: SemColor.live, fontSize: 13, fontWeight: FontWeight.bold)),
-                    if (draws > 0)
-                      Text(' $draws무', style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                    Builder(builder: (_) {
-                      final label = _seriesLabel(wins, losses, s.length);
-                      if (label == null) return const SizedBox.shrink();
-                      final c = _seriesLabelColor(label);
-                      return Container(
-                        margin: const EdgeInsets.only(left: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: c.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: c, width: 0.8),
-                        ),
-                        child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: c)),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-              ...s.map((g) {
-                final isHome = g['home_team'] == teamName;
-                final myScore = isHome ? (g['home_score'] ?? 0) : (g['away_score'] ?? 0);
-                final oppScore = isHome ? (g['away_score'] ?? 0) : (g['home_score'] ?? 0);
-                final isWin = (myScore as num) > (oppScore as num);
-                final isLoss = myScore < oppScore;
-                final dateStr = (g['game_date'] as String? ?? '').replaceAll('-', '.');
-                final gameId = g['id'] as int?;
+                child: Center(child: Text(isWin ? '승' : isDraw ? '무' : '패',
+                    style: TextStyle(fontSize: 11, fontWeight: Typo.extra, color: c))),
+              ));
+            }),
+          ]),
+        ),
+        // 시리즈 카드 (3등분)
+        ...seriesList.map((s) => _seriesCard(cs, tc, teamName, s)),
+      ],
+    );
+  }
 
-                return InkWell(
-                  onTap: gameId != null
-                      ? () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: gameId)))
-                      : null,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: isWin ? Colors.blue : isLoss ? Colors.red : Colors.grey,
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            isWin ? '승' : isLoss ? '패' : '무',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text('$myScore : $oppScore',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: cs.ink)),
-                        const SizedBox(width: 10),
-                        Text(isHome ? '홈' : '원정',
-                            style: TextStyle(fontSize: 11, color: cs.sub)),
-                        const Spacer(),
-                        Text(dateStr, style: TextStyle(fontSize: 12, color: cs.sub)),
-                        const SizedBox(width: 4),
-                        Icon(Icons.chevron_right, size: 16, color: cs.sub),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-            ],
-          ),
-        );
-      },
+  Widget _seriesCard(_C cs, Color tc, String teamName, List s) {
+    final games = s.cast<Map>();
+    int wins = 0, losses = 0, draws = 0;
+    for (final g in games) {
+      final r = _gResult(g, teamName);
+      if (r == 'win') {
+        wins++;
+      } else if (r == 'loss') {
+        losses++;
+      } else {
+        draws++;
+      }
+    }
+    final first = games.first;
+    final firstIsHome = first['home_team'] == teamName;
+    final oppName = (firstIsHome ? first['away_team'] : first['home_team']) ?? '';
+    final oppCode = (firstIsHome ? first['away_code'] : first['home_code']) as String? ?? '';
+    final isWinning = wins > losses;
+    final label = wins == games.length ? '스윕승'
+        : losses == games.length ? '스윕패'
+        : wins > losses ? '위닝' : wins < losses ? '루징' : '스플릿';
+    final labelColor = isWinning ? tc : wins < losses ? SemColor.live : cs.sub;
+    Color rc(String r) => r == 'win' ? tc : r == 'draw' ? cs.sub : SemColor.live;
+    // 날짜 범위
+    final dates = games.map((g) => (g['game_date'] as String? ?? '')).toList()..sort();
+    String md(String d) => d.length >= 10 ? '${d.substring(5, 7)}.${d.substring(8, 10)}' : d;
+    final dateRange = dates.isEmpty ? '' : '${md(dates.first)}~${md(dates.last).substring(md(dates.last).length - 2)}';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: cs.paper,
+        border: Border.all(color: isWinning ? tc.withValues(alpha: 0.3) : cs.line),
+        borderRadius: BorderRadius.circular(Radii.lg),
+      ),
+      child: Column(children: [
+        // 헤더
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
+          child: Row(children: [
+            Text(dateRange, style: TextStyle(fontSize: 11, color: cs.sub)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+              decoration: BoxDecoration(color: labelColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(Radii.pill)),
+              child: Text(label, style: TextStyle(fontSize: 11, fontWeight: Typo.extra, color: labelColor)),
+            ),
+          ]),
+        ),
+        // 3등분
+        IntrinsicHeight(child: Row(children: [
+          // ① 상대팀
+          Expanded(child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              TeamLogo(teamCode: oppCode, size: 44),
+              const SizedBox(height: 7),
+              Text('vs $oppName', style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)),
+            ]),
+          )),
+          VerticalDivider(width: 1, color: cs.line),
+          // ② 경기별 스코어
+          Expanded(child: Column(children: games.asMap().entries.map((e) {
+            final g = e.value;
+            final last = e.key == games.length - 1;
+            final r = _gResult(g, teamName);
+            final gid = g['id'] as int?;
+            final d = (g['game_date'] as String? ?? '');
+            return GestureDetector(
+              onTap: gid != null ? () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: gid))) : null,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
+                child: Row(children: [
+                  SizedBox(width: 30, child: Text(d.length >= 10 ? '${d.substring(5, 7)}.${d.substring(8, 10)}' : d,
+                      style: TextStyle(fontSize: 10, color: cs.sub))),
+                  Expanded(child: Text('${g['home_score'] ?? 0} : ${g['away_score'] ?? 0}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 15, fontWeight: Typo.extra, color: cs.ink))),
+                  Container(width: 18, height: 18,
+                    decoration: BoxDecoration(color: rc(r), borderRadius: BorderRadius.circular(5)),
+                    child: Center(child: Text(r == 'win' ? '승' : r == 'draw' ? '무' : '패',
+                        style: TextStyle(fontSize: 10, fontWeight: Typo.extra,
+                            color: cs.dark ? const Color(0xFF0F0F12) : Colors.white)))),
+                ]),
+              ),
+            );
+          }).toList())),
+          VerticalDivider(width: 1, color: cs.line),
+          // ③ 시리즈 요약
+          Expanded(child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: games.map((g) => Container(
+                width: 14, height: 14, margin: const EdgeInsets.symmetric(horizontal: 2),
+                decoration: BoxDecoration(color: rc(_gResult(g, teamName)), borderRadius: BorderRadius.circular(4)),
+              )).toList()),
+              const SizedBox(height: 8),
+              Text('$wins승$losses패${draws > 0 ? '$draws무' : ''}',
+                  style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: labelColor)),
+              const SizedBox(height: 4),
+              Text('${games.length}연전', style: TextStyle(fontSize: 10, color: cs.sub)),
+            ]),
+          )),
+        ])),
+      ]),
     );
   }
 
@@ -1022,183 +1051,100 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _buildMonthlyStats() {
-    if (_monthlyLoading) return Center(child: CircularProgressIndicator(color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark, strokeWidth: 2.5));
+    final cs = _C(context);
+    final tc = teamColor(widget.team['short_name'] as String? ?? '');
+    if (_monthlyLoading) return Center(child: CircularProgressIndicator(color: tc, strokeWidth: 2.5));
     if (_monthlyStats.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('월별 성적이 없습니다', style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 12),
-            TextButton.icon(
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('새로고침'),
-              onPressed: () {
-                setState(() => _monthlyStats = []);
-                _loadMonthlyStats();
-              },
-            ),
-          ],
-        ),
-      );
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text('월별 성적이 없습니다', style: TextStyle(color: cs.sub)),
+        const SizedBox(height: 12),
+        TextButton.icon(icon: const Icon(Icons.refresh, size: 16), label: const Text('새로고침'),
+          onPressed: () { setState(() => _monthlyStats = []); _loadMonthlyStats(); }),
+      ]));
     }
+    const monthNames = {3: '3월', 4: '4월', 5: '5월', 6: '6월', 7: '7월', 8: '8월', 9: '9월', 10: '10월'};
+    final ms = _monthlyStats.cast<Map>();
+    final totalW = ms.fold<int>(0, (s, m) => s + ((m['wins'] as num?)?.toInt() ?? 0));
+    final totalL = ms.fold<int>(0, (s, m) => s + ((m['losses'] as num?)?.toInt() ?? 0));
+    final maxG = ms.map((m) => ((m['wins'] as num?)?.toInt() ?? 0) + ((m['losses'] as num?)?.toInt() ?? 0))
+        .fold<int>(1, (a, b) => b > a ? b : a);
+    final seasonAvg = ((_seasonStats?['batting'] as Map?)?['avg'] as num?)?.toStringAsFixed(3);
 
-    final code = widget.team['short_name'] as String? ?? '';
-    final color = teamColor(code);
-
-    final months = _monthlyStats.map((m) => (m['month'] as num).toInt()).toList();
-    final winRates = _monthlyStats.map((m) => (m['win_rate'] as num).toDouble()).toList();
-
-    const monthNames = {3:'3월', 4:'4월', 5:'5월', 6:'6월', 7:'7월', 8:'8월', 9:'9월', 10:'10월'};
-
-    final spots = List.generate(winRates.length, (i) => FlSpot(i.toDouble(), winRates[i]));
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('월별 승률 추이 (2026)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 220,
-            child: LineChart(
-              LineChartData(
-                minY: 0,
-                maxY: 1,
-                gridData: FlGridData(
-                  show: true,
-                  horizontalInterval: 0.25,
-                  getDrawingHorizontalLine: (_) => FlLine(color: Colors.grey.withValues(alpha: 0.2), strokeWidth: 1),
-                  drawVerticalLine: false,
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
-                    left: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 36,
-                      interval: 0.25,
-                      getTitlesWidget: (v, _) => Text(v.toStringAsFixed(2),
-                          style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-                    ),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 24,
-                      getTitlesWidget: (v, _) {
-                        final idx = v.toInt();
-                        if (idx < 0 || idx >= months.length) return const SizedBox();
-                        return Text(monthNames[months[idx]] ?? '',
-                            style: TextStyle(fontSize: 11, color: Colors.grey[700]));
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                ),
-                lineTouchData: LineTouchData(
-                  touchTooltipData: LineTouchTooltipData(
-                    getTooltipItems: (spots) => spots.map((s) {
-                      final idx = s.x.toInt();
-                      final m = monthNames[months[idx]] ?? '';
-                      final row = _monthlyStats[idx];
-                      return LineTooltipItem(
-                        '$m\n${s.y.toStringAsFixed(3)}\n${row['wins']}승 ${row['losses']}패',
-                        const TextStyle(fontSize: 12, color: Colors.white),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    color: color,
-                    barWidth: 2.5,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (_, _, _, _) =>
-                          FlDotCirclePainter(radius: 4, color: color, strokeWidth: 1.5, strokeColor: Colors.white),
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: color.withValues(alpha: 0.12),
-                    ),
-                  ),
-                  // 5할 기준선
-                  LineChartBarData(
-                    spots: [FlSpot(0, 0.5), FlSpot((spots.length - 1).toDouble(), 0.5)],
-                    isCurved: false,
-                    color: Colors.grey.withValues(alpha: 0.5),
-                    barWidth: 1,
-                    dotData: const FlDotData(show: false),
-                    dashArray: [4, 4],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text('월별 세부 성적', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Table(
-            border: TableBorder.all(color: Colors.grey.withValues(alpha: 0.2), width: 0.5),
-            columnWidths: const {
-              0: FlexColumnWidth(1.2),
-              1: FlexColumnWidth(1),
-              2: FlexColumnWidth(1),
-              3: FlexColumnWidth(1),
-              4: FlexColumnWidth(1.2),
-            },
-            children: [
-              TableRow(
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.1)),
-                children: ['월', '경기', '승', '패', '승률'].map((h) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                  child: Text(h, textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                )).toList(),
-              ),
-              ..._monthlyStats.map((row) {
-                final m = monthNames[row['month']] ?? '${row['month']}월';
-                final wr = (row['win_rate'] as num).toDouble();
-                return TableRow(
-                  children: [
-                    _tableCell(m),
-                    _tableCell('${row['games']}'),
-                    _tableCell('${row['wins']}', bold: true, color: Colors.blue[700]),
-                    _tableCell('${row['losses']}', bold: true, color: Colors.red[700]),
-                    _tableCell(wr.toStringAsFixed(3),
-                        bold: true, color: wr >= 0.5 ? Colors.blue[700] : Colors.red[700]),
-                  ],
-                );
-              }),
-            ],
-          ),
-        ],
+    return ListView(padding: const EdgeInsets.all(18), children: [
+      // 요약칩
+      Row(children: [
+        _SummaryChip(value: '$totalW승', color: const Color(0xFF2563EB), cs: cs),
+        const SizedBox(width: 8),
+        _SummaryChip(value: '$totalL패', color: SemColor.live, cs: cs),
+        const SizedBox(width: 8),
+        _SummaryChip(value: seasonAvg ?? '-', color: tc, cs: cs, label: '시즌 타율'),
+      ]),
+      const SizedBox(height: 14),
+      // 막대 차트
+      Container(
+        padding: const EdgeInsets.fromLTRB(14, 16, 14, 12),
+        decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.lg)),
+        child: Column(children: [
+          Text('월별 승/패', style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
+          const SizedBox(height: 14),
+          SizedBox(height: 120, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: ms.map((m) {
+            final w = (m['wins'] as num?)?.toInt() ?? 0;
+            final l = (m['losses'] as num?)?.toInt() ?? 0;
+            final total = w + l;
+            final pct = total > 0 ? (w / total * 100).round() : 0;
+            final mn = monthNames[(m['month'] as num?)?.toInt()] ?? '${m['month']}월';
+            return Expanded(child: Column(children: [
+              Text('$pct%', style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: pct >= 50 ? tc : SemColor.live)),
+              const SizedBox(height: 4),
+              Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+                if (w > 0) Container(height: w / maxG * 90, margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(color: tc.withValues(alpha: cs.dark ? 0.75 : 0.85), borderRadius: const BorderRadius.vertical(top: Radius.circular(4))),
+                  child: Center(child: Text('$w', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white)))),
+                if (l > 0) Container(height: l / maxG * 90, margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(color: SemColor.live.withValues(alpha: cs.dark ? 0.65 : 0.75), borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4))),
+                  child: Center(child: Text('$l', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white)))),
+              ])),
+              const SizedBox(height: 6),
+              Text(mn, style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: cs.ink)),
+            ]));
+          }).toList())),
+          const SizedBox(height: 10),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            _LegendDot(color: tc, label: '승'),
+            const SizedBox(width: 14),
+            _LegendDot(color: SemColor.live.withValues(alpha: 0.8), label: '패'),
+          ]),
+        ]),
       ),
-    );
-  }
-
-  Widget _tableCell(String text, {bool bold = false, Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      child: Text(text,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-            color: color,
-          )),
-    );
+      const SizedBox(height: 12),
+      // 월별 테이블 (월/승/패/승률)
+      Container(
+        decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.lg)),
+        child: Column(children: [
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(children: ['월', '승', '패', '승률'].asMap().entries.map((e) => Expanded(
+              child: Text(e.value, textAlign: e.key == 0 ? TextAlign.left : TextAlign.center,
+                  style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub)))).toList())),
+          Divider(height: 1, color: cs.line),
+          ...ms.asMap().entries.map((e) {
+            final m = e.value;
+            final last = e.key == ms.length - 1;
+            final mn = monthNames[(m['month'] as num?)?.toInt()] ?? '${m['month']}월';
+            final wr = (m['win_rate'] as num?)?.toDouble() ?? 0;
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+              decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
+              child: Row(children: [
+                Expanded(child: Text(mn, style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink))),
+                Expanded(child: Text('${(m['wins'] as num?)?.toInt() ?? 0}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF2563EB)))),
+                Expanded(child: Text('${(m['losses'] as num?)?.toInt() ?? 0}', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SemColor.live))),
+                Expanded(child: Text(wr.toStringAsFixed(3), textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: cs.ink3))),
+              ]),
+            );
+          }),
+        ]),
+      ),
+    ]);
   }
 
   void _openUrl(String url) async {
@@ -1210,354 +1156,200 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _buildHeadToHead() {
-    if (_h2hLoading) return Center(child: CircularProgressIndicator(color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark, strokeWidth: 2.5));
+    final cs = _C(context);
+    final tc = teamColor(widget.team['short_name'] as String? ?? '');
+    if (_h2hLoading) return Center(child: CircularProgressIndicator(color: tc, strokeWidth: 2.5));
     if (_h2hRecords.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('상대 전적 데이터가 없습니다', style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 12),
-            TextButton.icon(
-              onPressed: _loadH2H,
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('다시 시도'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final code = widget.team['short_name'] as String? ?? '';
-    final color = teamColor(code);
-
-    // 전체 합산
-    final totalW = _h2hRecords.fold(0, (s, r) => s + (r['wins'] as int? ?? 0));
-    final totalL = _h2hRecords.fold(0, (s, r) => s + (r['losses'] as int? ?? 0));
-    final totalD = _h2hRecords.fold(0, (s, r) => s + (r['draws'] as int? ?? 0));
-    final totalG = totalW + totalL + totalD;
-    final totalPct = totalG > 0 ? (totalW / totalG * 100).toStringAsFixed(1) : '-';
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // 종합 요약 카드
-        Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          color: color.withValues(alpha: 0.08),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _h2hStat('전체', '$totalG경기', Colors.black87),
-                _h2hStat('승', '$totalW', Colors.blue),
-                _h2hStat('패', '$totalL', Colors.red),
-                _h2hStat('무', '$totalD', Colors.grey),
-                _h2hStat('승률', totalPct == '-' ? '-' : '$totalPct%', color),
-              ],
-            ),
-          ),
-        ),
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text('상대 전적 데이터가 없습니다', style: TextStyle(color: cs.sub)),
         const SizedBox(height: 12),
-        // 상대별 행
-        ...(_h2hRecords.map((r) => _buildH2HRow(r))),
-      ],
-    );
-  }
-
-  Widget _buildH2HRow(Map r) {
-    final wins    = r['wins']    as int? ?? 0;
-    final losses  = r['losses']  as int? ?? 0;
-    final draws   = r['draws']   as int? ?? 0;
-    final total   = r['total']   as int? ?? 0;
-    final rs      = r['runs_scored']  as int? ?? 0;
-    final ra      = r['runs_allowed'] as int? ?? 0;
-    final oppCode = r['opp_code'] as String? ?? '';
-    final oppName = r['opp_name'] as String? ?? '';
-    final pct     = total > 0 ? (wins / total * 100).toStringAsFixed(1) : '-';
-
-    final Color rowColor;
-    if (wins > losses) {
-      rowColor = Colors.blue;
-    } else if (wins < losses) {
-      rowColor = Colors.red;
-    } else {
-      rowColor = Colors.grey;
+        TextButton.icon(onPressed: _loadH2H, icon: const Icon(Icons.refresh, size: 16), label: const Text('다시 시도')),
+      ]));
     }
+    final h2h = _h2hRecords.cast<Map>();
+    final totalW = h2h.fold<int>(0, (s, r) => s + ((r['wins'] as num?)?.toInt() ?? 0));
+    final totalL = h2h.fold<int>(0, (s, r) => s + ((r['losses'] as num?)?.toInt() ?? 0));
+    final totalG = totalW + totalL;
+    final overallPct = totalG > 0 ? (totalW / totalG * 100).round() : 0;
 
-    final winBar = total > 0 ? wins / total : 0.0;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                TeamLogo(teamCode: oppCode, size: 32),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(oppName,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                      Text('득점 $rs  실점 $ra',
-                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Row(
-                      children: [
-                        Text('$wins', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue.shade700)),
-                        Text(' 승  ', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
-                        Text('$losses', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red.shade700)),
-                        Text(' 패', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
-                        if (draws > 0) ...[
-                          Text('  $draws', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey)),
-                          Text(' 무', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
-                        ],
-                      ],
-                    ),
-                    Text(
-                      pct == '-' ? '-' : '승률 $pct%',
-                      style: TextStyle(fontSize: 12, color: rowColor, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            if (total > 0) ...[
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: winBar,
-                  backgroundColor: Colors.red.shade100,
-                  color: Colors.blue.shade400,
-                  minHeight: 6,
-                ),
-              ),
-            ],
-          ],
-        ),
+    return ListView(padding: const EdgeInsets.all(18), children: [
+      // 전체 요약 (원형 게이지)
+      Container(
+        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.lg)),
+        child: Row(children: [
+          SizedBox(width: 64, height: 64, child: Stack(children: [
+            CustomPaint(size: const Size(64, 64), painter: _RingPainter(pct: overallPct / 100, color: tc, bg: cs.paper2)),
+            Center(child: Text('$overallPct%', style: TextStyle(fontSize: 14, fontWeight: Typo.extra, color: tc))),
+          ])),
+          const SizedBox(width: 14),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('상대 전적 종합', style: TextStyle(fontSize: 16, fontWeight: Typo.extra, color: cs.ink)),
+            const SizedBox(height: 5),
+            Row(children: [
+              Text('$totalW승', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF2563EB))),
+              const SizedBox(width: 10),
+              Text('$totalL패', style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: SemColor.live)),
+              const SizedBox(width: 8),
+              Text('($totalG경기)', style: TextStyle(fontSize: 11, color: cs.sub)),
+            ]),
+          ]),
+        ]),
       ),
-    );
-  }
-
-  Widget _h2hStat(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-      ],
-    );
-  }
-
-  Widget _buildBattingOrder() {
-    if (_battingOrderLoading) return Center(child: CircularProgressIndicator(color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark, strokeWidth: 2.5));
-    if (_battingOrderStats.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('타순별 성적 데이터가 없습니다', style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 12),
-            TextButton.icon(
-              onPressed: _loadBattingOrder,
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('다시 시도'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final code = widget.team['short_name'] as String? ?? '';
-    final color = teamColor(code);
-
-    // AVG 범위 계산 (색상 스케일용)
-    final avgs = _battingOrderStats.map((s) => (s['avg'] as num).toDouble()).toList();
-    final maxAvg = avgs.isNotEmpty ? avgs.reduce((a, b) => a > b ? a : b) : 0.3;
-    final minAvg = avgs.isNotEmpty ? avgs.reduce((a, b) => a < b ? a : b) : 0.2;
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // 헤더 설명
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Text('2026 시즌 타순별 누적 성적',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
-        ),
-        // 컬럼 헤더
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              _boHeader('타순', 36, CrossAxisAlignment.center),
-              _boHeader('주요 타자', 90, CrossAxisAlignment.start),
-              _boHeader('타율', 52, CrossAxisAlignment.end),
-              _boHeader('출루율', 52, CrossAxisAlignment.end),
-              _boHeader('홈런', 40, CrossAxisAlignment.end),
-              _boHeader('타점', 40, CrossAxisAlignment.end),
-            ],
-          ),
-        ),
-        const SizedBox(height: 6),
-        // 타순별 행
-        ..._battingOrderStats.map((s) {
-          final order = s['batting_order'] as int;
-          final avg = (s['avg'] as num).toDouble();
-          final obp = (s['obp'] as num).toDouble();
-          final hr = s['home_runs'] as int? ?? 0;
-          final rbi = s['rbis'] as int? ?? 0;
-          final topPlayer = s['top_player'] as String? ?? '-';
-          final topPlayerId = s['top_player_id'] as int?;
-          final topPlayerImage = s['top_player_image'] as String?;
-
-          // AVG 기반 배경색 (높을수록 진한 파랑)
-          final t = maxAvg > minAvg ? (avg - minAvg) / (maxAvg - minAvg) : 0.5;
-          final bgColor = Color.lerp(Colors.grey.shade100, color.withValues(alpha: 0.18), t)!;
-
+      // 2열 그리드
+      GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+        crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: 1.5,
+        children: h2h.map((h) {
+          final w = (h['wins'] as num?)?.toInt() ?? 0;
+          final l = (h['losses'] as num?)?.toInt() ?? 0;
+          final g = (h['total'] as num?)?.toInt() ?? (w + l);
+          final pct = g > 0 ? (w / g * 100).round() : 0;
+          final isWinning = w >= l;
+          final oppCode = h['opp_code'] as String? ?? '';
+          final oppName = h['opp_name'] as String? ?? '';
           return Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: GestureDetector(
-              onTap: topPlayerId != null
-                  ? () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => PlayerDetailScreen(playerId: topPlayerId)))
-                  : null,
-              child: Row(
-              children: [
-                SizedBox(
-                  width: 36,
-                  child: Center(
-                    child: Container(
-                      width: 26, height: 26,
-                      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                      alignment: Alignment.center,
-                      child: Text('$order',
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 90,
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 11,
-                        backgroundColor: color.withValues(alpha: 0.15),
-                        backgroundImage: (topPlayerImage != null && topPlayerImage.isNotEmpty)
-                            ? CachedNetworkImageProvider(topPlayerImage)
-                            : null,
-                        child: (topPlayerImage == null || topPlayerImage.isEmpty)
-                            ? Icon(Icons.person, size: 13, color: color)
-                            : null,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(topPlayer,
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ),
-                    ],
-                  ),
-                ),
-                _boValue(avg.toStringAsFixed(3), 52,
-                    avg >= 0.300 ? Colors.blue.shade700 : avg < 0.230 ? Colors.red.shade400 : null),
-                _boValue(obp.toStringAsFixed(3), 52,
-                    obp >= 0.370 ? Colors.blue.shade700 : null),
-                _boValue('$hr', 40, hr >= 5 ? Colors.deepOrange : null),
-                _boValue('$rbi', 40, rbi >= 30 ? Colors.deepOrange : null),
-              ],
-            ),
-            ),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: cs.paper,
+                border: Border.all(color: isWinning ? tc.withValues(alpha: 0.3) : cs.line),
+                borderRadius: BorderRadius.circular(Radii.lg)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                TeamLogo(teamCode: oppCode, size: 28),
+                const SizedBox(width: 7),
+                Flexible(child: Text(oppName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink))),
+              ]),
+              const SizedBox(height: 8),
+              Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+                Text('$w', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF2563EB))),
+                Text('승', style: TextStyle(fontSize: 11, color: cs.sub)),
+                const SizedBox(width: 6),
+                Text('$l', style: TextStyle(fontSize: 20, fontWeight: Typo.extra, color: SemColor.live)),
+                Text('패', style: TextStyle(fontSize: 11, color: cs.sub)),
+              ]),
+              const SizedBox(height: 6),
+              ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(
+                value: pct / 100, minHeight: 5, backgroundColor: cs.paper2,
+                valueColor: AlwaysStoppedAnimation<Color>(isWinning ? tc : SemColor.live))),
+              const SizedBox(height: 4),
+              Text('$pct%', style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: isWinning ? tc : SemColor.live)),
+            ]),
           );
-        }),
-        const SizedBox(height: 12),
-        // AVG 바 차트
-        const Text('타순별 타율', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 120,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: _battingOrderStats.map((s) {
-              final order = s['batting_order'] as int;
-              final avg = (s['avg'] as num).toDouble();
-              final barH = maxAvg > 0 ? (avg / maxAvg) * 90 : 0.0;
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(avg.toStringAsFixed(3),
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-                  const SizedBox(height: 2),
-                  Container(
-                    width: 26,
-                    height: barH,
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.7),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text('$order번',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
-                ],
-              );
-            }).toList(),
+        }).toList(),
+      ),
+    ]);
+  }
+
+}
+
+// ── 선수 탭 2열: 번호칩 ──
+class _NumChip extends StatelessWidget {
+  final int? no;
+  final Color tc;
+  final _C cs;
+  const _NumChip({required this.no, required this.tc, required this.cs});
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 30, height: 30,
+    decoration: BoxDecoration(
+      color: tc.withValues(alpha: cs.dark ? 0.18 : 0.08),
+      border: Border.all(color: tc.withValues(alpha: 0.2)),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Center(child: Text('#${no ?? '-'}',
+        style: TextStyle(fontSize: 10, fontWeight: Typo.extra, color: tc))),
+  );
+}
+
+// ── 선수 탭 2열: 컬럼 헤더 (제목 + 필터칩) ──
+class _ColumnHeader extends StatelessWidget {
+  final String title, selected;
+  final List<String> filters;
+  final Color tc;
+  final _C cs;
+  final ValueChanged<String> onSelect;
+  const _ColumnHeader({required this.title, required this.filters, required this.selected,
+      required this.tc, required this.cs, required this.onSelect});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+    decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(title, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)),
+      const SizedBox(height: 8),
+      Wrap(spacing: 4, runSpacing: 4, children: filters.map((f) => GestureDetector(
+        onTap: () => onSelect(f),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: f == selected ? tc : cs.paper2,
+            borderRadius: BorderRadius.circular(Radii.pill),
+            border: Border.all(color: f == selected ? tc : cs.line),
           ),
+          child: Text(f, style: TextStyle(fontSize: 10,
+              fontWeight: f == selected ? Typo.bold : Typo.medium,
+              color: f == selected ? (cs.dark ? const Color(0xFF0F0F12) : Colors.white) : cs.ink3)),
         ),
+      )).toList()),
+    ]),
+  );
+}
+
+// ── 상대전적 원형 게이지 ──
+class _RingPainter extends CustomPainter {
+  final double pct;
+  final Color color, bg;
+  const _RingPainter({required this.pct, required this.color, required this.bg});
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2, cy = size.height / 2, r = cx - 4;
+    final paint = Paint()..style = PaintingStyle.stroke..strokeWidth = 7..strokeCap = StrokeCap.round;
+    paint.color = bg;
+    canvas.drawCircle(Offset(cx, cy), r, paint);
+    paint.color = color;
+    canvas.drawArc(Rect.fromCircle(center: Offset(cx, cy), radius: r),
+        -1.5707963267948966, pct * 6.283185307179586, false, paint);
+  }
+  @override
+  bool shouldRepaint(covariant _RingPainter old) => old.pct != pct || old.color != color;
+}
+
+// ── 월별 요약칩 ──
+class _SummaryChip extends StatelessWidget {
+  final String value;
+  final Color color;
+  final _C cs;
+  final String? label;
+  const _SummaryChip({required this.value, required this.color, required this.cs, this.label});
+  @override
+  Widget build(BuildContext context) => Expanded(child: Container(
+    padding: const EdgeInsets.symmetric(vertical: 10),
+    decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line),
+        borderRadius: BorderRadius.circular(Radii.md)),
+    child: Column(children: [
+      Text(value, style: TextStyle(fontSize: 15, fontWeight: Typo.extra, color: color)),
+      if (label != null) ...[
+        const SizedBox(height: 4),
+        Text(label!, style: TextStyle(fontSize: 10, color: cs.sub)),
       ],
-    );
-  }
+    ]),
+  ));
+}
 
-  Widget _boHeader(String label, double width, CrossAxisAlignment align) {
-    return SizedBox(
-      width: width,
-      child: Align(
-        alignment: align == CrossAxisAlignment.end
-            ? Alignment.centerRight
-            : align == CrossAxisAlignment.center
-                ? Alignment.center
-                : Alignment.centerLeft,
-        child: Text(label,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black54)),
-      ),
-    );
-  }
-
-  Widget _boValue(String value, double width, Color? color) {
-    return SizedBox(
-      width: width,
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Text(value,
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight: color != null ? FontWeight.bold : FontWeight.normal,
-                color: color)),
-      ),
-    );
-  }
+// ── 차트 범례 점 ──
+class _LegendDot extends StatelessWidget {
+  final Color color;
+  final String label;
+  const _LegendDot({required this.color, required this.label});
+  @override
+  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+    Container(width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
+    const SizedBox(width: 5),
+    Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+  ]);
 }
 
 // ── 팀컬러 헤더용 흰색 32px 버튼 (Option A) ──
