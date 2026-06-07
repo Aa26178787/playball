@@ -882,6 +882,49 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 이닝별 중계 vs 필드뷰 속도차: relay TTL 10s vs relay_all 30s + Naver textRelays 타석 종료 후 일괄 발행 (소스 지연). 진행 이닝만 TTL 단축 옵션 보류
 - 알림함 body는 user_notifications에 전체 저장 — MVP-only는 발송 시점 데이터 문제였음 (위 scheduler 이슈)
 
+## 세션 변경사항 요약 (2026-06-07) — 경기상세 탭 개편 + 선수탭/상세 mockup 이식 + 인스타
+
+### 성능/버그 (백엔드)
+- **weather_service stale-while-revalidate**: cold 시 요청 스레드 구장 5곳 직렬 외부 API(각 5s timeout) = 홈 당일 5초 지연 원인 → daemon 배경 갱신 + stale 즉시 반환
+- **이닝 전환 race (429 손호영 6구 누락)**: Naver textRelays 타석 일괄 발행 지연 → 직전 이닝 부분 데이터 영구화. relay_all 직전 이닝 항상 재fetch(캐시 컷오프 max-1) + scheduler save_game_pitches 직전 이닝 동반 저장. 429 백필 완료
+- **종료 경기 필드뷰 stale 고정**: 라이브 중 저장된 relay_state 캐시(24h)가 종료 후 복원 → 마지막 본 장면 고정. 진행중일 때만 복원 + 비진행 시 무효화/캐시 삭제
+- field_view.next_batter (타순+1, 대타 최신) / batter.bats / players API team_code·insta_handle 추가
+
+### 경기 상세
+- **다른 구장 경기**: 접기/펴기 → 블라인드 핸들 (패널 하단 중앙, 접힘 '다른 구장 경기 ▼'/펼침 ▲), LocalCache 기억, 패널 498/428/408 + Spacer 바닥 정착 + 상시 AnimatedSize (진입 일시 overflow·잉여 여백 해소), 셀 mainAxisExtent 62 고정 + 팀컬러 듀얼 띠 + 승팀 강조/라이브 보더
+- **이닝별 중계 (디자인 B)**: 아코디언 → 이닝 칩 네비(득점 amber dot·라이브 red) + 단일 이닝 뷰, 좌우 스와이프(방향성 슬라이드 220ms), 라이브 현재 이닝 자동
+- 타석 헤더 2행(디자인 ①): 1행 타자 vs 투수+우측 투구위치 고정 / 2행 결과 chip 풀. 결과 괄호 보조설명 제거
+- 투구 dot tonal: vivid solid → tint bg(α0.12/0.20) + 600톤 fg
+- **득점요약**: 중앙 로고-선수-타구 정렬 + 사이드 홈=좌[이닝][타점]/원정=우 미러, badge 클러스터(가장자리 eye-travel 회피)
+- 키플레이어: 시즌 상대전적 삭제, 선발 맞대결 중앙 VS 칩 / 로스터: 단일 화면 좌우 2열 (타순+이름+포지션, 이미지 無)
+- 하이라이트: 히어로 카드 + 컴팩트 행(110x66) + 출처 칩(YouTube/뉴스)+상대시간
+- 기록(투수): fixed 승패세 패널 제거, 투구위치 버튼 리스트 내, bottom +120 (플로팅 nav 가림 fix)
+- **플로팅바 스와이프**: 메인(5탭)·상세(4탭) 바에서 좌우 드래그 → 인접 탭
+
+### 게임카드 (홈)
+- compact 최종형: 양 사이드 3층 높이 로고 44 + 홈/원정 칩 / 중앙 [스코어(시간 18px 동일)·상태·승패투수/선발]
+- 라이브 회차 중복 제거(헤더 pill LIVE만), 풀카드 '3위 · 홈' 병기, compact 스코어 팀컬러 제거(승=ink/패=sub)
+- 날씨/구장 plain text(지도 비활성), 순위탭 PS 확률 = 팀 순위 내 카테고리 chip (`id` 키 — 0% 버그 fix)
+
+### 선수탭/상세 (mockup 전면 이식 — 실데이터·기능 유지)
+- 탭: 커스텀 헤더('선수' 22 w800 + 32px 검색/다크토글 버튼 — ThemeProvider 연동), 검색 풀스크린 오버레이(디바운스 350ms), mockup TabBar
+- 목록: 순위 리스트 행(rank top3 팀컬러 + **선수 이미지 원형 아바타**) ↔ 카드 2열(팀컬러 헤더) 토글, 스탯 pill 칩, 팀 필터 팀컬러 tint
+- 상세: 히어로 헤더 216px (팀컬러 그라디언트 + 등번호 워터마크 + **로고 280 중앙** + 프로필 88 + 기본정보 한 줄 통합 — InfoCard 제거)
+- 그리드: 핵심 2x2(첫 카드 팀컬러) → 최근5 단일카드(요약4+행) → 세부 3열 → 고급 3열(wOBA/wRC+/WAR/FIP/K9…) → 수비 3열(타자) → 트렌드 → 구종. **PlayerStatsSection(시즌별 표) 제거**
+- 비교/마이페이지 AppBar 액션 제거 (비교 = 상세 진입점 유지)
+
+### 인스타그램 핸들 (339명 반영 완료)
+- 인프라: `players.insta_handle` 컬럼 + API 노출 + 앱 헤더 인스타 그라디언트 버튼(있을 때만)
+- 수집: Instagram 직접 크롤 불가(차단/ToS) → **나무위키 크롤 (로컬 PC — 서버 IP는 403)**
+  - `crawl_insta_local.ps1`: 494명 → 342 후보. 디버그 이력: PS5.1 한글 인코딩 / Invoke-RestMethod charset / `$h`-`$H` 대소문자 충돌
+  - `verify_insta_local.ps1`: 일반 문서는 소속팀명 포함 재검증 → 339 통과 (가수 박정현 오매칭 drop)
+  - `crawl_insta_handles.py --apply`: 서버 일괄 UPDATE. 미수집 ~155명은 수동 SQL 보충 가능
+
+### 실기 확인 필요 (06-07분)
+- 이닝 칩 네비 + 스와이프 (라이브 자동 추적), 타석 2행 헤더, tonal dot
+- 선수탭 리스트/카드 + 검색 오버레이 + 다크 토글, 상세 그리드 전체(시즌별 표 제거 영향)
+- 인스타 버튼 (구자욱 등), compact 카드 최종형, 블라인드 핸들
+
 ### 실기 확인 필요 (저녁 세션분)
 - compact/hero 혼합 리스트 + compact 3층 (마이팀 미설정 = 전부 풀 카드 유지 확인)
 - 날짜 스트립 월요일(06-08) 비활성 + 미래 월 lazy 로드
