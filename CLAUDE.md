@@ -253,7 +253,8 @@ short_name: LG, KT, SK(SSG), NC, OB(두산), HT(KIA), LT(롯데), SS(삼성), HH
 `id, name` | 1=서울(LG/두산), 2=고척(키움), 3=수원(KT), 4=인천(SSG), 5=대전(한화), 6=광주(KIA), 7=대구(삼성), 8=창원(NC), 9=사직(롯데)
 
 ### players
-`id, name, team_id, player_type(투수/타자), number, profile_image, naver_player_id, position, pitching_style, throws, bats, height, weight, birth_date`
+`id, name, team_id, player_type(투수/타자), number, profile_image, naver_player_id, position, throws, bats, height, weight, birth_date, insta_handle`
+- ⚠️ pitching_style 컬럼 없음 (과거 문서 오기 — 투구 스타일은 game_rosters.pitching_style 또는 throws 사용)
 
 ### games
 `id, naver_game_id, game_date, status(예정/진행/종료/취소), home_team_id, away_team_id, stadium_id, home_score, away_score, current_inning, inning_half, home_hits, away_hits, home_errors, away_errors, start_time`
@@ -912,6 +913,22 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 상세: 히어로 헤더 216px (팀컬러 그라디언트 + 등번호 워터마크 + **로고 280 중앙** + 프로필 88 + 기본정보 한 줄 통합 — InfoCard 제거)
 - 그리드: 핵심 2x2(첫 카드 팀컬러) → 최근5 단일카드(요약4+행) → 세부 3열 → 고급 3열(wOBA/wRC+/WAR/FIP/K9…) → 수비 3열(타자) → 트렌드 → 구종. **PlayerStatsSection(시즌별 표) 제거**
 - 비교/마이페이지 AppBar 액션 제거 (비교 = 상세 진입점 유지)
+
+### 로스터 크롤링 구조 개편 (후보/불펜 확보)
+- **원인**: 기존 소스 = Selenium 라인업 페이지 → 선발 라인업+선발투수만 파싱 (후보/불펜 미수집)
+- **Naver 소스 3종 정리**:
+  - `/preview` → `previewData.{home,away}TeamLineUp` = **fullLineUp(선발투수 포함) + pitcherBullpen(hitType 좌/우완) + batterCandidate(포지션)** — **경기 ~2시간 전부터 제공** (풀 로스터 최선 소스)
+  - `/lineup` → lineUpData (발표 전 null)
+  - `/relay` entry(homeEntry/awayEntry) — **경기 시작 후에만** 발행 (name/pos/pcode/pitchingStyle)
+- **크롤 타임라인**:
+  - 경기 2h 전~ 10분 주기: `save_game_roster`(라인업 페이지 — 선발 타순) + **`save_preview_roster`**(preview — 선발투수 TRUE 보강 + 불펜/후보 upsert)
+  - 경기 시작 감지(game_start): `save_entry_roster` 1회 (entry 보강 — 변동분)
+  - 진행 중 선발 타순 비면: 둘 다 재크롤
+- upsert 규칙: ON CONFLICT 시 기존 선발 행 is_starter 보존, pitching_style/position COALESCE 보충
+- roster API: `COALESCE(gr.pitching_style, p.throws)` — ⚠️ **players.pitching_style 컬럼 실존 안 함** (스키마 문서 오기 — throws만 존재)
+- 앱 로스터 탭: [선발] 라벨 최상단 → 타순 1~9 → 후보 → 불펜(좌완/우완/언더·사이드 분류)
+- 게임카드 status: 양 팀 선발만 발표 = '선발 확정'(amber) / 타순 발표 = '라인업 확정'
+- 검증: 경기 전 434 — batters 15(선발9+후보6)/pitchers 14/선발투수 1 양팀 ✓
 
 ### 인스타그램 핸들 (339명 반영 완료)
 - 인프라: `players.insta_handle` 컬럼 + API 노출 + 앱 헤더 인스타 그라디언트 버튼(있을 때만)
