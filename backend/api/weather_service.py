@@ -151,6 +151,27 @@ def get_forecast_at(stadium_id: int, target_hour_kst: int) -> dict | None:
     return _parse_current(best) if best else None
 
 
+# ── 백그라운드 워머: 전 구장 현재+예보 4분 주기 프리페치 ──────────────────────
+# SWR 도입 후 cold 첫 응답이 None → 예정 경기 날씨 유무 불일치 발생 → 항상 warm 유지
+def _warm_loop():
+    time.sleep(5)  # 부팅 직후 여유
+    while True:
+        for sid in STADIUM_COORDS:
+            try:
+                get_weather(sid)
+            except Exception:
+                pass
+            try:
+                get_forecast_at(sid, 18)
+            except Exception:
+                pass
+        time.sleep(240)  # TTL(300) 미만 — 캐시 항상 신선
+
+
+if API_KEY:
+    threading.Thread(target=_warm_loop, daemon=True).start()
+
+
 def _parse_current(d: dict) -> dict:
     weather = d.get('weather', [{}])[0]
     main = d.get('main', {})

@@ -3033,10 +3033,37 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           .where((b) => b['is_starter'] == true && (b['batting_order'] ?? 0) != 0)
           .toList()
         ..sort((a, b) => ((a['batting_order'] as num)).compareTo(b['batting_order'] as num));
+      // 후보 야수 (선발 라인업 외)
+      final benchNames = starters.map((b) => b['name']).toSet();
+      final bench = batters
+          .where((b) => b['is_starter'] != true && !benchNames.contains(b['name']))
+          .toList();
       final sp = pitchers.where((p) => p['is_starter'] == true).toList();
       final spName = sp.isNotEmpty
           ? sp.first['name'] as String? ?? ''
           : (_previewData?['${side}_starter']?['name'] as String? ?? '');
+      // 불펜 — 좌완/우완/언더·사이드 분류 (pitching_style 기반)
+      final bullpen = pitchers.where((p) => p['is_starter'] != true && p['name'] != spName).toList();
+      String bpClass(Map p) {
+        final st = (p['pitching_style'] as String? ?? '');
+        if (st.contains('언더') || st.contains('사이드')) return '언더·사이드';
+        if (st.contains('좌')) return '좌완';
+        if (st.contains('우')) return '우완';
+        return '기타';
+      }
+      final bpGroups = <String, List<String>>{};
+      for (final p in bullpen) {
+        bpGroups.putIfAbsent(bpClass(p), () => []).add(p['name'] as String? ?? '');
+      }
+
+      Widget secLabel(String t) => Padding(
+        padding: const EdgeInsets.only(top: 10, bottom: 6),
+        child: Row(children: [
+          Text(t, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
+          const SizedBox(width: 6),
+          Expanded(child: Container(height: 1, color: line)),
+        ]),
+      );
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3050,7 +3077,29 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: ink)),
             ),
           ]),
-          const SizedBox(height: 10),
+          // 선발투수 — 최상단 (등록 상태이므로 '선발' 라벨)
+          if (spName.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Row(children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1976D2).withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text('선발',
+                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Color(0xFF1976D2))),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(spName,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ink)),
+                ),
+              ]),
+            ),
+          const SizedBox(height: 8),
           for (final b in starters)
             Padding(
               padding: const EdgeInsets.only(bottom: 7),
@@ -3071,19 +3120,22 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ink3)),
               ]),
             ),
-          if (spName.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Container(height: 1, color: line),
-            const SizedBox(height: 8),
-            Row(children: [
-              Text('선발', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: sub)),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(spName,
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ink)),
-              ),
-            ]),
+          // 후보 야수
+          if (bench.isNotEmpty) ...[
+            secLabel('후보'),
+            Text(bench.map((b) => b['name']).join(', '),
+                style: TextStyle(fontSize: 11.5, height: 1.5, fontWeight: FontWeight.w500, color: ink3)),
+          ],
+          // 불펜 (좌완/우완/언더·사이드)
+          if (bpGroups.isNotEmpty) ...[
+            secLabel('불펜'),
+            for (final k in ['좌완', '우완', '언더·사이드', '기타'])
+              if (bpGroups[k]?.isNotEmpty ?? false)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text('$k) ${bpGroups[k]!.join(', ')}',
+                      style: TextStyle(fontSize: 11.5, height: 1.5, fontWeight: FontWeight.w500, color: ink3)),
+                ),
           ],
         ],
       );
@@ -3098,13 +3150,15 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: line, width: 1),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: teamCol('home')),
-            Container(width: 1, height: 320, margin: const EdgeInsets.symmetric(horizontal: 12), color: line),
-            Expanded(child: teamCol('away')),
-          ],
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: teamCol('home')),
+              Container(width: 1, margin: const EdgeInsets.symmetric(horizontal: 12), color: line),
+              Expanded(child: teamCol('away')),
+            ],
+          ),
         ),
       ),
     );

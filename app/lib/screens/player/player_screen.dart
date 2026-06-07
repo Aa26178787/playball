@@ -523,19 +523,42 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
     return Hero(
       tag: 'player_${p['id']}',
-      child: Container(
+      child: SizedBox(
         width: size, height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: c.withValues(alpha: 0.45), width: 2),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: size, height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: c.withValues(alpha: 0.45), width: 2),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: (img != null && img.isNotEmpty)
+                  ? CachedNetworkImage(
+                      imageUrl: img, fit: BoxFit.cover,
+                      errorWidget: (_, _, _) => fallback,
+                    )
+                  : fallback,
+            ),
+            // 등번호 미니 배지 (우하단) — 전 선수 통일 표기
+            Positioned(
+              right: -2, bottom: -2,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: c.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(5),
+                  border: Border.all(color: Colors.white, width: 1),
+                ),
+                child: Text('#${p['number'] ?? '-'}',
+                    style: const TextStyle(color: Colors.white, fontSize: 8,
+                        fontWeight: FontWeight.w800)),
+              ),
+            ),
+          ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: (img != null && img.isNotEmpty)
-            ? CachedNetworkImage(
-                imageUrl: img, fit: BoxFit.cover,
-                errorWidget: (_, _, _) => fallback,
-              )
-            : fallback,
       ),
     );
   }

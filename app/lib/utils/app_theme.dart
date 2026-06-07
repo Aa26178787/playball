@@ -36,8 +36,8 @@ class AppTheme {
     final isDark = br == Brightness.dark;
     return ThemeData(
       useMaterial3: true,
-      // 미세 ripple — 다크 모드는 어두운 surface 위 ripple 가시성 위해 alpha 상향
-      splashFactory: InkSparkle.splashFactory,
+      // InkSparkle(반짝이) → InkRipple: 등록말소 배너 등 탭 시 스파클 효과 거슬림 (2026-06-07)
+      splashFactory: InkRipple.splashFactory,
       highlightColor: (isDark ? AppColors.primaryDark : AppColors.primary)
           .withValues(alpha: isDark ? 0.08 : 0.05),
       splashColor: (isDark ? AppColors.primaryDark : AppColors.primary)

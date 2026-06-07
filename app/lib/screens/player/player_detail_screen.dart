@@ -528,16 +528,19 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
               children: [
                 Hero(
                   tag: 'player_${widget.playerId}',
+                  // SizedBox.square 강제 — Hero flight/레이아웃에서 가로 stretch 방지
                   child: Container(
+                    width: 88, height: 88,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2.5),
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 4))],
                     ),
+                    clipBehavior: Clip.antiAlias,
                     child: PlayerAvatar(
                       imageUrl: player['profile_image'] as String?,
                       teamCode: code,
-                      size: 88,
+                      size: 83,
                     ),
                   ),
                 ),
