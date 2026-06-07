@@ -1146,23 +1146,28 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   _buildFilterChip('마이팀', _myTeamOnly, () => setState(() => _myTeamOnly = true), icon: Icons.star),
                 ],
                 const Spacer(),
-                // 상세/간략 토글 (마이팀 토글 옆)
+                // 간략 보기 온/오프 스위치 (마이팀 토글 옆)
+                Text('간략',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.ink3)),
+                const SizedBox(width: 6),
                 GestureDetector(
                   onTap: _toggleCompactMode,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 38, height: 22,
                     decoration: BoxDecoration(
-                      color: t.paper,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: t.line2),
+                      color: _compactMode ? t.ink : t.track,
+                      borderRadius: BorderRadius.circular(11),
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(_compactMode ? Icons.view_agenda_outlined : Icons.view_compact_outlined,
-                          size: 14, color: t.ink3),
-                      const SizedBox(width: 5),
-                      Text(_compactMode ? '상세' : '간략',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.ink3)),
-                    ]),
+                    child: AnimatedAlign(
+                      duration: const Duration(milliseconds: 180),
+                      alignment: _compactMode ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        width: 18, height: 18, margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white,
+                            boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(0, 1))]),
+                      ),
+                    ),
                   ),
                 ),
               ],

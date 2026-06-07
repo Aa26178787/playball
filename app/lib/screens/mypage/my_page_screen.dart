@@ -369,7 +369,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     onRefresh: _load,
                     child: ListView(padding: EdgeInsets.zero, children: [
                       _buildProfile(cs),
-                      if (_favoriteTeams.isNotEmpty) _buildMyTeam(cs, myColor),
+                      if (_favoriteTeams.isNotEmpty) _buildMyTeam(cs),
                       _buildFavPlayers(cs),
                       _buildVisitRecord(cs, myColor),
                       _buildMyPosts(cs),
@@ -496,54 +496,57 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
-  // ── 마이팀 ──
-  Widget _buildMyTeam(_C cs, Color myColor) {
-    final t = _favoriteTeams[0] as Map;
-    final code = t['short_name'] as String? ?? '';
-    final wins = t['wins'] ?? 0;
-    final losses = t['losses'] ?? 0;
-    final rank = t['rank'] ?? '-';
-    final winRate = ((t['win_rate'] ?? 0) * 100).toStringAsFixed(1);
-    void openTeam() => Navigator.push(context, MaterialPageRoute(
-        builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(t))));
+  // ── 마이팀 (여러 팀 전부 표시) ──
+  Widget _buildMyTeam(_C cs) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _sectionLabel(cs, '마이팀', action: '팀 상세 →', onAction: openTeam),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        child: GestureDetector(
-          onTap: openTeam,
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: _cardDeco(cs),
-            child: Row(children: [
-              Stack(clipBehavior: Clip.none, children: [
-                TeamLogo(teamCode: code, size: 48),
-                Positioned(top: -4, right: -4, child: Container(
-                  width: 18, height: 18,
-                  decoration: BoxDecoration(color: myColor, shape: BoxShape.circle, border: Border.all(color: cs.paper, width: 1.5)),
-                  child: const Center(child: Text('★', style: TextStyle(fontSize: 9, color: Colors.white, height: 1))),
-                )),
-              ]),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Flexible(child: Text(t['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 16, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4))),
-                  const SizedBox(width: 7),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(color: myColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(5)),
-                    child: Text('$rank위', style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: myColor)),
-                  ),
+      _sectionLabel(cs, '마이팀'),
+      ..._favoriteTeams.asMap().entries.map((e) {
+        final t = e.value as Map;
+        final code = t['short_name'] as String? ?? '';
+        final tColor = code.isNotEmpty ? teamColor(code) : SemColor.brand(context);
+        final wins = t['wins'] ?? 0;
+        final losses = t['losses'] ?? 0;
+        final rank = t['rank'] ?? '-';
+        final winRate = ((t['win_rate'] ?? 0) * 100).toStringAsFixed(1);
+        final last = e.key == _favoriteTeams.length - 1;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(18, 0, 18, last ? 0 : 8),
+          child: GestureDetector(
+            onTap: () => Navigator.push(context, MaterialPageRoute(
+                builder: (_) => TeamDetailScreen(team: Map<String, dynamic>.from(t)))),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: _cardDeco(cs),
+              child: Row(children: [
+                Stack(clipBehavior: Clip.none, children: [
+                  TeamLogo(teamCode: code, size: 48),
+                  Positioned(top: -4, right: -4, child: Container(
+                    width: 18, height: 18,
+                    decoration: BoxDecoration(color: tColor, shape: BoxShape.circle, border: Border.all(color: cs.paper, width: 1.5)),
+                    child: const Center(child: Text('★', style: TextStyle(fontSize: 9, color: Colors.white, height: 1))),
+                  )),
                 ]),
-                const SizedBox(height: 5),
-                Text('$wins승 $losses패 · 승률 $winRate%', style: TextStyle(fontSize: 12, color: cs.ink3)),
-              ])),
-              Icon(Icons.chevron_right, size: 18, color: cs.sub),
-            ]),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Flexible(child: Text(t['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 16, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4))),
+                    const SizedBox(width: 7),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(color: tColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(5)),
+                      child: Text('$rank위', style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: tColor)),
+                    ),
+                  ]),
+                  const SizedBox(height: 5),
+                  Text('$wins승 $losses패 · 승률 $winRate%', style: TextStyle(fontSize: 12, color: cs.ink3)),
+                ])),
+                Icon(Icons.chevron_right, size: 18, color: cs.sub),
+              ]),
+            ),
           ),
-        ),
-      ),
+        );
+      }),
     ]);
   }
 

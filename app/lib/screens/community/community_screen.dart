@@ -330,6 +330,7 @@ class _PostListTabState extends State<_PostListTab>
                   _load();
                 },
                 child: Container(
+                  alignment: Alignment.center,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                   decoration: BoxDecoration(
                     color: act ? cs.ink : cs.paper,
@@ -671,6 +672,7 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
                   _load();
                 },
                 child: Container(
+                  alignment: Alignment.center,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                   decoration: BoxDecoration(
                     color: act ? cs.ink : cs.paper2,

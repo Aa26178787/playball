@@ -378,6 +378,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       return GestureDetector(
         onTap: onTap,
         child: Container(
+          alignment: Alignment.center,
           margin: const EdgeInsets.only(right: 5),
           padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
           decoration: BoxDecoration(
@@ -448,6 +449,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             return GestureDetector(
               onTap: () => onSelect(s['value']!),
               child: Container(
+                alignment: Alignment.center,
                 margin: const EdgeInsets.only(right: 6),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
