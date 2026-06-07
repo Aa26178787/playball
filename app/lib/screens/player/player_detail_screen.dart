@@ -1277,7 +1277,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                           opt['label'] as String,
                           style: TextStyle(
                             fontSize: 11,
-                            color: sel ? Colors.white : null,
+                            // 선택 칩 bg(chartColor)가 밝으면(다크모드 타자=흰색) 검은 글씨로 대비 확보
+                            color: sel ? (chartColor.computeLuminance() > 0.5 ? Colors.black : Colors.white) : null,
                             fontWeight: sel ? FontWeight.bold : FontWeight.normal,
                           ),
                         ),

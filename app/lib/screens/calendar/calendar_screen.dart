@@ -31,7 +31,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime? _selectedDate;
   Set<int> _favoriteTeamIds = {};
   String? _myTeamCode;
-  bool _myTeamOnly = false;
 
   @override
   void initState() {
@@ -142,7 +141,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   List _gamesOn(DateTime d) {
     final all = _gamesByDate[_dateKey(d)] ?? [];
-    if (!_myTeamOnly || _favoriteTeamIds.isEmpty) return all;
+    // 캘린더는 무조건 마이팀 경기만 표시 (마이팀 미설정 시 전체)
+    if (_favoriteTeamIds.isEmpty) return all;
     return all.where((g) {
       final homeId = (g as Map)['home_team_id'] as int?;
       final awayId = g['away_team_id'] as int?;
@@ -204,19 +204,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Row(children: [
         Text('캘린더', style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5)),
         const Spacer(),
-        if (_favoriteTeamIds.isNotEmpty) ...[
-          Tooltip(
-            message: '마이팀만 보기',
-            child: _Btn32(
-              bg: _myTeamOnly ? myColor.withValues(alpha: 0.12) : Colors.transparent,
-              border: _myTeamOnly ? myColor.withValues(alpha: 0.5) : cs.line2,
-              onTap: () => setState(() => _myTeamOnly = !_myTeamOnly),
-              child: Icon(_myTeamOnly ? Icons.star_rounded : Icons.star_outline_rounded, size: 18,
-                  color: _myTeamOnly ? myColor : cs.ink3),
-            ),
-          ),
-          const SizedBox(width: 7),
-        ],
         Tooltip(
           message: '일정·직관 기록 추가',
           child: _Btn32(
@@ -392,7 +379,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
         return Column(
           children: [
-            ...weekEvents.take(2).map((e) => _buildEventBarRow(e, weekDays, cs)),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Row(
@@ -409,6 +395,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 }).toList(),
               ),
             ),
+            // 개인 일정 멀티데이 바 — 날짜 셀 아래 배치
+            ...weekEvents.take(2).map((e) => _buildEventBarRow(e, weekDays, cs)),
           ],
         );
       }),
@@ -1169,16 +1157,15 @@ class _StatusBadge extends StatelessWidget {
 class _Btn32 extends StatelessWidget {
   final Widget child;
   final Color border;
-  final Color? bg;
   final VoidCallback onTap;
-  const _Btn32({required this.child, required this.border, this.bg, required this.onTap});
+  const _Btn32({required this.child, required this.border, required this.onTap});
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
     child: Container(
       width: 32, height: 32,
       decoration: BoxDecoration(
-        color: bg ?? Colors.transparent, borderRadius: BorderRadius.circular(10),
+        color: Colors.transparent, borderRadius: BorderRadius.circular(10),
         border: Border.all(color: border),
       ),
       child: child,

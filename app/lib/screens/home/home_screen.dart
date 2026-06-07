@@ -1075,13 +1075,6 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   )),
               const Spacer(),
               hdrBtn(
-                tip: _compactMode ? '상세 보기' : '간략 보기',
-                onTap: _toggleCompactMode,
-                child: Icon(_compactMode ? Icons.view_agenda_outlined : Icons.view_compact_outlined,
-                    size: 18, color: t.ink3),
-              ),
-              const SizedBox(width: 7),
-              hdrBtn(
                 tip: '알림',
                 onTap: () async {
                   await Navigator.push(context,
@@ -1143,17 +1136,38 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           ),
           if (_todayRosterChanges.isNotEmpty && _isSameDay(_selectedDate, DateTime.now()))
             _buildTodayRosterBanner(),
-          if (_favoriteTeamIds.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 2),
-              child: Row(
-                children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 2),
+            child: Row(
+              children: [
+                if (_favoriteTeamIds.isNotEmpty) ...[
                   _buildFilterChip('전체', !_myTeamOnly, () => setState(() => _myTeamOnly = false)),
                   const SizedBox(width: 8),
                   _buildFilterChip('마이팀', _myTeamOnly, () => setState(() => _myTeamOnly = true), icon: Icons.star),
                 ],
-              ),
+                const Spacer(),
+                // 상세/간략 토글 (마이팀 토글 옆)
+                GestureDetector(
+                  onTap: _toggleCompactMode,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: t.paper,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: t.line2),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(_compactMode ? Icons.view_agenda_outlined : Icons.view_compact_outlined,
+                          size: 14, color: t.ink3),
+                      const SizedBox(width: 5),
+                      Text(_compactMode ? '상세' : '간략',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.ink3)),
+                    ]),
+                  ),
+                ),
+              ],
             ),
+          ),
           Expanded(
             child: Stack(
               clipBehavior: Clip.none,

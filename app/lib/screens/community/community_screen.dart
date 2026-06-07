@@ -46,6 +46,7 @@ class _CommunityScreenState extends State<CommunityScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
   final _latestKey = GlobalKey<_PostListTabState>();
+  final _foodKey = GlobalKey<_FoodTabState>();
 
   @override
   void initState() {
@@ -65,19 +66,25 @@ class _CommunityScreenState extends State<CommunityScreen>
     final cs = _C(context);
     return Scaffold(
       backgroundColor: cs.bg,
-      floatingActionButton: _tabCtrl.index == 3 ? null : Padding(
+      floatingActionButton: Padding(
         padding: EdgeInsets.only(
           bottom: (ApiService.myTeamData.value.isNotEmpty ? 142.0 : 90.0) + MediaQuery.of(context).viewPadding.bottom,
         ),
         child: FloatingActionButton(
+          // 맛집 탭(3) = 맛집 제안, 그 외 = 글 작성 — 4탭 동일 위치/형태
           onPressed: () async {
+            if (_tabCtrl.index == 3) {
+              _foodKey.currentState?._openSubmit();
+              return;
+            }
             final created = await Navigator.push<bool>(context,
                 MaterialPageRoute(builder: (_) => const CreatePostScreen()));
             if (created == true) _latestKey.currentState?._load();
           },
           backgroundColor: cs.ink,
           foregroundColor: cs.dark ? const Color(0xFF0F0F12) : Colors.white,
-          child: Icon(Icons.edit_outlined, color: cs.dark ? const Color(0xFF0F0F12) : Colors.white),
+          child: Icon(_tabCtrl.index == 3 ? Icons.add : Icons.edit_outlined,
+              color: cs.dark ? const Color(0xFF0F0F12) : Colors.white),
         ),
       ),
       body: SafeArea(
@@ -135,7 +142,7 @@ class _CommunityScreenState extends State<CommunityScreen>
               _PostListTab(key: _latestKey, sort: 'latest'),
               const _TeamTab(),
               const _PostListTab(sort: 'hot'),
-              const _FoodTab(),
+              _FoodTab(key: _foodKey),
             ],
           )),
         ]),
@@ -568,7 +575,7 @@ const _stadiums = [
 ];
 
 class _FoodTab extends StatefulWidget {
-  const _FoodTab();
+  const _FoodTab({super.key});
 
   @override
   State<_FoodTab> createState() => _FoodTabState();
@@ -717,28 +724,6 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
                     );
                   },
                 ),
-              // 맛집 제안 FAB — 다른 탭 FAB와 동일하게 플로팅 nav 위로
-              Positioned(
-                bottom: (ApiService.myTeamData.value.isNotEmpty ? 142.0 : 90.0)
-                    + MediaQuery.of(context).viewPadding.bottom,
-                right: 18,
-                child: GestureDetector(
-                  onTap: _openSubmit,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: cs.ink, borderRadius: BorderRadius.circular(16),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 14, offset: const Offset(0, 4))],
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.add, size: 14, color: cs.dark ? const Color(0xFF0F0F12) : Colors.white),
-                      const SizedBox(width: 7),
-                      Text('맛집 제안', style: TextStyle(fontSize: 12, fontWeight: Typo.bold,
-                          color: cs.dark ? const Color(0xFF0F0F12) : Colors.white)),
-                    ]),
-                  ),
-                ),
-              ),
             ],
           ),
         ),

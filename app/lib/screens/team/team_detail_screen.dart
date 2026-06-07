@@ -368,9 +368,10 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     return Container(
       height: 52,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF18181C) : Colors.white,
+        color: isDark ? const Color(0xFF26262C) : Colors.white,
         borderRadius: BorderRadius.circular(26),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12), blurRadius: 16, offset: const Offset(0, 4))],
+        border: isDark ? Border.all(color: const Color(0xFF3A3A42)) : null,
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.12), blurRadius: 16, offset: const Offset(0, 4))],
       ),
       child: Row(
         children: List.generate(labels.length, (i) {
