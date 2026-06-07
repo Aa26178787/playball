@@ -843,36 +843,47 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 Center(
                   child: SizedBox(
                     width: 230, height: 230,
-                    child: Column(children: [
-                      for (int r = 0; r < 5; r++)
-                        Expanded(child: Row(children: [
-                          for (int c = 0; c < 5; c++)
-                            Expanded(child: Builder(builder: (_) {
-                              final v = zones[r * 5 + c];
-                              final ratio = v / maxZ;
-                              final inner = r >= 1 && r <= 3 && c >= 1 && c <= 3;
-                              final pct = selCount > 0 ? v * 100 / selCount : 0.0;
-                              return Container(
-                                margin: const EdgeInsets.all(1),
-                                decoration: BoxDecoration(
-                                  color: v == 0
-                                      ? (isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6))
-                                      : tc.withValues(alpha: 0.10 + 0.80 * ratio),
-                                  borderRadius: BorderRadius.circular(3),
-                                  border: inner
-                                      ? Border.all(color: ink.withValues(alpha: 0.35), width: 1)
+                    child: Stack(children: [
+                      Column(children: [
+                        for (int r = 0; r < 5; r++)
+                          Expanded(child: Row(children: [
+                            for (int c = 0; c < 5; c++)
+                              Expanded(child: Builder(builder: (_) {
+                                final v = zones[r * 5 + c];
+                                final ratio = v / maxZ;
+                                final pct = selCount > 0 ? v * 100 / selCount : 0.0;
+                                return Container(
+                                  margin: const EdgeInsets.all(1),
+                                  decoration: BoxDecoration(
+                                    color: v == 0
+                                        ? (isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6))
+                                        : tc.withValues(alpha: 0.10 + 0.80 * ratio),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: pct >= 2
+                                      ? Text('${pct.round()}',
+                                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800,
+                                              color: ratio > 0.55 ? Colors.white : ink,
+                                              fontFeatures: const [FontFeature.tabularFigures()]))
                                       : null,
-                                ),
-                                alignment: Alignment.center,
-                                child: pct >= 2
-                                    ? Text('${pct.round()}',
-                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800,
-                                            color: ratio > 0.55 ? Colors.white : ink,
-                                            fontFeatures: const [FontFeature.tabularFigures()]))
-                                    : null,
-                              );
-                            })),
-                        ])),
+                                );
+                              })),
+                          ])),
+                      ]),
+                      // 스트라이크존(내부 3x3) 단일 굵은 외곽선 — 존 경계 명확화
+                      Positioned(
+                        left: 230 / 5, top: 230 / 5,
+                        width: 230 * 3 / 5, height: 230 * 3 / 5,
+                        child: IgnorePointer(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: ink.withValues(alpha: 0.85), width: 2.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
+                      ),
                     ]),
                   ),
                 ),
@@ -1006,33 +1017,44 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 Center(
                   child: SizedBox(
                     width: 230, height: 230,
-                    child: Column(children: [
-                      for (int r = 0; r < 5; r++)
-                        Expanded(child: Row(children: [
-                          for (int c = 0; c < 5; c++)
-                            Expanded(child: Builder(builder: (_) {
-                              final i = r * 5 + c;
-                              final (color, label) = cell(i);
-                              final inner = r >= 1 && r <= 3 && c >= 1 && c <= 3;
-                              return Container(
-                                margin: const EdgeInsets.all(1),
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  borderRadius: BorderRadius.circular(3),
-                                  border: inner
-                                      ? Border.all(color: ink.withValues(alpha: 0.35), width: 1)
-                                      : null,
-                                ),
-                                alignment: Alignment.center,
-                                child: label.isEmpty
-                                    ? null
-                                    : Text(label,
-                                        style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800,
-                                            color: ink,
-                                            fontFeatures: const [FontFeature.tabularFigures()])),
-                              );
-                            })),
-                        ])),
+                    child: Stack(children: [
+                      Column(children: [
+                        for (int r = 0; r < 5; r++)
+                          Expanded(child: Row(children: [
+                            for (int c = 0; c < 5; c++)
+                              Expanded(child: Builder(builder: (_) {
+                                final i = r * 5 + c;
+                                final (color, label) = cell(i);
+                                return Container(
+                                  margin: const EdgeInsets.all(1),
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: label.isEmpty
+                                      ? null
+                                      : Text(label,
+                                          style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800,
+                                              color: ink,
+                                              fontFeatures: const [FontFeature.tabularFigures()])),
+                                );
+                              })),
+                          ])),
+                      ]),
+                      // 스트라이크존(내부 3x3) 단일 굵은 외곽선 — 존 경계 명확화
+                      Positioned(
+                        left: 230 / 5, top: 230 / 5,
+                        width: 230 * 3 / 5, height: 230 * 3 / 5,
+                        child: IgnorePointer(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: ink.withValues(alpha: 0.85), width: 2.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
+                      ),
                     ]),
                   ),
                 ),
