@@ -11,6 +11,7 @@ import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import '../../utils/app_theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../game/game_detail_screen.dart';
 import '../../widgets/onboarding_helper.dart';
 import '../team/team_screen.dart';
@@ -1113,6 +1114,13 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 onTap: () => Navigator.push(
                     context, MaterialPageRoute(builder: (_) => const SearchScreen())),
                 child: Icon(Icons.search, size: 18, color: t.ink3),
+              ),
+              const SizedBox(width: 7),
+              hdrBtn(
+                tip: isDark ? '라이트 모드' : '다크 모드',
+                onTap: () => context.read<ThemeProvider>().toggle(),
+                child: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                    size: 18, color: t.ink3),
               ),
               const SizedBox(width: 7),
               hdrBtn(

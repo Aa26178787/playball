@@ -908,6 +908,13 @@ class ApiService {
     return Map<String, dynamic>.from(res.data);
   }
 
+  static Future<Map<String, dynamic>> getPlayerVoteStatus(int playerId) async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/players/$playerId/vote-status',
+        options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
   static Future<Map<String, dynamic>> getTeamPopularity() async {
     final headers = await authHeaders();
     final res = await _dio.get('/teams/popularity',

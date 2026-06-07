@@ -12,6 +12,8 @@ import '../mypage/my_page_screen.dart';
 import '../../widgets/stadium_ranking_sheet.dart';
 import 'cal_event_add_screen.dart';
 import 'visit_record_screen.dart';
+import 'package:provider/provider.dart';
+import '../../providers/theme_provider.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -221,6 +223,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
             border: cs.line2,
             onTap: () => _showAddMenu(_selectedDate ?? DateTime.now()),
             child: Icon(Icons.add, size: 18, color: cs.ink3),
+          ),
+        ),
+        const SizedBox(width: 7),
+        Tooltip(
+          message: cs.dark ? '라이트 모드' : '다크 모드',
+          child: _Btn32(
+            border: cs.line2,
+            onTap: () => context.read<ThemeProvider>().toggle(),
+            child: Icon(cs.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                size: 18, color: cs.ink3),
           ),
         ),
         const SizedBox(width: 7),

@@ -11,6 +11,8 @@ import '../../widgets/stadium_ranking_sheet.dart';
 import 'post_detail_screen.dart';
 import 'create_post_screen.dart';
 import 'food_add_screen.dart';
+import 'package:provider/provider.dart';
+import '../../providers/theme_provider.dart';
 
 const _categories = ['전체', '자유', '분석', '유머'];
 
@@ -95,6 +97,14 @@ class _CommunityScreenState extends State<CommunityScreen>
                     child: _Btn32(border: cs.line2,
                       onTap: () => StadiumRankingSheet.show(context),
                       child: Icon(Icons.emoji_events_outlined, size: 18, color: cs.ink3)),
+                  ),
+                  const SizedBox(width: 7),
+                  Tooltip(
+                    message: cs.dark ? '라이트 모드' : '다크 모드',
+                    child: _Btn32(border: cs.line2,
+                      onTap: () => context.read<ThemeProvider>().toggle(),
+                      child: Icon(cs.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                          size: 18, color: cs.ink3)),
                   ),
                   const SizedBox(width: 7),
                   Tooltip(

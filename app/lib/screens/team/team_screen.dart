@@ -10,6 +10,8 @@ import '../player/player_detail_screen.dart';
 import '../mypage/my_page_screen.dart';
 import 'team_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
+import '../../providers/theme_provider.dart';
 
 class TeamScreen extends StatefulWidget {
   const TeamScreen({super.key});
@@ -119,6 +121,21 @@ class _TeamScreenState extends State<TeamScreen>
     final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final line2 = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
+    Widget hdrBtn({required IconData icon, required String tip, required VoidCallback onTap}) =>
+        Tooltip(
+          message: tip,
+          child: GestureDetector(
+            onTap: onTap,
+            child: Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                border: Border.all(color: line2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 18, color: ink3),
+            ),
+          ),
+        );
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -134,20 +151,17 @@ class _TeamScreenState extends State<TeamScreen>
                       style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra,
                           color: ink, letterSpacing: -0.5)),
                   const Spacer(),
-                  Tooltip(
-                    message: '마이페이지',
-                    child: GestureDetector(
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const MyPageScreen())),
-                      child: Container(
-                        width: 32, height: 32,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: line2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(Icons.person_outline, size: 18, color: ink3),
-                      ),
-                    ),
+                  hdrBtn(
+                    icon: isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                    tip: isDark ? '라이트 모드' : '다크 모드',
+                    onTap: () => context.read<ThemeProvider>().toggle(),
+                  ),
+                  const SizedBox(width: 7),
+                  hdrBtn(
+                    icon: Icons.person_outline,
+                    tip: '마이페이지',
+                    onTap: () => Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => const MyPageScreen())),
                   ),
                 ]),
               ),

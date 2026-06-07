@@ -94,7 +94,7 @@ def get_hitters(
                 bs.walks, bs.strikeouts, bs.stolen_bases,
                 bs.avg, bs.obp, bs.slg, bs.ops,
                 bs.woba, bs.wrc_plus, bs.babip, bs.iso, bs.war,
-                p.position, t.short_name AS team_code
+                p.position, t.short_name AS team_code, p.number
             FROM batter_stats bs
             JOIN players p ON bs.player_id = p.id
             JOIN teams t ON p.team_id = t.id
@@ -133,6 +133,7 @@ def get_hitters(
                 "war":      float(r[21]) if r[21] else 0,
                 "position": r[22],
                 "team_code": r[23],
+                "number": r[24],
             }
             for r in rows
         ]
@@ -189,7 +190,7 @@ def get_pitchers(
                 ps.era, ps.whip, ps.fip,
                 ps.k_per_9, ps.bb_per_9, ps.babip, ps.war,
                 ps.blown_saves, ps.qs,
-                p.throws, t.short_name AS team_code
+                p.throws, t.short_name AS team_code, p.number
             FROM pitcher_stats ps
             JOIN players p ON ps.player_id = p.id
             JOIN teams t ON p.team_id = t.id
@@ -229,6 +230,7 @@ def get_pitchers(
                 "blown_saves": r[21], "qs": r[22],
                 "throws":  r[23],
                 "team_code": r[24],
+                "number": r[25],
             }
             for r in rows
         ]
@@ -905,3 +907,21 @@ def vote_player(player_id: int, current_user: dict = Depends(get_current_user)):
     count = cur.fetchone()[0]
     cur.close(); conn.close()
     return {"voted": voted, "vote_count": count}
+
+
+@router.get("/{player_id}/vote-status")
+def get_player_vote_status(player_id: int, current_user: dict | None = Depends(get_optional_user)):
+    """선수 인기투표 상태 (하트 표시용 — 비캐시, 유저별 voted)."""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM player_popularity_votes WHERE player_id=%s", (player_id,))
+    count = cur.fetchone()[0]
+    voted = False
+    if current_user:
+        cur.execute("SELECT 1 FROM player_popularity_votes WHERE user_id=%s AND player_id=%s",
+                    (current_user['user_id'], player_id))
+        voted = cur.fetchone() is not None
+    cur.close(); conn.close()
+    return {"vote_count": count, "voted": voted}

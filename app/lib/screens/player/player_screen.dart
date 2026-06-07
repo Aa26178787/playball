@@ -10,6 +10,7 @@ import '../../utils/team_theme.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import 'player_detail_screen.dart';
+import '../mypage/my_page_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -511,21 +512,22 @@ class _PlayerScreenState extends State<PlayerScreen>
                     )
                   : fallback,
             ),
-            // 등번호 미니 배지 (우하단) — 전 선수 통일 표기
-            Positioned(
-              right: -2, bottom: -2,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                decoration: BoxDecoration(
-                  color: c.withValues(alpha: 0.95),
-                  borderRadius: BorderRadius.circular(5),
-                  border: Border.all(color: Colors.white, width: 1),
+            // 등번호 미니 배지 (우하단) — 번호 있을 때만
+            if (p['number'] != null)
+              Positioned(
+                right: -2, bottom: -2,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: c.withValues(alpha: 0.95),
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(color: Colors.white, width: 1),
+                  ),
+                  child: Text('#${p['number']}',
+                      style: const TextStyle(color: Colors.white, fontSize: 8,
+                          fontWeight: FontWeight.w800)),
                 ),
-                child: Text('#${p['number'] ?? '-'}',
-                    style: const TextStyle(color: Colors.white, fontSize: 8,
-                        fontWeight: FontWeight.w800)),
               ),
-            ),
           ],
         ),
       ),
@@ -814,7 +816,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               children: [
                 Icon(Icons.favorite_border, size: 48, color: Colors.grey[300]),
                 const SizedBox(height: 12),
-                Text('아직 투표 기록이 없어요\n첫 번째로 투표해보세요!',
+                Text('아직 투표 기록이 없어요\n선수 상세에서 ♥를 눌러 투표해보세요!',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey[500])),
                 const SizedBox(height: 12),
@@ -1107,14 +1109,18 @@ class _PlayerScreenState extends State<PlayerScreen>
                       () => setState(() => _isSearching = true)),
                   const SizedBox(width: 7),
                   _headerIconBtn(
+                      _isListView ? Icons.grid_view_rounded : Icons.view_list_rounded,
+                      _isListView ? '카드 보기' : '리스트 보기',
+                      () => setState(() => _isListView = !_isListView)),
+                  const SizedBox(width: 7),
+                  _headerIconBtn(
                       isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                       isDark ? '라이트 모드' : '다크 모드',
                       () => themeProv.toggle()),
                   const SizedBox(width: 7),
-                  _headerIconBtn(
-                      _isListView ? Icons.grid_view_rounded : Icons.view_list_rounded,
-                      _isListView ? '카드 보기' : '리스트 보기',
-                      () => setState(() => _isListView = !_isListView)),
+                  _headerIconBtn(Icons.person_outline, '마이페이지',
+                      () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const MyPageScreen()))),
                 ]),
               ),
               TabBar(

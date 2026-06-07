@@ -95,8 +95,9 @@ class PlayerAvatar extends StatelessWidget {
         child: CachedNetworkImage(
           imageUrl: imageUrl!,
           width: size, height: size, fit: BoxFit.cover,
+          // memCacheWidth만 지정 — width+height 동시 지정 시 비정사각 원본이
+          // 정사각으로 강제 디코드되어 가로 왜곡(stretch). 한 축만 줘 비율 보존.
           memCacheWidth: cacheSize,
-          memCacheHeight: cacheSize,
           fadeInDuration: Duration.zero,
           errorWidget: (_, _, _) => fallback(),
           placeholder: (_, _) => fallback(),

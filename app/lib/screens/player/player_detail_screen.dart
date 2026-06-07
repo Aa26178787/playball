@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import '../../utils/design_tokens.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shimmer/shimmer.dart';
@@ -51,6 +52,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   bool _bodyLoading = false; // 바디 shimmer (initialData 있어서 헤더만 먼저 표시할 때)
   bool _isFav = false;
   bool _favLoading = false;
+  bool _voted = false;       // 인기투표 (하트)
+  int _voteCount = 0;
   String _hitterTrendStat = 'avg';
   String _pitcherTrendStat = 'era';
 
@@ -70,6 +73,45 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     }
     _loadPlayer();
     _loadFavStatus();
+    _loadVoteStatus();
+  }
+
+  Future<void> _loadVoteStatus() async {
+    try {
+      final s = await ApiService.getPlayerVoteStatus(widget.playerId);
+      if (mounted) {
+        setState(() {
+          _voted = s['voted'] as bool? ?? false;
+          _voteCount = s['vote_count'] as int? ?? 0;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleVote() async {
+    try {
+      final res = await ApiService.votePlayer(widget.playerId);
+      if (mounted) {
+        setState(() {
+          _voted = res['voted'] as bool? ?? _voted;
+          _voteCount = res['vote_count'] as int? ?? _voteCount;
+        });
+      }
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final code = e.response?.statusCode;
+      final msg = (code == 401 || code == 403)
+          ? '로그인 후 투표할 수 있습니다'
+          : (code == 429)
+              ? '잠시 후 다시 시도해주세요'
+              : '투표 중 오류가 발생했습니다';
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('투표 중 오류가 발생했습니다')));
+    }
   }
 
   Future<void> _loadFavStatus() async {
@@ -461,8 +503,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 
   Widget _statBox(String label, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(children: [
-      Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: SemColor.panelDark)),
+      Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,
+          color: isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark)),
       Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
     ]);
   }
@@ -488,17 +532,17 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         return const SizedBox.shrink();
     }
     final reason = status['reason'] as String? ?? '';
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Row(children: [
-        Icon(icon, size: 12, color: color),
-        const SizedBox(width: 4),
-        Text(
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 12, color: color),
+      const SizedBox(width: 4),
+      Flexible(
+        child: Text(
           reason.isNotEmpty ? '$type · $reason' : type,
+          maxLines: 1, overflow: TextOverflow.ellipsis,
           style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold),
         ),
-      ]),
-    );
+      ),
+    ]);
   }
 
   // 히어로 헤더 (mockup 디자인, 2026-06-07): 팀컬러 그라디언트 + 등번호 워터마크 + 팀로고 오버레이
@@ -585,8 +629,18 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                           style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
                               color: Colors.white, letterSpacing: 0, height: 1.15)),
                       const SizedBox(height: 6),
-                      Text('$team · $posOrType · #$number',
-                          style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.82))),
+                      Row(children: [
+                        Flexible(
+                          child: Text('$team · $posOrType · #$number',
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.82))),
+                        ),
+                        // 등록말소/부상자명단 배지 — 백넘버 옆
+                        if (player['roster_status'] != null) ...[
+                          const SizedBox(width: 8),
+                          Flexible(child: _buildRosterBadge(player['roster_status'])),
+                        ],
+                      ]),
                       // 기본 정보 (InfoCard → 헤더 통합)
                       Builder(builder: (_) {
                         final parts = <String>[
@@ -604,11 +658,27 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                               style: TextStyle(fontSize: 10.5, color: Colors.white.withValues(alpha: 0.62))),
                         );
                       }),
-                      if (player['roster_status'] != null || player['insta_handle'] != null) ...[
-                        const SizedBox(height: 8),
-                        Wrap(spacing: 7, runSpacing: 6, children: [
-                          if (player['roster_status'] != null)
-                            _buildRosterBadge(player['roster_status']),
+                      const SizedBox(height: 8),
+                      Wrap(spacing: 7, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                        // 인기투표 하트 (모든 선수 — 탭하여 투표)
+                        GestureDetector(
+                          onTap: _toggleVote,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: _voted ? const Color(0xFFFF5A5F).withValues(alpha: 0.22) : Colors.white.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: _voted ? const Color(0xFFFF5A5F).withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.28)),
+                            ),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(_voted ? Icons.favorite : Icons.favorite_border,
+                                  size: 12, color: _voted ? const Color(0xFFFF5A5F) : Colors.white),
+                              const SizedBox(width: 4),
+                              Text('$_voteCount',
+                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
+                            ]),
+                          ),
+                        ),
                           // 인스타 버튼 (insta_handle 등록된 선수만)
                           if (player['insta_handle'] != null)
                             GestureDetector(
@@ -641,7 +711,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                               ),
                             ),
                         ]),
-                      ],
                     ],
                   ),
                 ),
@@ -1165,9 +1234,12 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         ? (maxVal + padding).clamp(0.0, 1.0)
         : maxVal + padding;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final chartColor = isLowStat
-        ? const Color(0xFFB71C1C)
-        : isHitter ? SemColor.panelDark : const Color(0xFF1565C0);
+        ? (isDark ? const Color(0xFFEF5350) : const Color(0xFFB71C1C))
+        : isHitter
+            ? (isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark)
+            : (isDark ? const Color(0xFF64B5F6) : const Color(0xFF1565C0));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
@@ -1519,6 +1591,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 
   Widget _tableRow(List<String> cells, List<double> widths, {bool isHeader = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -1531,7 +1604,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
               style: TextStyle(
                 fontSize: isFirst ? 12 : 12,
                 fontWeight: isHeader ? FontWeight.w700 : FontWeight.normal,
-                color: isHeader ? SemColor.panelDark : null,
+                color: isHeader ? (isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark) : null,
               ),
               textAlign: isFirst ? TextAlign.left : TextAlign.center,
               overflow: TextOverflow.ellipsis,
@@ -1607,9 +1680,11 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 
   Widget _sectionLabel(String title) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: SemColor.panelDark)),
+      child: Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
+          color: isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark)),
     );
   }
 
