@@ -878,7 +878,7 @@ def save_entry_roster(db_game_id, naver_game_id):
     import requests as _rq
     try:
         url = f"{BASE_API}/{naver_game_id}/relay?inning=1"
-        res = _rq.get(url, headers=NAVER_HEADERS, timeout=5)
+        res = _rq.get(url, headers=HEADERS, timeout=5)
         if res.status_code != 200:
             return
         relay = (res.json().get('result') or {}).get('textRelayData') or {}
