@@ -18,6 +18,7 @@ from crawler.naver_crawler import (
     update_live_game_players,
     save_game_roster,
     save_entry_roster,
+    save_preview_roster,
     save_game_pitches,
 )
 from crawler.statiz_crawler import (
@@ -2057,7 +2058,7 @@ def _update_lineup_by_starttime():
         refreshed = []
         for (db_game_id, naver_game_id) in games_no_lineup:
             save_game_roster(db_game_id, naver_game_id)
-            save_entry_roster(db_game_id, naver_game_id)  # 후보/불펜 보강
+            save_preview_roster(db_game_id, naver_game_id)  # 경기 전: preview 풀 로스터 (후보/불펜)
             refreshed.append(db_game_id)
             time.sleep(0.5)
         # 라인업 크롤 후 예측 재로깅 (선발 타자가 새로 채워졌으면 라인업 OPS 정확)

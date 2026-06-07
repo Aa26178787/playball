@@ -871,6 +871,92 @@ def crawl_naver_lineup(naver_game_id):
     return _parse_naver_lineup(lines)
 
 
+def save_preview_roster(db_game_id, naver_game_id):
+    """preview API 기반 경기 전 풀 로스터 (2026-06-07)
+    — homeTeamLineUp/awayTeamLineUp: fullLineUp(선발투수 포함) + pitcherBullpen + batterCandidate.
+    경기 ~2시간 전 preview 생성 시점부터 사용 가능 (relay entry는 경기 시작 후에만)."""
+    import requests as _rq
+    try:
+        url = f"{BASE_API}/{naver_game_id}/preview"
+        res = _rq.get(url, headers=HEADERS, timeout=5)
+        if res.status_code != 200:
+            return
+        pd = ((res.json().get('result') or {}).get('previewData') or {})
+        conn = get_connection()
+        if not conn:
+            return
+        cur = conn.cursor()
+
+        def _pid(pcode, name):
+            if pcode:
+                cur.execute("SELECT id FROM players WHERE naver_player_id = %s LIMIT 1", (str(pcode),))
+                r = cur.fetchone()
+                if r:
+                    return r[0]
+            if name:
+                cur.execute("SELECT id FROM players WHERE name = %s LIMIT 1", (name,))
+                r = cur.fetchone()
+                if r:
+                    return r[0]
+            return None
+
+        n = 0
+        for side in ('home', 'away'):
+            lu = pd.get(f'{side}TeamLineUp') or {}
+            # 선발투수 (fullLineUp 내 positionName '선발투수')
+            for e in (lu.get('fullLineUp') or []):
+                if (e.get('positionName') or '') != '선발투수':
+                    continue
+                pid = _pid(e.get('playerCode'), e.get('playerName'))
+                if pid is None:
+                    continue
+                cur.execute("""
+                    INSERT INTO game_rosters (
+                        game_id, player_id, team_side, roster_type,
+                        batting_order, position, pitching_style, is_starter
+                    ) VALUES (%s, %s, %s, 'pitcher', NULL, '투수', %s, TRUE)
+                    ON CONFLICT (game_id, player_id, team_side) DO UPDATE SET
+                        is_starter = TRUE, roster_type = 'pitcher',
+                        pitching_style = COALESCE(EXCLUDED.pitching_style, game_rosters.pitching_style)
+                """, (db_game_id, pid, side, e.get('hitType')))
+                n += 1
+            # 불펜
+            for e in (lu.get('pitcherBullpen') or []):
+                pid = _pid(e.get('playerCode'), e.get('playerName'))
+                if pid is None:
+                    continue
+                cur.execute("""
+                    INSERT INTO game_rosters (
+                        game_id, player_id, team_side, roster_type,
+                        batting_order, position, pitching_style, is_starter
+                    ) VALUES (%s, %s, %s, 'pitcher', NULL, '투수', %s, FALSE)
+                    ON CONFLICT (game_id, player_id, team_side) DO UPDATE SET
+                        pitching_style = COALESCE(game_rosters.pitching_style, EXCLUDED.pitching_style)
+                """, (db_game_id, pid, side, e.get('hitType')))
+                n += 1
+            # 후보 야수
+            for e in (lu.get('batterCandidate') or []):
+                pid = _pid(e.get('playerCode'), e.get('playerName'))
+                if pid is None:
+                    continue
+                cur.execute("""
+                    INSERT INTO game_rosters (
+                        game_id, player_id, team_side, roster_type,
+                        batting_order, position, pitching_style, is_starter
+                    ) VALUES (%s, %s, %s, 'batter', NULL, %s, NULL, FALSE)
+                    ON CONFLICT (game_id, player_id, team_side) DO UPDATE SET
+                        position = COALESCE(game_rosters.position, EXCLUDED.position)
+                """, (db_game_id, pid, side, e.get('position')))
+                n += 1
+        conn.commit()
+        cur.close()
+        conn.close()
+        if n:
+            print(f"경기 {db_game_id} preview 로스터 저장 ({n}명)")
+    except Exception as e:
+        print(f"preview 로스터 오류 game={db_game_id}: {e}")
+
+
 def save_entry_roster(db_game_id, naver_game_id):
     """relay entry(homeEntry/awayEntry) 기반 후보 야수/불펜 로스터 보강 (2026-06-07)
     — 라인업 페이지 크롤(save_game_roster)은 선발만 파싱하던 한계 보완.
