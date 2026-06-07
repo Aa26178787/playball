@@ -707,9 +707,10 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
                     );
                   },
                 ),
-              // 맛집 제안 FAB
+              // 맛집 제안 FAB — 다른 탭 FAB와 동일하게 플로팅 nav 위로
               Positioned(
-                bottom: 16 + MediaQuery.of(context).viewPadding.bottom,
+                bottom: (ApiService.myTeamData.value.isNotEmpty ? 142.0 : 90.0)
+                    + MediaQuery.of(context).viewPadding.bottom,
                 right: 18,
                 child: GestureDetector(
                   onTap: _openSubmit,

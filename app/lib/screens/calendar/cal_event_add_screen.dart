@@ -32,6 +32,11 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
   int _colorIdx = 0; // 블루 기본
   bool _saving = false;
 
+  // 시간 설정 (off = 종일 일정)
+  bool _hasTime = false;
+  TimeOfDay _startTime = const TimeOfDay(hour: 18, minute: 30);
+  TimeOfDay _endTime = const TimeOfDay(hour: 21, minute: 30);
+
   @override
   void dispose() {
     _titleCtrl.dispose();
@@ -48,6 +53,16 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
   String _dateKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  // 전역 withClampedTextScaling(min 0.85)과 picker 내부 clamp가 충돌해
+  // 'maxScale > minScale' assert 크래시 → 다이얼로그만 linear scaler로 재설정
+  Widget _pickerBuilder(BuildContext ctx, Widget? child) {
+    final mq = MediaQuery.of(ctx);
+    return MediaQuery(
+      data: mq.copyWith(textScaler: TextScaler.linear(mq.textScaler.scale(14) / 14)),
+      child: child!,
+    );
+  }
+
   Future<void> _pickDate({required bool isStart}) async {
     final picked = await showDatePicker(
       context: context,
@@ -55,6 +70,7 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
       firstDate: isStart ? DateTime(2020, 1, 1) : _start,
       lastDate: DateTime(2030, 12, 31),
       locale: const Locale('ko', 'KR'),
+      builder: _pickerBuilder,
     );
     if (picked == null) return;
     setState(() {
@@ -67,6 +83,25 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
     });
   }
 
+  Future<void> _pickTime({required bool isStart}) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: isStart ? _startTime : _endTime,
+      builder: _pickerBuilder,
+    );
+    if (picked == null) return;
+    setState(() {
+      if (isStart) {
+        _startTime = picked;
+      } else {
+        _endTime = picked;
+      }
+    });
+  }
+
+  String _fmtTime(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
   Future<void> _save() async {
     final title = _titleCtrl.text.trim();
     if (title.isEmpty || _saving) return;
@@ -78,6 +113,8 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
         description: _memoCtrl.text.trim().isEmpty ? null : _memoCtrl.text.trim(),
         color: _kEventColorKeys[_colorIdx],
         endDate: _end.isAtSameMomentAs(_start) ? null : _dateKey(_end),
+        startTime: _hasTime ? _fmtTime(_startTime) : null,
+        endTime: _hasTime ? _fmtTime(_endTime) : null,
       );
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
@@ -210,6 +247,58 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
                 child: Text('${_end.difference(_start).inDays + 1}일간',
                     style: TextStyle(fontSize: Typo.caption, color: cs.sub)),
               ),
+            // 시간 설정
+            _FormLabel(label: '시간', cs: cs),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: GestureDetector(
+                onTap: () => setState(() => _hasTime = !_hasTime),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                  decoration: BoxDecoration(
+                    color: cs.paper,
+                    border: Border.all(color: _hasTime ? _accent.withValues(alpha: 0.4) : cs.line),
+                    borderRadius: BorderRadius.circular(Radii.lg),
+                    boxShadow: cs.dark ? null : [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 2, offset: const Offset(0, 1))],
+                  ),
+                  child: Row(children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 34, height: 34,
+                      decoration: BoxDecoration(
+                        color: _hasTime ? _accent.withValues(alpha: cs.dark ? 0.22 : 0.1) : cs.paper2,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.access_time_outlined, size: 16,
+                          color: _hasTime ? _accent : cs.sub),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('시간 설정', style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink)),
+                      const SizedBox(height: 3),
+                      Text(_hasTime ? '${_fmtTime(_startTime)} → ${_fmtTime(_endTime)}' : '종일 일정',
+                        style: TextStyle(fontSize: 10, color: cs.ink3)),
+                    ])),
+                    _Toggle(on: _hasTime, color: _accent, cs: cs),
+                  ]),
+                ),
+              ),
+            ),
+            if (_hasTime)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+                child: Row(children: [
+                  Expanded(child: _TimeBox(time: _startTime, cs: cs,
+                    onTap: () => _pickTime(isStart: true))),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Icon(Icons.arrow_forward, size: 16, color: cs.sub),
+                  ),
+                  Expanded(child: _TimeBox(time: _endTime, cs: cs,
+                    onTap: () => _pickTime(isStart: false))),
+                ]),
+              ),
             // 색상 선택
             _FormLabel(label: '색상', cs: cs),
             Padding(
@@ -259,6 +348,53 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
 }
 
 // ── 서브 위젯 ─────────────────────────────────────────────────────────────────
+
+class _TimeBox extends StatelessWidget {
+  final TimeOfDay time;
+  final _C cs;
+  final VoidCallback onTap;
+  const _TimeBox({required this.time, required this.cs, required this.onTap});
+
+  String get _fmt =>
+      '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+      decoration: BoxDecoration(color: cs.paper2, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.md)),
+      child: Row(children: [
+        Icon(Icons.access_time_outlined, size: 14, color: cs.sub),
+        const SizedBox(width: 8),
+        Text(_fmt, style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.ink)),
+      ]),
+    ),
+  );
+}
+
+class _Toggle extends StatelessWidget {
+  final bool on;
+  final Color color;
+  final _C cs;
+  const _Toggle({required this.on, required this.color, required this.cs});
+  @override
+  Widget build(BuildContext context) => AnimatedContainer(
+    duration: const Duration(milliseconds: 200),
+    width: 44, height: 26,
+    decoration: BoxDecoration(color: on ? color : cs.track, borderRadius: BorderRadius.circular(13)),
+    child: AnimatedAlign(
+      duration: const Duration(milliseconds: 200),
+      alignment: on ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        width: 20, height: 20,
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white,
+            boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 1))]),
+      ),
+    ),
+  );
+}
 
 class _DateBox extends StatelessWidget {
   final DateTime date;

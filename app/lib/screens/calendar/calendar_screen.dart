@@ -1,10 +1,8 @@
 // calendar_screen.dart — Option A 디자인 시스템 반영 (2026-06)
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
@@ -13,6 +11,7 @@ import '../game/game_detail_screen.dart';
 import '../mypage/my_page_screen.dart';
 import '../../widgets/stadium_ranking_sheet.dart';
 import 'cal_event_add_screen.dart';
+import 'visit_record_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -726,6 +725,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final description = event['description'] as String?;
     final id = event['id'] as int?;
     final color = _eventColor(event['color'] as String?);
+    final startTime = event['start_time'] as String?;
+    final endTime = event['end_time'] as String?;
+    final timeLabel = startTime != null
+        ? (endTime != null ? '$startTime – $endTime' : startTime)
+        : null;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -744,7 +748,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
         Expanded(child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text(title, style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink)),
+            Row(children: [
+              Flexible(child: Text(title,
+                  style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink),
+                  overflow: TextOverflow.ellipsis)),
+              if (timeLabel != null) ...[
+                const SizedBox(width: 6),
+                Text(timeLabel, style: TextStyle(fontSize: 10, fontWeight: Typo.medium, color: color)),
+              ],
+            ]),
             if (description != null && description.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(description, style: TextStyle(fontSize: Typo.caption, color: cs.ink3, height: 1.4),
@@ -817,8 +829,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               onTap: selectedGames.isEmpty ? null : () {
                 Navigator.pop(context);
                 if (selectedGames.length == 1) {
-                  final game = selectedGames[0] as Map;
-                  _showVisitDialog(game['id'] as int, _visitedGames[game['id'] as int]);
+                  _handleVisit(selectedGames[0] as Map, date);
                 } else {
                   _showPickGameForVisit(date, selectedGames);
                 }
@@ -865,7 +876,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               trailing: visited ? const Icon(Icons.check_circle, color: Colors.green, size: 18) : null,
               onTap: () {
                 Navigator.pop(context);
-                _showVisitDialog(gameId, _visitedGames[gameId]);
+                _handleVisit(gm, date);
               },
             );
           }),
@@ -875,9 +886,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Future<void> _showVisitDialog(int gameId, Map? existing) async {
+  // 직관 기록: 기존 기록 있으면 조회 다이얼로그, 없으면 추가 화면(VisitRecordScreen)
+  Future<void> _handleVisit(Map game, DateTime date) async {
+    final gameId = game['id'] as int;
+    final existing = _visitedGames[gameId];
     if (existing != null) {
-      final imageUrl = existing['image_url'] as String?;
+      await _showExistingVisitDialog(gameId, existing);
+      return;
+    }
+    final result = await Navigator.push<Map>(context, MaterialPageRoute(
+        builder: (_) => VisitRecordScreen(game: game, date: date)));
+    if (result != null && mounted) {
+      setState(() => _visitedGames[gameId] = result);
+    }
+  }
+
+  Future<void> _showExistingVisitDialog(int gameId, Map existing) async {
+    final imageUrl = existing['image_url'] as String?;
       final ok = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
@@ -928,127 +953,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           if (mounted) setState(() => _visitedGames.remove(gameId));
         } catch (_) {}
       }
-      return;
-    }
-
-    // 새 직관 기록
-    String selectedResult = 'win';
-    final memoCtrl = TextEditingController();
-    String? pickedImagePath;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          title: const Text('직관 기록 추가'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('경기 결과', style: TextStyle(fontSize: 13, color: Colors.grey)),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _resultChip('win', '승리', Colors.blue, selectedResult, (v) => setS(() => selectedResult = v)),
-                    _resultChip('loss', '패배', Colors.red, selectedResult, (v) => setS(() => selectedResult = v)),
-                    _resultChip('draw', '무승부', Colors.grey, selectedResult, (v) => setS(() => selectedResult = v)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: memoCtrl,
-                  decoration: const InputDecoration(
-                    labelText: '메모 (선택)',
-                    hintText: '직관 후기 입력',
-                    isDense: true,
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: () async {
-                    final picker = ImagePicker();
-                    final xfile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-                    if (xfile != null) setS(() => pickedImagePath = xfile.path);
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    height: pickedImagePath != null ? 140 : 60,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: pickedImagePath != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.file(File(pickedImagePath!), fit: BoxFit.cover),
-                          )
-                        : const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_photo_alternate_outlined, color: Colors.grey, size: 24),
-                              SizedBox(height: 4),
-                              Text('사진 추가 (선택)', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                            ],
-                          ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('저장')),
-          ],
-        ),
-      ),
-    );
-    if (ok == true && mounted) {
-      try {
-        String? imageUrl;
-        if (pickedImagePath != null) {
-          try {
-            imageUrl = await ApiService.uploadPostImage(pickedImagePath!);
-          } catch (_) {}
-        }
-        final res = await ApiService.addStadiumVisit(
-          gameId, selectedResult,
-          memo: memoCtrl.text.trim().isEmpty ? null : memoCtrl.text.trim(),
-          imageUrl: imageUrl,
-        );
-        setState(() {
-          _visitedGames[gameId] = {
-            'id': res['id'],
-            'game_id': gameId,
-            'result': selectedResult,
-            'memo': memoCtrl.text.trim(),
-            'image_url': imageUrl,
-          };
-        });
-      } catch (_) {}
-    }
-    memoCtrl.dispose();
-  }
-
-  Widget _resultChip(String value, String label, Color color, String selected, void Function(String) onTap) {
-    final isSelected = value == selected;
-    return GestureDetector(
-      onTap: () => onTap(value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? color : color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? color : Colors.transparent),
-        ),
-        child: Text(label,
-            style: TextStyle(
-                color: isSelected ? Colors.white : color,
-                fontWeight: FontWeight.w600,
-                fontSize: 13)),
-      ),
-    );
   }
 
   // ── 직관 통계/랭킹 시트 ─────────────────────────────────────────────────────

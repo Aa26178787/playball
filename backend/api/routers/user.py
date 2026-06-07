@@ -464,6 +464,8 @@ class CalendarEventCreate(BaseModel):
     title: str
     description: Optional[str] = None
     color: Optional[str] = 'blue'
+    start_time: Optional[str] = None  # HH:MM (없으면 종일 일정)
+    end_time: Optional[str] = None    # HH:MM
 
 @router.get('/calendar-events')
 def get_calendar_events(year: int, month: int, current_user: dict = Depends(get_current_user)):
@@ -477,7 +479,8 @@ def get_calendar_events(year: int, month: int, current_user: dict = Depends(get_
     cur = conn.cursor()
     # 해당 월에 걸치는 모든 이벤트 (시작일 <= 월말 AND 종료일 >= 월초)
     cur.execute("""
-        SELECT id, event_date, COALESCE(end_date, event_date), title, description, color, created_at
+        SELECT id, event_date, COALESCE(end_date, event_date), title, description, color, created_at,
+               start_time, end_time
         FROM user_calendar_events
         WHERE user_id = %s
           AND event_date <= %s
@@ -489,7 +492,9 @@ def get_calendar_events(year: int, month: int, current_user: dict = Depends(get_
     return {"events": [
         {"id": r[0], "start_date": str(r[1]), "end_date": str(r[2]),
          "date": str(r[1]),  # 하위 호환
-         "title": r[3], "description": r[4], "color": r[5], "created_at": str(r[6])}
+         "title": r[3], "description": r[4], "color": r[5], "created_at": str(r[6]),
+         "start_time": r[7].strftime('%H:%M') if r[7] else None,
+         "end_time": r[8].strftime('%H:%M') if r[8] else None}
         for r in rows
     ]}
 
@@ -503,10 +508,11 @@ def create_calendar_event(body: CalendarEventCreate, current_user: dict = Depend
         raise HTTPException(status_code=500, detail='DB 연결 실패')
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO user_calendar_events (user_id, event_date, end_date, title, description, color)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO user_calendar_events (user_id, event_date, end_date, title, description, color, start_time, end_time)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id
-    """, (current_user['user_id'], body.event_date, end, body.title, body.description, body.color or 'blue'))
+    """, (current_user['user_id'], body.event_date, end, body.title, body.description, body.color or 'blue',
+          body.start_time, body.end_time))
     new_id = cur.fetchone()[0]
     conn.commit(); cur.close(); conn.close()
     return {"id": new_id, "message": "일정 추가 완료"}
