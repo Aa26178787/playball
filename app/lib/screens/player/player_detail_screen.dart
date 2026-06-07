@@ -48,6 +48,18 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       if (mounted) setState(() => _batterZones = d);
     } catch (_) {}
   }
+
+  // 투수 존 히트맵 (피투구 분포 / 피안타율)
+  Map<String, dynamic>? _pitcherZones;
+  String _pzStance = '';     // '' 전체 / 'R' vs우타 / 'L' vs좌타
+  String _pzMetric = 'dist'; // dist(피투구 분포) / avg(피안타율)
+
+  Future<void> _loadPitcherZones() async {
+    try {
+      final d = await ApiService.getPitcherZones(widget.playerId, stance: _pzStance);
+      if (mounted) setState(() => _pitcherZones = d);
+    } catch (_) {}
+  }
   bool _isLoading = true;   // 전체 shimmer (initialData 없을 때)
   bool _bodyLoading = false; // 바디 shimmer (initialData 있어서 헤더만 먼저 표시할 때)
   bool _isFav = false;
@@ -227,6 +239,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           if (mounted) setState(() => _pitchStats = ps);
         } catch (_) {}
         _loadPitchDesign();
+        _loadPitcherZones();
       } else {
         _loadBatterZones();
       }
@@ -308,6 +321,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   if (_pitchStats != null) _buildPitchStatsCard(),
                   if (_pitchDesign != null && (_pitchDesign!['total'] as int? ?? 0) > 0)
                     _buildPitchDesignCard(player),
+                  if (_pitcherZones != null && (_pitcherZones!['total'] as int? ?? 0) > 0)
+                    _buildPitcherZonesCard(player),
                   if (_batterZones != null && (_batterZones!['total'] as int? ?? 0) > 0)
                     _buildBatterZonesCard(player),
                   // PlayerStatsSection(시즌별 표) 제거 — 3열 그리드로 대체 (2026-06-07)
@@ -1130,6 +1145,143 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 const SizedBox(height: 8),
                 Text('전체 $total구 · ${metricNote()}',
                     style: TextStyle(fontSize: 10, color: sub)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 피칭 존 히트맵 — 피투구 분포 / 피안타율 (구종 무관 합산) ──
+  Widget _buildPitcherZonesCard(Map<String, dynamic> player) {
+    final d = _pitcherZones!;
+    final zonesMap = d['zones'] as Map<String, dynamic>? ?? {};
+    final pitchesZ = (zonesMap['pitches'] as List? ?? List.filled(25, 0)).cast<num>();
+    final abZ = (zonesMap['inplay_ab'] as List? ?? List.filled(25, 0)).cast<num>();
+    final hitsZ = (zonesMap['hits'] as List? ?? List.filled(25, 0)).cast<num>();
+    final total = (d['total'] as num?)?.toInt() ?? 0;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final emptyCell = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
+    final rawTc = teamColor(player['team_code'] as String? ?? '');
+    final tc = isDark ? Color.lerp(rawTc, Colors.white, 0.2)! : rawTc;
+
+    Widget chip(String label, bool active, VoidCallback onTap) => GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 6, bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? ink : paper,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: active ? ink : line),
+        ),
+        child: Text(label,
+            style: TextStyle(fontSize: 11, fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                color: active ? (isDark ? Colors.black : Colors.white) : ink3)),
+      ),
+    );
+
+    final maxPitch = pitchesZ.fold<num>(1, (m, v) => v > m ? v : m);
+    (Color, String) cell(int i) {
+      if (_pzMetric == 'avg') {
+        final ab = abZ[i];
+        if (ab < 5) return (emptyCell, '');  // 표본 가드 (5타수 미만)
+        final avg = hitsZ[i] / ab;
+        // 피안타율: 투수 관점 → 적=많이 맞음(나쁨)/청=잘 막음(좋음), 리그 .270 기준
+        final diff = (avg - 0.270).clamp(-0.27, 0.27);
+        final c = diff >= 0
+            ? const Color(0xFFE53935).withValues(alpha: 0.10 + 0.85 * (diff / 0.27))
+            : const Color(0xFF2563EB).withValues(alpha: 0.10 + 0.85 * (-diff / 0.27));
+        return (c, avg.toStringAsFixed(3).substring(1));  // '.342'
+      }
+      final v = pitchesZ[i];
+      final pct = total > 0 ? v * 100 / total : 0.0;
+      return (v == 0 ? emptyCell : tc.withValues(alpha: 0.10 + 0.80 * (v / maxPitch)),
+              pct >= 2 ? '${pct.round()}' : '');
+    }
+
+    final note = _pzMetric == 'avg'
+        ? '셀 = 존별 피안타율 (5타수 미만 회색, 적=많이맞음·청=잘막음)'
+        : '셀 = 전체 투구 중 비율%';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('피칭 존 히트맵',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: paper,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: line),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05),
+                  blurRadius: 6, offset: const Offset(0, 2))],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 지표 토글
+                Row(children: [
+                  chip('피투구 분포', _pzMetric == 'dist', () => setState(() => _pzMetric = 'dist')),
+                  chip('피안타율', _pzMetric == 'avg', () => setState(() => _pzMetric = 'avg')),
+                ]),
+                // 타자 손 토글
+                Row(children: [
+                  chip('전체', _pzStance == '', () { setState(() => _pzStance = ''); _loadPitcherZones(); }),
+                  chip('vs 우타', _pzStance == 'R', () { setState(() => _pzStance = 'R'); _loadPitcherZones(); }),
+                  chip('vs 좌타', _pzStance == 'L', () { setState(() => _pzStance = 'L'); _loadPitcherZones(); }),
+                ]),
+                const SizedBox(height: 10),
+                Center(
+                  child: SizedBox(
+                    width: 230, height: 230,
+                    child: Stack(children: [
+                      Column(children: [
+                        for (int r = 0; r < 5; r++)
+                          Expanded(child: Row(children: [
+                            for (int c = 0; c < 5; c++)
+                              Expanded(child: Builder(builder: (_) {
+                                final i = r * 5 + c;
+                                final (color, label) = cell(i);
+                                return Container(
+                                  margin: const EdgeInsets.all(1),
+                                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
+                                  alignment: Alignment.center,
+                                  child: label.isEmpty ? null : Text(label,
+                                      style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: ink,
+                                          fontFeatures: const [FontFeature.tabularFigures()])),
+                                );
+                              })),
+                          ])),
+                      ]),
+                      // 스트라이크존(내부 3x3) 외곽선
+                      Positioned(
+                        left: 230 / 5, top: 230 / 5,
+                        width: 230 * 3 / 5, height: 230 * 3 / 5,
+                        child: IgnorePointer(child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: ink.withValues(alpha: 0.85), width: 2.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        )),
+                      ),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text('전체 $total구 · $note', style: TextStyle(fontSize: 10, color: sub)),
               ],
             ),
           ),

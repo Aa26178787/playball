@@ -787,6 +787,14 @@ class ApiService {
     return Map<String, dynamic>.from(res.data);
   }
 
+  /// 피칭 존 히트맵 — 존별 피투구 분포 / 피안타율 (stance: '' 전체 / 'R' / 'L')
+  static Future<Map<String, dynamic>> getPitcherZones(int playerId,
+      {int season = 2026, String stance = ''}) async {
+    final res = await _dio.get('/players/$playerId/pitcher-zones',
+        queryParameters: {'season': season, if (stance.isNotEmpty) 'stance': stance});
+    return Map<String, dynamic>.from(res.data);
+  }
+
   // ===== 개인 캘린더 이벤트 =====
   static Future<Map<String, dynamic>> getCalendarEvents(int year, int month) async {
     final headers = await authHeaders();
