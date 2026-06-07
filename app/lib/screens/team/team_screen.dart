@@ -112,44 +112,73 @@ class _TeamScreenState extends State<TeamScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final line2 = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
     return Scaffold(
-      appBar: AppBar(
-        scrolledUnderElevation: 0,
-        title: const Text('순위'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            tooltip: '마이페이지',
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
+      body: SafeArea(
+        bottom: false,
+        child: Column(children: [
+          // ── 헤더 (탭 공통: 타이틀 + 32px 액션 버튼 + TabBar) ──
+          Container(
+            color: paper,
+            child: Column(children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+                child: Row(children: [
+                  Text('순위',
+                      style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra,
+                          color: ink, letterSpacing: -0.5)),
+                  const Spacer(),
+                  Tooltip(
+                    message: '마이페이지',
+                    child: GestureDetector(
+                      onTap: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const MyPageScreen())),
+                      child: Container(
+                        width: 32, height: 32,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: line2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.person_outline, size: 18, color: ink3),
+                      ),
+                    ),
+                  ),
+                ]),
+              ),
+              TabBar(
+                controller: _tabController,
+                labelColor: ink,
+                unselectedLabelColor: sub,
+                indicatorColor: ink,
+                indicatorWeight: 2,
+                dividerColor: line,
+                labelStyle: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra),
+                unselectedLabelStyle: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.medium),
+                tabs: const [
+                  Tab(text: '팀 순위'),
+                  Tab(text: '부문별 순위'),
+                  Tab(text: '팀 기록'),
+                ],
+              ),
+            ]),
           ),
-        ],
-        surfaceTintColor: Colors.transparent,
-        bottom: TabBar(
-          controller: _tabController,
-          // 다크모드: SemColor.panelDark(#111113) = scaffoldDark → 보이지 않음. 분기
-          indicatorColor: Theme.of(context).brightness == Brightness.dark
-              ? AppColors.primaryDark : SemColor.panelDark,
-          indicatorWeight: 2.5,
-          labelColor: Theme.of(context).brightness == Brightness.dark
-              ? AppColors.primaryDark : SemColor.panelDark,
-          unselectedLabelColor: Colors.grey,
-          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-          unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
-          dividerColor: Colors.transparent,
-          tabs: const [
-            Tab(text: '팀 순위'),
-            Tab(text: '부문별 순위'),
-            Tab(text: '팀 기록'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildTeamRankings(),
-          const PlayerRankingsTab(),
-          const TeamStatsTab(),
-        ],
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildTeamRankings(),
+                const PlayerRankingsTab(),
+                const TeamStatsTab(),
+              ],
+            ),
+          ),
+        ]),
       ),
     );
   }

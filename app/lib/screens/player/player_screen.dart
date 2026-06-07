@@ -434,66 +434,35 @@ class _PlayerScreenState extends State<PlayerScreen>
     final inkOn = isDark ? Colors.black : Colors.white;
     final line = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
-    final paper2 = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
     final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-
-    Widget variantBtn(String label, bool active, VoidCallback onTap) => GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-        decoration: BoxDecoration(
-          color: active ? ink : Colors.transparent,
-          borderRadius: BorderRadius.circular(7),
-        ),
-        child: Text(label,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-                color: active ? inkOn : sub)),
-      ),
-    );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
-      child: Row(children: [
-        Expanded(
-          child: SizedBox(
-            height: 32,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: sorts.map((s) {
-                final sel = selected == s['value'];
-                return GestureDetector(
-                  onTap: () => onSelect(s['value']!),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: sel ? ink : paper,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: sel ? ink : line),
-                    ),
-                    child: Text(s['label']!,
-                        style: TextStyle(fontSize: 12,
-                            fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                            color: sel ? inkOn : sub)),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
+      child: SizedBox(
+        height: 32,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          children: sorts.map((s) {
+            final sel = selected == s['value'];
+            return GestureDetector(
+              onTap: () => onSelect(s['value']!),
+              child: Container(
+                margin: const EdgeInsets.only(right: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: sel ? ink : paper,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: sel ? ink : line),
+                ),
+                child: Text(s['label']!,
+                    style: TextStyle(fontSize: 12,
+                        fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                        color: sel ? inkOn : sub)),
+              ),
+            );
+          }).toList(),
         ),
-        const SizedBox(width: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: paper2,
-            borderRadius: BorderRadius.circular(9),
-            border: Border.all(color: line.withValues(alpha: 0.6)),
-          ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            variantBtn('리스트', _isListView, () => setState(() => _isListView = true)),
-            variantBtn('카드', !_isListView, () => setState(() => _isListView = false)),
-          ]),
-        ),
-      ]),
+      ),
     );
   }
 
@@ -988,20 +957,17 @@ class _PlayerScreenState extends State<PlayerScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final line = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
     final sub3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    return Padding(
-      padding: const EdgeInsets.only(right: 7),
-      child: Tooltip(
-        message: tip,
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: line),
-            ),
-            child: Icon(icon, size: 16, color: sub3),
+    return Tooltip(
+      message: tip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 32, height: 32,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: line),
           ),
+          child: Icon(icon, size: 18, color: sub3),
         ),
       ),
     );
@@ -1131,19 +1097,24 @@ class _PlayerScreenState extends State<PlayerScreen>
             padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
             child: Column(children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 8, 6, 0),
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
                 child: Row(children: [
                   Text('선수',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800,
-                          letterSpacing: 0, color: ink)),
+                      style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra,
+                          letterSpacing: -0.5, color: ink)),
                   const Spacer(),
                   _headerIconBtn(Icons.search, '검색',
                       () => setState(() => _isSearching = true)),
+                  const SizedBox(width: 7),
                   _headerIconBtn(
                       isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                       isDark ? '라이트 모드' : '다크 모드',
                       () => themeProv.toggle()),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 7),
+                  _headerIconBtn(
+                      _isListView ? Icons.grid_view_rounded : Icons.view_list_rounded,
+                      _isListView ? '카드 보기' : '리스트 보기',
+                      () => setState(() => _isListView = !_isListView)),
                 ]),
               ),
               TabBar(

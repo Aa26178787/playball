@@ -1032,79 +1032,98 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
-      appBar: AppBar(
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-        titleSpacing: 16,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.sports_baseball,
-                size: 18,
-                color: isDark ? const Color(0xFFF4F4F5) : AppColors.primary),
-            const SizedBox(width: 7),
-            Text('PlayBall',
-                style: TextStyle(
-                  fontFamily: 'Pretendard',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? const Color(0xFFF5F5F5) : AppColors.primary,
-                  letterSpacing: 0,
-                )),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(_compactMode ? Icons.view_agenda_outlined : Icons.view_compact_outlined),
-            tooltip: _compactMode ? '상세 보기' : '간략 보기',
-            onPressed: _toggleCompactMode,
-          ),
-          IconButton(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.notifications_none),
-                if (_unreadNotifCount > 0)
-                  Positioned(
-                    top: -4, right: -4,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                          color: Colors.red, shape: BoxShape.circle),
-                      child: Text(
-                        _unreadNotifCount > 9 ? '9+' : '$_unreadNotifCount',
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-              ],
+    final t = _Tok.of(isDark);
+    Widget hdrBtn({required Widget child, required String tip, required VoidCallback onTap}) =>
+        Tooltip(
+          message: tip,
+          child: GestureDetector(
+            onTap: onTap,
+            child: Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                border: Border.all(color: t.line2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: child,
             ),
-            tooltip: '알림',
-            onPressed: () async {
-              await Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const NotificationsScreen()));
-              _loadUnreadCount();
-            },
           ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: '검색',
-            onPressed: () => Navigator.push(
-              context, MaterialPageRoute(builder: (_) => const SearchScreen())),
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            tooltip: '마이페이지',
-            onPressed: () => Navigator.push(
-              context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
-          ),
-        ],
-      ),
-      body: Column(
+        );
+    return Scaffold(
+      body: SafeArea(
+        bottom: false,
+        child: Column(
         children: [
-          // 월/날짜 스트립 — AppBar와 동일한 배경색
+          // ── 헤더 (탭 공통: 타이틀 + 32px 액션 버튼) ──
+          Container(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+            decoration: BoxDecoration(
+              color: t.paper,
+              border: Border(bottom: BorderSide(color: t.line)),
+            ),
+            child: Row(children: [
+              Icon(Icons.sports_baseball, size: 20,
+                  color: isDark ? t.ink : AppColors.primary),
+              const SizedBox(width: 8),
+              Text('PlayBall',
+                  style: TextStyle(
+                    fontFamily: 'Pretendard',
+                    fontSize: Typo.h2,
+                    fontWeight: Typo.extra,
+                    color: isDark ? t.ink : AppColors.primary,
+                    letterSpacing: -0.5,
+                  )),
+              const Spacer(),
+              hdrBtn(
+                tip: _compactMode ? '상세 보기' : '간략 보기',
+                onTap: _toggleCompactMode,
+                child: Icon(_compactMode ? Icons.view_agenda_outlined : Icons.view_compact_outlined,
+                    size: 18, color: t.ink3),
+              ),
+              const SizedBox(width: 7),
+              hdrBtn(
+                tip: '알림',
+                onTap: () async {
+                  await Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const NotificationsScreen()));
+                  _loadUnreadCount();
+                },
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Center(child: Icon(Icons.notifications_none, size: 18, color: t.ink3)),
+                    if (_unreadNotifCount > 0)
+                      Positioned(
+                        top: 2, right: 2,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                          child: Text(
+                            _unreadNotifCount > 9 ? '9+' : '$_unreadNotifCount',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold, height: 1.0),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 7),
+              hdrBtn(
+                tip: '검색',
+                onTap: () => Navigator.push(
+                    context, MaterialPageRoute(builder: (_) => const SearchScreen())),
+                child: Icon(Icons.search, size: 18, color: t.ink3),
+              ),
+              const SizedBox(width: 7),
+              hdrBtn(
+                tip: '마이페이지',
+                onTap: () => Navigator.push(
+                    context, MaterialPageRoute(builder: (_) => const MyPageScreen())),
+                child: Icon(Icons.person_outline, size: 18, color: t.ink3),
+              ),
+            ]),
+          ),
+          // 월/날짜 스트립 — 헤더와 동일한 배경색
           Container(
             color: isDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
             child: Column(
@@ -1167,6 +1186,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             ),
           ),
         ],
+        ),
       ),
     );
   }
