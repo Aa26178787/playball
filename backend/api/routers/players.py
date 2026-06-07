@@ -692,7 +692,8 @@ def get_batter_zones(player_id: int, season: int = 2026, throws: str = ''):
             r = 1 + min(2, int((top - z) / h3))
         return r * 5 + c
 
-    HIT_WORDS = ('안타', '2루타', '3루타', '홈런')
+    # Naver 표기: '중견수 왼쪽 1루타' / '내야안타' / '2루타' … ('안타' 단독 표기는 안 씀)
+    HIT_WORDS = ('1루타', '2루타', '3루타', '홈런', '안타')
 
     total_z = [0] * 25       # 피투구 분포
     swings_z = [0] * 25      # 스윙 (swing+foul+hit)
