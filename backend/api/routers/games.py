@@ -641,7 +641,8 @@ def get_game_roster(game_id: int):
     cur.execute("""
         SELECT p.name, p.number, p.profile_image,
                gr.team_side, gr.roster_type,
-               gr.batting_order, gr.position, gr.pitching_style,
+               gr.batting_order, gr.position,
+               COALESCE(gr.pitching_style, p.pitching_style) AS pitching_style,
                gr.is_starter, p.id
         FROM game_rosters gr
         JOIN players p ON gr.player_id = p.id

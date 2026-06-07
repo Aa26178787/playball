@@ -17,6 +17,7 @@ from crawler.naver_crawler import (
     update_live_game_innings,
     update_live_game_players,
     save_game_roster,
+    save_entry_roster,
     save_game_pitches,
 )
 from crawler.statiz_crawler import (
@@ -2044,6 +2045,7 @@ def _update_lineup_by_starttime():
         refreshed = []
         for (db_game_id, naver_game_id) in games_no_lineup:
             save_game_roster(db_game_id, naver_game_id)
+            save_entry_roster(db_game_id, naver_game_id)  # 후보/불펜 보강
             refreshed.append(db_game_id)
             time.sleep(0.5)
         # 라인업 크롤 후 예측 재로깅 (선발 타자가 새로 채워졌으면 라인업 OPS 정확)
@@ -2087,6 +2089,7 @@ def _update_lineup_fallback():
         print(f"[{datetime.now()}] 진행 중 선발 타자 없는 경기 재크롤링: {len(games)}개")
         for (db_game_id, naver_game_id) in games:
             save_game_roster(db_game_id, naver_game_id)
+            save_entry_roster(db_game_id, naver_game_id)  # 후보/불펜 보강
             time.sleep(0.5)
         # roster 저장 후 starter position 안전망 sweep
         _fixup_starter_positions()
@@ -2524,6 +2527,7 @@ def update_finished_game_records():
             print(f"선발 타자 없는 종료 경기: {len(games_no_roster)}개")
             for (db_game_id, naver_game_id) in games_no_roster:
                 save_game_roster(db_game_id, naver_game_id)
+                save_entry_roster(db_game_id, naver_game_id)  # 후보/불펜 보강
                 time.sleep(0.5)
 
     update_team_rankings()

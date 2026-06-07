@@ -1712,9 +1712,17 @@ class GameCard extends StatelessWidget {
       if (isFinished) {
         return Text('종료', style: TextStyle(fontSize: 11, color: t.ink3, fontWeight: FontWeight.w700));
       }
-      // 예정: status 라벨 (시간은 1층 스코어 자리) — 종료와 동일 스타일
-      return Text(game.status.isEmpty ? '예정' : game.status,
-          style: TextStyle(fontSize: 11, color: t.ink3, fontWeight: FontWeight.w700));
+      // 예정: status 라벨 (시간은 1층 스코어 자리). 양 팀 선발 발표 시 '선발 확정'/'라인업 확정'
+      final bothStarters = (game.homeStarter?.isNotEmpty ?? false) &&
+          (game.awayStarter?.isNotEmpty ?? false);
+      final label = game.status == '라인업'
+          ? '라인업 확정'
+          : (bothStarters ? '선발 확정' : (game.status.isEmpty ? '예정' : game.status));
+      final amber = label.endsWith('확정');
+      return Text(label,
+          style: TextStyle(fontSize: 11,
+              color: amber ? const Color(0xFFFFA000) : t.ink3,
+              fontWeight: FontWeight.w700));
     }
 
     final semanticLabel = isFinished
@@ -1916,6 +1924,8 @@ class GameCard extends StatelessWidget {
         );
       }
       if (game.status == '라인업' || autoLineup) {
+        // 라인업(타순) 발표 = '라인업 확정' / 선발투수만 발표(경기 ~2h 전) = '선발 확정'
+        final label = game.status == '라인업' ? '라인업 확정' : '선발 확정';
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
@@ -1923,8 +1933,8 @@ class GameCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: const Color(0xFFFFA000).withValues(alpha: 0.45), width: 1),
           ),
-          child: const Text('라인업 확정',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFFFA000))),
+          child: Text(label,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFFFA000))),
         );
       }
       // 예정 + 그 외 상태: 상태 텍스트만 (시작시간 X — 시간은 score 자리에 표시)

@@ -871,6 +871,60 @@ def crawl_naver_lineup(naver_game_id):
     return _parse_naver_lineup(lines)
 
 
+def save_entry_roster(db_game_id, naver_game_id):
+    """relay entry(homeEntry/awayEntry) 기반 후보 야수/불펜 로스터 보강 (2026-06-07)
+    — 라인업 페이지 크롤(save_game_roster)은 선발만 파싱하던 한계 보완.
+    기존 선발 행은 보존(is_starter 유지), pitching_style만 보충."""
+    import requests as _rq
+    try:
+        url = f"{BASE_API}/{naver_game_id}/relay?inning=1"
+        res = _rq.get(url, headers=NAVER_HEADERS, timeout=5)
+        if res.status_code != 200:
+            return
+        relay = (res.json().get('result') or {}).get('textRelayData') or {}
+        conn = get_connection()
+        if not conn:
+            return
+        cur = conn.cursor()
+        n = 0
+        for side in ('home', 'away'):
+            entry = relay.get(f'{side}Entry') or {}
+            for kind, rtype in (('batter', 'batter'), ('pitcher', 'pitcher')):
+                for e in (entry.get(kind) or []):
+                    name = e.get('name')
+                    if not name:
+                        continue
+                    pcode = str(e.get('pcode') or '')
+                    pos = e.get('pos') or ('투수' if rtype == 'pitcher' else None)
+                    style = e.get('pitchingStyle')
+                    pid = None
+                    if pcode:
+                        cur.execute("SELECT id FROM players WHERE naver_player_id = %s LIMIT 1", (pcode,))
+                        r = cur.fetchone()
+                        pid = r[0] if r else None
+                    if pid is None:
+                        cur.execute("SELECT id FROM players WHERE name = %s LIMIT 1", (name,))
+                        r = cur.fetchone()
+                        pid = r[0] if r else None
+                    if pid is None:
+                        continue
+                    cur.execute("""
+                        INSERT INTO game_rosters (
+                            game_id, player_id, team_side, roster_type,
+                            batting_order, position, pitching_style, is_starter
+                        ) VALUES (%s, %s, %s, %s, NULL, %s, %s, FALSE)
+                        ON CONFLICT (game_id, player_id, team_side) DO UPDATE SET
+                            pitching_style = COALESCE(game_rosters.pitching_style, EXCLUDED.pitching_style)
+                    """, (db_game_id, pid, side, rtype, pos, style))
+                    n += 1
+        conn.commit()
+        cur.close()
+        conn.close()
+        print(f"경기 {db_game_id} entry 로스터 보강 ({n}명)")
+    except Exception as e:
+        print(f"entry 로스터 오류 game={db_game_id}: {e}")
+
+
 def save_game_roster(db_game_id, naver_game_id):
     """네이버 라인업 페이지 기반 로스터 저장"""
     try:
