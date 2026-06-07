@@ -731,7 +731,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ? (endTime != null ? '$startTime – $endTime' : startTime)
         : null;
 
-    return Container(
+    return GestureDetector(
+      onTap: () => _openEditEvent(event),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: cs.paper, border: Border.all(color: color.withValues(alpha: 0.28)),
@@ -773,6 +775,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         const SizedBox(width: 4),
       ])),
+      ),
     );
   }
 
@@ -847,6 +850,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final created = await Navigator.push<bool>(context, MaterialPageRoute(
         builder: (_) => CalEventAddScreen(date: date, gameCount: games.length)));
     if (created == true && mounted) await _loadPersonalEvents();
+  }
+
+  Future<void> _openEditEvent(Map event) async {
+    DateTime d;
+    try {
+      d = DateTime.parse(event['start_date'] ?? event['date'] ?? '');
+    } catch (_) {
+      d = _selectedDate ?? DateTime.now();
+    }
+    final games = _gamesByDate[_dateKey(d)] ?? [];
+    final changed = await Navigator.push<bool>(context, MaterialPageRoute(
+        builder: (_) => CalEventAddScreen(date: d, gameCount: games.length, event: event)));
+    if (changed == true && mounted) await _loadPersonalEvents();
   }
 
   Future<void> _showPickGameForVisit(DateTime date, List games) async {

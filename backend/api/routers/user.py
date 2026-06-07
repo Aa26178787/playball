@@ -517,6 +517,28 @@ def create_calendar_event(body: CalendarEventCreate, current_user: dict = Depend
     conn.commit(); cur.close(); conn.close()
     return {"id": new_id, "message": "일정 추가 완료"}
 
+@router.put('/calendar-events/{event_id}')
+def update_calendar_event(event_id: int, body: CalendarEventCreate, current_user: dict = Depends(get_current_user)):
+    end = body.end_date or body.event_date
+    if end < body.event_date:
+        end = body.event_date
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE user_calendar_events
+        SET event_date = %s, end_date = %s, title = %s, description = %s, color = %s,
+            start_time = %s, end_time = %s
+        WHERE id = %s AND user_id = %s
+    """, (body.event_date, end, body.title, body.description, body.color or 'blue',
+          body.start_time, body.end_time, event_id, current_user['user_id']))
+    updated = cur.rowcount
+    conn.commit(); cur.close(); conn.close()
+    if updated == 0:
+        raise HTTPException(status_code=404, detail='일정을 찾을 수 없습니다')
+    return {"id": event_id, "message": "일정 수정 완료"}
+
 @router.delete('/calendar-events/{event_id}')
 def delete_calendar_event(event_id: int, current_user: dict = Depends(get_current_user)):
     conn = get_connection()

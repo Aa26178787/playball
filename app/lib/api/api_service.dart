@@ -807,6 +807,17 @@ class ApiService {
     return Map<String, dynamic>.from(res.data);
   }
 
+  static Future<Map<String, dynamic>> updateCalendarEvent(
+      int eventId, String date, String title, {String? endDate, String? description, String color = 'blue',
+      String? startTime, String? endTime}) async {
+    final headers = await authHeaders();
+    final res = await _dio.put('/user/calendar-events/$eventId',
+        data: {'event_date': date, 'end_date': endDate ?? date, 'title': title, 'description': description, 'color': color,
+               'start_time': startTime, 'end_time': endTime},
+        options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
   static Future<void> deleteCalendarEvent(int eventId) async {
     final headers = await authHeaders();
     await _dio.delete('/user/calendar-events/$eventId', options: Options(headers: headers));

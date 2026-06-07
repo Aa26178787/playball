@@ -17,7 +17,10 @@ class CalEventAddScreen extends StatefulWidget {
 
   /// 해당 날짜 KBO 경기 수 (헤더 서브텍스트용)
   final int gameCount;
-  const CalEventAddScreen({super.key, required this.date, this.gameCount = 0});
+
+  /// 수정할 기존 일정 (null = 새 일정)
+  final Map? event;
+  const CalEventAddScreen({super.key, required this.date, this.gameCount = 0, this.event});
 
   @override
   State<CalEventAddScreen> createState() => _CalEventAddScreenState();
@@ -37,6 +40,38 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
   TimeOfDay _startTime = const TimeOfDay(hour: 18, minute: 30);
   TimeOfDay _endTime = const TimeOfDay(hour: 21, minute: 30);
 
+  bool get _isEdit => widget.event != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.event;
+    if (e == null) return;
+    // 수정 모드: 기존 값 채우기
+    _titleCtrl.text = e['title'] as String? ?? '';
+    _memoCtrl.text = e['description'] as String? ?? '';
+    try { _start = DateTime.parse(e['start_date'] ?? e['date'] ?? ''); } catch (_) {}
+    try { _end = DateTime.parse(e['end_date'] ?? e['start_date'] ?? ''); } catch (_) {}
+    if (_end.isBefore(_start)) _end = _start;
+    final ci = _kEventColorKeys.indexOf(e['color'] as String? ?? 'blue');
+    if (ci >= 0) _colorIdx = ci;
+    final st = _parseTime(e['start_time'] as String?);
+    if (st != null) {
+      _hasTime = true;
+      _startTime = st;
+      _endTime = _parseTime(e['end_time'] as String?) ?? st;
+    }
+  }
+
+  TimeOfDay? _parseTime(String? s) {
+    if (s == null) return null;
+    final p = s.split(':');
+    final h = p.isNotEmpty ? int.tryParse(p[0]) : null;
+    final m = p.length > 1 ? int.tryParse(p[1]) : null;
+    if (h == null || m == null) return null;
+    return TimeOfDay(hour: h, minute: m);
+  }
+
   @override
   void dispose() {
     _titleCtrl.dispose();
@@ -46,9 +81,9 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
 
   Color get _accent => _kEventColors[_colorIdx];
   String get _dateStr =>
-      '${widget.date.year}년 ${widget.date.month}월 ${widget.date.day}일';
+      '${_start.year}년 ${_start.month}월 ${_start.day}일';
   String get _dowStr =>
-      '${['월', '화', '수', '목', '금', '토', '일'][widget.date.weekday - 1]}요일';
+      '${['월', '화', '수', '목', '금', '토', '일'][_start.weekday - 1]}요일';
 
   String _dateKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -107,15 +142,32 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
     if (title.isEmpty || _saving) return;
     setState(() => _saving = true);
     try {
-      await ApiService.createCalendarEvent(
-        _dateKey(_start),
-        title,
-        description: _memoCtrl.text.trim().isEmpty ? null : _memoCtrl.text.trim(),
-        color: _kEventColorKeys[_colorIdx],
-        endDate: _end.isAtSameMomentAs(_start) ? null : _dateKey(_end),
-        startTime: _hasTime ? _fmtTime(_startTime) : null,
-        endTime: _hasTime ? _fmtTime(_endTime) : null,
-      );
+      final desc = _memoCtrl.text.trim().isEmpty ? null : _memoCtrl.text.trim();
+      final endDate = _end.isAtSameMomentAs(_start) ? null : _dateKey(_end);
+      final startTime = _hasTime ? _fmtTime(_startTime) : null;
+      final endTime = _hasTime ? _fmtTime(_endTime) : null;
+      if (_isEdit) {
+        await ApiService.updateCalendarEvent(
+          widget.event!['id'] as int,
+          _dateKey(_start),
+          title,
+          description: desc,
+          color: _kEventColorKeys[_colorIdx],
+          endDate: endDate,
+          startTime: startTime,
+          endTime: endTime,
+        );
+      } else {
+        await ApiService.createCalendarEvent(
+          _dateKey(_start),
+          title,
+          description: desc,
+          color: _kEventColorKeys[_colorIdx],
+          endDate: endDate,
+          startTime: startTime,
+          endTime: endTime,
+        );
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
       if (mounted) {
@@ -143,7 +195,7 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
             _Btn32(border: cs.line2, onTap: () => Navigator.maybePop(context),
               child: Icon(Icons.chevron_left, size: 20, color: cs.ink2)),
             const SizedBox(width: 10),
-            Text('일정 추가', style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4)),
+            Text(_isEdit ? '일정 수정' : '일정 추가', style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4)),
             const Spacer(),
             ValueListenableBuilder<TextEditingValue>(
               valueListenable: _titleCtrl,
@@ -193,10 +245,10 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
                       boxShadow: [BoxShadow(color: _accent.withValues(alpha: 0.35), blurRadius: 8, offset: const Offset(0, 2))],
                     ),
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Text('${widget.date.month}월',
+                      Text('${_start.month}월',
                         style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white70)),
                       const SizedBox(height: 2),
-                      Text('${widget.date.day}',
+                      Text('${_start.day}',
                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
                     ]),
                   ),
