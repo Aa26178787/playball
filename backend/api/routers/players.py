@@ -613,6 +613,125 @@ def get_pitch_design(player_id: int, season: int = 2026, stance: str = ''):
     }
 
 
+@router.get("/{player_id}/batter-zones")
+@cached(3600)
+def get_batter_zones(player_id: int, season: int = 2026, throws: str = ''):
+    """타자 존 히트맵 (2026-06-07) — 피투구 분포 / 헛스윙 / 존별 타율
+    - zone: 투수판과 동일 5x5 (타자별 ABS존 기준)
+    - throws: '' 전체 / 'R' vs우투 / 'L' vs좌투 (투수 players.throws 조인)
+    - 타율: 인플레이(result='hit') 투구 ↔ 같은 (game,inning,half) 내 타석 결과를
+      발생 순서로 zip 매칭 (인플레이 = 타석 마지막 1구)"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM players WHERE id = %s", (player_id,))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        raise HTTPException(status_code=404, detail="선수를 찾을 수 없습니다")
+    name = row[0]
+
+    throws_sql = ""
+    params = [name, season]
+    if throws == 'R':
+        throws_sql = " AND pp.throws LIKE '우%%'"
+    elif throws == 'L':
+        throws_sql = " AND pp.throws LIKE '좌%%'"
+    cur.execute(f"""
+        SELECT gpl.id, gpl.game_id, gpl.inning, gpl.inning_half,
+               gpl.x, gpl.z, gpl.top_sz, gpl.bot_sz, gpl.result,
+               COALESCE(pp.throws, '')
+        FROM game_pitch_locations gpl
+        JOIN games g ON g.id = gpl.game_id
+        LEFT JOIN players pp ON pp.name = gpl.pitcher_name
+        WHERE gpl.batter_name = %s
+          AND EXTRACT(YEAR FROM g.game_date) = %s
+          AND gpl.x IS NOT NULL AND gpl.z IS NOT NULL{throws_sql}
+        ORDER BY gpl.game_id, gpl.inning, gpl.inning_half, gpl.id
+    """, params)
+    pitches = cur.fetchall()
+
+    # 타석 결과 (안타 판정용) — half 단위로 발생 순서 보존
+    cur.execute("""
+        SELECT gp.game_id, gp.inning, gp.inning_half, gp.title
+        FROM game_pitches gp
+        JOIN games g ON g.id = gp.game_id
+        WHERE gp.batter_name = %s
+          AND EXTRACT(YEAR FROM g.game_date) = %s
+          AND gp.type IN (13, 23)
+        ORDER BY gp.game_id, gp.inning, gp.inning_half, gp.seqno NULLS LAST, gp.id
+    """, (name, season))
+    results_rows = cur.fetchall()
+    cur.close(); conn.close()
+
+    # (game, inning, half) → 타석 결과 텍스트 큐
+    from collections import defaultdict, deque
+    res_q: dict = defaultdict(deque)
+    for gid, inn, half, title in results_rows:
+        res_q[(gid, inn, str(half))].append(title or '')
+
+    PLATE_HALF = 8.5 / 12.0
+
+    def zone_idx(x, z, top, bot):
+        third = (PLATE_HALF * 2) / 3
+        if x < -PLATE_HALF:
+            c = 0
+        elif x > PLATE_HALF:
+            c = 4
+        else:
+            c = 1 + min(2, int((x + PLATE_HALF) / third))
+        if not top or not bot or top <= bot:
+            top, bot = 3.5, 1.5
+        h3 = (top - bot) / 3
+        if z > top:
+            r = 0
+        elif z < bot:
+            r = 4
+        else:
+            r = 1 + min(2, int((top - z) / h3))
+        return r * 5 + c
+
+    HIT_WORDS = ('안타', '2루타', '3루타', '홈런')
+
+    total_z = [0] * 25       # 피투구 분포
+    swings_z = [0] * 25      # 스윙 (swing+foul+hit)
+    whiffs_z = [0] * 25      # 헛스윙
+    ab_z = [0] * 25          # 타수 카운트 인플레이 (희생 제외)
+    hits_z = [0] * 25        # 안타
+
+    for _id, gid, inn, half, x, z, top, bot, result, _thr in pitches:
+        zi = zone_idx(float(x), float(z), top, bot)
+        total_z[zi] += 1
+        if result in ('swing', 'foul', 'hit'):
+            swings_z[zi] += 1
+        if result == 'swing':
+            whiffs_z[zi] += 1
+        if result == 'hit':
+            # 인플레이 → 발생 순서로 타석 결과 매칭
+            q = res_q.get((gid, inn, str(half)))
+            title = q.popleft() if q else ''
+            res_part = title.split(' : ')[-1] if title else ''
+            if '희생' in res_part:
+                continue  # 타수 제외
+            ab_z[zi] += 1
+            if any(w in res_part for w in HIT_WORDS):
+                hits_z[zi] += 1
+
+    return {
+        'player_id': player_id, 'name': name, 'season': season,
+        'throws': throws or 'all',
+        'total': len(pitches),
+        'zones': {
+            'pitches': total_z,
+            'swings': swings_z,
+            'whiffs': whiffs_z,
+            'inplay_ab': ab_z,
+            'hits': hits_z,
+        },
+    }
+
+
 @router.get("/{player_id}")
 @cached(300)
 def get_player_detail(player_id: int):

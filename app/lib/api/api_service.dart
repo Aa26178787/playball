@@ -771,6 +771,14 @@ class ApiService {
     return Map<String, dynamic>.from(res.data);
   }
 
+  /// 타자 존 히트맵 — 피투구/헛스윙/존별 타율 (throws: '' 전체 / 'R' vs우투 / 'L' vs좌투)
+  static Future<Map<String, dynamic>> getBatterZones(int playerId,
+      {int season = 2026, String throws = ''}) async {
+    final res = await _dio.get('/players/$playerId/batter-zones',
+        queryParameters: {'season': season, if (throws.isNotEmpty) 'throws': throws});
+    return Map<String, dynamic>.from(res.data);
+  }
+
   /// 피칭 디자인 — 구종별 5x5 존 분포 (stance: '' 전체 / 'R' / 'L')
   static Future<Map<String, dynamic>> getPitchDesign(int playerId,
       {int season = 2026, String stance = ''}) async {
