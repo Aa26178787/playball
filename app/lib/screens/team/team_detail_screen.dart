@@ -368,9 +368,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     return Container(
       height: 52,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        color: isDark ? const Color(0xFF18181C) : Colors.white,
         borderRadius: BorderRadius.circular(26),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 16, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12), blurRadius: 16, offset: const Offset(0, 4))],
       ),
       child: Row(
         children: List.generate(labels.length, (i) {
@@ -406,49 +406,38 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _buildOverviewTab(Map team, String code, Color color, int wins, int losses, int draws, Map<String, dynamic> hr, Map<String, dynamic> ar) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(team, code, color, wins, losses, draws, hr, ar),
-          if (_seasonStats != null) _buildSeasonStatsBar(),
-          const SizedBox(height: 4),
-          // 등록말소 섹션
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: const Text('최근 등록말소', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-          ),
-          if (_rosterLoading)
-            Padding(padding: const EdgeInsets.all(16), child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark)))
-          else if (_rosterChanges.isEmpty)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
-              child: Text('최근 30일 등록말소 내역이 없습니다', style: TextStyle(color: Colors.grey, fontSize: 13)),
-            )
-          else
-            ..._rosterChanges.take(5).map((c) => _buildChangeItem(Map<String, dynamic>.from(c as Map))),
-          const Divider(height: 1),
-          // 뉴스 섹션
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: const Text('최근 뉴스', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-          ),
-          if (_newsLoading)
-            Padding(padding: const EdgeInsets.all(16), child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark)))
-          else if (_news.isEmpty)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 4, 16, 16),
-              child: Text('뉴스가 없습니다', style: TextStyle(color: Colors.grey, fontSize: 13)),
-            )
-          else
-            ..._news.take(5).map((n) => _buildNewsItem(n as Map)),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
+    final cs = _C(context);
+    final rosters = _rosterChanges.take(6).toList();
+    final newsList = _news.take(6).toList();
+    return ListView(padding: EdgeInsets.zero, children: [
+      _buildHeader(team, code, color, wins, losses, draws, hr, ar),
+      // 등록말소
+      _SectionLabel(label: '최근 등록말소', cs: cs),
+      if (_rosterLoading)
+        _CardWrap(cs: cs, child: Padding(padding: const EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: color))))
+      else if (rosters.isEmpty)
+        _CardWrap(cs: cs, child: Padding(padding: const EdgeInsets.all(16),
+            child: Text('최근 30일 등록말소 내역이 없습니다', style: TextStyle(color: cs.sub, fontSize: 12))))
+      else
+        _CardWrap(cs: cs, child: Column(children: rosters.asMap().entries.map((e) =>
+            _buildChangeItem(cs, Map<String, dynamic>.from(e.value as Map), e.key == rosters.length - 1)).toList())),
+      // 뉴스
+      _SectionLabel(label: '최근 뉴스', cs: cs),
+      if (_newsLoading)
+        _CardWrap(cs: cs, child: Padding(padding: const EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: color))))
+      else if (newsList.isEmpty)
+        _CardWrap(cs: cs, child: Padding(padding: const EdgeInsets.all(16),
+            child: Text('뉴스가 없습니다', style: TextStyle(color: cs.sub, fontSize: 12))))
+      else
+        _CardWrap(cs: cs, child: Column(children: newsList.asMap().entries.map((e) =>
+            _buildNewsItem(cs, e.value as Map, e.key == newsList.length - 1)).toList())),
+      const SizedBox(height: 24),
+    ]);
   }
 
-  Widget _buildNewsItem(Map n) {
+  Widget _buildNewsItem(_C cs, Map n, bool last) {
     final title = n['title'] as String? ?? '';
     final media = n['media'] as String? ?? '';
     final pub = n['published_at'] as String?;
@@ -461,22 +450,23 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         dateStr = '${dt.month}/${dt.day} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
       } catch (_) {}
     }
-    return InkWell(
+    return GestureDetector(
       onTap: () => _openUrl(url),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (thumbnail.isNotEmpty) ...[
               ClipRRect(
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(8),
                 child: CachedNetworkImage(
                   imageUrl: thumbnail,
                   width: 72, height: 54, fit: BoxFit.cover,
-                  placeholder: (_, _) => Container(width: 72, height: 54, color: Colors.grey[200]),
-                  errorWidget: (_, _, _) => Container(width: 72, height: 54, color: Colors.grey[100],
-                      child: const Icon(Icons.article_outlined, color: Colors.grey, size: 20)),
+                  placeholder: (_, _) => Container(width: 72, height: 54, color: cs.paper2),
+                  errorWidget: (_, _, _) => Container(width: 72, height: 54, color: cs.paper2,
+                      child: Icon(Icons.article_outlined, color: cs.sub, size: 20)),
                 ),
               ),
               const SizedBox(width: 10),
@@ -486,16 +476,16 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, height: 1.4),
+                      style: TextStyle(fontSize: 12, fontWeight: Typo.medium, color: cs.ink, height: 1.45),
                       maxLines: 2, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 5),
                   Row(children: [
                     if (media.isNotEmpty) ...[
-                      Text(media, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                      Text(media, style: TextStyle(fontSize: 10, color: cs.sub)),
                       const SizedBox(width: 6),
                     ],
                     if (dateStr.isNotEmpty)
-                      Text(dateStr, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                      Text(dateStr, style: TextStyle(fontSize: 10, color: cs.sub)),
                   ]),
                 ],
               ),
@@ -554,159 +544,86 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     );
   }
 
-  Widget _buildSeasonStatsBar() {
+  Widget _buildSeasonStatsBar(_C cs) {
     final bat = (_seasonStats!['batting'] as Map?)?.cast<String, dynamic>() ?? {};
     final pit = (_seasonStats!['pitching'] as Map?)?.cast<String, dynamic>() ?? {};
     final rec = (_seasonStats!['record'] as Map?)?.cast<String, dynamic>() ?? {};
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      color: isDark ? Colors.grey[850] : Colors.grey[50],
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _statBlock('팀타율', (bat['avg'] as num?)?.toStringAsFixed(3) ?? '-'),
-          _divider(),
-          _statBlock('팀방어율', (pit['era'] as num?)?.toStringAsFixed(2) ?? '-'),
-          _divider(),
-          _statBlock('WHIP', (pit['whip'] as num?)?.toStringAsFixed(2) ?? '-'),
-          _divider(),
-          _statBlock('득점', '${rec['runs_scored'] ?? '-'}'),
-          _divider(),
-          _statBlock('실점', '${rec['runs_allowed'] ?? '-'}'),
-          _divider(),
-          _statBlock('팀홈런', '${bat['home_runs'] ?? '-'}'),
-        ],
-      ),
+      decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.md)),
+      child: IntrinsicHeight(child: Row(children: [
+        _StatBlock(label: '팀타율', value: (bat['avg'] as num?)?.toStringAsFixed(3) ?? '-', cs: cs),
+        VerticalDivider(width: 1, color: cs.line),
+        _StatBlock(label: '방어율', value: (pit['era'] as num?)?.toStringAsFixed(2) ?? '-', cs: cs),
+        VerticalDivider(width: 1, color: cs.line),
+        _StatBlock(label: 'WHIP', value: (pit['whip'] as num?)?.toStringAsFixed(2) ?? '-', cs: cs),
+        VerticalDivider(width: 1, color: cs.line),
+        _StatBlock(label: '득점', value: '${rec['runs_scored'] ?? '-'}', cs: cs),
+        VerticalDivider(width: 1, color: cs.line),
+        _StatBlock(label: '실점', value: '${rec['runs_allowed'] ?? '-'}', cs: cs),
+        VerticalDivider(width: 1, color: cs.line),
+        _StatBlock(label: '홈런', value: '${bat['home_runs'] ?? '-'}', cs: cs),
+      ])),
     );
-  }
-
-  Widget _statBlock(String label, String value) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 2),
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-      ],
-    );
-  }
-
-  Widget _divider() {
-    return Container(width: 1, height: 28, color: Colors.grey.withValues(alpha: 0.25));
   }
 
   Widget _buildHeader(Map team, String code, Color color,
       int wins, int losses, int draws,
       Map<String, dynamic> hr, Map<String, dynamic> ar) {
+    final cs = _C(context);
     final gb = _gamesBehind ?? team['games_behind'] as num?;
-    final gbText = gb == null ? '-' : gb == 0 ? '-' : gb.toStringAsFixed(1);
-
+    final gbText = (gb == null || gb == 0) ? '선두' : '${gb.toStringAsFixed(1)} GB';
+    final pythag = (team['pythag_winpct'] as num?)?.toStringAsFixed(3);
     return Container(
-      color: color.withValues(alpha: 0.06),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: cs.dark ? 0.14 : 0.06),
+        border: Border(bottom: BorderSide(color: color.withValues(alpha: cs.dark ? 0.3 : 0.15))),
+      ),
+      child: Column(children: [
+        Row(children: [
           TeamLogo(teamCode: code, size: 64, logoUrl: team['logo_url']),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '${team['rank'] ?? '-'}위',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '승률 ${(team['win_rate'] as num?)?.toStringAsFixed(3) ?? '-'}  게임차 $gbText',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '전체  $wins승 $losses패 $draws무',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    _recordChip('홈', hr['wins'] ?? 0, hr['losses'] ?? 0),
-                    const SizedBox(width: 12),
-                    _recordChip('원정', ar['wins'] ?? 0, ar['losses'] ?? 0),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Builder(builder: (_) {
-                  final hw = (hr['wins'] as int? ?? 0);
-                  final hl = (hr['losses'] as int? ?? 0);
-                  final aw = (ar['wins'] as int? ?? 0);
-                  final al = (ar['losses'] as int? ?? 0);
-                  final homeWinPct = (hw + hl) > 0 ? (hw / (hw + hl)).toStringAsFixed(3) : '-';
-                  final awayWinPct = (aw + al) > 0 ? (aw / (aw + al)).toStringAsFixed(3) : '-';
-                  final pythag = (team['pythag_winpct'] as num?)?.toStringAsFixed(3) ?? '-';
-                  return Text(
-                    '홈 승률 $homeWinPct  원정 승률 $awayWinPct  피타고리안 $pythag',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                  );
-                }),
-              ],
-            ),
-          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Flexible(child: Text(team['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 20, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5))),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+                child: Text('${team['rank'] ?? '-'}위', style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: color)),
+              ),
+            ]),
+            const SizedBox(height: 5),
+            Text('$wins승 $losses패${draws > 0 ? ' $draws무' : ''} · 승률 ${(team['win_rate'] as num?)?.toStringAsFixed(3) ?? '-'} · $gbText',
+                style: TextStyle(fontSize: 13, color: cs.ink3)),
+            const SizedBox(height: 3),
+            Text('홈 ${hr['wins'] ?? 0}-${hr['losses'] ?? 0} · 원정 ${ar['wins'] ?? 0}-${ar['losses'] ?? 0}'
+                '${pythag != null ? ' · 피타고리안 $pythag' : ''}',
+                style: TextStyle(fontSize: 11, color: cs.sub)),
+          ])),
+        ]),
+        if (_seasonStats != null) ...[
+          const SizedBox(height: 14),
+          _buildSeasonStatsBar(cs),
         ],
-      ),
-    );
-  }
-
-  Widget _recordChip(String label, int w, int l) {
-    return RichText(
-      text: TextSpan(
-        style: const TextStyle(fontSize: 12, color: Colors.black87),
-        children: [
-          TextSpan(
-            text: '$label  ',
-            style: TextStyle(color: Colors.grey[600]),
-          ),
-          TextSpan(
-            text: '$w',
-            style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
-          ),
-          const TextSpan(text: '승 '),
-          TextSpan(
-            text: '$l',
-            style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-          ),
-          const TextSpan(text: '패'),
-        ],
-      ),
+      ]),
     );
   }
 
   Widget _buildPlayers() {
-    if (_playersLoading) return Center(child: CircularProgressIndicator(color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark, strokeWidth: 2.5));
+    final cs = _C(context);
+    final color = teamColor(widget.team['short_name'] as String? ?? '');
+    if (_playersLoading) return Center(child: CircularProgressIndicator(color: color, strokeWidth: 2.5));
     if (_players.isEmpty) {
       return RefreshIndicator(
         onRefresh: _loadPlayers,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 180),
+          children: [
+            const SizedBox(height: 180),
             Center(child: Text('선수 정보가 없습니다\n아래로 당겨서 새로고침',
-                textAlign: TextAlign.center, style: TextStyle(color: Colors.grey))),
+                textAlign: TextAlign.center, style: TextStyle(color: cs.sub))),
           ],
         ),
       );
@@ -716,61 +633,50 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final batters = _players.where((p) => p['player_type'] == '타자').toList();
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 24),
       children: [
         if (pitchers.isNotEmpty) ...[
-          _sectionHeader('투수'),
-          ...pitchers.map((p) => _playerRow(p)),
+          _SectionLabel(label: '투수 ${pitchers.length}', cs: cs),
+          _CardWrap(cs: cs, child: Column(children: pitchers.asMap().entries.map((e) =>
+              _playerRow(cs, color, e.value as Map, e.key == pitchers.length - 1)).toList())),
         ],
         if (batters.isNotEmpty) ...[
-          _sectionHeader('타자'),
-          ...batters.map((p) => _playerRow(p)),
+          _SectionLabel(label: '타자 ${batters.length}', cs: cs),
+          _CardWrap(cs: cs, child: Column(children: batters.asMap().entries.map((e) =>
+              _playerRow(cs, color, e.value as Map, e.key == batters.length - 1)).toList())),
         ],
       ],
     );
   }
 
-  Widget _sectionHeader(String title) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.grey.withValues(alpha: 0.1),
-      child: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-      ),
-    );
-  }
-
-  Widget _playerRow(Map p) {
-    return InkWell(
+  Widget _playerRow(_C cs, Color color, Map p, bool last) {
+    return GestureDetector(
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => PlayerDetailScreen(
           playerId: p['id'],
-          initialData: {'name': p['name'], 'team': widget.team['name'], 'profile_image': p['profile_image'], 'position': p['position'], 'player_type': p['player_type'], 'number': p['number']},
+          initialData: {'name': p['name'], 'team': widget.team['name'], 'profile_image': p['profile_image'], 'position': p['position'], 'player_type': p['player_type'], 'number': p['number'], 'team_code': widget.team['short_name']},
         )),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
         child: Row(
           children: [
-            SizedBox(
-              width: 36,
-              child: Text(
-                '#${p['number'] ?? '-'}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+            Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: cs.dark ? 0.18 : 0.08),
+                border: Border.all(color: color.withValues(alpha: 0.2)),
+                borderRadius: BorderRadius.circular(10),
               ),
+              child: Center(child: Text('#${p['number'] ?? '-'}',
+                  style: TextStyle(fontSize: 12, fontWeight: Typo.extra, color: color))),
             ),
-            Expanded(
-              child: Text(
-                p['name'] ?? '',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-              ),
-            ),
-            Text(
-              p['position'] ?? '',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(p['name'] ?? '',
+                style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.ink))),
+            Text(p['position'] ?? '', style: TextStyle(fontSize: 11, color: cs.sub)),
           ],
         ),
       ),
@@ -829,14 +735,16 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
   Widget _buildGames() {
-    if (_gamesLoading) return Center(child: CircularProgressIndicator(color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark, strokeWidth: 2.5));
-    if (_games.isEmpty) return const Center(child: Text('경기 정보가 없습니다'));
+    final cs = _C(context);
+    final tColor = teamColor(widget.team['short_name'] as String? ?? '');
+    if (_gamesLoading) return Center(child: CircularProgressIndicator(color: tColor, strokeWidth: 2.5));
+    if (_games.isEmpty) return Center(child: Text('경기 정보가 없습니다', style: TextStyle(color: cs.sub)));
 
     final teamName = widget.team['name'] as String? ?? '';
     final seriesList = _groupIntoSeries(_games, teamName);
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
       itemCount: seriesList.length,
       itemBuilder: (context, idx) {
         final s = seriesList[idx];
@@ -859,10 +767,11 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         }
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: const EdgeInsets.only(bottom: 10),
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-            borderRadius: BorderRadius.circular(12),
+            color: cs.paper,
+            border: Border.all(color: cs.line),
+            borderRadius: BorderRadius.circular(Radii.lg),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -870,18 +779,18 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.07),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  color: cs.paper2,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
                 ),
                 child: Row(
                   children: [
                     Text('vs $oppName',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        style: TextStyle(fontWeight: Typo.bold, fontSize: 14, color: cs.ink)),
                     const Spacer(),
                     if (wins > 0)
-                      Text('$wins승 ', style: const TextStyle(color: Colors.blue, fontSize: 13, fontWeight: FontWeight.bold)),
+                      Text('$wins승 ', style: const TextStyle(color: Color(0xFF2563EB), fontSize: 13, fontWeight: FontWeight.bold)),
                     if (losses > 0)
-                      Text('$losses패', style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+                      Text('$losses패', style: TextStyle(color: SemColor.live, fontSize: 13, fontWeight: FontWeight.bold)),
                     if (draws > 0)
                       Text(' $draws무', style: const TextStyle(color: Colors.grey, fontSize: 13)),
                     Builder(builder: (_) {
@@ -935,14 +844,14 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                         ),
                         const SizedBox(width: 10),
                         Text('$myScore : $oppScore',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: cs.ink)),
                         const SizedBox(width: 10),
                         Text(isHome ? '홈' : '원정',
-                            style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                            style: TextStyle(fontSize: 11, color: cs.sub)),
                         const Spacer(),
-                        Text(dateStr, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                        Text(dateStr, style: TextStyle(fontSize: 12, color: cs.sub)),
                         const SizedBox(width: 4),
-                        const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+                        Icon(Icons.chevron_right, size: 16, color: cs.sub),
                       ],
                     ),
                   ),
@@ -956,80 +865,59 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   }
 
 
-  Widget _buildChangeItem(Map<String, dynamic> c) {
+  Widget _buildChangeItem(_C cs, Map<String, dynamic> c, bool last) {
     final changeType = c['change_type'] as String? ?? '';
     final playerName = c['player_name'] as String? ?? '';
     final reason = c['reason'] as String? ?? '';
     final position = c['position'] as String? ?? '';
     final playerId = c['player_id'] as int?;
 
-    Color typeColor;
-    IconData typeIcon;
-    switch (changeType) {
-      case '1군등록':
-        typeColor = Colors.blue;
-        typeIcon = Icons.arrow_upward;
-        break;
-      case '등록말소':
-        typeColor = Colors.orange;
-        typeIcon = Icons.arrow_downward;
-        break;
-      case '부상자명단':
-        typeColor = Colors.red;
-        typeIcon = Icons.local_hospital;
-        break;
-      case '임의탈퇴':
-        typeColor = Colors.grey;
-        typeIcon = Icons.person_off;
-        break;
-      default:
-        typeColor = Colors.grey;
-        typeIcon = Icons.swap_horiz;
-    }
+    final typeColor = changeType == '1군등록' ? const Color(0xFF2563EB)
+        : changeType == '부상자명단' ? SemColor.live
+        : changeType == '임의탈퇴' ? cs.sub
+        : SemColor.warning; // 등록말소 등
 
-    return ListTile(
-      dense: true,
-      leading: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: typeColor.withValues(alpha: 0.15),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(typeIcon, size: 16, color: typeColor),
-      ),
-      title: Row(children: [
-        Text(playerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        if (position.isNotEmpty) ...[
-          const SizedBox(width: 6),
-          Text(position, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-        ],
-      ]),
-      subtitle: reason.isNotEmpty ? Text(reason, style: const TextStyle(fontSize: 11)) : null,
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: typeColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(changeType, style: TextStyle(fontSize: 11, color: typeColor, fontWeight: FontWeight.bold)),
-      ),
+    return GestureDetector(
       onTap: playerId != null
-          ? () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId)))
+          ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId)))
           : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
+        child: Row(children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: typeColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(5)),
+            child: Text(changeType, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: typeColor)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Row(children: [
+            Flexible(child: Text(playerName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink))),
+            if (reason.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              Flexible(child: Text(reason, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 10, color: cs.sub))),
+            ],
+          ])),
+          if (position.isNotEmpty) Text(position, style: TextStyle(fontSize: 11, color: cs.sub)),
+        ]),
+      ),
     );
   }
 
 
   Widget _buildCommunity() {
-    if (_communityLoading) return Center(child: CircularProgressIndicator(color: Theme.of(context).brightness == Brightness.dark ? AppColors.primaryDark : SemColor.panelDark, strokeWidth: 2.5));
+    final cs = _C(context);
+    final color = teamColor(widget.team['short_name'] as String? ?? '');
+    final teamShort = (widget.team['name'] as String? ?? '').split(' ').first;
+    if (_communityLoading) return Center(child: CircularProgressIndicator(color: color, strokeWidth: 2.5));
     if (_communityPosts.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('커뮤니티 글이 없습니다', style: TextStyle(color: Colors.grey)),
+            Text('커뮤니티 글이 없습니다', style: TextStyle(color: cs.sub)),
             const SizedBox(height: 12),
             TextButton.icon(
               icon: const Icon(Icons.refresh, size: 16),
@@ -1049,10 +937,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         setState(() => _communityPosts = []);
         await _loadCommunityPosts();
       },
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(18),
         itemCount: _communityPosts.length,
-        separatorBuilder: (_, _) => const Divider(height: 1, indent: 16, endIndent: 16),
         itemBuilder: (_, i) {
           final post = _communityPosts[i] as Map;
           final title = post['title'] as String? ?? '';
@@ -1068,8 +955,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           if (createdAt != null) {
             try {
               final dt = DateTime.parse(createdAt).toLocal();
-              final now = DateTime.now();
-              final diff = now.difference(dt);
+              final diff = DateTime.now().difference(dt);
               if (diff.inMinutes < 60) {
                 dateStr = '${diff.inMinutes}분 전';
               } else if (diff.inHours < 24) {
@@ -1080,53 +966,50 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             } catch (_) {}
           }
 
-          return InkWell(
+          return GestureDetector(
             onTap: postId != null
                 ? () => Navigator.push(context,
                     MaterialPageRoute(builder: (_) => PostDetailScreen(postId: postId)))
                 : null,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: cs.paper, border: Border.all(color: cs.line),
+                borderRadius: BorderRadius.circular(Radii.lg),
+                boxShadow: cs.dark ? null : [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 2, offset: const Offset(0, 1))],
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(children: [
-                    if (category.isNotEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(category,
-                            style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(width: 6),
-                    ],
-                    Expanded(
-                      child: Text(title,
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis),
-                    ),
+                  Wrap(spacing: 5, children: [
+                    _SmallChip(label: teamShort, color: color, bg: color.withValues(alpha: 0.1)),
+                    if (category.isNotEmpty)
+                      _SmallChip(label: category, color: cs.ink3, bg: cs.paper2, border: cs.line),
                   ]),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 7),
+                  Text(title,
+                      style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink, height: 1.45),
+                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 8),
                   Row(children: [
-                    Text(nickname, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-                    const SizedBox(width: 8),
-                    Text(dateStr, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                    Text(nickname, style: TextStyle(fontSize: 10, color: cs.sub)),
+                    if (dateStr.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Text(dateStr, style: TextStyle(fontSize: 10, color: cs.sub)),
+                    ],
                     const Spacer(),
-                    Icon(Icons.visibility_outlined, size: 12, color: Colors.grey[600]),
+                    Icon(Icons.visibility_outlined, size: 12, color: cs.sub),
                     const SizedBox(width: 2),
-                    Text('$views', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                    Text('$views', style: TextStyle(fontSize: 10, color: cs.sub)),
                     const SizedBox(width: 8),
-                    Icon(Icons.favorite_border, size: 12, color: Colors.grey[600]),
+                    Icon(Icons.favorite_border, size: 12, color: cs.sub),
                     const SizedBox(width: 2),
-                    Text('$likes', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                    Text('$likes', style: TextStyle(fontSize: 10, color: cs.sub)),
                     const SizedBox(width: 8),
-                    Icon(Icons.comment_outlined, size: 12, color: Colors.grey[600]),
+                    Icon(Icons.mode_comment_outlined, size: 12, color: cs.sub),
                     const SizedBox(width: 2),
-                    Text('$comments', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                    Text('$comments', style: TextStyle(fontSize: 10, color: cs.sub)),
                   ]),
                 ],
               ),
@@ -1694,4 +1577,83 @@ class _WhiteBtn32 extends StatelessWidget {
       child: Icon(icon, size: 18, color: Colors.white),
     ),
   );
+}
+
+// ── Option A 공통 소형 위젯 ──────────────────────────────────────────────────
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  final _C cs;
+  const _SectionLabel({required this.label, required this.cs});
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
+    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
+  );
+}
+
+class _CardWrap extends StatelessWidget {
+  final Widget child;
+  final _C cs;
+  const _CardWrap({required this.child, required this.cs});
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 18),
+    child: Container(
+      decoration: BoxDecoration(
+        color: cs.paper, border: Border.all(color: cs.line),
+        borderRadius: BorderRadius.circular(Radii.lg),
+        boxShadow: cs.dark ? null : [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 2, offset: const Offset(0, 1))],
+      ),
+      child: child,
+    ),
+  );
+}
+
+class _StatBlock extends StatelessWidget {
+  final String label, value;
+  final _C cs;
+  const _StatBlock({required this.label, required this.value, required this.cs});
+  @override
+  Widget build(BuildContext context) => Expanded(child: Padding(
+    padding: const EdgeInsets.symmetric(vertical: 10),
+    child: Column(children: [
+      Text(value, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)),
+      const SizedBox(height: 4),
+      Text(label, style: TextStyle(fontSize: 9, color: cs.sub)),
+    ]),
+  ));
+}
+
+class _SmallChip extends StatelessWidget {
+  final String label;
+  final Color color, bg;
+  final Color? border;
+  const _SmallChip({required this.label, required this.color, required this.bg, this.border});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: bg, borderRadius: BorderRadius.circular(Radii.xs),
+      border: border != null ? Border.all(color: border!) : null,
+    ),
+    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: color)),
+  );
+}
+
+// ── 색상 헬퍼 ─────────────────────────────────────────────────────────────────
+class _C {
+  final Color bg, paper, paper2, ink, ink2, ink3, sub, line, line2, track;
+  final bool dark;
+  _C(BuildContext ctx)
+    : dark   = Theme.of(ctx).brightness == Brightness.dark,
+      bg     = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF0F0F12) : const Color(0xFFFAFAFB),
+      paper  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF18181C) : Colors.white,
+      paper2 = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
+      ink    = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFFF4F4F5) : const Color(0xFF111113),
+      ink2   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46),
+      ink3   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73),
+      sub    = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2),
+      line   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
+      line2  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4),
+      track  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);
 }
