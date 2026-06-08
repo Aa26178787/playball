@@ -54,7 +54,7 @@ class _VisitRecordScreenState extends State<VisitRecordScreen> {
       if (_pickedImagePath != null) {
         try {
           imageUrl = await ApiService.uploadPostImage(_pickedImagePath!);
-        } catch (_) {}
+        } catch (e) { debugPrint('visit_record: $e'); }
       }
       final gameId = widget.game['id'] as int;
       final memo = _memoCtrl.text.trim();

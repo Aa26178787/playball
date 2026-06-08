@@ -134,7 +134,7 @@ class MentionText extends StatelessWidget {
           SnackBar(content: Text('$mm월$dd일 ${parts[2]} vs ${parts[3]} 경기를 찾을 수 없습니다')),
         );
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('mention_text: $e'); }
   }
 
   Future<void> _navigatePlayer(BuildContext context, String mention) async {
@@ -189,7 +189,7 @@ class MentionText extends StatelessWidget {
           ));
         }
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('mention_text: $e'); }
   }
 
   void _navigateTeam(BuildContext context, String mention) {

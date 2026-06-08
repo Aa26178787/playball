@@ -319,7 +319,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   }
                 }
                 if (mounted) setState(() => _playerRosterStatus = statusMap);
-              } catch (_) {}
+              } catch (e) { debugPrint('game_detail: $e'); }
             })
             .catchError((_) {}),
         ApiService.getGamePreview(widget.gameId)
@@ -3975,7 +3975,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       try {
         final ok = await launchUrl(uri, mode: LaunchMode.externalNonBrowserApplication);
         if (ok) return;
-      } catch (_) {}
+      } catch (e) { debugPrint('game_detail: $e'); }
       // 2) vnd.youtube:VIDEO_ID (콜론만, 슬래시 X)
       final m = RegExp(r'(?:v=|/shorts/|youtu\.be/)([A-Za-z0-9_-]{11})').firstMatch(url);
       final vid = m?.group(1);
@@ -3984,13 +3984,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           final appUri = Uri.parse('vnd.youtube:$vid');
           final ok = await launchUrl(appUri, mode: LaunchMode.externalNonBrowserApplication);
           if (ok) return;
-        } catch (_) {}
+        } catch (e) { debugPrint('game_detail: $e'); }
       }
     }
     // 3) fallback: 외부 브라우저
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {}
+    } catch (e) { debugPrint('game_detail: $e'); }
   }
 
   Widget _buildHighlightsTab() {

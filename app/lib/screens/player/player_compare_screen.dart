@@ -40,7 +40,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
           }
         });
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('player_compare: $e'); }
   }
 
   Future<void> _selectPlayer(int slot, Map p) async {

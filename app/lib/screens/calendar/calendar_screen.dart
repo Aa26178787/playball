@@ -55,7 +55,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final teams = data['teams'] as List? ?? [];
       await LocalCache.set('favorite_teams', teams);
       if (mounted) setState(() => _applyFavorites(teams));
-    } catch (_) {}
+    } catch (e) { debugPrint('calendar: $e'); }
   }
 
   String get _calendarCacheKey =>
@@ -120,7 +120,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final data = await ApiService.getCalendarEvents(_focusedMonth.year, _focusedMonth.month);
         final events = (data['events'] as List? ?? []).cast<Map>();
         if (mounted) setState(() => _personalEvents = events);
-      } catch (_) {}
+      } catch (e) { debugPrint('calendar: $e'); }
     }
   }
 
@@ -798,7 +798,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       try {
         await ApiService.deleteCalendarEvent(id);
         await _loadPersonalEvents();
-      } catch (_) {}
+      } catch (e) { debugPrint('calendar: $e'); }
     }
   }
 
@@ -967,7 +967,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         try {
           await ApiService.deleteStadiumVisit(existing['id'] as int);
           if (mounted) setState(() => _visitedGames.remove(gameId));
-        } catch (_) {}
+        } catch (e) { debugPrint('calendar: $e'); }
       }
   }
 

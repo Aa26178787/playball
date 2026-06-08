@@ -24,7 +24,7 @@ class _StadiumScreenState extends State<StadiumScreen> {
     try {
       _webController?.stopLoading();
       _webController = null;
-    } catch (_) {}
+    } catch (e) { debugPrint('stadium_screen: $e'); }
     super.dispose();
   }
 

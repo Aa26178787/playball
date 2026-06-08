@@ -34,7 +34,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     try {
       final d = await ApiService.getPitchDesign(widget.playerId, stance: _pdStance);
       if (mounted) setState(() => _pitchDesign = d);
-    } catch (_) {}
+    } catch (e) { debugPrint('player_detail: $e'); }
   }
 
   // 타자 존 히트맵
@@ -46,7 +46,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     try {
       final d = await ApiService.getBatterZones(widget.playerId, throws: _bzThrows);
       if (mounted) setState(() => _batterZones = d);
-    } catch (_) {}
+    } catch (e) { debugPrint('player_detail: $e'); }
   }
 
   // 투수 존 히트맵 (피투구 분포 / 피안타율)
@@ -58,7 +58,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     try {
       final d = await ApiService.getPitcherZones(widget.playerId, stance: _pzStance);
       if (mounted) setState(() => _pitcherZones = d);
-    } catch (_) {}
+    } catch (e) { debugPrint('player_detail: $e'); }
   }
   bool _isLoading = true;   // 전체 shimmer (initialData 없을 때)
   bool _bodyLoading = false; // 바디 shimmer (initialData 있어서 헤더만 먼저 표시할 때)
@@ -97,7 +97,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           _voteCount = s['vote_count'] as int? ?? 0;
         });
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('player_detail: $e'); }
   }
 
   Future<void> _toggleVote() async {
@@ -136,7 +136,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       final players = data['players'] as List? ?? [];
       await LocalCache.set('favorite_players', players);
       if (mounted) setState(() => _isFav = players.any((p) => p['id'] == widget.playerId));
-    } catch (_) {}
+    } catch (e) { debugPrint('player_detail: $e'); }
   }
 
   Future<void> _toggleFav() async {
@@ -148,7 +148,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         await ApiService.addFavoritePlayer(widget.playerId);
       }
       if (mounted) setState(() => _isFav = !_isFav);
-    } catch (_) {}
+    } catch (e) { debugPrint('player_detail: $e'); }
     if (mounted) setState(() => _favLoading = false);
   }
 
@@ -231,13 +231,13 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         final dailyData = await ApiService.getPlayerDaily(widget.playerId, season: 2026);
         await LocalCache.set(_dailyCacheKey, dailyData);
         if (mounted) setState(() => _dailyStats = dailyData['daily'] ?? []);
-      } catch (_) {}
+      } catch (e) { debugPrint('player_detail: $e'); }
 
       if (playerData['player_type'] == '투수') {
         try {
           final ps = await ApiService.getPlayerPitchStats(widget.playerId);
           if (mounted) setState(() => _pitchStats = ps);
-        } catch (_) {}
+        } catch (e) { debugPrint('player_detail: $e'); }
         _loadPitchDesign();
         _loadPitcherZones();
       } else {

@@ -50,8 +50,8 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
     // 수정 모드: 기존 값 채우기
     _titleCtrl.text = e['title'] as String? ?? '';
     _memoCtrl.text = e['description'] as String? ?? '';
-    try { _start = DateTime.parse(e['start_date'] ?? e['date'] ?? ''); } catch (_) {}
-    try { _end = DateTime.parse(e['end_date'] ?? e['start_date'] ?? ''); } catch (_) {}
+    try { _start = DateTime.parse(e['start_date'] ?? e['date'] ?? ''); } catch (e) { debugPrint('cal_event_add: $e'); }
+    try { _end = DateTime.parse(e['end_date'] ?? e['start_date'] ?? ''); } catch (e) { debugPrint('cal_event_add: $e'); }
     if (_end.isBefore(_start)) _end = _start;
     final ci = _kEventColorKeys.indexOf(e['color'] as String? ?? 'blue');
     if (ci >= 0) _colorIdx = ci;

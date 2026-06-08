@@ -237,7 +237,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('신고가 접수되었습니다')));
                     }
-                  } catch (_) {}
+                  } catch (e) { debugPrint('post_detail: $e'); }
                 }
               } else if (v == 'block') {
                 if (postUserId is int) await _blockAuthor(postUserId);
@@ -341,7 +341,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             try {
                               await ApiService.toggleCommentLike(c['id']);
                               _loadPost();
-                            } catch (_) {}
+                            } catch (e) { debugPrint('post_detail: $e'); }
                           },
                           child: Row(
                             mainAxisSize: MainAxisSize.min,

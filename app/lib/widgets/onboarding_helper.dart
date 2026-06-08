@@ -32,6 +32,6 @@ class OnboardingHelper {
         ));
         await LocalCache.setFlag('onboarding_done');
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('onboarding_helper: $e'); }
   }
 }

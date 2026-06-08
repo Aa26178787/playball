@@ -119,7 +119,7 @@ class _TeamScreenState extends State<TeamScreen>
           _favoriteTeamIds = teams.map((t) => t['id'] as int).toSet();
         });
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('team_screen: $e'); }
   }
 
   @override

@@ -220,7 +220,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     try {
       final data = await ApiService.getTeams();
       if (mounted) setState(() => _teams = data['teams'] ?? []);
-    } catch (_) {}
+    } catch (e) { debugPrint('player_screen: $e'); }
   }
 
   Future<void> _loadHitters() async {
@@ -370,7 +370,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     try {
       final data = await ApiService.searchPlayers(query);
       if (mounted) setState(() => _searchResults = data['players'] ?? []);
-    } catch (_) {}
+    } catch (e) { debugPrint('player_screen: $e'); }
   }
 
   String _hitterStat(Map p) {

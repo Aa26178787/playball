@@ -94,7 +94,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           setState(() => _gamesBehind = found['games_behind'] as num);
           return;
         }
-      } catch (_) {}
+      } catch (e) { debugPrint('team_detail: $e'); }
     }
     // 캐시도 없으면 API 호출
     try {
@@ -104,7 +104,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       final teamId = widget.team['id'];
       final found = rankings.firstWhere((t) => t['id'] == teamId, orElse: () => null);
       if (found != null && mounted) setState(() => _gamesBehind = found['games_behind'] as num?);
-    } catch (_) {}
+    } catch (e) { debugPrint('team_detail: $e'); }
   }
 
   Future<void> _loadFavStatus() async {
@@ -118,7 +118,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       final teams = data['teams'] as List? ?? [];
       await LocalCache.set('favorite_teams', teams);
       if (mounted) setState(() => _isFav = teams.any((t) => t['id'] == id));
-    } catch (_) {}
+    } catch (e) { debugPrint('team_detail: $e'); }
   }
 
   Future<void> _loadSeasonStats() async {
@@ -130,7 +130,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       final data = await ApiService.getTeamSeasonStats(teamId);
       await LocalCache.set(ck, data);
       if (mounted) setState(() => _seasonStats = data);
-    } catch (_) {}
+    } catch (e) { debugPrint('team_detail: $e'); }
   }
 
   Future<void> _toggleFav() async {
@@ -148,7 +148,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       }
       if (mounted) setState(() => _isFav = !_isFav);
       ApiService.favoriteTeamsChanged.value++;
-    } catch (_) {}
+    } catch (e) { debugPrint('team_detail: $e'); }
     if (mounted) setState(() => _favLoading = false);
   }
 
@@ -474,7 +474,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       try {
         final dt = DateTime.parse(pub).toLocal();
         dateStr = '${dt.month}/${dt.day} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-      } catch (_) {}
+      } catch (e) { debugPrint('team_detail: $e'); }
     }
     return GestureDetector(
       onTap: () => _openUrl(url),
@@ -1005,7 +1005,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
               } else {
                 dateStr = '${dt.month}/${dt.day}';
               }
-            } catch (_) {}
+            } catch (e) { debugPrint('team_detail: $e'); }
           }
 
           return GestureDetector(
@@ -1164,7 +1164,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     try {
       final uri = Uri.parse(url);
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {}
+    } catch (e) { debugPrint('team_detail: $e'); }
   }
 
   Widget _buildHeadToHead() {

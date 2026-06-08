@@ -120,7 +120,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     final prefs = await ApiService.getRefreshToken();
     if (prefs != null) {
-      try { await ApiService.serverLogout(prefs); } catch (_) {}
+      try { await ApiService.serverLogout(prefs); } catch (e) { debugPrint('auth_provider: $e'); }
     }
     await ApiService.deleteToken();
     await ApiService.clearAutoLoginCredentials();

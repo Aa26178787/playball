@@ -205,7 +205,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         'notify_team_milestone':  _notifyTeamMilestone,
         'notify_allstar_vote':    _notifyAllstarVote,
       });
-    } catch (_) {}
+    } catch (e) { debugPrint('my_page: $e'); }
   }
 
   Future<void> _logout() async {

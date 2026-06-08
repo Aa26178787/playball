@@ -234,7 +234,7 @@ class ApiService {
       if (token != null && token.isNotEmpty) {
         return {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'};
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('api_service: $e'); }
     return {'Content-Type': 'application/json'};
   }
 
@@ -765,7 +765,7 @@ class ApiService {
       final headers = await authHeaders();
       await _dio.post('/user/push-token',
           data: {'token': token}, options: Options(headers: headers));
-    } catch (_) {}
+    } catch (e) { debugPrint('api_service: $e'); }
   }
 
   static Future<void> updatePost(int postId, String title, String content) async {

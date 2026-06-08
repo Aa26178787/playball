@@ -512,7 +512,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         try {
           final data = await ApiService.getGamesByDate(ds);
           await LocalCache.set('games_$ds', data['games'] ?? []);
-        } catch (_) {}
+        } catch (e) { debugPrint('home_screen: $e'); }
       }));
 
       // 선수 탭 데이터 미리 로드 (캐시 없을 때만)
@@ -520,13 +520,13 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         try {
           final d = await ApiService.getHitters(sortBy: 'avg', limit: 500, teamId: null);
           await LocalCache.set('hitters_list', d['hitters'] ?? []);
-        } catch (_) {}
+        } catch (e) { debugPrint('home_screen: $e'); }
       }
       if (await LocalCache.get('pitchers_list', maxAgeSeconds: 300) == null) {
         try {
           final d = await ApiService.getPitchers(sortBy: 'era', limit: 500, teamId: null);
           await LocalCache.set('pitchers_list', d['pitchers'] ?? []);
-        } catch (_) {}
+        } catch (e) { debugPrint('home_screen: $e'); }
       }
     });
   }
@@ -615,7 +615,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         });
         _updateMyTeamData();
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('home_screen: $e'); }
   }
 
   Future<void> _loadRankings() async {
@@ -632,21 +632,21 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         setState(() => _rankings = rankings);
         _updateMyTeamData();
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('home_screen: $e'); }
   }
 
   Future<void> _loadUnreadCount() async {
     try {
       final data = await ApiService.getNotifications(limit: 1);
       if (mounted) setState(() => _unreadNotifCount = data['unread_count'] as int? ?? 0);
-    } catch (_) {}
+    } catch (e) { debugPrint('home_screen: $e'); }
   }
 
   Future<void> _loadTodayRosterChanges() async {
     try {
       final data = await ApiService.getTodayRosterChanges();
       if (mounted) setState(() => _todayRosterChanges = data['changes'] ?? []);
-    } catch (_) {}
+    } catch (e) { debugPrint('home_screen: $e'); }
   }
 
   Future<void> _loadTomorrowGames() async {
@@ -684,7 +684,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       if (mounted && _seriesGen == gen && combined.isNotEmpty) {
         setState(() => _seriesGames = combined);
       }
-    } catch (_) {}
+    } catch (e) { debugPrint('home_screen: $e'); }
   }
 
   Future<void> _loadGames() async {
@@ -761,7 +761,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         try {
           final data = await ApiService.getGamesByDate(adjStr);
           await LocalCache.set('games_$adjStr', data['games'] ?? []);
-        } catch (_) {}
+        } catch (e) { debugPrint('home_screen: $e'); }
       }
     });
   }
@@ -784,7 +784,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             final relay = await ApiService.getGameRelayAll(id);
             await LocalCache.set('game_${id}_relay', relay);
           }
-        } catch (_) {}
+        } catch (e) { debugPrint('home_screen: $e'); }
       }
     });
   }
