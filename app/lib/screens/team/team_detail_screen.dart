@@ -10,6 +10,20 @@ import '../player/player_detail_screen.dart';
 import '../game/game_detail_screen.dart';
 import '../community/post_detail_screen.dart';
 
+// 구단 공식 외부 링크 (short_name 코드 기준). 베스트에포트 공식 URL — 부정확분 수정 필요
+const Map<String, Map<String, String>> _teamLinks = {
+  'LG': {'yt': 'https://www.youtube.com/@lgtwinstv', 'ig': 'https://www.instagram.com/lgtwins', 'home': 'https://www.lgtwins.com'},
+  'KT': {'yt': 'https://www.youtube.com/@ktwiz', 'ig': 'https://www.instagram.com/ktwiz_official', 'home': 'https://www.ktwiz.co.kr'},
+  'SK': {'yt': 'https://www.youtube.com/@SSGLANDERS', 'ig': 'https://www.instagram.com/ssglanders', 'home': 'https://www.ssglanders.com'},
+  'NC': {'yt': 'https://www.youtube.com/@ncdinos', 'ig': 'https://www.instagram.com/ncdinos', 'home': 'https://www.ncdinos.com'},
+  'OB': {'yt': 'https://www.youtube.com/@doosanbears', 'ig': 'https://www.instagram.com/doosanbears', 'home': 'https://www.doosanbears.com'},
+  'HT': {'yt': 'https://www.youtube.com/@kiatigers', 'ig': 'https://www.instagram.com/kiatigers', 'home': 'https://www.tigers.co.kr'},
+  'LT': {'yt': 'https://www.youtube.com/@lottegiantstv', 'ig': 'https://www.instagram.com/lotte_giants', 'home': 'https://www.giantsclub.com'},
+  'SS': {'yt': 'https://www.youtube.com/@samsunglionstv', 'ig': 'https://www.instagram.com/samsung_lions', 'home': 'https://www.samsunglions.com'},
+  'HH': {'yt': 'https://www.youtube.com/@hanwhaeaglestv', 'ig': 'https://www.instagram.com/hanwhaeagles', 'home': 'https://www.hanwhaeagles.co.kr'},
+  'WO': {'yt': 'https://www.youtube.com/@heroesbaseballclub', 'ig': 'https://www.instagram.com/heroes_baseball', 'home': 'https://www.heroesbaseball.co.kr'},
+};
+
 class TeamDetailScreen extends StatefulWidget {
   final Map<String, dynamic> team;
   const TeamDetailScreen({required this.team, super.key});
@@ -629,12 +643,50 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 style: TextStyle(fontSize: 11, color: cs.sub)),
           ])),
         ]),
+        if (_teamLinks[code] != null) ...[
+          const SizedBox(height: 12),
+          Row(children: [
+            _linkBtn(Icons.smart_display, '유튜브', const Color(0xFFFF0000), _teamLinks[code]!['yt'], color),
+            const SizedBox(width: 8),
+            _linkBtn(Icons.photo_camera, '인스타', const Color(0xFFE1306C), _teamLinks[code]!['ig'], color),
+            const SizedBox(width: 8),
+            _linkBtn(Icons.language, '공식홈', color, _teamLinks[code]!['home'], color),
+          ]),
+        ],
         if (_seasonStats != null) ...[
           const SizedBox(height: 14),
           _buildSeasonStatsBar(cs),
         ],
       ]),
     );
+  }
+
+  Widget _linkBtn(IconData icon, String label, Color iconColor, String? url, Color teamColor) {
+    if (url == null || url.isEmpty) return const Expanded(child: SizedBox.shrink());
+    final cs = _C(context);
+    return Expanded(child: GestureDetector(
+      onTap: () async {
+        final u = Uri.tryParse(url);
+        if (u == null) return;
+        try {
+          await launchUrl(u, mode: LaunchMode.externalApplication);
+        } catch (_) {
+          try { await launchUrl(u, mode: LaunchMode.platformDefault); } catch (_) {}
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        decoration: BoxDecoration(
+          color: teamColor.withValues(alpha: cs.dark ? 0.14 : 0.07),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 18, color: iconColor),
+          const SizedBox(height: 3),
+          Text(label, style: TextStyle(fontSize: 10, color: cs.ink, fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    ));
   }
 
   // 타자 position → 필터 그룹 (포수/내야/외야/DH)
