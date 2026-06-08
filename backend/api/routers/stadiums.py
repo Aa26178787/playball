@@ -33,7 +33,7 @@ class FoodPlaceSubmit(BaseModel):
     url: Optional[str] = None
     memo: Optional[str] = None
 
-_KAKAO_REST_KEY = "7985e6da2ec83998731bfa4a58ff99a5"
+_KAKAO_REST_KEY = os.environ.get("KAKAO_REST_KEY", "")
 
 # 구장 좌표 하드코딩 (DB에 없을 때 fallback)
 _STADIUM_COORDS = {
