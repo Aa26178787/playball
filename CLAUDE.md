@@ -296,7 +296,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 
 ## 해야할 것
 ### 출시 전 필수 (네 권한 / 외부 작업)
-- [ ] **키 회전**: Gmail 앱비번·Kakao 키(각 콘솔), DB pw(PgBouncer userlist 동기화)
+- [x] **키 회전** (2026-06-09 완료): Gmail 앱비번·Kakao(JS/네이티브/REST)·DB pw 전부 회전+라이브검증. ⚠️ 서버 `.bak.*`(옛 시크릿) 잔존 — 안정 확인 후 삭제 / 옛 Gmail 앱비번 콘솔 폐기 확인 / 출시 APK는 새 키로 재빌드
 - [ ] **도메인 + Cloudflare**: 웹사이트 Free 플랜 + Tunnel(IP은닉, duckdns/certbot 제거). ⚠️ Bot Fight Mode OFF(앱 API 차단), 동적 JSON 캐시 bypass
 - [ ] **Play Console**($25) + keystore 안전백업(분실=업데이트 불가) + Data Safety + targetSdk 확인
 - [ ] **법무**: 개인정보처리방침/약관 URL + 데이터 출처 저작권(KBO 사진·로고, Naver크롤 ToS) 검토
