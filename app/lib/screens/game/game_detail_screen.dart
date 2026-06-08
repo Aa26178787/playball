@@ -419,12 +419,16 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     if (_isRelayRefreshing) return;
     setState(() => _isRelayRefreshing = true);
     try {
-      final gameData = await ApiService.getGameDetail(widget.gameId);
-      final relayAll = await ApiService.getGameRelayAll(widget.gameId);
+      // getGameDetail + getGameRelayAll 독립 → 병렬 (직렬 2 RT → 1 RT)
+      final results = await Future.wait([
+        ApiService.getGameDetail(widget.gameId),
+        ApiService.getGameRelayAll(widget.gameId),
+      ]);
       if (!mounted) return;
+      final gameData = results[0];
       setState(() {
         _gameData = gameData;
-        _relayAllData = relayAll;
+        _relayAllData = results[1];
       });
       if (gameData['game']['status'] == '진행') {
         ApiService.getGameRelay(widget.gameId)
