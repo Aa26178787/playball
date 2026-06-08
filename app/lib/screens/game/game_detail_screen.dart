@@ -3427,9 +3427,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         children: [
           TabBar(
-            indicatorColor: SemColor.panelDark,
+            indicatorColor: SemColor.brand(context),
             indicatorWeight: 2.5,
-            labelColor: SemColor.panelDark,
+            labelColor: SemColor.brand(context),
             unselectedLabelColor: Colors.grey,
             labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
@@ -3681,9 +3681,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         children: [
           TabBar(
-            indicatorColor: SemColor.panelDark,
+            indicatorColor: SemColor.brand(context),
             indicatorWeight: 2.5,
-            labelColor: SemColor.panelDark,
+            labelColor: SemColor.brand(context),
             unselectedLabelColor: Colors.grey,
             labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400),
@@ -4304,8 +4304,8 @@ class _GameShareSheetState extends State<_GameShareSheet> {
                   icon: const Icon(Icons.text_fields, size: 16),
                   label: const Text('텍스트 공유'),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: SemColor.panelDark),
-                    foregroundColor: SemColor.panelDark,
+                    side: BorderSide(color: SemColor.brand(context)),
+                    foregroundColor: SemColor.brand(context),
                   ),
                 ),
               ),
