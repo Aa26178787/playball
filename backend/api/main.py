@@ -55,12 +55,24 @@ async def limit_body_size(request: Request, call_next):
     return await call_next(request)
 
 
+def _client_ip(request: Request) -> str:
+    # nginx가 X-Real-IP=실제 클라이언트로 설정. 8000은 127.0.0.1만 ACCEPT(외부 REJECT)라
+    # 헤더 스푸핑 불가 → 신뢰 가능. 미사용 시 client.host는 항상 nginx(127.0.0.1)라 per-IP 무력화.
+    xri = request.headers.get("x-real-ip")
+    if xri:
+        return xri.strip()
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 @app.middleware("http")
 async def rate_limit(request: Request, call_next):
     if request.url.path in _RATE_WHITELIST:
         return await call_next(request)
 
-    ip = request.client.host if request.client else "unknown"
+    ip = _client_ip(request)
     now = time.time()
 
     with _rate_lock:
