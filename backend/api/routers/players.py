@@ -47,6 +47,7 @@ def search_players(q: str, player_type: str = None):
 
 
 @router.get("/hitters")
+@cached(300)
 def get_hitters(
     season: int = 2026,
     limit: int = 100,
