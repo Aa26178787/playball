@@ -296,18 +296,19 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - **06-08b 출시준비(보안·안정화)**: 시크릿 env화·admin X-Admin-Key·rate limit 강화(X-Real-IP)·업로드 magic-byte·회원탈퇴 FK CASCADE·유저차단(user_blocks)·DB백업 가드·watchdog·Crashlytics·보안감사(auth/IDOR 견고)·auth 버튼 다크 가시성
 
 ## 해야할 것
-### 출시 전 필수 (네 권한 / 외부 작업)
-- [x] **키 회전** (2026-06-09 완료): Gmail 앱비번·Kakao(JS/네이티브/REST)·DB pw 전부 회전+라이브검증. ⚠️ 서버 `.bak.*`(옛 시크릿) 잔존 — 안정 확인 후 삭제 / 옛 Gmail 앱비번 콘솔 폐기 확인 / 출시 APK는 새 키로 재빌드
-- [ ] **도메인 + Cloudflare**: 웹사이트 Free 플랜 + Tunnel(IP은닉, duckdns/certbot 제거). ⚠️ Bot Fight Mode OFF(앱 API 차단), 동적 JSON 캐시 bypass
-- [ ] **Play Console**($25) + keystore 안전백업(분실=업데이트 불가) + Data Safety + targetSdk 확인
-- [~] **법무**: 정책 페이지 배포 완료 → `https://playball.duckdns.org/privacy` · `/terms` (HTML=`backend/static/legal/`, nginx exact-match). 잔여 = ① 문의메일 placeholder(`playball.support@gmail.com`) 실계정 교체 ② 출시 전 법률 검토 ③ (옵션)앱 마이페이지 약관 링크 ④ KBO/Naver 저작권 최종 판단
-### 중기 (코드 품질)
+### 즉시 (코드측)
+- [ ] **다크모드 육안검증** ⚠️: 2026-06-09 세션 다크 ~15커밋이 헤드리스 컴파일만 검증됨 → `flutter run` 다크 점검(경기상세 통계테이블·라인업 타순배지·로스터헤더 / 선수비교 / 선수상세 통계 / 인기투표 토글 / 각 화면 에러상태 AppErrorView) 후 발견분 수정. 골든이 향후 회귀는 방어
+- [x] **키 회전** (2026-06-09 완료): Gmail·Kakao(JS/네이티브/REST)·DB pw 회전+라이브검증, 옛 Gmail 폐기 확인 (출시 APK는 새 키 재빌드)
+### 중기 (코드 품질) — ✅ 2026-06-09 전부 완료 (상세 기록 보존)
 - [x] ~~empty catch debugPrint~~(✅ 2026-06-09 빈 `catch(_){}` 52개 → `catch(e){debugPrint('<file>: $e')}` 17파일, game_detail:435 finally형만 제외) / ~~non-null `!` audit~~(✅ 2026-06-09 검토결과 안전·수정불요: `['key']!` 23개=로컬 const map·초기화보장·null체크 storage / `x!.` 94개=`_gameData!` 등 가드 후 idiomatic. crash 버그 없음) / ~~AppErrorView 전면~~(✅ 2026-06-09 6화면 ad-hoc 에러UI→`AppErrorView`(테마인식): team×2·notifications·search·player_stats·pitch_chart·post_detail. 잔여=home(레이아웃 얽힘,brand 적용됨)·team_detail 인라인 retry) / ~~서버 print→logging~~(✅ 2026-06-09 런타임서비스 fcm/weather/email/sms → `api/log_setup.py` 중앙설정+모듈 logger. prediction CLI·scheduler 운영 print는 유지)
 - [~] **SemColor.panelDark 감사**(2026-06-09): 80개 분류 — A(라이트잉크 `isDark?light:panelDark` ~40)·A2/A3·B(SnackBar/헤더그라디언트/온보딩 의도)는 **유지**. **Pattern-C 버그**(무조건 panelDark를 fg/fill/border에 → 다크 안 보임) ~22개. 수정완료 6: home OutlinedButton×2·login/register checkbox·phone icon → `SemColor.brand(context)`(다크0xFFE5E5E7/라이트panelDark). **C-fg 수정완료**: home버튼·auth체크박스·phone아이콘 + game_detail TabBar label/indicator(×2)·OutlinedButton → `brand(context)`(analyze clean). **C-fg defer**: player_stats(65·314)·player_compare(285) = 위젯이 다크 미대응(context 파라미터 없음 + grey200/black87 혼재) → 단독 swap 불가, AppErrorView/홀리스틱 다크패스와 묶을 것. player_compare 203 = 다크 헤더 의도(B 재분류). **C-bg 결정**(다크 surface=기존 `AppColors.surfaceDark 0xFF18181C/surface2Dark` 재사용, 새 토큰 불요): player_screen 선수/구단 토글(818·836 bg + 825·843 텍스트반전)=✅`brand(context)`+invert. **gd C-bg defer→홀리스틱 다크패스**(헤더3301·avatar3364/3770·TableRow3863/3889): StatelessWidget 헬퍼는 context 없음 + 테이블 border(`0xFFE0E0E4`)·셀 비테마라 단독 fix 불일치. **홀리스틱 착수**: player_compare 테이블/검색카드 테마화 ✅(2026-06-09, State라 `context` 가용·AppColors.surfaceDark/surface2Dark 사용, 헤더는 의도 다크밴드 유지). player_stats ✅(2026-06-09 헤딩/섹션라벨 color 제거→테마 텍스트색 상속, 토글 brand+반전, _buildContent에 context 스레딩). game_detail ✅(2026-06-09 통계테이블 border/헤더row + 로스터헤더(3301) + 타순배지(3364·3770) → 인라인 다크 hex 0xFF1F1F24/26262C, `_tableCell` 데이터셀은 color:null이라 이미 테마구동). **홀리스틱 다크패스 3화면(player_compare·player_stats·game_detail) 완료**. ⚠️**전체 육안검증 미완**(헤드리스 컴파일만) → `flutter run` 다크모드 점검 필수. ⚠️무차별 치환 금지(A/B 다수). / **Radii**: magic `circular(999)`→`Radii.pill` 33곳 ✅(2026-06-09, 5파일). 수치 스케일(4/8/12/16/20)은 off-scale 값(10/13/14 등) 多 혼재 → 부분 토큰화=일관성↓라 점진 보류
 - [~] ~~Golden test(다크+라이트)~~(✅ 2026-06-09 인프라 구축: `app/test/golden/` built-in `matchesGoldenFile`, AppErrorView 라이트/다크 PNG 기준 커밋. 갱신=`flutter test --update-goldens test/golden`, 확장=테마인식 위젯 동일 패턴 추가. ※폰트 미로드로 텍스트=tofu box지만 색/레이아웃 회귀엔 충분. 잔여=주요화면 골든 확대) / ~~pre-commit grep hook~~(✅ 2026-06-09 `.githooks/pre-commit`: 음수 letterSpacing WARN + `baseUrl http://` BLOCK. 클론마다 활성화 `git config core.hooksPath .githooks`) / ~~nginx 보안헤더~~(✅ 2026-06-09 HSTS+CSP+Permissions-Policy 등 7종 적용·검증)
 - [x] 이닝중계 진행이닝 TTL 30→10s 검토 → **유지 결정**(클라 폴링 30s 고정이라 하향=Naver 부하 3배·UX 이득 0)
-### 장기
-- [ ] 홈화면 위젯(Android AppWidget native kotlin) / state restoration / i18n은 skip 확정
+### 장기 / 출시 외부작업 (네 권한·비용 — **물어보면 안내**)
+- [ ] **도메인 + Cloudflare**: 웹사이트 Free 플랜 + Tunnel(IP은닉, duckdns/certbot 제거). ⚠️ Bot Fight Mode OFF(앱 API 차단), 동적 JSON 캐시 bypass
+- [ ] **Play Console**($25) + keystore 안전백업(분실=업데이트 불가) + Data Safety + targetSdk 확인
+- [ ] **법무 잔여**: 정책 페이지(`/privacy`·`/terms`)·HTML(`backend/static/legal/`) 배포 완료. 남음 = ① 문의메일 placeholder(`playball.support@gmail.com`) 실계정 교체 ② 출시 전 법률 검토 ③ (옵션)앱 마이페이지 약관 링크 ④ KBO/Naver 저작권 최종 판단
+- [ ] 홈화면 위젯(Android AppWidget native kotlin) / state restoration / i18n=skip 확정 / 골든 테스트 확대 / Radii 수치 스케일 토큰화
 
 ## 알려진 이슈
 - push_tokens 사용자 1명 — 다수 유저 알림 시나리오 미검증
