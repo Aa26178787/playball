@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlayBall 개인정보처리방침</title>
+<style>
+  :root { --ink:#1a1a2e; --sub:#555; --line:#e3e3ea; --accent:#1a237e; --bg:#fff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+         color:var(--ink); background:var(--bg); line-height:1.7; }
+  .wrap { max-width:760px; margin:0 auto; padding:28px 20px 64px; }
+  h1 { font-size:22px; margin:8px 0 4px; }
+  .meta { color:var(--sub); font-size:13px; margin-bottom:24px; }
+  h2 { font-size:16px; margin:30px 0 8px; padding-top:14px; border-top:1px solid var(--line); color:var(--accent); }
+  p, li { font-size:14px; color:#2a2a33; }
+  ul { padding-left:20px; }
+  table { width:100%; border-collapse:collapse; margin:10px 0; font-size:13px; }
+  th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:#f6f6fb; }
+  .note { background:#fff7e6; border:1px solid #ffe0a3; border-radius:8px; padding:10px 12px; font-size:13px; color:#7a5a00; margin:12px 0; }
+  .foot { margin-top:36px; color:var(--sub); font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>PlayBall 개인정보처리방침</h1>
+  <div class="meta">시행일자: 2026년 6월 9일 · 운영주체: PlayBall 운영팀</div>
+
+  <p>PlayBall(이하 '서비스')은 이용자의 개인정보를 중요하게 생각하며, 「개인정보 보호법」 등 관련 법령을 준수합니다. 본 방침은 서비스가 수집하는 개인정보의 항목·목적·보유기간 및 이용자의 권리를 안내합니다.</p>
+
+  <h2>1. 수집하는 개인정보 항목</h2>
+  <table>
+    <tr><th>구분</th><th>항목</th></tr>
+    <tr><td>회원가입(필수)</td><td>이메일, 비밀번호(단방향 암호화 저장), 닉네임</td></tr>
+    <tr><td>본인확인(선택)</td><td>이메일 인증코드, 휴대폰 번호(작성 권한 인증 시)</td></tr>
+    <tr><td>선택 입력</td><td>프로필 이미지, 즐겨찾는 팀·선수</td></tr>
+    <tr><td>이용자 생성 콘텐츠</td><td>게시글·댓글·첨부 이미지, 캘린더 일정, 직관(방문) 기록</td></tr>
+    <tr><td>자동 수집</td><td>푸시 알림 토큰(FCM), 서비스 이용 기록, 기기·앱 오류 로그(Firebase Crashlytics)</td></tr>
+  </table>
+
+  <h2>2. 개인정보 수집·이용 목적</h2>
+  <ul>
+    <li>회원 식별 및 로그인 인증(JWT 기반)</li>
+    <li>커뮤니티·캘린더·직관기록 등 서비스 기능 제공</li>
+    <li>경기 시작·득점·등록말소 등 푸시 알림 발송</li>
+    <li>부정 이용 방지 및 서비스 안정성·오류 개선</li>
+  </ul>
+
+  <h2>3. 보유 및 이용기간</h2>
+  <p>이용자의 개인정보는 <strong>회원 탈퇴 시 지체 없이 파기</strong>합니다. 서비스는 별도의 회원정보 보관 기간을 두지 않으며, 탈퇴 요청 시 관련 개인정보를 즉시 삭제합니다. 단, 관계 법령에 따라 보존이 필요한 경우 해당 기간 동안 분리 보관합니다(현재 해당 사항 없음).</p>
+
+  <h2>4. 개인정보의 제3자 제공</h2>
+  <p>서비스는 이용자의 개인정보를 외부에 제공하지 않습니다. 다만 법령에 근거가 있거나 수사기관의 적법한 요청이 있는 경우에 한해 제공할 수 있습니다.</p>
+
+  <h2>5. 개인정보 처리 위탁</h2>
+  <p>서비스는 원활한 운영을 위해 다음과 같이 처리를 위탁하며, 수탁사는 위탁 목적 범위 내에서만 개인정보를 처리합니다.</p>
+  <table>
+    <tr><th>수탁사</th><th>위탁 업무</th></tr>
+    <tr><td>Google Firebase</td><td>푸시 알림(FCM) 발송, 오류 진단(Crashlytics)</td></tr>
+    <tr><td>Kakao</td><td>구장 지도 표시 및 주변 장소 검색</td></tr>
+    <tr><td>OpenWeather</td><td>경기장 날씨 정보 제공</td></tr>
+    <tr><td>Oracle Cloud</td><td>서버 호스팅(데이터 저장·처리)</td></tr>
+  </table>
+
+  <h2>6. 이용자의 권리와 행사 방법</h2>
+  <ul>
+    <li>이용자는 언제든지 자신의 개인정보를 열람·정정할 수 있습니다(앱 내 마이페이지).</li>
+    <li>회원 탈퇴(앱 내 '회원 탈퇴')를 통해 개인정보 삭제를 요청할 수 있으며, 요청 즉시 파기됩니다.</li>
+    <li>기타 권리 행사는 아래 문의 연락처로 요청할 수 있습니다.</li>
+  </ul>
+
+  <h2>7. 개인정보의 파기 절차 및 방법</h2>
+  <p>파기 대상 개인정보는 복구가 불가능한 방법으로 즉시 삭제합니다. 전자적 파일은 데이터베이스에서 영구 삭제(관련 외래키 연쇄 삭제)하며, 종이 문서는 보유하지 않습니다.</p>
+
+  <h2>8. 개인정보의 안전성 확보 조치</h2>
+  <ul>
+    <li>비밀번호 단방향 암호화 저장, 인증 토큰 보안 저장소 관리</li>
+    <li>전 구간 HTTPS(TLS 1.2+) 암호화 통신</li>
+    <li>관리자 접근 통제 및 요청 빈도 제한(rate limit)</li>
+  </ul>
+
+  <h2>9. 쿠키 및 광고 식별자</h2>
+  <p>서비스는 광고를 게재하지 않으며, 광고 식별자 또는 추적 쿠키를 수집하지 않습니다.</p>
+
+  <h2>10. 만 14세 미만 아동의 개인정보</h2>
+  <p>서비스는 만 14세 미만 아동의 개인정보를 수집하지 않습니다. 만 14세 미만임이 확인될 경우 해당 정보를 지체 없이 파기합니다.</p>
+
+  <h2>11. 경기 데이터의 출처 및 저작권</h2>
+  <p>서비스가 제공하는 KBO 경기 일정·기록·선수 정보 등은 <strong>KBO 및 네이버 스포츠</strong> 등 외부 출처에서 수집한 자료를 비상업적 정보 제공 목적으로 가공·표시한 것입니다. 각 경기 사진·구단 로고 등의 저작권은 KBO 및 각 구단·원저작권자에게 있으며, 관련 권리는 해당 권리자에게 귀속됩니다.</p>
+
+  <h2>12. 개인정보 보호책임자 및 문의</h2>
+  <p>개인정보 처리에 관한 문의·불만·피해 구제는 아래로 접수할 수 있습니다.</p>
+  <ul>
+    <li>개인정보 보호책임자: PlayBall 운영팀</li>
+    <li>문의 이메일: playball.support@gmail.com</li>
+  </ul>
+  <div class="note">※ 위 문의 이메일은 운영주체가 실제 사용할 계정으로 교체하십시오. 또한 본 방침은 표준 초안이며, 서비스 정식 출시 전 법률 전문가의 검토를 권장합니다.</div>
+
+  <h2>13. 고지의 의무</h2>
+  <p>본 개인정보처리방침이 변경되는 경우, 변경 사항을 서비스 내 공지 또는 본 페이지를 통해 사전 고지합니다.</p>
+
+  <div class="foot">PlayBall · 본 방침은 2026년 6월 9일부터 적용됩니다.</div>
+</div>
+</body>
+</html>
