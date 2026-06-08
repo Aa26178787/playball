@@ -6,7 +6,7 @@ import os, time, re, psycopg2
 DB_CONFIG = {
     'host': 'localhost', 'port': 5433,
     'database': 'playball', 'user': 'playball_user',
-    'password': os.environ.get('DB_PASSWORD', 'playball1234')
+    'password': os.environ.get('DB_PASSWORD', '')
 }
 
 def get_connection():

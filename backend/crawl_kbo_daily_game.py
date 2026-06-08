@@ -10,7 +10,7 @@ DB_CONFIG = {
     "port": 5433,  # SSH 터널
     "database": "playball",
     "user": "playball_user",
-    "password": os.environ.get("DB_PASSWORD", "playball1234"),
+    "password": os.environ.get("DB_PASSWORD", ""),
 }
 
 def get_connection():

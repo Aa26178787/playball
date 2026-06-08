@@ -78,7 +78,7 @@
         <!-- Kakao Map SDK -->
         <meta-data
             android:name="com.kakao.sdk.AppKey"
-            android:value="f5b365c3d6aff5eb4640ab80783797ac" />
+            android:value="94a1f5f9fc4cf919298514445cbb8dfa" />
 
         <!-- image_cropper UCropActivity -->
         <activity

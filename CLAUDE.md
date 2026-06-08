@@ -5,7 +5,7 @@ KBO 야구 앱 | Flutter + FastAPI + PostgreSQL
 ## 인프라
 - 서버: Oracle Cloud Ubuntu 22.04 | 168.107.61.147:8000 (내부), HTTPS: playball.duckdns.org
 - SSH 키: `C:\Users\qq772\Downloads\ssh-key-2026-03-28 (2).key`
-- DB: localhost:5432(서버)/5433(터널), db=playball, user=playball_user, pw=playball1234
+- DB: localhost:5432(서버)/5433(터널), db=playball, user=playball_user, pw=<env DB_PASSWORD> (회전 2026-06-09, 평문 보관 금지)
 - 레포: https://github.com/Aa26178787/playball
 - HTTPS: nginx + Let's Encrypt 리버스프록시 (Android 9+ HTTP 평문 차단 → 앱은 반드시 HTTPS)
 - 서비스 2개: `playball`(API uvicorn) + `playball-scheduler`(크롤러/알림 — 별도 프로세스)
@@ -32,7 +32,7 @@ ExecStart=/home/ubuntu/.local/bin/uvicorn api.main:app --host 0.0.0.0 --port 800
 # /etc/systemd/system/playball.service.d/email.conf
 Environment=OPENWEATHER_API_KEY=2e970a21c74205304e13657423b1625b
 Environment=EMAIL_USER=noreply.playball@gmail.com
-Environment=EMAIL_PASS=tsgi xehp bgvt nawo
+Environment="EMAIL_PASS=****"   # Gmail 앱비번 — 실값 서버 env만 (회전 2026-06-09)
 ```
 
 ## 앱 설정
@@ -222,7 +222,7 @@ pitcher: era,whip,fip,k_per_9,bb_per_9,babip,war,qs,blown_saves,avg_against …
 - **create_post_screen**: 글 작성 풀 restyle — 카테고리/팀 칩, 보더리스 제목(60자)+본문, 이미지 박스, 하단 툴바(이미지·@삽입·글자수), 멘션 도움말 유지
 
 ### 기타 화면
-- 마이페이지/구장(KakaoMap 키 f5b365c3d6aff5eb4640ab80783797ac)/알림(Material 아이콘 칩, 스와이프 삭제)
+- 마이페이지/구장(KakaoMap: 네이티브키=AndroidManifest, JS키=stadium_screen, REST키=env KAKAO_REST_KEY — 회전 2026-06-09)/알림(Material 아이콘 칩, 스와이프 삭제)
 - Option A `_C` 색상 헬퍼(bg/paper/paper2/ink~sub/line/track) — 화면별 private 클래스로 복제 사용 (calendar/community/선수 계열)
 
 ### local_cache.dart
@@ -273,6 +273,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 과거경기 수정 game_date < '2026-05-09' 조건 / 삼성 홈 stadium_id=7 보정 SQL
 - 서버 pull 전 충돌 파일 rm (insta CSV 등 untracked 주의) / firebase-service-account.json push 금지
 - PgBouncer 6432 유지 / 커뮤니티 조회수 _view_cache 재시작 초기화(의도)
+- **DB 비번 회전 = 3곳 동기화**: ① `ALTER USER playball_user PASSWORD` ② `/etc/pgbouncer/pgbouncer.ini` `[databases]` 줄 `password=`(auth_type=trust라 pgbouncer→postgres 실자격증명 = 여기, userlist.txt 아님) ③ systemd `Environment=DB_PASSWORD`(2 drop-in: playball=email.conf, scheduler=env.conf). ② 빠뜨리면 "pgbouncer cannot connect to server". 순서: ALTER→ini 교체→pgbouncer restart→서비스 restart
 - 새 알림 = notification_log dedup 패턴 필수
 - 테마 splashFactory = **NoSplash** + highlight/splash 투명 (탭 반짝임 전부 제거 — 06-08, 되돌리지 말 것). TabBarTheme overlayColor도 투명
 - 프로필 크롭 = `PhotoCropScreen`(crop_your_image, Flutter 인앱). 네이티브 image_cropper(uCrop)는 Android15 edge-to-edge status bar 겹침으로 폐기 — 프로필엔 다시 쓰지 말 것. photo_manager 권한 = 기존 READ_MEDIA_IMAGES 재사용
