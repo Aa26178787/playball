@@ -147,6 +147,7 @@ def get_hitters(
 
 
 @router.get("/pitchers")
+@cached(300)
 def get_pitchers(
     season: int = 2026,
     limit: int = 100,
@@ -362,6 +363,7 @@ def get_player_rankings(season: int = 2026):
 
 
 @router.get("/{player_id}/daily")
+@cached(300)
 def get_player_daily(player_id: int, season: int = 2026):
     """선수 일자별 기록"""
     conn = get_connection()
@@ -422,6 +424,7 @@ def get_player_daily(player_id: int, season: int = 2026):
 
 
 @router.get("/{player_id}/pitch-stats")
+@cached(600)
 def get_player_pitch_stats(player_id: int, season: int = 2026):
     """투수 구종 분포 (game_pitch_locations 집계)"""
     conn = get_connection()
