@@ -15,6 +15,21 @@ router = APIRouter()
 
 _MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5MB
 
+# 이미지 매직바이트 검증 (확장자 위조 차단 — user.py 프로필 업로드와 동일 정책)
+_IMG_MAGIC = {
+    b'\xff\xd8\xff': ('.jpg', '.jpeg'),
+    b'\x89PNG':       ('.png',),
+    b'RIFF':          ('.webp',),
+}
+
+def _validate_image(data: bytes, ext: str) -> bool:
+    for magic, exts in _IMG_MAGIC.items():
+        if data[:len(magic)] == magic:
+            if magic == b'RIFF':
+                return data[8:12] == b'WEBP' and ext in exts
+            return ext in exts
+    return False
+
 # 조회수 throttle: (post_id, ip) → 마지막 조회 시각
 _view_cache: dict = {}
 _VIEW_COOLDOWN = timedelta(minutes=10)
@@ -594,6 +609,8 @@ async def upload_post_image(
     data = await file.read(_MAX_UPLOAD_BYTES + 1)
     if len(data) > _MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail='파일 크기는 5MB를 초과할 수 없습니다')
+    if not _validate_image(data, ext):
+        raise HTTPException(status_code=400, detail='유효한 이미지 파일이 아닙니다')
     filename = f"post_{current_user['user_id']}_{uuid.uuid4().hex[:8]}{ext}"
     path = os.path.join(POST_IMG_DIR, filename)
     with open(path, 'wb') as f:

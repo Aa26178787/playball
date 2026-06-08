@@ -35,6 +35,17 @@ _RATE_LIMIT = 200       # 분당 최대 요청 수
 _RATE_WINDOW = 60       # 슬라이딩 윈도우 (초)
 _RATE_WHITELIST = {"/health", "/"}   # 헬스체크는 제외
 
+# 민감 엔드포인트 추가 강화 (분당) — 무차별 대입(credential stuffing) + 인증메일 발송 남용 차단
+# 글로벌 200/min로는 로그인 200회 시도/분 허용 → 너무 느슨. prefix match.
+_SENSITIVE_LIMITS = [
+    ("/auth/login", 10),
+    ("/auth/register", 10),
+    ("/auth/password/", 5),
+    ("/user/email/send-code", 5),
+    ("/auth/check-", 30),    # 이메일/닉네임 enumeration 완화
+]
+_sensitive_store: dict[str, deque] = defaultdict(deque)
+
 
 @app.middleware("http")
 async def limit_body_size(request: Request, call_next):
@@ -63,6 +74,20 @@ async def rate_limit(request: Request, call_next):
                 content={"detail": "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."},
             )
         dq.append(now)
+
+        # 민감 경로 추가 제한
+        for prefix, limit in _SENSITIVE_LIMITS:
+            if request.url.path.startswith(prefix):
+                sdq = _sensitive_store[f"{prefix}:{ip}"]
+                while sdq and now - sdq[0] > _RATE_WINDOW:
+                    sdq.popleft()
+                if len(sdq) >= limit:
+                    return JSONResponse(
+                        status_code=429,
+                        content={"detail": "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."},
+                    )
+                sdq.append(now)
+                break
 
     return await call_next(request)
 
