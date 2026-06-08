@@ -977,6 +977,48 @@ def get_player_detail(player_id: int):
             for r in stats
         ]
 
+    # 핵심 스탯 리그 비교 (league avg + 상위%) — 비교 실패해도 본문 정상
+    try:
+        latest = result["stats"][0] if result.get("stats") else None
+        if latest:
+            cur.execute("SELECT COALESCE(MAX(games),0) FROM batter_stats WHERE season=%s", (latest["season"],))
+            maxg = cur.fetchone()[0] or 0
+            tp = lambda n, tot: max(1, round(100 * n / (tot or 1)))
+            if player[2] == "타자":
+                cur.execute("""
+                    SELECT round(AVG(avg)::numeric,3), round(AVG(home_runs)::numeric,1),
+                           round(AVG(rbis)::numeric,1), round(AVG(ops)::numeric,3), COUNT(*),
+                           COUNT(*) FILTER (WHERE avg>%s), COUNT(*) FILTER (WHERE home_runs>%s),
+                           COUNT(*) FILTER (WHERE rbis>%s), COUNT(*) FILTER (WHERE ops>%s)
+                    FROM batter_stats WHERE season=%s AND pa>=%s
+                """, (latest.get("avg") or 0, latest.get("home_runs") or 0, latest.get("rbis") or 0,
+                      latest.get("ops") or 0, latest["season"], maxg * 3.1))
+                a = cur.fetchone(); tot = a[4]
+                result["core_compare"] = {
+                    "avg":       {"lg": float(a[0] or 0), "top": tp(a[5], tot)},
+                    "home_runs": {"lg": float(a[1] or 0), "top": tp(a[6], tot)},
+                    "rbis":      {"lg": float(a[2] or 0), "top": tp(a[7], tot)},
+                    "ops":       {"lg": float(a[3] or 0), "top": tp(a[8], tot)},
+                }
+            elif player[2] == "투수":
+                cur.execute("""
+                    SELECT round(AVG(era)::numeric,2), round(AVG(strikeouts)::numeric,0),
+                           round(AVG(wins)::numeric,0), round(AVG(whip)::numeric,2), COUNT(*),
+                           COUNT(*) FILTER (WHERE era<%s AND era>0), COUNT(*) FILTER (WHERE strikeouts>%s),
+                           COUNT(*) FILTER (WHERE wins>%s), COUNT(*) FILTER (WHERE whip<%s AND whip>0)
+                    FROM pitcher_stats WHERE season=%s AND innings_pitched>=%s
+                """, (latest.get("era") or 0, latest.get("strikeouts") or 0, latest.get("wins") or 0,
+                      latest.get("whip") or 0, latest["season"], maxg * 1.0))
+                a = cur.fetchone(); tot = a[4]
+                result["core_compare"] = {
+                    "era":        {"lg": float(a[0] or 0), "top": tp(a[5], tot)},
+                    "strikeouts": {"lg": float(a[1] or 0), "top": tp(a[6], tot)},
+                    "wins":       {"lg": float(a[2] or 0), "top": tp(a[7], tot)},
+                    "whip":       {"lg": float(a[3] or 0), "top": tp(a[8], tot)},
+                }
+    except Exception:
+        pass
+
     # 로스터 상태 (최근 변경 이력)
     cur.execute("""
         SELECT change_type, reason, change_date

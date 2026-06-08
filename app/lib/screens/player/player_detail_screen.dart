@@ -816,7 +816,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     );
   }
 
-  // 핵심 2x2
+  // 핵심 2x2 — 리그 평균 대비 + 상위% 바
   Widget _buildCoreStatsGrid(Map<String, dynamic> player) {
     final cur = _latestSeason(player);
     if (cur == null) return const SizedBox.shrink();
@@ -824,10 +824,80 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final rawTc = teamColor(player['team_code'] as String? ?? '');
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final tc = isDark ? Color.lerp(rawTc, Colors.white, 0.25)! : rawTc;
-    final main = isPitcher
-        ? [('ERA', _f2(cur['era'])), ('탈삼진', _i0(cur['strikeouts'])), ('승', _i0(cur['wins'])), ('WHIP', _f2(cur['whip']))]
-        : [('타율', _f3(cur['avg'])), ('홈런', _i0(cur['home_runs'])), ('타점', _i0(cur['rbis'])), ('OPS', _f3(cur['ops']))];
-    return _seasonGridSection('${cur['season'] ?? ''} 시즌 핵심 기록', main, tc: tc, main: true);
+    final cmp = (player['core_compare'] as Map?) ?? const {};
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+
+    final items = isPitcher
+        ? [('ERA', _f2(cur['era']), 'era'), ('탈삼진', _i0(cur['strikeouts']), 'strikeouts'),
+           ('승', _i0(cur['wins']), 'wins'), ('WHIP', _f2(cur['whip']), 'whip')]
+        : [('타율', _f3(cur['avg']), 'avg'), ('홈런', _i0(cur['home_runs']), 'home_runs'),
+           ('타점', _i0(cur['rbis']), 'rbis'), ('OPS', _f3(cur['ops']), 'ops')];
+
+    String fmtLg(String key, num v) {
+      if (key == 'avg' || key == 'ops') return v.toStringAsFixed(3);
+      if (key == 'era' || key == 'whip') return v.toStringAsFixed(2);
+      return v.toStringAsFixed(0);
+    }
+
+    Widget card((String, String, String) it, bool highlight) {
+      final c = cmp[it.$3] as Map?;
+      final top = (c?['top'] as num?)?.toInt();
+      final fill = top != null ? ((100 - top) / 100).clamp(0.0, 1.0) : 0.0;
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: paper,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: highlight ? tc.withValues(alpha: 0.4) : line),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05),
+              blurRadius: 6, offset: const Offset(0, 2))],
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Expanded(child: Text(it.$1, style: TextStyle(fontSize: 11, color: sub))),
+            Text(it.$2, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800,
+                color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
+          ]),
+          if (c != null) ...[
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(child: Text('리그 ${fmtLg(it.$3, (c['lg'] as num?) ?? 0)}',
+                  style: TextStyle(fontSize: 10, color: sub))),
+              Text('상위 ${top ?? '-'}%',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: tc)),
+            ]),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: Stack(children: [
+                Container(height: 5, width: double.infinity, color: line),
+                FractionallySizedBox(widthFactor: fill, child: Container(height: 5, color: tc)),
+              ]),
+            ),
+          ],
+        ]),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('${cur['season'] ?? ''} 시즌 핵심 기록',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
+        const SizedBox(height: 12),
+        GridView.count(
+          crossAxisCount: 2, shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10, crossAxisSpacing: 10,
+          childAspectRatio: 1.5,
+          children: [for (int i = 0; i < items.length; i++) card(items[i], i == 0)],
+        ),
+      ]),
+    );
   }
 
   // 세부 3열 + 고급 지표 3열
