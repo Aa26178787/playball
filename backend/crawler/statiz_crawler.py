@@ -334,12 +334,25 @@ def recompute_pitcher_derived(cur, season=2026):
           h_per_9  = round(ps.hits_allowed*9.0/(floor(ps.innings_pitched)+(ps.innings_pitched-floor(ps.innings_pitched))*10/3),2),
           hr_per_9 = round(ps.home_runs_allowed*9.0/(floor(ps.innings_pitched)+(ps.innings_pitched-floor(ps.innings_pitched))*10/3),2),
           k_bb     = round(ps.strikeouts::numeric/NULLIF(ps.walks,0),2),
+          wpct     = round(ps.wins::numeric/NULLIF(ps.wins+ps.losses,0),3),
           fip      = round((13*ps.home_runs_allowed+3*(ps.walks+ps.hbp)-2*ps.strikeouts)/(floor(ps.innings_pitched)+(ps.innings_pitched-floor(ps.innings_pitched))*10/3)+(SELECT c FROM cfip),2),
           babip    = CASE WHEN ps.tbf>0 AND (ps.tbf-ps.walks-ps.hbp-ps.sac-ps.strikeouts-ps.home_runs_allowed)>0
                           THEN round((ps.hits_allowed-ps.home_runs_allowed)::numeric/(ps.tbf-ps.walks-ps.hbp-ps.sac-ps.strikeouts-ps.home_runs_allowed),3)
                           ELSE ps.babip END
         WHERE ps.season=%s AND ps.innings_pitched>0
     """, (season, season))
+
+
+def recompute_batter_derived(cur, season=2026):
+    """타자 파생(tb 루타/xbh 장타/bb_k/gpa) raw서 재계산. statiz 미제공분."""
+    cur.execute("""
+        UPDATE batter_stats SET
+          tb    = hits + doubles + 2*triples + 3*home_runs,
+          xbh   = doubles + triples + home_runs,
+          bb_k  = round(walks::numeric/NULLIF(strikeouts,0),2),
+          gpa   = round((1.8*obp + slg)/4, 3)
+        WHERE season=%s AND at_bats>0
+    """, (season,))
 
 
 def save_players_and_stats(players, player_type):
@@ -494,9 +507,11 @@ def save_players_and_stats(players, player_type):
             cur.execute("ROLLBACK TO SAVEPOINT sp_player")
             continue
 
-    # 투수 파생율 재계산 (statiz 미제공 — raw 갱신분 반영, stale 방지)
+    # 파생 스탯 재계산 (statiz 미제공 — raw 갱신분 반영, stale 방지)
     if player_type == "PITCHER" and players:
         recompute_pitcher_derived(cur, players[0].get("season", 2026))
+    elif player_type == "BATTER" and players:
+        recompute_batter_derived(cur, players[0].get("season", 2026))
     conn.commit()
     cur.close()
     conn.close()
