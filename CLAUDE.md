@@ -274,6 +274,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 서버 pull 전 충돌 파일 rm (insta CSV 등 untracked 주의) / firebase-service-account.json push 금지
 - PgBouncer 6432 유지 / 커뮤니티 조회수 _view_cache 재시작 초기화(의도)
 - **nginx 배포 = `/etc/nginx/sites-enabled/playball`이 symlink 아닌 독립 실파일** (repo `nginx_playball.conf` → sites-available **아니라** sites-enabled로 cp해야 적용). ⚠️ 백업파일은 절대 sites-enabled 안에 두지 말 것(nginx가 `sites-enabled/*` 전부 로드 → `limit_req_zone` 중복 `emerg`). 백업은 /tmp. 적용 = cp→`nginx -t`→`systemctl reload nginx` (reload graceful이라 직후 수초 old/new worker 혼재 정상)
+- ⚠️⚠️ **repo nginx_playball.conf가 프로덕션 직접튜닝보다 뒤처질 수 있음** — 06-09 사고: CSP 배포가 sites-enabled를 repo로 덮으며 **API rate limit 300r/m→30r/m·burst 100→20 revert → 앱 홈 버스트(1초 20+요청) 전부 503 = 전 데이터 로딩 실패**. **cp 배포 전 반드시 `sudo diff /etc/nginx/sites-enabled/playball ~/playball/nginx_playball.conf`**. 현 튜닝 = api **300r/m+burst100** / auth 10r/m+burst5 (repo 동기화 완료). 진단법: nginx error.log `limiting requests, excess` + access.log `Dart/3.11`+503
 - **DB 비번 회전 = 3곳 동기화**: ① `ALTER USER playball_user PASSWORD` ② `/etc/pgbouncer/pgbouncer.ini` `[databases]` 줄 `password=`(auth_type=trust라 pgbouncer→postgres 실자격증명 = 여기, userlist.txt 아님) ③ systemd `Environment=DB_PASSWORD`(2 drop-in: playball=email.conf, scheduler=env.conf). ② 빠뜨리면 "pgbouncer cannot connect to server". 순서: ALTER→ini 교체→pgbouncer restart→서비스 restart
 - 새 알림 = notification_log dedup 패턴 필수
 - 테마 splashFactory = **NoSplash** + highlight/splash 투명 (탭 반짝임 전부 제거 — 06-08, 되돌리지 말 것). TabBarTheme overlayColor도 투명
