@@ -94,7 +94,12 @@ def get_hitters(
                 bs.walks, bs.strikeouts, bs.stolen_bases,
                 bs.avg, bs.obp, bs.slg, bs.ops,
                 bs.woba, bs.wrc_plus, bs.babip, bs.iso, bs.war,
-                p.position, t.short_name AS team_code, p.number
+                p.position, t.short_name AS team_code, p.number,
+                (SELECT mode() WITHIN GROUP (ORDER BY gr.position)
+                 FROM game_rosters gr
+                 WHERE gr.player_id = p.id
+                   AND gr.position IS NOT NULL AND gr.position <> ''
+                   AND gr.position NOT IN ('대타', '대주자', '투수')) AS detail_pos
             FROM batter_stats bs
             JOIN players p ON bs.player_id = p.id
             JOIN teams t ON p.team_id = t.id
@@ -131,7 +136,7 @@ def get_hitters(
                 "babip":    float(r[19]) if r[19] else 0,
                 "iso":      float(r[20]) if r[20] else 0,
                 "war":      float(r[21]) if r[21] else 0,
-                "position": r[22],
+                "position": r[25] or r[22],  # game_rosters 주포지션(세부) 우선, 없으면 players.position
                 "team_code": r[23],
                 "number": r[24],
             }

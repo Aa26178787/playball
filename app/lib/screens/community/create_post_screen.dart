@@ -213,7 +213,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               _SectionLabel(label: '팀 선택', cs: cs),
               SizedBox(
                 height: 44,
-                child: ListView.separated(
+                child: _fade(ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
                   itemCount: _kTeams.length,
@@ -242,7 +242,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       ),
                     );
                   },
-                ),
+                )),
               ),
             ],
             const SizedBox(height: 16),
@@ -381,6 +381,17 @@ class _ToolBtn extends StatelessWidget {
     ),
   );
 }
+
+// 가로 스크롤 스트립 — 양 끝 그라디언트 페이드
+Widget _fade(Widget child) => ShaderMask(
+  shaderCallback: (rect) => const LinearGradient(
+    begin: Alignment.centerLeft, end: Alignment.centerRight,
+    colors: [Colors.transparent, Colors.black, Colors.black, Colors.transparent],
+    stops: [0.0, 0.04, 0.96, 1.0],
+  ).createShader(rect),
+  blendMode: BlendMode.dstIn,
+  child: child,
+);
 
 class _SectionLabel extends StatelessWidget {
   final String label;

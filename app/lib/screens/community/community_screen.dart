@@ -317,7 +317,7 @@ class _PostListTabState extends State<_PostListTab>
         // 카테고리 칩
         SizedBox(
           height: 44,
-          child: ListView.separated(
+          child: _fade(ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
             itemCount: _categories.length,
@@ -343,7 +343,7 @@ class _PostListTabState extends State<_PostListTab>
                 ),
               );
             },
-          ),
+          )),
         ),
         Expanded(
           child: _loading
@@ -407,7 +407,7 @@ class _TeamTabState extends State<_TeamTab> {
         Container(
           height: 50,
           decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
-          child: ListView.separated(
+          child: _fade(ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             itemCount: _kTeams.length,
@@ -435,7 +435,7 @@ class _TeamTabState extends State<_TeamTab> {
                 ),
               );
             },
-          ),
+          )),
         ),
         Expanded(
           child: _PostListTab(key: ValueKey(_selectedTeamId), sort: 'latest', teamId: _selectedTeamId),
@@ -658,7 +658,7 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
         Container(
           height: 50,
           decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
-          child: ListView.separated(
+          child: _fade(ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             itemCount: _stadiums.length,
@@ -685,7 +685,7 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
                 ),
               );
             },
-          ),
+          )),
         ),
         // 목록
         Expanded(
@@ -809,6 +809,17 @@ class _FoodTile extends StatelessWidget {
 }
 
 // ===== 공통 위젯 =====
+
+// 가로 스크롤 칩 스트립 — 양 끝 그라디언트 페이드
+Widget _fade(Widget child) => ShaderMask(
+  shaderCallback: (rect) => const LinearGradient(
+    begin: Alignment.centerLeft, end: Alignment.centerRight,
+    colors: [Colors.transparent, Colors.black, Colors.black, Colors.transparent],
+    stops: [0.0, 0.04, 0.96, 1.0],
+  ).createShader(rect),
+  blendMode: BlendMode.dstIn,
+  child: child,
+);
 
 class _Btn32 extends StatelessWidget {
   final Widget child;

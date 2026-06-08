@@ -72,8 +72,15 @@ class _PlayerScreenState extends State<PlayerScreen>
   ];
 
   static const List<Map<String, String>> _hitterPosOpts = [
-    {'value': '전체', 'label': '전체'}, {'value': '포수', 'label': '포수'},
-    {'value': '내야', 'label': '내야'}, {'value': '외야', 'label': '외야'},
+    {'value': '전체', 'label': '전체'},
+    {'value': '포수', 'label': '포수'},
+    {'value': '1루수', 'label': '1루'},
+    {'value': '2루수', 'label': '2루'},
+    {'value': '3루수', 'label': '3루'},
+    {'value': '유격수', 'label': '유격수'},
+    {'value': '좌익수', 'label': '좌익수'},
+    {'value': '중견수', 'label': '중견수'},
+    {'value': '우익수', 'label': '우익수'},
   ];
   static const List<Map<String, String>> _pitcherArmOpts = [
     {'value': '전체', 'label': '전체'}, {'value': '우완', 'label': '우완'},
@@ -262,12 +269,6 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
   }
 
-  // 타자 position → 그룹 (포수/내야/외야)
-  String _posGroup(String pos) {
-    if (pos.contains('포수')) return '포수';
-    if (pos.contains('외야') || pos.contains('좌익') || pos.contains('중견') || pos.contains('우익')) return '외야';
-    return '내야';
-  }
   // 투수 throws → 구위 (우완/좌완/언더)
   String _armGroup(String throws) {
     if (throws.contains('좌')) return '좌완';
@@ -286,7 +287,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           }).toList();
 
     if (_hitterPos != '전체') {
-      filtered = filtered.where((p) => _posGroup(((p as Map)['position'] ?? '').toString()) == _hitterPos).toList();
+      filtered = filtered.where((p) => ((p as Map)['position'] ?? '').toString() == _hitterPos).toList();
     }
 
     filtered.sort((a, b) {
@@ -627,7 +628,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
               Text(statVal,
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800,
-                      color: isTop3 ? tc : ink, letterSpacing: 0,
+                      color: ink, letterSpacing: 0,
                       fontFeatures: const [FontFeature.tabularFigures()])),
               Text(statLabel, style: TextStyle(fontSize: 9, color: sub)),
             ]),

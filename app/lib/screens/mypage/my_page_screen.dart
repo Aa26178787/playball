@@ -63,6 +63,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
     // (SharedPreferences 읽기 ~5ms, API ~200ms → 캐시가 항상 먼저 완료)
     _loadFromCache();
     _refreshFromApi();
+    // 즐겨찾기 선수/팀 변경 시 실시간 반영 (상세에서 해제 후 복귀 등)
+    ApiService.favoritePlayersChanged.addListener(_onFavChanged);
+    ApiService.favoriteTeamsChanged.addListener(_onFavChanged);
+  }
+
+  @override
+  void dispose() {
+    ApiService.favoritePlayersChanged.removeListener(_onFavChanged);
+    ApiService.favoriteTeamsChanged.removeListener(_onFavChanged);
+    super.dispose();
+  }
+
+  void _onFavChanged() {
+    if (mounted) _refreshFromApi();
   }
 
   void _applySettings(Map settings) {

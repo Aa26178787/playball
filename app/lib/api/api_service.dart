@@ -8,6 +8,7 @@ enum _RefreshResult { success, authFailed, networkError }
 
 class ApiService {
   static final favoriteTeamsChanged = ValueNotifier<int>(0);
+  static final favoritePlayersChanged = ValueNotifier<int>(0);
   static final myTeamData = ValueNotifier<List<Map<String, dynamic>>>([]);
   static const String baseUrl = 'https://playball.duckdns.org';
   static final Dio _dio = _buildDio();
@@ -476,12 +477,14 @@ class ApiService {
     final headers = await authHeaders();
     await _dio.post('/user/favorite-players',
         data: {'player_id': playerId}, options: Options(headers: headers));
+    favoritePlayersChanged.value++;
   }
 
   static Future<void> removeFavoritePlayer(int playerId) async {
     final headers = await authHeaders();
     await _dio.delete('/user/favorite-players/$playerId',
         options: Options(headers: headers));
+    favoritePlayersChanged.value++;
   }
 
   static Future<Map<String, dynamic>> getSettings() async {
