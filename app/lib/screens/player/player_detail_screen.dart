@@ -60,6 +60,21 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       if (mounted) setState(() => _pitcherZones = d);
     } catch (e) { debugPrint('player_detail: $e'); }
   }
+
+  Future<void> _loadDaily() async {
+    try {
+      final dailyData = await ApiService.getPlayerDaily(widget.playerId, season: 2026);
+      LocalCache.set(_dailyCacheKey, dailyData).catchError((_) {});
+      if (mounted) setState(() => _dailyStats = dailyData['daily'] ?? []);
+    } catch (e) { debugPrint('player_detail: $e'); }
+  }
+
+  Future<void> _loadPitchStats() async {
+    try {
+      final ps = await ApiService.getPlayerPitchStats(widget.playerId);
+      if (mounted) setState(() => _pitchStats = ps);
+    } catch (e) { debugPrint('player_detail: $e'); }
+  }
   bool _isLoading = true;   // 전체 shimmer (initialData 없을 때)
   bool _bodyLoading = false; // 바디 shimmer (initialData 있어서 헤더만 먼저 표시할 때)
   bool _isFav = false;
@@ -220,24 +235,16 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
     // 3순위: API — getPlayerDetail / getPlayerDaily 독립 처리 (한 쪽 실패해도 다른 쪽 표시)
     try {
+      // daily(최근5)는 프로필과 독립 → 병렬 시작 (순차 await 제거로 '한박자' 지연 해소)
+      _loadDaily();
       final playerData = await ApiService.getPlayerDetail(widget.playerId);
       ApiService.setPlayerDetailMem(widget.playerId, playerData);
       if (mounted) setState(() { _playerData = playerData; _isLoading = false; _bodyLoading = false; });
-      // 캐시 저장은 UI 업데이트 후 비동기 (실패해도 무관)
       LocalCache.set(_cacheKey, playerData).catchError((_) {});
 
-      // daily stats 별도 처리 (실패 허용)
-      try {
-        final dailyData = await ApiService.getPlayerDaily(widget.playerId, season: 2026);
-        await LocalCache.set(_dailyCacheKey, dailyData);
-        if (mounted) setState(() => _dailyStats = dailyData['daily'] ?? []);
-      } catch (e) { debugPrint('player_detail: $e'); }
-
+      // 타입별 하위 섹션(구종분포/로케이션/히트맵)도 병렬 fire-and-forget
       if (playerData['player_type'] == '투수') {
-        try {
-          final ps = await ApiService.getPlayerPitchStats(widget.playerId);
-          if (mounted) setState(() => _pitchStats = ps);
-        } catch (e) { debugPrint('player_detail: $e'); }
+        _loadPitchStats();
         _loadPitchDesign();
         _loadPitcherZones();
       } else {
