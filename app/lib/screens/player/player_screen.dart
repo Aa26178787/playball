@@ -815,14 +815,14 @@ class _PlayerScreenState extends State<PlayerScreen>
                     duration: const Duration(milliseconds: 150),
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
-                      color: !_popularShowTeam ? SemColor.panelDark : Colors.grey.withValues(alpha: 0.12),
+                      color: !_popularShowTeam ? SemColor.brand(context) : Colors.grey.withValues(alpha: 0.12),
                       borderRadius: const BorderRadius.horizontal(left: Radius.circular(10)),
                     ),
                     child: Text('선수',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: !_popularShowTeam ? Colors.white : Colors.grey[600])),
+                            color: !_popularShowTeam ? (Theme.of(context).brightness == Brightness.dark ? SemColor.panelDark : Colors.white) : Colors.grey[600])),
                   ),
                 ),
               ),
@@ -833,14 +833,14 @@ class _PlayerScreenState extends State<PlayerScreen>
                     duration: const Duration(milliseconds: 150),
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
-                      color: _popularShowTeam ? SemColor.panelDark : Colors.grey.withValues(alpha: 0.12),
+                      color: _popularShowTeam ? SemColor.brand(context) : Colors.grey.withValues(alpha: 0.12),
                       borderRadius: const BorderRadius.horizontal(right: Radius.circular(10)),
                     ),
                     child: Text('구단',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: _popularShowTeam ? Colors.white : Colors.grey[600])),
+                            color: _popularShowTeam ? (Theme.of(context).brightness == Brightness.dark ? SemColor.panelDark : Colors.white) : Colors.grey[600])),
                   ),
                 ),
               ),
