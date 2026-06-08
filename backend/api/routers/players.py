@@ -860,7 +860,7 @@ def get_player_detail(player_id: int):
             p.number, p.birth_date, t.name AS team,
             p.profile_image, p.height, p.weight,
             p.throws, p.bats, t.short_name AS team_code,
-            p.insta_handle
+            p.insta_handle, p.is_foreign, p.full_name
         FROM players p
         JOIN teams t ON p.team_id = t.id
         WHERE p.id = %s
@@ -880,6 +880,8 @@ def get_player_detail(player_id: int):
         "throws": player[10], "bats": player[11],
         "team_code": player[12],
         "insta_handle": player[13],
+        "is_foreign": player[14],
+        "full_name": player[15],
         "stats": []
     }
 
@@ -983,38 +985,49 @@ def get_player_detail(player_id: int):
         if latest:
             cur.execute("SELECT COALESCE(MAX(games),0) FROM batter_stats WHERE season=%s", (latest["season"],))
             maxg = cur.fetchone()[0] or 0
-            tp = lambda n, tot: max(1, round(100 * n / (tot or 1)))
+            is_dom = not player[14]   # 국내 선수만 국내랭크 표시
+            def mk(lg, better, tot, dbetter, dtot):
+                d = {"lg": float(lg or 0), "top": max(1, round(100 * (better or 0) / (tot or 1))),
+                     "rank": (better or 0) + 1, "total": tot or 0}
+                if is_dom:
+                    d["dom_rank"] = (dbetter or 0) + 1
+                    d["dom_total"] = dtot or 0
+                return d
             if player[2] == "타자":
+                pv = (latest.get("avg") or 0, latest.get("home_runs") or 0, latest.get("rbis") or 0, latest.get("ops") or 0)
                 cur.execute("""
-                    SELECT round(AVG(avg)::numeric,3), round(AVG(home_runs)::numeric,1),
-                           round(AVG(rbis)::numeric,1), round(AVG(ops)::numeric,3), COUNT(*),
-                           COUNT(*) FILTER (WHERE avg>%s), COUNT(*) FILTER (WHERE home_runs>%s),
-                           COUNT(*) FILTER (WHERE rbis>%s), COUNT(*) FILTER (WHERE ops>%s)
-                    FROM batter_stats WHERE season=%s AND pa>=%s
-                """, (latest.get("avg") or 0, latest.get("home_runs") or 0, latest.get("rbis") or 0,
-                      latest.get("ops") or 0, latest["season"], maxg * 3.1))
-                a = cur.fetchone(); tot = a[4]
+                    SELECT round(AVG(bs.avg)::numeric,3), round(AVG(bs.home_runs)::numeric,1),
+                           round(AVG(bs.rbis)::numeric,1), round(AVG(bs.ops)::numeric,3), COUNT(*),
+                           COUNT(*) FILTER (WHERE bs.avg>%s), COUNT(*) FILTER (WHERE bs.home_runs>%s),
+                           COUNT(*) FILTER (WHERE bs.rbis>%s), COUNT(*) FILTER (WHERE bs.ops>%s),
+                           COUNT(*) FILTER (WHERE NOT pl.is_foreign),
+                           COUNT(*) FILTER (WHERE bs.avg>%s AND NOT pl.is_foreign), COUNT(*) FILTER (WHERE bs.home_runs>%s AND NOT pl.is_foreign),
+                           COUNT(*) FILTER (WHERE bs.rbis>%s AND NOT pl.is_foreign), COUNT(*) FILTER (WHERE bs.ops>%s AND NOT pl.is_foreign)
+                    FROM batter_stats bs JOIN players pl ON pl.id = bs.player_id
+                    WHERE bs.season=%s AND bs.pa>=%s
+                """, (pv[0], pv[1], pv[2], pv[3], pv[0], pv[1], pv[2], pv[3], latest["season"], maxg * 3.1))
+                a = cur.fetchone()
                 result["core_compare"] = {
-                    "avg":       {"lg": float(a[0] or 0), "top": tp(a[5], tot)},
-                    "home_runs": {"lg": float(a[1] or 0), "top": tp(a[6], tot)},
-                    "rbis":      {"lg": float(a[2] or 0), "top": tp(a[7], tot)},
-                    "ops":       {"lg": float(a[3] or 0), "top": tp(a[8], tot)},
+                    "avg": mk(a[0], a[5], a[4], a[10], a[9]), "home_runs": mk(a[1], a[6], a[4], a[11], a[9]),
+                    "rbis": mk(a[2], a[7], a[4], a[12], a[9]), "ops": mk(a[3], a[8], a[4], a[13], a[9]),
                 }
             elif player[2] == "투수":
+                pv = (latest.get("era") or 0, latest.get("strikeouts") or 0, latest.get("wins") or 0, latest.get("whip") or 0)
                 cur.execute("""
-                    SELECT round(AVG(era)::numeric,2), round(AVG(strikeouts)::numeric,0),
-                           round(AVG(wins)::numeric,0), round(AVG(whip)::numeric,2), COUNT(*),
-                           COUNT(*) FILTER (WHERE era<%s AND era>0), COUNT(*) FILTER (WHERE strikeouts>%s),
-                           COUNT(*) FILTER (WHERE wins>%s), COUNT(*) FILTER (WHERE whip<%s AND whip>0)
-                    FROM pitcher_stats WHERE season=%s AND innings_pitched>=%s
-                """, (latest.get("era") or 0, latest.get("strikeouts") or 0, latest.get("wins") or 0,
-                      latest.get("whip") or 0, latest["season"], maxg * 1.0))
-                a = cur.fetchone(); tot = a[4]
+                    SELECT round(AVG(ps.era)::numeric,2), round(AVG(ps.strikeouts)::numeric,0),
+                           round(AVG(ps.wins)::numeric,0), round(AVG(ps.whip)::numeric,2), COUNT(*),
+                           COUNT(*) FILTER (WHERE ps.era<%s AND ps.era>0), COUNT(*) FILTER (WHERE ps.strikeouts>%s),
+                           COUNT(*) FILTER (WHERE ps.wins>%s), COUNT(*) FILTER (WHERE ps.whip<%s AND ps.whip>0),
+                           COUNT(*) FILTER (WHERE NOT pl.is_foreign),
+                           COUNT(*) FILTER (WHERE ps.era<%s AND ps.era>0 AND NOT pl.is_foreign), COUNT(*) FILTER (WHERE ps.strikeouts>%s AND NOT pl.is_foreign),
+                           COUNT(*) FILTER (WHERE ps.wins>%s AND NOT pl.is_foreign), COUNT(*) FILTER (WHERE ps.whip<%s AND ps.whip>0 AND NOT pl.is_foreign)
+                    FROM pitcher_stats ps JOIN players pl ON pl.id = ps.player_id
+                    WHERE ps.season=%s AND ps.innings_pitched>=%s
+                """, (pv[0], pv[1], pv[2], pv[3], pv[0], pv[1], pv[2], pv[3], latest["season"], maxg * 1.0))
+                a = cur.fetchone()
                 result["core_compare"] = {
-                    "era":        {"lg": float(a[0] or 0), "top": tp(a[5], tot)},
-                    "strikeouts": {"lg": float(a[1] or 0), "top": tp(a[6], tot)},
-                    "wins":       {"lg": float(a[2] or 0), "top": tp(a[7], tot)},
-                    "whip":       {"lg": float(a[3] or 0), "top": tp(a[8], tot)},
+                    "era": mk(a[0], a[5], a[4], a[10], a[9]), "strikeouts": mk(a[1], a[6], a[4], a[11], a[9]),
+                    "wins": mk(a[2], a[7], a[4], a[12], a[9]), "whip": mk(a[3], a[8], a[4], a[13], a[9]),
                 }
     except Exception:
         pass
