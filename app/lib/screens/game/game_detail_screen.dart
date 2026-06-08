@@ -2629,79 +2629,64 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           Container(
             height: 44,
             decoration: pillDeco(),
-            child: Row(
-              children: List.generate(subLabels.length, (i) {
-                final sel = i == subIdx;
-                return Expanded(
-                  child: GestureDetector(
+            child: LayoutBuilder(builder: (ctx, c) {
+              final sl = subLabels!;
+              final slotW = c.maxWidth / sl.length;
+              return Stack(children: [
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 240),
+                  curve: Curves.easeOutCubic,
+                  left: subIdx * slotW + 4,
+                  top: 4, bottom: 4, width: slotW - 8,
+                  child: Container(decoration: BoxDecoration(
+                    color: activeColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20))),
+                ),
+                Row(children: List.generate(sl.length, (i) {
+                  final sel = i == subIdx;
+                  return Expanded(child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => onSubTap(i),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: sel ? activeColor.withValues(alpha: 0.12) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Center(
-                        child: Text(
-                          subLabels![i],
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
-                            color: sel ? activeColor : inactiveColor,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
+                    child: Center(child: Text(sl[i],
+                      style: TextStyle(fontSize: 12,
+                        fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
+                        color: sel ? activeColor : inactiveColor))),
+                  ));
+                })),
+              ]);
+            }),
           ),
           const SizedBox(height: 8),
         ],
         Container(
           height: 52,
           decoration: pillDeco(),
-          child: Row(
-            children: List.generate(mainLabels.length, (i) {
-              final sel = i == idx;
-              return Expanded(
-                child: GestureDetector(
+          child: LayoutBuilder(builder: (ctx, c) {
+            final slotW = c.maxWidth / mainLabels.length;
+            return Stack(children: [
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+                left: idx * slotW + 4,
+                top: 4, bottom: 4, width: slotW - 8,
+                child: Container(decoration: BoxDecoration(
+                  color: activeColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(22))),
+              ),
+              Row(children: List.generate(mainLabels.length, (i) {
+                final sel = i == idx;
+                return Expanded(child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    _tabController.animateTo(i);
-                    setState(() {});
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: sel ? activeColor.withValues(alpha: 0.12) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(mainIcons[i], size: 18, color: sel ? activeColor : inactiveColor),
-                        const SizedBox(height: 1),
-                        Text(
-                          mainLabels[i],
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
-                            color: sel ? activeColor : inactiveColor,
-                            fontFamily: 'Pretendard',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
+                  onTap: () { _tabController.animateTo(i); setState(() {}); },
+                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(mainIcons[i], size: 18, color: sel ? activeColor : inactiveColor),
+                    const SizedBox(height: 1),
+                    Text(mainLabels[i], style: TextStyle(fontSize: 11,
+                      fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
+                      color: sel ? activeColor : inactiveColor, fontFamily: 'Pretendard')),
+                  ]),
+                ));
+              })),
+            ]);
+          }),
         ),
       ],
       ),

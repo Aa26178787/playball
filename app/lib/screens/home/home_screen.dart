@@ -263,50 +263,62 @@ class _FloatingNavBar extends StatelessWidget {
           ),
           const SizedBox(height: 10),
         ],
-        // ── 탭 pill ──
+        // ── 탭 pill (선택 하이라이트 슬라이드) ──
         Container(
           height: 58,
           decoration: _pillDecoration(),
-          child: Row(
-            children: List.generate(items.length, (i) {
-              final item = items[i];
-              final selected = i == currentIndex;
-              return Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => onTap(i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: selected ? activeColor.withValues(alpha: 0.12) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          selected ? item.activeIcon : item.icon,
-                          size: 22,
-                          color: selected ? activeColor : inactiveColor,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          item.label,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                            color: selected ? activeColor : inactiveColor,
-                            fontFamily: 'Pretendard',
-                          ),
-                        ),
-                      ],
-                    ),
+          child: LayoutBuilder(builder: (ctx, c) {
+            final slotW = c.maxWidth / items.length;
+            return Stack(children: [
+              // 슬라이딩 선택 하이라이트
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+                left: currentIndex * slotW + 4,
+                top: 6, bottom: 6,
+                width: slotW - 8,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: activeColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                 ),
-              );
-            }),
-          ),
+              ),
+              // 항목 (배경 없음 — 하이라이트는 위 레이어가 담당)
+              Row(
+                children: List.generate(items.length, (i) {
+                  final item = items[i];
+                  final selected = i == currentIndex;
+                  return Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => onTap(i),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            selected ? item.activeIcon : item.icon,
+                            size: 22,
+                            color: selected ? activeColor : inactiveColor,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            item.label,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                              color: selected ? activeColor : inactiveColor,
+                              fontFamily: 'Pretendard',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ]);
+          }),
         ),
       ],
     );

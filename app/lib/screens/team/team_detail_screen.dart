@@ -386,36 +386,48 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         border: isDark ? Border.all(color: const Color(0xFF3A3A42)) : null,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.12), blurRadius: 16, offset: const Offset(0, 4))],
       ),
-      child: Row(
-        children: List.generate(labels.length, (i) {
-          final selected = _mainTabIndex == i;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => _goToMainTab(i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: selected ? color.withValues(alpha: 0.12) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icons[i], size: 18, color: selected ? color : Colors.grey),
-                    const SizedBox(height: 1),
-                    Text(labels[i], style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                      color: selected ? color : Colors.grey,
-                    )),
-                  ],
-                ),
+      child: LayoutBuilder(builder: (ctx, c) {
+        final slotW = c.maxWidth / labels.length;
+        return Stack(children: [
+          // 슬라이딩 선택 하이라이트
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            left: _mainTabIndex * slotW + 4,
+            top: 4, bottom: 4,
+            width: slotW - 8,
+            child: Container(
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(22),
               ),
             ),
-          );
-        }),
-      ),
+          ),
+          Row(
+            children: List.generate(labels.length, (i) {
+              final selected = _mainTabIndex == i;
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _goToMainTab(i),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icons[i], size: 18, color: selected ? color : Colors.grey),
+                      const SizedBox(height: 1),
+                      Text(labels[i], style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                        color: selected ? color : Colors.grey,
+                      )),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ]);
+      }),
     );
   }
 
