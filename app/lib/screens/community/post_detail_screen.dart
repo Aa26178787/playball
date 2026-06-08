@@ -242,16 +242,22 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   text: _post!['content'] ?? '',
                   style: const TextStyle(fontSize: 15, height: 1.6),
                 ),
-                if (_post!['image_url'] != null) ...[
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(imageUrl: _post!['image_url'] as String,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, _, _) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ],
+                Builder(builder: (_) {
+                  final imgs = (_post!['image_urls'] as List?)?.cast<String>()
+                      ?? (_post!['image_url'] != null ? <String>[_post!['image_url'] as String] : <String>[]);
+                  if (imgs.isEmpty) return const SizedBox.shrink();
+                  return Column(children: [
+                    const SizedBox(height: 12),
+                    ...imgs.map((u) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: CachedNetworkImage(imageUrl: u, fit: BoxFit.cover, width: double.infinity,
+                          errorWidget: (_, _, _) => const SizedBox.shrink()),
+                      ),
+                    )),
+                  ]);
+                }),
                 const SizedBox(height: 8),
                 Text('❤️ ${_post!['likes'] ?? 0}',
                     style: const TextStyle(color: Colors.red)),

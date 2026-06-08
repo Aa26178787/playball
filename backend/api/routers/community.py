@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Request
 from pydantic import BaseModel, field_validator
-from typing import Optional
-import os, uuid, shutil
+from typing import Optional, List
+import os, uuid, shutil, json
 from datetime import datetime, timedelta
 from database.connection import get_connection
 from api.routers.auth import get_current_user
@@ -26,6 +26,7 @@ class PostCreate(BaseModel):
     category: str = "자유"
     team_id: Optional[int] = None
     image_url: Optional[str] = None
+    image_urls: Optional[List[str]] = None  # 다중 이미지
 
     @field_validator('title')
     @classmethod
@@ -197,7 +198,7 @@ def get_post_detail(post_id: int, request: Request):
         SELECT p.id, p.title, p.content, p.category,
                p.views, p.likes, p.created_at, p.updated_at,
                u.id AS user_id, u.nickname, u.profile_image,
-               t.name AS team_name, p.image_url,
+               t.name AS team_name, p.image_url, p.image_urls,
                EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = %s) AS liked_by_me
         FROM posts p
         JOIN users u ON p.user_id = u.id
@@ -242,7 +243,8 @@ def get_post_detail(post_id: int, request: Request):
         "author_image": row[10],
         "team_name":    row[11],
         "image_url":    row[12],
-        "liked_by_me":  row[13],
+        "image_urls":   row[13] if row[13] else ([row[12]] if row[12] else []),
+        "liked_by_me":  row[14],
         "comments": [
             {
                 "id":           c[0],
@@ -274,13 +276,15 @@ def create_post(body: PostCreate, current_user: dict = Depends(get_current_user)
         conn.close()
         raise HTTPException(status_code=403, detail="phone_not_verified")
 
+    imgs = body.image_urls or ([body.image_url] if body.image_url else [])
+    primary = imgs[0] if imgs else None
     cur.execute("""
-        INSERT INTO posts (user_id, team_id, title, content, category, image_url)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO posts (user_id, team_id, title, content, category, image_url, image_urls)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         RETURNING id
     """, (
         current_user["user_id"], body.team_id,
-        body.title, body.content, body.category, body.image_url
+        body.title, body.content, body.category, primary, json.dumps(imgs)
     ))
 
     post_id = cur.fetchone()[0]

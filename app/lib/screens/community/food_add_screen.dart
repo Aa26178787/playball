@@ -119,7 +119,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
             _FormLabel(label: '구장 선택', cs: cs),
             SizedBox(
               height: 44,
-              child: ListView.separated(
+              child: _fade(ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
                 itemCount: _kStadiums.length,
@@ -135,6 +135,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                     }),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
+                      alignment: Alignment.center,
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                       decoration: BoxDecoration(
                         color: act ? cs.ink : cs.paper,
@@ -148,7 +149,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                     ),
                   );
                 },
-              ),
+              )),
             ),
             // 식당 검색
             _FormLabel(label: '식당 검색 *', cs: cs, required: true),
@@ -318,6 +319,17 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
 }
 
 // ── 서브 위젯 ─────────────────────────────────────────────────────────────────
+
+// 가로 스크롤 스트립 — 양 끝 그라디언트 페이드
+Widget _fade(Widget child) => ShaderMask(
+  shaderCallback: (rect) => const LinearGradient(
+    begin: Alignment.centerLeft, end: Alignment.centerRight,
+    colors: [Colors.transparent, Colors.black, Colors.black, Colors.transparent],
+    stops: [0.0, 0.04, 0.96, 1.0],
+  ).createShader(rect),
+  blendMode: BlendMode.dstIn,
+  child: child,
+);
 
 class _FormLabel extends StatelessWidget {
   final String label;

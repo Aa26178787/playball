@@ -35,9 +35,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   String _category = '자유';
   int? _selectedTeamId;
   bool _isLoading = false;
-  File? _imageFile;
   bool _imageUploading = false;
-  String? _uploadedImageUrl;
+  final List<File> _imageFiles = [];
+  final List<String> _uploadedUrls = [];
+  static const _maxImages = 10;
 
   @override
   void dispose() {
@@ -55,21 +56,28 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   Future<void> _pickImage() async {
+    final remaining = _maxImages - _imageFiles.length;
+    if (remaining <= 0) return;
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked == null) return;
-    setState(() { _imageFile = File(picked.path); _uploadedImageUrl = null; _imageUploading = true; });
+    final picked = await picker.pickMultiImage(imageQuality: 80, limit: remaining);
+    if (picked.isEmpty) return;
+    final take = picked.take(remaining).toList();
+    setState(() => _imageUploading = true);
     try {
-      final url = await ApiService.uploadPostImage(picked.path);
-      setState(() { _uploadedImageUrl = url; _imageUploading = false; });
+      for (final x in take) {
+        final url = await ApiService.uploadPostImage(x.path);
+        if (!mounted) return;
+        setState(() { _imageFiles.add(File(x.path)); _uploadedUrls.add(url); });
+      }
     } catch (_) {
-      setState(() { _imageFile = null; _imageUploading = false; });
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('이미지 업로드 실패')));
+    } finally {
+      if (mounted) setState(() => _imageUploading = false);
     }
   }
 
-  void _removeImage() {
-    setState(() { _imageFile = null; _uploadedImageUrl = null; });
+  void _removeImage(int i) {
+    setState(() { _imageFiles.removeAt(i); _uploadedUrls.removeAt(i); });
   }
 
   Future<void> _submit() async {
@@ -93,7 +101,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         _contentController.text.trim(),
         _category,
         teamId: _category == '팀별' ? _selectedTeamId : null,
-        imageUrl: _uploadedImageUrl,
+        imageUrls: _uploadedUrls.isNotEmpty ? _uploadedUrls : null,
       );
       if (mounted) Navigator.pop(context, true);
     } on DioException catch (e) {
@@ -288,47 +296,50 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 18),
               child: _MentionHelpRow(),
             ),
-            // 이미지 첨부
+            // 이미지 첨부 (다중)
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
-              child: _imageFile != null
-                  ? Stack(
-                      alignment: Alignment.topRight,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(Radii.md),
-                          child: _imageUploading
-                              ? Container(
-                                  height: 120,
-                                  width: double.infinity,
-                                  color: cs.paper2,
-                                  child: const Center(child: CircularProgressIndicator()),
-                                )
-                              : Image.file(_imageFile!, height: 120, width: double.infinity, fit: BoxFit.cover),
+              child: SizedBox(
+                height: 88,
+                child: ListView(scrollDirection: Axis.horizontal, children: [
+                  ..._imageFiles.asMap().entries.map((e) => Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Stack(children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(Radii.md),
+                        child: Image.file(e.value, height: 88, width: 88, fit: BoxFit.cover),
+                      ),
+                      Positioned(top: 3, right: 3, child: GestureDetector(
+                        onTap: () => _removeImage(e.key),
+                        child: Container(
+                          padding: const EdgeInsets.all(1),
+                          decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                          child: const Icon(Icons.close, size: 15, color: Colors.white),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.cancel, color: Colors.white),
-                          tooltip: '이미지 제거',
-                          onPressed: _removeImage,
-                        ),
-                      ],
-                    )
-                  : GestureDetector(
+                      )),
+                    ]),
+                  )),
+                  if (_imageFiles.length < _maxImages)
+                    GestureDetector(
                       onTap: _imageUploading ? null : _pickImage,
                       child: Container(
-                        height: 88,
+                        width: 88, height: 88,
                         decoration: BoxDecoration(
                           color: cs.paper2,
                           border: Border.all(color: cs.line2, width: 1.5),
                           borderRadius: BorderRadius.circular(Radii.md),
                         ),
-                        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Icon(Icons.add_photo_alternate_outlined, size: 20, color: cs.sub),
-                          const SizedBox(width: 8),
-                          Text('이미지 추가', style: TextStyle(fontSize: 12, color: cs.sub)),
-                        ]),
+                        child: _imageUploading
+                            ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+                            : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                Icon(Icons.add_photo_alternate_outlined, size: 20, color: cs.sub),
+                                const SizedBox(height: 4),
+                                Text('${_imageFiles.length}/$_maxImages', style: TextStyle(fontSize: 10, color: cs.sub)),
+                              ]),
                       ),
                     ),
+                ]),
+              ),
             ),
           ]),
         )),
@@ -347,9 +358,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               message: '@ 멘션 삽입',
               child: _ToolBtn(icon: Icons.alternate_email, cs: cs, onTap: _insertMention),
             ),
-            if (_uploadedImageUrl != null) ...[
-              const SizedBox(width: 8),
-              const Icon(Icons.check_circle, color: Colors.green, size: 18),
+            if (_uploadedUrls.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              const Icon(Icons.check_circle, color: Colors.green, size: 16),
+              const SizedBox(width: 2),
+              Text('${_uploadedUrls.length}', style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.w700)),
             ],
             const Spacer(),
             ValueListenableBuilder<TextEditingValue>(

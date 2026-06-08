@@ -654,7 +654,7 @@ class ApiService {
 
   static Future<void> createPost(
       String title, String content, String category,
-      {int? teamId, String? imageUrl}) async {
+      {int? teamId, String? imageUrl, List<String>? imageUrls}) async {
     final headers = await authHeaders();
     await _dio.post('/community/posts',
         data: {
@@ -663,6 +663,7 @@ class ApiService {
           'category': category,
           'team_id': ?teamId,
           'image_url': ?imageUrl,
+          'image_urls': ?imageUrls,
         },
         options: Options(headers: headers));
   }
