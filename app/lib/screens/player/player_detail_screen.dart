@@ -1748,6 +1748,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween, // 카드 폭 채워 정렬(좌측 쏠림 방지)
         children: List.generate(cells.length, (i) {
           final isFirst = i == 0;
           return SizedBox(

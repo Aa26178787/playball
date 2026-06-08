@@ -32,7 +32,7 @@ const Map<String, String> kTeamOverlayLogoUrls = {
 
 const Map<String, Color> kTeamColors = {
   'LG': Color(0xFFC30452),
-  'KT': Color(0xFF1A1A1A),
+  'KT': Color(0xFF3D424B),  // 검정→다크슬레이트 (라이트모드 검은 텍스트와 구분, 가시성)
   'SK': Color(0xFFCE0E2D),  // SSG
   'NC': Color(0xFF071D49),
   'OB': Color(0xFF131E3E),  // 두산

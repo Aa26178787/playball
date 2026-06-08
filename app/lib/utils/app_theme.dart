@@ -36,12 +36,10 @@ class AppTheme {
     final isDark = br == Brightness.dark;
     return ThemeData(
       useMaterial3: true,
-      // InkSparkle(반짝이) → InkRipple: 등록말소 배너 등 탭 시 스파클 효과 거슬림 (2026-06-07)
-      splashFactory: InkRipple.splashFactory,
-      highlightColor: (isDark ? AppColors.primaryDark : AppColors.primary)
-          .withValues(alpha: isDark ? 0.08 : 0.05),
-      splashColor: (isDark ? AppColors.primaryDark : AppColors.primary)
-          .withValues(alpha: isDark ? 0.12 : 0.08),
+      // 탭/버튼 클릭 시 반짝이는 splash·highlight 전부 제거 (NoSplash + 투명)
+      splashFactory: NoSplash.splashFactory,
+      highlightColor: Colors.transparent,
+      splashColor: Colors.transparent,
       fontFamily: 'Pretendard',
       // 한글 가독성 — line-height 1.4, letterSpacing 0 (음수 자간 제거)
       textTheme: const TextTheme(
@@ -119,6 +117,8 @@ class AppTheme {
         indicatorColor:
             isDark ? AppColors.primaryDark : AppColors.primary,
         indicatorSize: TabBarIndicatorSize.label,
+        splashFactory: NoSplash.splashFactory,
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         labelColor: isDark ? AppColors.primaryDark : AppColors.primary,
         unselectedLabelColor: AppColors.textTertiary,
         labelStyle: const TextStyle(

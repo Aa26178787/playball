@@ -2115,8 +2115,8 @@ class GameCard extends StatelessWidget {
                               isCancelled ? '취소' : (game.startTime ?? 'VS'),
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontSize: 17, fontWeight: FontWeight.w800,
-                                color: t.ink3, letterSpacing: 0,
+                                fontSize: 18, fontWeight: FontWeight.w800,
+                                color: t.ink, letterSpacing: 0,
                               ),
                             )
                           else
