@@ -125,6 +125,14 @@ class _PhotoCropScreenState extends State<PhotoCropScreen> {
                     withCircleUi: false,
                     interactive: true,    // 핀치 줌 / 드래그
                     fixCropRect: true,    // 크롭 틀 고정 → 이미지가 움직임 (인스타식)
+                    // 크롭 틀을 이미지 내부 최대 중앙 정사각형으로 초기화
+                    // → crop ⊆ image 항상 보장 → 틀 밖(여백)으로 이동 불가, pan/zoom은 이미지 내에서 clamp
+                    initialRectBuilder: InitialRectBuilder.withBuilder((viewportRect, imageRect) {
+                      final side = imageRect.width < imageRect.height ? imageRect.width : imageRect.height;
+                      final left = imageRect.left + (imageRect.width - side) / 2;
+                      final top = imageRect.top + (imageRect.height - side) / 2;
+                      return Rect.fromLTWH(left, top, side, side);
+                    }),
                     baseColor: Colors.black,
                     maskColor: Colors.black.withValues(alpha: 0.55),
                     radius: 0,
