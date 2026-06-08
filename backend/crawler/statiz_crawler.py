@@ -335,6 +335,9 @@ def recompute_pitcher_derived(cur, season=2026):
           hr_per_9 = round(ps.home_runs_allowed*9.0/(floor(ps.innings_pitched)+(ps.innings_pitched-floor(ps.innings_pitched))*10/3),2),
           k_bb     = round(ps.strikeouts::numeric/NULLIF(ps.walks,0),2),
           wpct     = round(ps.wins::numeric/NULLIF(ps.wins+ps.losses,0),3),
+          k_pct    = round(ps.strikeouts*100.0/NULLIF(ps.tbf,0),1),
+          bb_pct   = round(ps.walks*100.0/NULLIF(ps.tbf,0),1),
+          k_bb_pct = round((ps.strikeouts-ps.walks)*100.0/NULLIF(ps.tbf,0),1),
           fip      = round((13*ps.home_runs_allowed+3*(ps.walks+ps.hbp)-2*ps.strikeouts)/(floor(ps.innings_pitched)+(ps.innings_pitched-floor(ps.innings_pitched))*10/3)+(SELECT c FROM cfip),2),
           babip    = CASE WHEN ps.tbf>0 AND (ps.tbf-ps.walks-ps.hbp-ps.sac-ps.strikeouts-ps.home_runs_allowed)>0
                           THEN round((ps.hits_allowed-ps.home_runs_allowed)::numeric/(ps.tbf-ps.walks-ps.hbp-ps.sac-ps.strikeouts-ps.home_runs_allowed),3)
@@ -347,10 +350,12 @@ def recompute_batter_derived(cur, season=2026):
     """타자 파생(tb 루타/xbh 장타/bb_k/gpa) raw서 재계산. statiz 미제공분."""
     cur.execute("""
         UPDATE batter_stats SET
-          tb    = hits + doubles + 2*triples + 3*home_runs,
-          xbh   = doubles + triples + home_runs,
-          bb_k  = round(walks::numeric/NULLIF(strikeouts,0),2),
-          gpa   = round((1.8*obp + slg)/4, 3)
+          tb     = hits + doubles + 2*triples + 3*home_runs,
+          xbh    = doubles + triples + home_runs,
+          bb_k   = round(walks::numeric/NULLIF(strikeouts,0),2),
+          gpa    = round((1.8*obp + slg)/4, 3),
+          bb_pct = round(walks*100.0/NULLIF(pa,0),1),
+          k_pct  = round(strikeouts*100.0/NULLIF(pa,0),1)
         WHERE season=%s AND at_bats>0
     """, (season,))
 
