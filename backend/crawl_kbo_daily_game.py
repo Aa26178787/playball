@@ -1,5 +1,5 @@
 
-import sys, time, re
+import os, sys, time, re
 import psycopg2
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -10,7 +10,7 @@ DB_CONFIG = {
     "port": 5433,  # SSH 터널
     "database": "playball",
     "user": "playball_user",
-    "password": "playball1234"
+    "password": os.environ.get("DB_PASSWORD", "playball1234"),
 }
 
 def get_connection():

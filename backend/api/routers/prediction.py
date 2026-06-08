@@ -1,10 +1,15 @@
 """승리 예측 API."""
-from fastapi import APIRouter, HTTPException
+import os
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Request, Header
 from api.cache import cached
+from api.security_log import log_admin_access
 from api.prediction.model import predict_win_probability, reload_model
 from api.prediction.park_factors import get_park_factors, invalidate_park_factors
 
 router = APIRouter(prefix="/prediction", tags=["prediction"])
+
+_ADMIN_KEY = os.environ.get("ADMIN_KEY", "")
 
 
 @router.get("/game/{game_id}")
@@ -25,10 +30,17 @@ def get_park_factors_endpoint():
 
 
 @router.post("/admin/reload-model")
-def admin_reload_model(pw: str = ""):
-    """모델 재로드 (학습 후)."""
-    if pw != "playball1234":
-        raise HTTPException(status_code=403)
+def admin_reload_model(request: Request, x_admin_key: Optional[str] = Header(None)):
+    """모델 재로드 (학습 후). X-Admin-Key 헤더 인증 (URL pw 파라미터 대체)."""
+    ip = request.client.host if request.client else "?"
+    ep = "POST /prediction/admin/reload-model"
+    if not _ADMIN_KEY:
+        log_admin_access(ip, ep, "reload", "FAIL_NO_ENV")
+        raise HTTPException(status_code=503, detail="관리자 기능 비활성화")
+    if x_admin_key != _ADMIN_KEY:
+        log_admin_access(ip, ep, "reload", "FAIL_WRONG_KEY")
+        raise HTTPException(status_code=403, detail="권한 없음")
+    log_admin_access(ip, ep, "reload", "OK")
     reload_model()
     invalidate_park_factors()
     return {"status": "reloaded"}

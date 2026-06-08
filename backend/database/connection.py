@@ -14,7 +14,8 @@ DB_CONFIG = {
     "port": 6432,
     "dbname": "playball",
     "user": "playball_user",
-    "password": "playball1234",
+    # env 우선 (systemd Environment=DB_PASSWORD). 미설정 시 fallback (로컬/구버전 호환)
+    "password": os.environ.get("DB_PASSWORD", "playball1234"),
 }
 
 _pool: pool.ThreadedConnectionPool | None = None

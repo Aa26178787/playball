@@ -2,11 +2,12 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-import time, re, psycopg2
+import os, time, re, psycopg2
 
 DB_CONFIG = {
     'host': 'localhost', 'port': 5433,
-    'database': 'playball', 'user': 'playball_user', 'password': 'playball1234'
+    'database': 'playball', 'user': 'playball_user',
+    'password': os.environ.get('DB_PASSWORD', 'playball1234')
 }
 
 def get_connection():

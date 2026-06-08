@@ -1,4 +1,17 @@
-app/build/ 
-backend/__pycache__/ 
-backend/*.pyc 
-.env 
+app/build/
+backend/__pycache__/
+**/__pycache__/
+backend/*.pyc
+*.pyc
+
+# secrets / env
+.env
+.env.*
+!.env.example
+*.key
+firebase-service-account.json
+backend/firebase-service-account.json
+
+# logs / scratch
+*.log
+tmp_screen.png
