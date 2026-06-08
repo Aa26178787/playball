@@ -67,6 +67,10 @@ dependencies:
   # 이미지 크롭 (1:1 정사각 강제)
   image_cropper: ^7.1.0
 
+  # 인앱 크롭(Flutter 위젯, status bar 겹침 회피) + 갤러리 그리드
+  crop_your_image: ^2.0.0
+  photo_manager: ^3.6.4
+
   # URL 열기
   url_launcher: ^6.3.1
 

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:image_cropper/image_cropper.dart';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:path_provider/path_provider.dart';
+import 'photo_crop_screen.dart';
 import '../../api/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -293,43 +295,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _pickAndUploadImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 90,
+    // 인스타식 인앱 크롭 화면(crop_your_image) — 네이티브 uCrop 미사용(status bar 겹침 회피)
+    final bytes = await Navigator.push<Uint8List>(
+      context,
+      MaterialPageRoute(builder: (_) => const PhotoCropScreen()),
     );
-    if (picked == null) return;
-    // ImageCropper 1:1 크롭 UI — 검은 이미지 fix (resize 후 검은 변환 방지)
-    final cropped = await ImageCropper().cropImage(
-      sourcePath: picked.path,
-      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-      // image_cropper 7.1.0 cropStyle param 없음 — Android UI grid로 1:1 사각 가이드만
-      compressFormat: ImageCompressFormat.jpg,
-      compressQuality: 90,
-      maxWidth: 512,
-      maxHeight: 512,
-      uiSettings: [
-        AndroidUiSettings(
-          toolbarTitle: '프로필 이미지 크롭',
-          toolbarColor: SemColor.panelDark,
-          toolbarWidgetColor: Colors.white,
-          statusBarColor: SemColor.panelDark,  // 상단 status bar 침범 방지
-          backgroundColor: Colors.white,
-          activeControlsWidgetColor: SemColor.panelDark,
-          initAspectRatio: CropAspectRatioPreset.square,
-          lockAspectRatio: true,
-          hideBottomControls: false,
-        ),
-        IOSUiSettings(
-          title: '프로필 이미지 크롭',
-          aspectRatioLockEnabled: true,
-        ),
-      ],
-    );
-    if (cropped == null) return;
+    if (bytes == null) return;
     setState(() => _uploadingImage = true);
     try {
-      final url = await ApiService.uploadProfileImage(cropped.path);
+      // 크롭 bytes → 임시 파일 (업로드는 파일 경로 기반)
+      final dir = await getTemporaryDirectory();
+      final f = File('${dir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      await f.writeAsBytes(bytes);
+      final url = await ApiService.uploadProfileImage(f.path);
       // 캐시 우회: URL에 timestamp query 붙여 새 cache key
       final bustedUrl = url.contains('?') ? '$url&t=${DateTime.now().millisecondsSinceEpoch}'
                                           : '$url?t=${DateTime.now().millisecondsSinceEpoch}';
