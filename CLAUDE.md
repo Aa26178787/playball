@@ -302,7 +302,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - [ ] **Play Console**($25) + keystore 안전백업(분실=업데이트 불가) + Data Safety + targetSdk 확인
 - [~] **법무**: 정책 페이지 배포 완료 → `https://playball.duckdns.org/privacy` · `/terms` (HTML=`backend/static/legal/`, nginx exact-match). 잔여 = ① 문의메일 placeholder(`playball.support@gmail.com`) 실계정 교체 ② 출시 전 법률 검토 ③ (옵션)앱 마이페이지 약관 링크 ④ KBO/Naver 저작권 최종 판단
 ### 중기 (코드 품질)
-- [ ] empty catch~41 debugPrint / non-null `!` audit / AppErrorView 전면 / 서버 print→logging
+- [ ] empty catch~41 debugPrint / non-null `!` audit / AppErrorView 전면 / ~~서버 print→logging~~(✅ 2026-06-09 런타임서비스 fcm/weather/email/sms → `api/log_setup.py` 중앙설정+모듈 logger. prediction CLI·scheduler 운영 print는 유지)
 - [ ] Radii 토큰·SemColor.panelDark 잔여 점진 치환
 - [ ] Golden test(다크+라이트) / pre-commit grep hook(letterSpacing typo) / ~~nginx 보안헤더~~(✅ 2026-06-09 HSTS+CSP+Permissions-Policy 등 7종 적용·검증)
 - [x] 이닝중계 진행이닝 TTL 30→10s 검토 → **유지 결정**(클라 폴링 30s 고정이라 하향=Naver 부하 3배·UX 이득 0)
