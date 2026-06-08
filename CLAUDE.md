@@ -279,88 +279,33 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - KT 팀컬러 = 0xFF3D424B 다크슬레이트 (원래 0xFF1A1A1A 검정 → 라이트모드 검은텍스트와 구분 안 됨). 팔레트 빨강(SSG/KIA/롯데)·네이비(NC/두산) 多 → 충돌 주의
 - 팀상세/홈 메인탭 = PageView(`NeverScrollableScrollPhysics`)+`_KeepAlive` — 콘텐츠 가로 칩스크롤 hijack 방지 위해 PageView 스와이프 끔, 탭 전환은 `animateToPage`만
 - **showDatePicker/showTimePicker 직접 호출 금지** — 전역 `MediaQuery.withClampedTextScaling(min 0.85)`과 picker 내부 clamp 충돌 → `'maxScale > minScale'` assert 크래시. 반드시 `builder:`로 linear scaler 재설정 (cal_event_add_screen `_pickerBuilder` 패턴 복사)
+- **버튼 색 하드코딩 금지** — `SemColor.panelDark(0xFF111113)==scaffoldDark` → 다크모드 윤곽소실. 글로벌 `elevatedButtonTheme`(isDark 반전) 상속(bg/fg override 제거). SnackBar/배지의 panelDark는 의도라 예외
+- **rate limit/IP = X-Real-IP** — nginx 뒤 `request.client.host`는 항상 127.0.0.1(전역버킷 무력화) → `_client_ip()`. 8000은 127.0.0.1만 ACCEPT라 헤더 신뢰 가능
+- **users 참조 FK = ON DELETE CASCADE(개인데이터)/SET NULL(공유데이터)** — NO ACTION이면 회원탈퇴 FK위반으로 깨짐 + 개인정보 잔존
+- **시크릿은 env**(DB_PASSWORD/ADMIN_KEY/JWT_SECRET_KEY/EMAIL_*) — 코드 하드코딩 금지. `backend/.env.example` 참조
+- **DB 백업/파이프 성공판정 = PIPESTATUS+산출물 크기** — `pg_dump|gzip`의 `$?`는 gzip 것 → 실패해도 20B 빈파일을 SUCCESS로 오기록 사고. cron: db_backup.sh(3AM)·watchdog.py(*/10)
+- **admin 엔드포인트 = X-Admin-Key 헤더 + ADMIN_KEY env + log_admin_access** (URL pw 파라미터 금지)
 
 ## FCM (활성화 완료)
 google-services.json(앱) / firebase_options.dart / firebase-service-account.json(서버) / firebase-admin 7.4.0 / push_tokens·user_settings notify 컬럼 — 전부 ✅. AndroidConfig high priority + channel playball_default.
 
-## 변경 이력 핵심 (세션 통합 요약, 상세는 git log)
+## 변경 이력 (기능 상세 = git log / 재발방지 규칙 = 주의사항)
+- **~06-08 누적**: 필드뷰 CustomPainter(ABS)·알림체계(notification_log dedup/마일스톤/game_summary)·이닝중계 개편(textRelays 지연 → 직전이닝 재fetch)·Option A 전면이식(헤더5탭/마이페이지/팀상세/선수/캘린더/커뮤니티)·인앱크롭(PhotoCropScreen)·다중사진(image_urls)·피칭디자인&존히트맵·인스타339명·플로팅탭 슬라이드
+- **06-08b 출시준비(보안·안정화)**: 시크릿 env화·admin X-Admin-Key·rate limit 강화(X-Real-IP)·업로드 magic-byte·회원탈퇴 FK CASCADE·유저차단(user_blocks)·DB백업 가드·watchdog·Crashlytics·보안감사(auth/IDOR 견고)·auth 버튼 다크 가시성
 
-### ~06-05: 기반 구축
-필드뷰 CustomPainter(SVG 300x310 좌표계, ABS), 핀 패널, BSO 오버레이, 알림 체계(notification_log dedup, 마일스톤, game_summary), 인증 안정화, 프로필 크롭, analyzer 338→0, design_tokens 도입, 다크모드 일괄.
-
-### 06-06: UX 다듬기 + 근본이슈
-- 🔑 **scheduler 별도 서비스 미재시작 발견** — 배포 루틴에 양 서비스 재시작 명문화
-- weather SWR(홈 5초 지연 해결), 읽은알림 라우트 순서, 마일스톤 통과 조건, 종료 필드뷰 stale relay
-- tooltip 21곳/Hero/grey 대비/emoji→Material 등 접근성·디자인 일괄, compact 카드 도입
-
-### 06-07: 대개편
-- **이닝 race fix** (textRelays 발행 지연 → 직전 이닝 재fetch/재저장) + 429 백필
-- 경기상세: 블라인드 핸들, 이닝 칩 네비+스와이프, 2행 타석 헤더, tonal dot, 득점요약(홈인 카운트 방식), 로스터 풀 명단(preview API 발견), 키플레이어/하이라이트/기록 개편, 플로팅바 스와이프
-- 선수탭/상세 mockup 전면 이식 + 핵심/세부/고급/수비 그리드 + **피칭 디자인** + **타자 존 히트맵**(존별 타율 — 인플레이↔타석결과 zip 매칭)
-- **인스타 339명** (나무위키 로컬 크롤 + 팀명 검증 — Instagram 직접 크롤 불가)
-- 선발 확정 status, 스파클 제거, 등번호 배지, 날씨 워머, 과제 스크립트(1_train/2_evaluate)
-
-### 06-07b~08: 캘린더·커뮤니티 Option A 이식 + 일정 기능 확장
-- ui/ mockup 5개 이식: 캘린더 탭, 커뮤니티 탭(4탭 전부), 일정추가/글작성/맛집제안 풀스크린화 (cal_event_add·food_add 신규, 기존 다이얼로그/바텀시트 제거)
-- **직관기록 풀스크린** (visit_record_screen — 결과 3버튼+메모+사진, 다이얼로그 대체)
-- **일정 시간 선택** 풀스택: DB start_time/end_time TIME + API + 시간 토글 UI + 타일 시간 표시
-- **일정 수정**: PUT /user/calendar-events/{id} + CalEventAddScreen 수정 모드(타일 탭 진입)
-- 🔑 **DatePicker textScaler 크래시** 발견·수정 (전역 clamp min 0.85 충돌 → picker builder 가드, 주의사항 등재)
-- 맛집 FAB nav 위 정렬, 일정 색 팔레트 Option A 교체(gray 키=틸 표시), adb 원격 조작으로 실기 검증 루틴 확립 (screencap+uiautomator dump+input tap)
-
-### 06-08: 헤더 통일 + 선수/팀상세 Option A 전면 + 다중사진 + 인앱크롭 + 플로팅 슬라이드
-- **헤더 5탭 통일**: 홈/팀/선수/캘린더/커뮤니티 = `[화면전용][다크토글][마이페이지]` 우측, 32×32 bordered 버튼, 타이틀 h2/ls-0.5, 하단 line. 홈/팀 Material AppBar → 커스텀 헤더(SafeArea)
-- **마이페이지 Option A 전면**: 프로필/마이팀(전체 팀)/즐겨찾기(가로)/직관/글·댓글·좋아요/알림설정 접이식+커스텀토글/다크. `favoritePlayersChanged` 노티파이어 → 즐겨찾기 해제 실시간 반영
-- **팀 상세 Option A 전면**: 팀컬러 헤더(흰 _Btn32)·선수 2열(타자|투수 + 포지션/구위 필터)·경기 3+타순 서브탭(시리즈카드 3등분/월별 막대차트/상대전적 원형게이지+2열). fl_chart 제거
-- **선수 화면 다수**: 백넘버 `#-` 수정(getHitters/pitchers에 `p.number`), 상세 이미지 stretch(PlayerAvatar memCacheHeight 제거), 다크 검은텍스트(섹션라벨 등), 등록말소 백넘버 옆, **인기투표=상세 하트**(GET vote-status 비캐시), **피칭 존 히트맵(피안타율)**(GET pitcher-zones), 카드 3열, **세부 포지션 필터**(game_rosters mode → getHitters detail_pos), top3 스탯색 제거
-- **인스타식 인앱 크롭**: `PhotoCropScreen`(crop_your_image+photo_manager) — 1:1 고정틀+갤러리그리드, 네이티브 uCrop 폐기(Android15 status bar 겹침 해결), initialRectBuilder로 crop⊆image(밖 이동 방지). 프로필만 적용
-- **다중 이미지 게시글**: posts.image_urls JSONB, pickMultiImage(10)+썸네일스트립, 상세 다중표시
-- **플로팅탭 슬라이드**: 홈/팀상세 메인탭 PageView(NeverScrollable)+animateToPage+`_KeepAlive`(콘텐츠 가로스크롤 비충돌), 선택 하이라이트 LayoutBuilder+AnimatedPositioned 슬라이드(경기상세 pill 포함)
-- **모든 좌우스크롤 칩 페이드**(ShaderMask dstIn) + 고정높이 strip 칩 `alignment center`(세로 쏠림)
-- **가시성**: 전역 splash 제거(NoSplash), KT 팀컬러 0xFF1A1A1A→0xFF3D424B, 투구위치 시트 theme-aware(존 다크대응·히트맵토글 제거·범례 상단), 단상 금/은 텍스트 대비, 게임카드 최근5 패/무 색+최근선, 팀상세 경기 승=팀컬러/패무=무채색
-- **팀카드**: 홈구장 전체명+지도 진입(StadiumScreen), 승패무|경기|승률 정렬·폰트↑
-- 인스타 오배정 12건(225studio.official·team_futures) NULL, 미수집 605명 목록 추출
-- 백엔드: getTeamPlayers `throws`, getTeamGames home/away_code, 맛집 구장 '서울'→'잠실'
-- deps 추가: crop_your_image ^2.0.0, photo_manager ^3.6.4
-
-### 06-08b: 출시 준비 — 보안·안정화 (반드시→감사→UI)
-- **시크릿 외부화**: DB pw·admin pw env(os.environ.get DB_PASSWORD), prediction admin = URL pw → X-Admin-Key 헤더+ADMIN_KEY+감사로그(stadiums 패턴 통일), .gitignore/.env.example 보강. (DB/Gmail/Kakao 키 회전은 미룸 — 권한/PgBouncer 위험)
-- **rate limit**: 글로벌 200/min은 기존. 민감경로(login/register/password/email·phone verify/check-) prefix별 강화. 🔑 **`request.client.host`는 nginx 뒤 항상 127.0.0.1 → 전역버킷 무력화** → `X-Real-IP` 사용(8000은 127.0.0.1만 ACCEPT라 스푸핑 불가). `_client_ip()`
-- **업로드**: community 글 업로드도 magic-byte 검증(프로필과 파리티)
-- 🔑 **회원탈퇴 cascade**: posts/comments/post_likes/push_tokens/user_settings/favorite_*/notifications가 users FK **NO ACTION → 탈퇴 자체가 FK위반으로 깨져있었음** + 개인정보 잔존. 전부 CASCADE, 맛집 submitted_by=SET NULL. `migrate_user_delete_cascade.sql`
-- **차단(block)**: user_blocks 테이블 + POST/DELETE `/community/users/{id}/block` + GET `/community/blocks`. get_posts(viewer optional+author_id)·댓글 차단유저 숨김. 클라: post 메뉴/댓글 롱프레스 차단 + mypage BlockedUsersScreen
-- 🔑 **DB 백업**: 기존 `~/backups/backup.sh`가 파이프 `$?`(=gzip)로 pg_dump 실패 못잡아 **20B 빈 덤프 양산**(silent). `backend/Scripts/db_backup.sh`(PIPESTATUS+최소크기 가드, sudo -u postgres) + cron 교체
-- **watchdog**: `backend/Scripts/watchdog.py` cron */10 — 서비스/API/백업 신선도 점검 + 이메일경보(스케줄러 내부 _health_check는 자기죽음 못잡음 보완)
-- **Crashlytics**: firebase_crashlytics 3.4.9 + gradle plugin 3.0.2, main FlutterError/platformDispatcher.onError. debug 빌드 검증
-- **보안감사(공격자관점)**: auth 견고(64자 JWT secret env필수·bcrypt·enumeration無·mass-assign無·IDOR 전부 소유권체크·파라미터화SQL·uuid업로드). 위 rate-limit IP가 유일 실취약
-- **UI 일관성**: 🔑 `SemColor.panelDark(0xFF111113) == scaffoldDark(0xFF111113)` → 하드코딩 버튼 다크모드 **윤곽소실**. 글로벌 elevatedButtonTheme이 이미 isDark 반전 처리 → auth/login/game_detail 버튼의 bg/fg override 제거해 상속(register/forgot_password/phone_verify/login/game_detail 5곳). SnackBar/타순배지 panelDark는 의도라 유지
-- 미룸: empty catch~41·print→logging(Crashlytics가 완화), nginx 보안헤더(앱클라 저가치), DB/Gmail/Kakao 키회전·도메인/CF·Play Console·keystore백업(권한)
-
-## 진행 예정 / 백로그
-
-### 검증 도구 (권장)
-- [ ] Golden tests (GameCard 등 다크+라이트) / device_preview / accessibility_tools / DevTools 성능 측정
-- [ ] pre-commit grep hook (letterSpacing typo류)
-
-### 중기
-- [ ] empty catch ~41건 debugPrint / non-null `!` audit / AppErrorView 전면 적용
-- [ ] Radii 토큰 점진 적용 (반경 혼재) / SemColor.panelDark 잔여 hardcoded 점진 치환
-- [ ] 다크모드 잔여: forgot_password, my_page 일부, phone_verify, register
-- [ ] 이닝별 중계 진행 이닝 TTL 30→10s 검토 (필드뷰와 지연차)
-
+## 해야할 것
+### 출시 전 필수 (네 권한 / 외부 작업)
+- [ ] **키 회전**: Gmail 앱비번·Kakao 키(각 콘솔), DB pw(PgBouncer userlist 동기화)
+- [ ] **도메인 + Cloudflare**: 웹사이트 Free 플랜 + Tunnel(IP은닉, duckdns/certbot 제거). ⚠️ Bot Fight Mode OFF(앱 API 차단), 동적 JSON 캐시 bypass
+- [ ] **Play Console**($25) + keystore 안전백업(분실=업데이트 불가) + Data Safety + targetSdk 확인
+- [ ] **법무**: 개인정보처리방침/약관 URL + 데이터 출처 저작권(KBO 사진·로고, Naver크롤 ToS) 검토
+### 중기 (코드 품질)
+- [ ] empty catch~41 debugPrint / non-null `!` audit / AppErrorView 전면 / 서버 print→logging
+- [ ] Radii 토큰·SemColor.panelDark 잔여 점진 치환
+- [ ] Golden test(다크+라이트) / pre-commit grep hook(letterSpacing typo) / nginx 보안헤더
+- [ ] 이닝중계 진행이닝 TTL 30→10s 검토
 ### 장기
-- [ ] 홈화면 위젯 (Android AppWidget — native kotlin)
-- [ ] state restoration 추가 화면 / 동적 시간 표시 / i18n은 skip 확정
-
-## 실기 확인 대기 (최신)
-- ✅ 확인됨(06-07): 캘린더 새 디자인, 일정추가 화면+날짜/시간 픽커, 직관기록 풀스크린 렌더
-- 일정 시간 포함 저장→타일 표시, 일정 수정 저장 플로우, 맛집 제안 풀스크린 제출, 글작성 새 디자인 제출, 커뮤니티 다크모드
-- compact/hero 혼합 + 3층 compact + 선발 확정 pill (경기 2h 전)
-- 이닝 칩 네비+스와이프(라이브 추적), 타석 2행 헤더, tonal dot, 득점요약 중앙 정렬
-- 블라인드 핸들 애니메이션 + 좁은 화면 overflow
-- 선수탭 리스트/카드+검색 오버레이+다크 토글, 상세 그리드/피칭디자인/존 히트맵(3x3 외곽선)
-- 인스타 버튼, 로스터 후보/불펜, 다음타석 오버레이, 알림 스와이프/아이콘 칩
-- ※ 06-07 검증 중단 잔여물: 6/7에 'test' 일정 생성됐을 수 있음 — 보이면 삭제
+- [ ] 홈화면 위젯(Android AppWidget native kotlin) / state restoration / i18n은 skip 확정
 
 ## 알려진 이슈
 - push_tokens 사용자 1명 — 다수 유저 알림 시나리오 미검증
