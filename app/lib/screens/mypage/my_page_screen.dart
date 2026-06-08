@@ -15,6 +15,7 @@ import '../player/player_detail_screen.dart';
 import '../team/team_detail_screen.dart';
 import '../community/post_detail_screen.dart';
 import 'phone_verify_screen.dart';
+import 'blocked_users_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class MyPageScreen extends StatefulWidget {
@@ -369,6 +370,24 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       if (_myComments.isNotEmpty) _buildMyComments(cs),
                       if (_settingsLoaded) _buildNotifSettings(cs, myColor),
                       _buildDarkMode(cs, myColor),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+                        child: GestureDetector(
+                          onTap: () => Navigator.push(context, MaterialPageRoute(
+                              builder: (_) => const BlockedUsersScreen())),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: _cardDeco(cs),
+                            child: Row(children: [
+                              Icon(Icons.block, size: 18, color: cs.sub),
+                              const SizedBox(width: 12),
+                              Expanded(child: Text('차단한 사용자',
+                                  style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.ink))),
+                              Icon(Icons.chevron_right, size: 18, color: cs.sub),
+                            ]),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Center(child: TextButton(
                         onPressed: _deleteAccount,

@@ -146,6 +146,37 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     }
   }
 
+  Future<void> _blockAuthor(int userId, {String? name}) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('사용자 차단'),
+        content: Text('${name != null && name.isNotEmpty ? '$name 님' : '이 사용자'}을 차단하면 작성한 글과 댓글이 보이지 않습니다. 차단할까요?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('차단', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ApiService.blockUser(userId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('차단했습니다')));
+        Navigator.pop(context, true); // 목록 새로고침
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('차단 실패')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -207,6 +238,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     }
                   } catch (_) {}
                 }
+              } else if (v == 'block') {
+                if (postUserId is int) await _blockAuthor(postUserId);
               }
             },
             itemBuilder: (_) => [
@@ -214,8 +247,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 const PopupMenuItem(value: 'edit', child: Text('수정')),
                 const PopupMenuItem(value: 'delete',
                     child: Text('삭제', style: TextStyle(color: Colors.red))),
-              ] else
+              ] else ...[
                 const PopupMenuItem(value: 'report', child: Text('신고')),
+                const PopupMenuItem(value: 'block',
+                    child: Text('이 사용자 차단', style: TextStyle(color: Colors.red))),
+              ],
             ],
           ),
         ],
@@ -270,6 +306,26 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   final likedByMe = c['liked_by_me'] as bool? ?? false;
                   final likesCount = (c['likes_count'] as num?)?.toInt() ?? 0;
                   return ListTile(
+                    onLongPress: isMyComment ? null : () {
+                      final cid = c['user_id'];
+                      if (cid is int) {
+                        showModalBottomSheet(
+                          context: context,
+                          builder: (_) => SafeArea(
+                            child: Wrap(children: [
+                              ListTile(
+                                leading: const Icon(Icons.block, color: Colors.red),
+                                title: const Text('이 사용자 차단'),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _blockAuthor(cid, name: c['author'] as String?);
+                                },
+                              ),
+                            ]),
+                          ),
+                        );
+                      }
+                    },
                     title: MentionText(
                       text: c['content'] ?? '',
                       style: const TextStyle(fontSize: 14),

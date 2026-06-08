@@ -626,6 +626,26 @@ class ApiService {
         data: {'reason': reason}, options: Options(headers: headers));
   }
 
+  static Future<void> blockUser(int userId) async {
+    final headers = await authHeaders();
+    await _dio.post('/community/users/$userId/block',
+        options: Options(headers: headers));
+  }
+
+  static Future<void> unblockUser(int userId) async {
+    final headers = await authHeaders();
+    await _dio.delete('/community/users/$userId/block',
+        options: Options(headers: headers));
+  }
+
+  static Future<List<Map<String, dynamic>>> getBlocks() async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/community/blocks',
+        options: Options(headers: headers));
+    return ((res.data['blocks'] as List?) ?? [])
+        .map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
   static Future<Map<String, dynamic>> getMyPosts({int page = 1}) async {
     final headers = await authHeaders();
     final res = await _dio.get('/community/my-posts',
