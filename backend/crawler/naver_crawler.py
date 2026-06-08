@@ -871,6 +871,48 @@ def crawl_naver_lineup(naver_game_id):
     return _parse_naver_lineup(lines)
 
 
+def reconcile_starter_positions(cur, db_game_id):
+    """대타/대주자가 starter로 잘못 표기되고 실제 포지션 선수가 backup으로 빠진 경우 교정.
+    같은 batting_order의 backup 중 실제 포지션 가진 첫 row를 starter로 promote + 대타/대주자 starter 강등.
+    여러 크롤(라인업/preview/entry)이 순서 무관하게 backup을 추가해도, 최종 호출 시점 기준으로 일관 보정.
+    → save_game_roster뿐 아니라 backup을 나중에 추가하는 preview/entry 크롤 끝에서도 호출 필요
+      (안 하면 fixup이 stale → 선발에 1루수 등 누락, 필드뷰 포지션 빔)."""
+    cur.execute("""
+        WITH targets AS (
+          SELECT DISTINCT ON (gr.game_id, gr.team_side, gr.batting_order) gr.id
+          FROM game_rosters gr
+          JOIN game_rosters s ON s.game_id=gr.game_id
+            AND s.team_side=gr.team_side
+            AND s.batting_order=gr.batting_order
+            AND s.is_starter=TRUE
+            AND s.position IN ('대타', '대주자')
+          WHERE gr.game_id = %s
+            AND gr.is_starter = FALSE
+            AND gr.roster_type = 'batter'
+            AND gr.position IS NOT NULL
+            AND gr.position NOT IN ('대타', '대주자', '')
+          ORDER BY gr.game_id, gr.team_side, gr.batting_order, gr.id
+        )
+        UPDATE game_rosters SET is_starter = TRUE WHERE id IN (SELECT id FROM targets)
+    """, (db_game_id,))
+    cur.execute("""
+        UPDATE game_rosters SET is_starter = FALSE
+        WHERE game_id = %s
+          AND roster_type = 'batter'
+          AND is_starter = TRUE
+          AND position IN ('대타', '대주자')
+          AND EXISTS (
+            SELECT 1 FROM game_rosters g2
+            WHERE g2.game_id = game_rosters.game_id
+              AND g2.team_side = game_rosters.team_side
+              AND g2.batting_order = game_rosters.batting_order
+              AND g2.is_starter = TRUE
+              AND g2.position NOT IN ('대타', '대주자', '')
+              AND g2.id != game_rosters.id
+          )
+    """, (db_game_id,))
+
+
 def save_preview_roster(db_game_id, naver_game_id):
     """preview API 기반 경기 전 풀 로스터 (2026-06-07)
     — homeTeamLineUp/awayTeamLineUp: fullLineUp(선발투수 포함) + pitcherBullpen + batterCandidate.
@@ -948,6 +990,8 @@ def save_preview_roster(db_game_id, naver_game_id):
                         position = COALESCE(game_rosters.position, EXCLUDED.position)
                 """, (db_game_id, pid, side, e.get('position')))
                 n += 1
+        # backup 추가 후 선발 포지션 재보정 (대주자/대타 starter → 실포지션 backup promote)
+        reconcile_starter_positions(cur, db_game_id)
         conn.commit()
         cur.close()
         conn.close()
@@ -1003,6 +1047,8 @@ def save_entry_roster(db_game_id, naver_game_id):
                             pitching_style = COALESCE(game_rosters.pitching_style, EXCLUDED.pitching_style)
                     """, (db_game_id, pid, side, rtype, pos, style))
                     n += 1
+        # backup 추가 후 선발 포지션 재보정
+        reconcile_starter_positions(cur, db_game_id)
         conn.commit()
         cur.close()
         conn.close()
@@ -1147,44 +1193,8 @@ def save_game_roster(db_game_id, naver_game_id):
                             roster_type = 'pitcher'
                     """, (db_game_id, player_id, side, p['pitching_style']))
 
-        # ── starter position fixup ──
-        # Naver lineup이 batting_order N에 '대타'/'대주자' 만 starter로 표시하고
-        # 실제 포지션(유격수/포수 등) 은 backup으로 분류되는 경우 발생 → 필드뷰 포지션 누락
-        # 같은 batting_order의 backup 중 실제 포지션 가진 첫 row를 starter로 promote + 대타 starter 강등
-        cur.execute("""
-            WITH targets AS (
-              SELECT DISTINCT ON (gr.game_id, gr.team_side, gr.batting_order) gr.id
-              FROM game_rosters gr
-              JOIN game_rosters s ON s.game_id=gr.game_id
-                AND s.team_side=gr.team_side
-                AND s.batting_order=gr.batting_order
-                AND s.is_starter=TRUE
-                AND s.position IN ('대타', '대주자')
-              WHERE gr.game_id = %s
-                AND gr.is_starter = FALSE
-                AND gr.roster_type = 'batter'
-                AND gr.position IS NOT NULL
-                AND gr.position NOT IN ('대타', '대주자', '')
-              ORDER BY gr.game_id, gr.team_side, gr.batting_order, gr.id
-            )
-            UPDATE game_rosters SET is_starter = TRUE WHERE id IN (SELECT id FROM targets)
-        """, (db_game_id,))
-        cur.execute("""
-            UPDATE game_rosters SET is_starter = FALSE
-            WHERE game_id = %s
-              AND roster_type = 'batter'
-              AND is_starter = TRUE
-              AND position IN ('대타', '대주자')
-              AND EXISTS (
-                SELECT 1 FROM game_rosters g2
-                WHERE g2.game_id = game_rosters.game_id
-                  AND g2.team_side = game_rosters.team_side
-                  AND g2.batting_order = game_rosters.batting_order
-                  AND g2.is_starter = TRUE
-                  AND g2.position NOT IN ('대타', '대주자', '')
-                  AND g2.id != game_rosters.id
-              )
-        """, (db_game_id,))
+        # ── starter position fixup (공용 함수) ──
+        reconcile_starter_positions(cur, db_game_id)
 
         conn.commit()
         cur.close()
