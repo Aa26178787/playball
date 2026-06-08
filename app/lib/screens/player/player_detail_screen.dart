@@ -294,7 +294,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final player = _playerData!;
     return Scaffold(
       appBar: AppBar(
-        title: Text(player['name'] ?? ''),
+        title: Text((player['full_name'] as String?)?.isNotEmpty == true
+            ? player['full_name'] as String : (player['name'] ?? '')),
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         // initialData로 헤더 표시 중, 바디 로딩 진행 표시
@@ -579,7 +580,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
   // 히어로 헤더 (mockup 디자인, 2026-06-07): 팀컬러 그라디언트 + 등번호 워터마크 + 팀로고 오버레이
   Widget _buildHeader(Map<String, dynamic> player) {
-    final name = player['name'] ?? '';
+    // 외국인은 선수상세 한정 풀네임 표시 (full_name), 국내는 name
+    final name = (player['full_name'] as String?)?.isNotEmpty == true
+        ? player['full_name'] as String : (player['name'] ?? '');
     final team = player['team'] ?? '';
     final posOrType = (player['position'] != null && player['position'].toString().isNotEmpty)
         ? player['position'] : (player['player_type'] ?? '');
@@ -865,19 +868,25 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           if (c != null) ...[
             const SizedBox(height: 8),
             Row(children: [
-              Expanded(child: Text('리그 ${fmtLg(it.$3, (c['lg'] as num?) ?? 0)}',
-                  style: TextStyle(fontSize: 10, color: sub))),
-              Text('상위 ${top ?? '-'}%',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: tc)),
+              Text('리그 ${c['rank']}위',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: tc)),
+              if (c['dom_rank'] != null)
+                Text('  ·  국내 ${c['dom_rank']}위',
+                    style: TextStyle(fontSize: 10, color: sub)),
             ]),
             const SizedBox(height: 6),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: Stack(children: [
-                Container(height: 5, width: double.infinity, color: line),
-                FractionallySizedBox(widthFactor: fill, child: Container(height: 5, color: tc)),
-              ]),
-            ),
+            Row(children: [
+              Expanded(child: ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: Stack(children: [
+                  Container(height: 5, width: double.infinity, color: line),
+                  FractionallySizedBox(widthFactor: fill, child: Container(height: 5, color: tc)),
+                ]),
+              )),
+              const SizedBox(width: 6),
+              Text('리그 ${fmtLg(it.$3, (c['lg'] as num?) ?? 0)}',
+                  style: TextStyle(fontSize: 9, color: sub)),
+            ]),
           ],
         ]),
       );
