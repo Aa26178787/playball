@@ -41,7 +41,8 @@ _SENSITIVE_LIMITS = [
     ("/auth/login", 10),
     ("/auth/register", 10),
     ("/auth/password/", 5),
-    ("/user/email/send-code", 5),
+    ("/user/email/", 5),     # send-code + verify (코드 brute-force 방어)
+    ("/user/phone/", 5),     # send-code + verify
     ("/auth/check-", 30),    # 이메일/닉네임 enumeration 완화
 ]
 _sensitive_store: dict[str, deque] = defaultdict(deque)
