@@ -3298,7 +3298,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: SemColor.panelDark,
+        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F1F24) : SemColor.panelDark,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(title,
@@ -3361,7 +3361,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           const SizedBox(width: 6),
           CircleAvatar(
             radius: 12,
-            backgroundColor: SemColor.panelDark,
+            backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F1F24) : SemColor.panelDark,
             child: Text('${(b['batting_order'] as num).toInt()}',
                 style: const TextStyle(
                     fontSize: 11,
@@ -3767,7 +3767,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   isFirst
                       ? CircleAvatar(
                           radius: 12,
-                          backgroundColor: SemColor.panelDark,
+                          backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F1F24) : SemColor.panelDark,
                           child: Text('$order',
                               style: const TextStyle(
                                   fontSize: 11,
@@ -3843,6 +3843,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final homeTeam = _gameData!['game']['home_team'];
     final awayTeam = _gameData!['game']['away_team'];
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final rdNavBottom = 120.0 + MediaQuery.of(context).viewPadding.bottom;
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(16, 16, 16, rdNavBottom),
@@ -3852,7 +3853,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           _rosterSectionHeader('주요 기록'),
           const SizedBox(height: 12),
           Table(
-            border: TableBorder.all(color: Color(0xFFE0E0E4)),
+            border: TableBorder.all(color: isDark ? const Color(0xFF26262C) : const Color(0xFFE0E0E4)),
             columnWidths: const {
               0: FlexColumnWidth(2),
               1: FlexColumnWidth(1.5),
@@ -3860,7 +3861,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             },
             children: [
               TableRow(
-                decoration: const BoxDecoration(color: SemColor.panelDark),
+                decoration: BoxDecoration(color: isDark ? const Color(0xFF1F1F24) : SemColor.panelDark),
                 children: [
                   _tableCell('항목', isHeader: true),
                   _tableCell(homeTeam, isHeader: true),
@@ -3878,7 +3879,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           _rosterSectionHeader('팀 투구'),
           const SizedBox(height: 12),
           Table(
-            border: TableBorder.all(color: Color(0xFFE0E0E4)),
+            border: TableBorder.all(color: isDark ? const Color(0xFF26262C) : const Color(0xFFE0E0E4)),
             columnWidths: const {
               0: FlexColumnWidth(2),
               1: FlexColumnWidth(1.5),
@@ -3886,7 +3887,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             },
             children: [
               TableRow(
-                decoration: const BoxDecoration(color: SemColor.panelDark),
+                decoration: BoxDecoration(color: isDark ? const Color(0xFF1F1F24) : SemColor.panelDark),
                 children: [
                   _tableCell('항목', isHeader: true),
                   _tableCell(homeTeam, isHeader: true),
