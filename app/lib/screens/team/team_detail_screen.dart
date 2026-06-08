@@ -787,45 +787,10 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
     final teamName = widget.team['name'] as String? ?? '';
     final seriesList = _groupIntoSeries(_games, teamName); // 최근 시리즈 우선
-    // 연속결과 스트립 — 최근 12경기 (최신 → 좌측)
-    final strip = (List<Map>.from(_games.cast<Map>())
-          ..sort((a, b) => (b['game_date'] as String? ?? '').compareTo(a['game_date'] as String? ?? '')))
-        .take(12).toList();
 
     return ListView(
       padding: const EdgeInsets.all(18),
-      children: [
-        // 연속결과 스트립
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          margin: const EdgeInsets.only(bottom: 14),
-          decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line),
-              borderRadius: BorderRadius.circular(12)),
-          child: Row(children: [
-            Text('최근', style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub)),
-            const SizedBox(width: 8),
-            ...strip.map((g) {
-              final r = _gResult(g, teamName);
-              final isWin = r == 'win', isDraw = r == 'draw';
-              final c = isWin ? tc : isDraw ? cs.sub : SemColor.live;
-              return Expanded(child: Container(
-                height: 28, margin: const EdgeInsets.only(left: 3),
-                decoration: BoxDecoration(
-                  color: isWin ? tc.withValues(alpha: cs.dark ? 0.25 : 0.12)
-                      : isDraw ? cs.paper2 : SemColor.live.withValues(alpha: cs.dark ? 0.22 : 0.08),
-                  borderRadius: BorderRadius.circular(7),
-                  border: Border.all(color: isWin ? tc.withValues(alpha: 0.4)
-                      : isDraw ? cs.line2 : SemColor.live.withValues(alpha: 0.3)),
-                ),
-                child: Center(child: Text(isWin ? '승' : isDraw ? '무' : '패',
-                    style: TextStyle(fontSize: 11, fontWeight: Typo.extra, color: c))),
-              ));
-            }),
-          ]),
-        ),
-        // 시리즈 카드 (3등분)
-        ...seriesList.map((s) => _seriesCard(cs, tc, teamName, s)),
-      ],
+      children: seriesList.map((s) => _seriesCard(cs, tc, teamName, s)).toList(),
     );
   }
 
@@ -850,8 +815,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final label = wins == games.length ? '스윕승'
         : losses == games.length ? '스윕패'
         : wins > losses ? '위닝' : wins < losses ? '루징' : '스플릿';
-    final labelColor = isWinning ? tc : wins < losses ? SemColor.live : cs.sub;
-    Color rc(String r) => r == 'win' ? tc : r == 'draw' ? cs.sub : SemColor.live;
+    // 승=팀컬러, 패/무=무채색(패 진한 / 무 연한)
+    final labelColor = isWinning ? tc : wins < losses ? const Color(0xFF71717A) : cs.sub;
+    Color rc(String r) => r == 'win' ? tc : r == 'draw' ? const Color(0xFFA1A1AA) : const Color(0xFF71717A);
     // 날짜 범위
     final dates = games.map((g) => (g['game_date'] as String? ?? '')).toList()..sort();
     String md(String d) => d.length >= 10 ? '${d.substring(5, 7)}.${d.substring(8, 10)}' : d;
@@ -1140,14 +1106,14 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             final pct = total > 0 ? (w / total * 100).round() : 0;
             final mn = monthNames[(m['month'] as num?)?.toInt()] ?? '${m['month']}월';
             return Expanded(child: Column(children: [
-              Text('$pct%', style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: pct >= 50 ? tc : SemColor.live)),
+              Text('$pct%', style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: pct >= 50 ? tc : const Color(0xFF8A8A93))),
               const SizedBox(height: 4),
               Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-                if (w > 0) Container(height: w / maxG * 90, margin: const EdgeInsets.symmetric(horizontal: 4),
-                  decoration: BoxDecoration(color: tc.withValues(alpha: cs.dark ? 0.75 : 0.85), borderRadius: const BorderRadius.vertical(top: Radius.circular(4))),
+                if (w > 0) Container(height: w / maxG * 74, margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(color: tc.withValues(alpha: cs.dark ? 0.8 : 0.9), borderRadius: const BorderRadius.vertical(top: Radius.circular(4))),
                   child: Center(child: Text('$w', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white)))),
-                if (l > 0) Container(height: l / maxG * 90, margin: const EdgeInsets.symmetric(horizontal: 4),
-                  decoration: BoxDecoration(color: SemColor.live.withValues(alpha: cs.dark ? 0.65 : 0.75), borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4))),
+                if (l > 0) Container(height: l / maxG * 74, margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(color: const Color(0xFF9A9AA3), borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4))),
                   child: Center(child: Text('$l', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white)))),
               ])),
               const SizedBox(height: 6),
@@ -1158,7 +1124,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             _LegendDot(color: tc, label: '승'),
             const SizedBox(width: 14),
-            _LegendDot(color: SemColor.live.withValues(alpha: 0.8), label: '패'),
+            _LegendDot(color: const Color(0xFF9A9AA3), label: '패'),
           ]),
         ]),
       ),
