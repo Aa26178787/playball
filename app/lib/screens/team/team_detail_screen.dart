@@ -12,16 +12,16 @@ import '../community/post_detail_screen.dart';
 
 // 구단 공식 외부 링크 (short_name 코드 기준). 유튜브/인스타/굿즈샵 = 사용자 제공(정확)
 const Map<String, Map<String, String>> _teamLinks = {
-  'LG': {'yt': 'https://www.youtube.com/@lg_twins', 'ig': 'https://www.instagram.com/lgtwinsbaseballclub', 'home': 'https://www.lgtwins.com', 'gd': 'https://shop.lgtwins.com'},
-  'KT': {'yt': 'https://www.youtube.com/@ktwiz_baseballclub', 'ig': 'https://www.instagram.com/ktwiz.pr', 'home': 'https://www.ktwiz.co.kr', 'gd': 'https://shop.ktwiz.co.kr'},
-  'SK': {'yt': 'https://www.youtube.com/@ssglanders', 'ig': 'https://www.instagram.com/ssglanders.incheon', 'home': 'https://www.ssglanders.com', 'gd': 'https://store.ssglanders.com'},
+  'LG': {'yt': 'https://www.youtube.com/@lg_twins', 'ig': 'https://www.instagram.com/lgtwinsbaseballclub', 'home': 'https://www.lgtwins.com', 'gd': 'https://www.lgtwins.com/shop'},
+  'KT': {'yt': 'https://www.youtube.com/@ktwiz_baseballclub', 'ig': 'https://www.instagram.com/ktwiz.pr', 'home': 'https://www.ktwiz.co.kr', 'gd': 'https://ktwizstore.co.kr/'},
+  'SK': {'yt': 'https://www.youtube.com/@ssglanders', 'ig': 'https://www.instagram.com/ssglanders.incheon', 'home': 'https://www.ssglanders.com', 'gd': 'https://www.ssglandersstore.co.kr/'},
   'NC': {'yt': 'https://www.youtube.com/@ncdinos', 'ig': 'https://www.instagram.com/ncdinos2011', 'home': 'https://www.ncdinos.com', 'gd': 'https://store.ncdinos.com'},
   'OB': {'yt': 'https://www.youtube.com/@doosanbears', 'ig': 'https://www.instagram.com/doosanbears.1982', 'home': 'https://www.doosanbears.com', 'gd': 'https://store.doosanbears.com'},
   'HT': {'yt': 'https://www.youtube.com/@kiatigers', 'ig': 'https://www.instagram.com/always_kia_tigers', 'home': 'https://www.tigers.co.kr', 'gd': 'https://teamstore.tigers.co.kr'},
   'LT': {'yt': 'https://www.youtube.com/@lottegiants', 'ig': 'https://www.instagram.com/busanlottegiants', 'home': 'https://www.giantsclub.com', 'gd': 'https://www.lotteon.com/display/seller/sellerShop/lottegiants'},
   'SS': {'yt': 'https://www.youtube.com/@samsunglions', 'ig': 'https://www.instagram.com/samsunglions_baseballclub', 'home': 'https://www.samsunglions.com', 'gd': 'https://shop.berriz.in'},
   'HH': {'yt': 'https://www.youtube.com/@hanwhaeagles_official', 'ig': 'https://www.instagram.com/hanwhaeagles_soori', 'home': 'https://www.hanwhaeagles.co.kr', 'gd': 'https://eaglesshop.co.kr'},
-  'WO': {'yt': 'https://www.youtube.com/@heroesbaseballclub', 'ig': 'https://www.instagram.com/heroesbaseballclub', 'home': 'https://www.heroesbaseball.co.kr', 'gd': 'https://shop.heroesbaseball.co.kr'},
+  'WO': {'yt': 'https://www.youtube.com/@heroesbaseballclub', 'ig': 'https://www.instagram.com/heroesbaseballclub', 'home': 'https://www.heroesbaseball.co.kr', 'gd': 'https://nolmdshop.com/category/%ED%82%A4%EC%9B%80%ED%9E%88%EC%96%B4%EB%A1%9C%EC%A6%88/29/'},
 };
 
 class TeamDetailScreen extends StatefulWidget {
@@ -646,9 +646,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         if (_teamLinks[code] != null) ...[
           const SizedBox(height: 12),
           Row(children: [
-            _linkBtn(Icons.smart_display, '유튜브', const Color(0xFFFF0000), _teamLinks[code]!['yt'], color),
+            _linkBtn(Icons.smart_display, '유튜브', color, _teamLinks[code]!['yt'], color),
             const SizedBox(width: 7),
-            _linkBtn(Icons.photo_camera, '인스타', const Color(0xFFE1306C), _teamLinks[code]!['ig'], color),
+            _linkBtn(Icons.photo_camera, '인스타', color, _teamLinks[code]!['ig'], color),
             const SizedBox(width: 7),
             _linkBtn(Icons.shopping_bag, '굿즈', color, _teamLinks[code]!['gd'], color),
             const SizedBox(width: 7),
