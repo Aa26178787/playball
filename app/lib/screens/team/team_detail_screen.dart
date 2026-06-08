@@ -597,7 +597,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       Map<String, dynamic> hr, Map<String, dynamic> ar) {
     final cs = _C(context);
     final gb = _gamesBehind ?? team['games_behind'] as num?;
-    final gbText = (gb == null || gb == 0) ? '선두' : '${gb.toStringAsFixed(1)} GB';
+    final gbText = (gb == null || gb == 0) ? '선두' : '${gb.toStringAsFixed(1)} 게임차';
     final pythag = (team['pythag_winpct'] as num?)?.toStringAsFixed(3);
     return Container(
       padding: const EdgeInsets.all(18),

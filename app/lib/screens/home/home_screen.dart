@@ -1702,9 +1702,9 @@ class GameCard extends StatelessWidget {
         Text(rank != null ? '$rank위 · ${isHome ? '홈' : '원정'}' : (isHome ? '홈' : '원정'),
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
         const SizedBox(height: 7),
-        // 각 팀 mini5 W 박스 = 자기 팀 컬러. 어웨이는 홈의 reversed (대칭), 최근 표시는 newest 위치
-        _buildMini5(isHome ? recent.reversed.toList() : recent,
-            _adjustTeamColor(teamColor(code), isDark), t, isDark, recentFirst: isHome),
+        // 최근5: 가장 최근 경기가 중앙(스코어)쪽을 향하도록 — 홈(좌)=newest 우측끝, 어웨이(우)=reversed로 newest 좌측끝
+        _buildMini5(isHome ? recent : recent.reversed.toList(),
+            _adjustTeamColor(teamColor(code), isDark), t, isDark, recentFirst: !isHome),
       ],
     );
   }
