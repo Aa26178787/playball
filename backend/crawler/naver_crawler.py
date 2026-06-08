@@ -911,6 +911,15 @@ def reconcile_starter_positions(cur, db_game_id):
               AND g2.id != game_rosters.id
           )
     """, (db_game_id,))
+    # 타자 선발은 항상 타순 1-9 보유 → batting_order=0 인 batter starter는 벤치 오플래그 → 강등
+    # (선발 투수는 roster_type='pitcher' batting_order NULL 이므로 영향 없음. 라인업 탭 선발 목록 오염 방지)
+    cur.execute("""
+        UPDATE game_rosters SET is_starter = FALSE
+        WHERE game_id = %s
+          AND roster_type = 'batter'
+          AND is_starter = TRUE
+          AND batting_order = 0
+    """, (db_game_id,))
 
 
 def save_preview_roster(db_game_id, naver_game_id):
