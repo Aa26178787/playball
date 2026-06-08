@@ -27,7 +27,7 @@ class PlayerStatsSection extends StatelessWidget {
           child: Text('아직 시즌 기록이 없습니다', style: TextStyle(color: Colors.grey)),
         );
       }
-      return _buildContent();
+      return _buildContent(context);
     } catch (e, st) {
       debugPrint('PlayerStatsSection error: $e\n$st');
       return const AppErrorView(message: '통계를 불러올 수 없습니다');
@@ -46,9 +46,10 @@ class PlayerStatsSection extends StatelessWidget {
     return '$v';
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(BuildContext context) {
     final stats = statsList[0] as Map<String, dynamic>;
     final isHitter = playerType == '타자';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final toggleWidget = Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -58,7 +59,7 @@ class PlayerStatsSection extends StatelessWidget {
           Text(
             '${stats['season'] ?? ''}시즌 기록',
             style: const TextStyle(
-              fontSize: 15, fontWeight: FontWeight.bold, color: SemColor.panelDark,
+              fontSize: 15, fontWeight: FontWeight.bold,
             ),
           ),
           GestureDetector(
@@ -66,7 +67,7 @@ class PlayerStatsSection extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
-                color: useEng ? SemColor.panelDark : Colors.grey[200],
+                color: useEng ? SemColor.brand(context) : (isDark ? Colors.grey[800] : Colors.grey[200]),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
@@ -74,7 +75,7 @@ class PlayerStatsSection extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: useEng ? Colors.white : Colors.black87,
+                  color: useEng ? (isDark ? SemColor.panelDark : Colors.white) : (isDark ? Colors.grey[300] : Colors.black87),
                 ),
               ),
             ),
@@ -307,7 +308,7 @@ class PlayerStatsSection extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: SemColor.panelDark),
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
       ),
     );
   }
