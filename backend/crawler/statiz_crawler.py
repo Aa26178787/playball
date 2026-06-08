@@ -320,7 +320,14 @@ def get_pitcher_stats(season=2026):
 def recompute_pitcher_derived(cur, season=2026):
     """투수 파생율(fip/k9/bb9/h9/hr9/k_bb/babip)을 raw 카운팅에서 재계산.
     statiz가 이 컬럼을 안 주므로(INSERT/ON CONFLICT에 없음) raw 갱신 후 매번 재계산 필요 — 안 하면 stale/0.
-    이닝 .1/.2 = 1/3·2/3 변환, FIP 리그상수는 해당 시즌 집계, BABIP는 tbf>0+분모>0 가드."""
+    이닝 .1/.2 = 1/3·2/3 변환, FIP 리그상수는 해당 시즌 집계, BABIP는 tbf>0+분모>0 가드.
+    tbf(상대타자수)는 statiz가 일부만 제공 → 미제공분은 추정(3*IP+피안타+볼넷+사구)으로 채워 K%/BB%/BABIP 계산."""
+    # tbf 추정 채움 (statiz 미제공분만 — 실제값 보존). 안 채우면 K%/BB%/BABIP가 218명 '-'
+    cur.execute("""
+        UPDATE pitcher_stats SET
+          tbf = round(3*(floor(innings_pitched)+(innings_pitched-floor(innings_pitched))*10/3) + hits_allowed + walks + hbp)
+        WHERE season=%s AND innings_pitched>0 AND (tbf IS NULL OR tbf=0)
+    """, (season,))
     cur.execute("""
         WITH lg AS (
           SELECT sum(earned_runs)*9.0/sum(floor(innings_pitched)+(innings_pitched-floor(innings_pitched))*10/3) lg_era,
