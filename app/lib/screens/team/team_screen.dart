@@ -988,7 +988,7 @@ class _TeamScreenState extends State<TeamScreen>
                           Row(
                             children: [
                               Text('게임차 $gbText',
-                                  style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+                                  style: TextStyle(fontSize: 11, color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[700])),
                               const SizedBox(width: 10),
                               Text(_streakText(streak),
                                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
