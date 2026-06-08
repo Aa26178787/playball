@@ -273,6 +273,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 과거경기 수정 game_date < '2026-05-09' 조건 / 삼성 홈 stadium_id=7 보정 SQL
 - 서버 pull 전 충돌 파일 rm (insta CSV 등 untracked 주의) / firebase-service-account.json push 금지
 - PgBouncer 6432 유지 / 커뮤니티 조회수 _view_cache 재시작 초기화(의도)
+- **nginx 배포 = `/etc/nginx/sites-enabled/playball`이 symlink 아닌 독립 실파일** (repo `nginx_playball.conf` → sites-available **아니라** sites-enabled로 cp해야 적용). ⚠️ 백업파일은 절대 sites-enabled 안에 두지 말 것(nginx가 `sites-enabled/*` 전부 로드 → `limit_req_zone` 중복 `emerg`). 백업은 /tmp. 적용 = cp→`nginx -t`→`systemctl reload nginx` (reload graceful이라 직후 수초 old/new worker 혼재 정상)
 - **DB 비번 회전 = 3곳 동기화**: ① `ALTER USER playball_user PASSWORD` ② `/etc/pgbouncer/pgbouncer.ini` `[databases]` 줄 `password=`(auth_type=trust라 pgbouncer→postgres 실자격증명 = 여기, userlist.txt 아님) ③ systemd `Environment=DB_PASSWORD`(2 drop-in: playball=email.conf, scheduler=env.conf). ② 빠뜨리면 "pgbouncer cannot connect to server". 순서: ALTER→ini 교체→pgbouncer restart→서비스 restart
 - 새 알림 = notification_log dedup 패턴 필수
 - 테마 splashFactory = **NoSplash** + highlight/splash 투명 (탭 반짝임 전부 제거 — 06-08, 되돌리지 말 것). TabBarTheme overlayColor도 투명
@@ -299,7 +300,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - [x] **키 회전** (2026-06-09 완료): Gmail 앱비번·Kakao(JS/네이티브/REST)·DB pw 전부 회전+라이브검증. ⚠️ 서버 `.bak.*`(옛 시크릿) 잔존 — 안정 확인 후 삭제 / 옛 Gmail 앱비번 콘솔 폐기 확인 / 출시 APK는 새 키로 재빌드
 - [ ] **도메인 + Cloudflare**: 웹사이트 Free 플랜 + Tunnel(IP은닉, duckdns/certbot 제거). ⚠️ Bot Fight Mode OFF(앱 API 차단), 동적 JSON 캐시 bypass
 - [ ] **Play Console**($25) + keystore 안전백업(분실=업데이트 불가) + Data Safety + targetSdk 확인
-- [ ] **법무**: 개인정보처리방침/약관 URL + 데이터 출처 저작권(KBO 사진·로고, Naver크롤 ToS) 검토
+- [~] **법무**: 정책 페이지 배포 완료 → `https://playball.duckdns.org/privacy` · `/terms` (HTML=`backend/static/legal/`, nginx exact-match). 잔여 = ① 문의메일 placeholder(`playball.support@gmail.com`) 실계정 교체 ② 출시 전 법률 검토 ③ (옵션)앱 마이페이지 약관 링크 ④ KBO/Naver 저작권 최종 판단
 ### 중기 (코드 품질)
 - [ ] empty catch~41 debugPrint / non-null `!` audit / AppErrorView 전면 / 서버 print→logging
 - [ ] Radii 토큰·SemColor.panelDark 잔여 점진 치환
