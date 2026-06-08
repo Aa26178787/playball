@@ -4,6 +4,7 @@ import '../../utils/app_theme.dart';
 import 'dart:async';
 import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
+import '../../widgets/common_widgets.dart';
 import '../../utils/team_theme.dart';
 import '../../utils/local_cache.dart';
 import '../player/player_detail_screen.dart';
@@ -1864,22 +1865,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
           color: isDark ? AppColors.primaryDark : SemColor.panelDark, strokeWidth: 2.5));
     }
     if (_error) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.wifi_off, size: 48, color: Colors.grey[400]),
-            const SizedBox(height: 12),
-            Text('데이터를 불러오지 못했습니다', style: TextStyle(color: Colors.grey[500])),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _load,
-              icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('다시 시도'),
-            ),
-          ],
-        ),
-      );
+      return AppErrorView(message: '데이터를 불러오지 못했습니다', onRetry: _load, icon: Icons.wifi_off);
     }
     return Container(
       color: isDark ? SemColor.panelDark : const Color(0xFFFAFAFB),
@@ -2232,22 +2218,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   }
 
   Widget _buildErrorRetry() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.wifi_off, size: 48, color: Colors.grey[400]),
-          const SizedBox(height: 12),
-          Text('데이터를 불러오지 못했습니다', style: TextStyle(color: Colors.grey[500])),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _loadAll,
-            icon: const Icon(Icons.refresh, size: 18),
-            label: const Text('다시 시도'),
-          ),
-        ],
-      ),
-    );
+    return AppErrorView(message: '데이터를 불러오지 못했습니다', onRetry: _loadAll, icon: Icons.wifi_off);
   }
 
   Widget _buildRankingsContent(List players, String Function(Map) statValue, String label) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/common_widgets.dart';
 import 'package:provider/provider.dart';
 import '../../api/api_service.dart';
 import '../../providers/auth_provider.dart';
@@ -186,7 +187,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     if (_post == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('게시글')),
-        body: const Center(child: Text('게시글을 불러오지 못했습니다')),
+        body: const AppErrorView(message: '게시글을 불러오지 못했습니다'),
       );
     }
 

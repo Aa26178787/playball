@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/common_widgets.dart';
 import '../../utils/design_tokens.dart';
 
 class PlayerStatsSection extends StatelessWidget {
@@ -29,12 +30,7 @@ class PlayerStatsSection extends StatelessWidget {
       return _buildContent();
     } catch (e, st) {
       debugPrint('PlayerStatsSection error: $e\n$st');
-      return const Padding(
-        padding: EdgeInsets.all(24),
-        child: Center(
-          child: Text('통계를 불러올 수 없습니다', style: TextStyle(color: Colors.grey)),
-        ),
-      );
+      return const AppErrorView(message: '통계를 불러올 수 없습니다');
     }
   }
 

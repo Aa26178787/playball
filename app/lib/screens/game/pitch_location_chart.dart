@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../widgets/common_widgets.dart';
 import '../../utils/design_tokens.dart';
 import '../../api/api_service.dart';
 
@@ -182,14 +183,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
           if (_loading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_error)
-            Expanded(child: Center(child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.wifi_off_rounded, size: 48, color: Colors.grey[350]),
-                const SizedBox(height: 12),
-                const Text('데이터를 불러오지 못했습니다', style: TextStyle(color: Colors.grey, fontSize: 14)),
-              ],
-            )))
+            const Expanded(child: AppErrorView(message: '데이터를 불러오지 못했습니다'))
           else if (_pitches.isEmpty)
             Expanded(child: Center(child: Column(
               mainAxisSize: MainAxisSize.min,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/common_widgets.dart';
 import '../../utils/design_tokens.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/api_service.dart';
@@ -122,22 +123,7 @@ class _SearchScreenState extends State<SearchScreen> {
           : !_searched
               ? _buildHistory()
               : _error
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.wifi_off, size: 56, color: Colors.grey[400]),
-                          const SizedBox(height: 12),
-                          Text('검색에 실패했습니다', style: TextStyle(color: Colors.grey[500])),
-                          const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: () => _search(_ctrl.text),
-                            icon: const Icon(Icons.refresh, size: 18),
-                            label: const Text('다시 시도'),
-                          ),
-                        ],
-                      ),
-                    )
+                  ? AppErrorView(message: '검색에 실패했습니다', onRetry: () => _search(_ctrl.text), icon: Icons.wifi_off)
                   : _players.isEmpty && _teams.isEmpty
                       ? const Center(child: Text('검색 결과가 없습니다', style: TextStyle(color: Colors.grey)))
                       : _buildResults(),

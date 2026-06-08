@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
+import '../../widgets/common_widgets.dart';
 import '../../utils/local_cache.dart';
 import '../game/game_detail_screen.dart';
 
@@ -165,22 +166,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.wifi_off, size: 56, color: Colors.grey[400]),
-                      const SizedBox(height: 12),
-                      Text('알림을 불러오지 못했습니다', style: TextStyle(color: Colors.grey[500])),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: _load,
-                        icon: const Icon(Icons.refresh, size: 18),
-                        label: const Text('다시 시도'),
-                      ),
-                    ],
-                  ),
-                )
+              ? AppErrorView(message: '알림을 불러오지 못했습니다', onRetry: _load, icon: Icons.wifi_off)
               : _notifications.isEmpty
               ? RefreshIndicator(
                   onRefresh: _load,
