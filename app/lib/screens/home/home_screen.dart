@@ -1613,8 +1613,9 @@ class GameCard extends StatelessWidget {
     }
   }
 
-  Widget _buildMini5(List<String> recent, Color accent, _Tok t, bool isDark) {
+  Widget _buildMini5(List<String> recent, Color accent, _Tok t, bool isDark, {bool recentFirst = false}) {
     if (recent.isEmpty) return const SizedBox(height: 17);
+    final recentIdx = recentFirst ? 0 : recent.length - 1; // reversed 쪽은 최근이 좌측끝
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: recent.asMap().entries.map((e) {
@@ -1622,37 +1623,26 @@ class GameCard extends StatelessWidget {
         final r = e.value;
         final isW = r == 'W';
         final isL = r == 'L';
-        final isRecent = i == recent.length - 1; // 가장 최근(우측 끝)
-        final Color fill;
-        final Color fg;
-        Border? border;
-        if (isW) {
-          fill = accent;
-          fg = isDark ? const Color(0xFF0F0F12) : Colors.white;
-        } else if (isL) {
-          fill = SemColor.live.withValues(alpha: isDark ? 0.85 : 0.92);
-          fg = Colors.white;
-        } else {
-          // 무 — track + 테두리로 배경과 구분
-          fill = t.track;
-          fg = t.ink3;
-          border = Border.all(color: t.line2);
-        }
+        final isRecent = i == recentIdx;
+        // 승=팀컬러, 패=진한 무채색, 무=연한 무채색 (전부 solid)
+        final Color fill = isW ? accent : isL ? const Color(0xFF71717A) : const Color(0xFFA1A1AA);
+        // 블럭 글씨: 다크=항상 흰색, 라이트=흰색
+        const Color fg = Colors.white;
         return Padding(
           padding: const EdgeInsets.only(right: 2.5),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
               width: 13, height: 13,
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(4), border: border),
+              decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(4)),
               child: Text(r, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: fg)),
             ),
             const SizedBox(height: 2),
-            // 가장 최근 경기 표시 — 블럭 아래 선
+            // 가장 최근 경기 — 결과색(승=팀컬러/패무=무채색) 선
             Container(
               width: 13, height: 2,
               decoration: BoxDecoration(
-                color: isRecent ? t.ink2 : Colors.transparent,
+                color: isRecent ? fill : Colors.transparent,
                 borderRadius: BorderRadius.circular(1),
               ),
             ),
@@ -1712,8 +1702,9 @@ class GameCard extends StatelessWidget {
         Text(rank != null ? '$rank위 · ${isHome ? '홈' : '원정'}' : (isHome ? '홈' : '원정'),
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
         const SizedBox(height: 7),
-        // 각 팀 mini5 W 박스 = 자기 팀 컬러 (라이트/다크 모드 보정)
-        _buildMini5(isHome ? recent.reversed.toList() : recent, _adjustTeamColor(teamColor(code), isDark), t, isDark),
+        // 각 팀 mini5 W 박스 = 자기 팀 컬러. 어웨이는 홈의 reversed (대칭), 최근 표시는 newest 위치
+        _buildMini5(isHome ? recent.reversed.toList() : recent,
+            _adjustTeamColor(teamColor(code), isDark), t, isDark, recentFirst: isHome),
       ],
     );
   }
