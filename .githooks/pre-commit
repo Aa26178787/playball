@@ -1,6 +1,6 @@
 #!/bin/sh
 # pre-commit: 문서화된 footgun 가드 (CLAUDE.md 주의사항 기반)
-#   1) 음수 letterSpacing → 한글 자간 깨짐 (WARN, 차단 안 함 — 큰 숫자 표시 등 의도적 경우 존재)
+#   1) 과한 음수 letterSpacing(< -0.5) → 한글 자간 깨짐 (WARN). -0.5까지는 제목 타이트닝 관행이라 허용
 #   2) baseUrl http:// → Android 9+ cleartext 차단으로 앱 깨짐 (BLOCK)
 # 활성화: git config core.hooksPath .githooks
 
@@ -9,9 +9,9 @@ fail=0
 
 if [ -n "$staged_dart" ]; then
   # 1) 음수 letterSpacing (WARN)
-  neg=$(echo "$staged_dart" | xargs grep -nE 'letterSpacing:[[:space:]]*-[0-9]' 2>/dev/null)
+  neg=$(echo "$staged_dart" | xargs grep -nE 'letterSpacing:[[:space:]]*-(0\.[6-9]|[1-9])' 2>/dev/null)
   if [ -n "$neg" ]; then
-    echo "[pre-commit][WARN] 음수 letterSpacing 발견 (한글 자간 깨짐 주의 — 의도면 무시):"
+    echo "[pre-commit][WARN] 과한 음수 letterSpacing(< -0.5) 발견 (한글 자간 깨짐 주의 — 의도면 무시):"
     echo "$neg"
   fi
 
