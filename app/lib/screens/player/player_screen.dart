@@ -33,6 +33,8 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   String _hitterSort = 'avg';
   String _pitcherSort = 'era';
+  String _hitterPos = '전체';   // 타자 포지션 필터 (포수/내야/외야)
+  String _pitcherArm = '전체';  // 투수 구위 필터 (우완/좌완/언더)
 
   List _teams = [];
   int? _selectedTeamId;
@@ -67,6 +69,15 @@ class _PlayerScreenState extends State<PlayerScreen>
     {'value': 'holds',      'label': '홀드'},
     {'value': 'whip',       'label': 'WHIP'},
     {'value': 'war',        'label': 'WAR'},
+  ];
+
+  static const List<Map<String, String>> _hitterPosOpts = [
+    {'value': '전체', 'label': '전체'}, {'value': '포수', 'label': '포수'},
+    {'value': '내야', 'label': '내야'}, {'value': '외야', 'label': '외야'},
+  ];
+  static const List<Map<String, String>> _pitcherArmOpts = [
+    {'value': '전체', 'label': '전체'}, {'value': '우완', 'label': '우완'},
+    {'value': '좌완', 'label': '좌완'}, {'value': '언더', 'label': '언더'},
   ];
 
   @override
@@ -251,6 +262,19 @@ class _PlayerScreenState extends State<PlayerScreen>
     }
   }
 
+  // 타자 position → 그룹 (포수/내야/외야)
+  String _posGroup(String pos) {
+    if (pos.contains('포수')) return '포수';
+    if (pos.contains('외야') || pos.contains('좌익') || pos.contains('중견') || pos.contains('우익')) return '외야';
+    return '내야';
+  }
+  // 투수 throws → 구위 (우완/좌완/언더)
+  String _armGroup(String throws) {
+    if (throws.contains('좌')) return '좌완';
+    if (throws.contains('언') || throws.contains('사')) return '언더';
+    return '우완';
+  }
+
   void _applyHitterFilter() {
     List filtered = _selectedTeamId == null
         ? List.from(_allHitters)
@@ -260,6 +284,10 @@ class _PlayerScreenState extends State<PlayerScreen>
                 t['id'] == _selectedTeamId &&
                 t['short_name'] == code);
           }).toList();
+
+    if (_hitterPos != '전체') {
+      filtered = filtered.where((p) => _posGroup(((p as Map)['position'] ?? '').toString()) == _hitterPos).toList();
+    }
 
     filtered.sort((a, b) {
       final am = a as Map;
@@ -288,6 +316,10 @@ class _PlayerScreenState extends State<PlayerScreen>
                 t['id'] == _selectedTeamId &&
                 t['short_name'] == code);
           }).toList();
+
+    if (_pitcherArm != '전체') {
+      filtered = filtered.where((p) => _armGroup(((p as Map)['throws'] ?? '').toString()) == _pitcherArm).toList();
+    }
 
     filtered.sort((a, b) {
       final am = a as Map;
@@ -394,7 +426,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       );
     }
 
-    return SizedBox(
+    return _fadeStrip(
       height: 34,
       child: ListView(
         scrollDirection: Axis.horizontal,
@@ -425,6 +457,20 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
+  // 가로 칩 스트립 — 가장자리 페이드(ShaderMask)로 자연스럽게 사라지게
+  Widget _fadeStrip({required double height, required Widget child}) => SizedBox(
+    height: height,
+    child: ShaderMask(
+      shaderCallback: (rect) => const LinearGradient(
+        begin: Alignment.centerLeft, end: Alignment.centerRight,
+        colors: [Colors.transparent, Colors.black, Colors.black, Colors.transparent],
+        stops: [0.0, 0.04, 0.96, 1.0],
+      ).createShader(rect),
+      blendMode: BlendMode.dstIn,
+      child: child,
+    ),
+  );
+
   // ── 스탯 칩 + 리스트/카드 토글 (mockup) ──
   Widget _buildSortChips(
     List<Map<String, String>> sorts,
@@ -439,11 +485,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 6, 18, 0),
-      child: SizedBox(
+      padding: const EdgeInsets.only(top: 6),
+      child: _fadeStrip(
         height: 32,
         child: ListView(
           scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
           children: sorts.map((s) {
             final sel = selected == s['value'];
             return GestureDetector(
@@ -724,7 +771,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     return GridView.builder(
       padding: EdgeInsets.fromLTRB(18, 4, 18, navBottom),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 0.82,
+        crossAxisCount: 3, mainAxisSpacing: 8, crossAxisSpacing: 8, childAspectRatio: 0.68,
       ),
       itemCount: players.length,
       itemBuilder: (_, i) {
@@ -1152,6 +1199,13 @@ class _PlayerScreenState extends State<PlayerScreen>
                       });
                     }),
                     const SizedBox(height: 4),
+                    _buildSortChips(_hitterPosOpts, _hitterPos, (val) {
+                      setState(() {
+                        _hitterPos = val;
+                        _applyHitterFilter();
+                      });
+                    }),
+                    const SizedBox(height: 4),
                     _buildTeamFilterChips(() {
                       setState(_applyHitterFilter);
                     }),
@@ -1166,6 +1220,13 @@ class _PlayerScreenState extends State<PlayerScreen>
                     _buildSortChips(_pitcherSorts, _pitcherSort, (val) {
                       setState(() {
                         _pitcherSort = val;
+                        _applyPitcherFilter();
+                      });
+                    }),
+                    const SizedBox(height: 4),
+                    _buildSortChips(_pitcherArmOpts, _pitcherArm, (val) {
+                      setState(() {
+                        _pitcherArm = val;
                         _applyPitcherFilter();
                       });
                     }),

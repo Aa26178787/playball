@@ -657,7 +657,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       Expanded(child: Container(
         decoration: BoxDecoration(border: Border(right: BorderSide(color: cs.line))),
         child: Column(children: [
-          _ColumnHeader(title: '타자', filters: const ['전체', '포수', '내야', '외야', 'DH'],
+          _ColumnHeader(title: '타자', filters: const ['전체', '포수', '내야', '외야'],
               selected: _batFilter, tc: color, cs: cs, onSelect: (f) => setState(() => _batFilter = f)),
           Expanded(child: ListView.builder(
             padding: const EdgeInsets.only(bottom: 80),
