@@ -2102,6 +2102,10 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
     Widget slot(Map p, int rank, double height, Color medalColor) {
       final img = p['profile_image'] as String?;
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      // 금/은색은 라이트 배경서 저대비 → 텍스트는 어둡게(라이트)/그대로(다크)
+      final txtColor = isDark ? medalColor : Color.lerp(medalColor, Colors.black, 0.42)!;
+      final nameColor = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
       return GestureDetector(
         onTap: () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => PlayerDetailScreen(
@@ -2140,24 +2144,24 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
             ),
             const SizedBox(height: 8),
             Text(p['name'] ?? '',
-                style: TextStyle(fontSize: rank == 1 ? 13 : 11, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: rank == 1 ? 13 : 11, fontWeight: FontWeight.bold, color: nameColor),
                 textAlign: TextAlign.center, overflow: TextOverflow.ellipsis),
             Text(p['team'] ?? '',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]), textAlign: TextAlign.center),
+                style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF9A9AA3) : Colors.grey[600]), textAlign: TextAlign.center),
             const SizedBox(height: 2),
             Text(statValue(p),
-                style: TextStyle(fontSize: rank == 1 ? 16 : 14, fontWeight: FontWeight.bold, color: medalColor),
+                style: TextStyle(fontSize: rank == 1 ? 16 : 14, fontWeight: FontWeight.bold, color: txtColor),
                 textAlign: TextAlign.center),
             const SizedBox(height: 6),
             Container(
               width: rank == 1 ? 90 : 72,
               height: height,
               decoration: BoxDecoration(
-                color: medalColor.withValues(alpha: 0.18),
+                color: medalColor.withValues(alpha: isDark ? 0.28 : 0.20),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
               ),
               alignment: Alignment.center,
-              child: Text('$rank위', style: TextStyle(fontSize: 11, color: medalColor, fontWeight: FontWeight.bold)),
+              child: Text('$rank위', style: TextStyle(fontSize: 11, color: txtColor, fontWeight: FontWeight.bold)),
             ),
           ],
         ),

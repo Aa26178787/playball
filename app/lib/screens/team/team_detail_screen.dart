@@ -44,6 +44,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   // 선수 탭 필터 (타자 포지션 / 투수 구위)
   String _batFilter = '전체';
   String _pitFilter = '전체';
+  final PageController _tabPageController = PageController();
 
   @override
   void initState() {
@@ -54,6 +55,13 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     _loadGamesBehind();
     _loadRosterChanges();
     _loadNews();
+  }
+
+  // 메인 탭 슬라이드 전환
+  void _goToMainTab(int i) {
+    if (i == _mainTabIndex) return;
+    _tabPageController.animateToPage(i,
+        duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
   }
 
   void _onMainTabChange(int idx) {
@@ -146,6 +154,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
   @override
   void dispose() {
+    _tabPageController.dispose();
     super.dispose();
   }
 
@@ -340,13 +349,16 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             child: Stack(children: [
               Padding(
                 padding: EdgeInsets.only(bottom: 64 + vp),
-                child: IndexedStack(
-                  index: _mainTabIndex,
+                // PageView(스와이프 비활성)+animateToPage = 탭 슬라이드, keepalive로 상태 보존
+                child: PageView(
+                  controller: _tabPageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  onPageChanged: _onMainTabChange,
                   children: [
-                    _buildOverviewTab(team, code, color, wins, losses, draws, hr, ar),
-                    _buildPlayers(),
-                    _buildGamesTab(),
-                    _buildCommunity(),
+                    _KeepAlive(child: _buildOverviewTab(team, code, color, wins, losses, draws, hr, ar)),
+                    _KeepAlive(child: _buildPlayers()),
+                    _KeepAlive(child: _buildGamesTab()),
+                    _KeepAlive(child: _buildCommunity()),
                   ],
                 ),
               ),
@@ -379,7 +391,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           final selected = _mainTabIndex == i;
           return Expanded(
             child: GestureDetector(
-              onTap: () => _onMainTabChange(i),
+              onTap: () => _goToMainTab(i),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.all(4),
@@ -1375,6 +1387,24 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     ]);
   }
 
+}
+
+// PageView 탭 상태 보존 (IndexedStack 대체)
+class _KeepAlive extends StatefulWidget {
+  final Widget child;
+  const _KeepAlive({required this.child});
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
 }
 
 // ── 선수 탭 2열: 번호칩 ──

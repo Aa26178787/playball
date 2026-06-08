@@ -90,6 +90,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   List<Map<String, dynamic>> _myTeamChips = [];
+  final PageController _pageController = PageController();
 
   @override
   void initState() {
@@ -101,9 +102,17 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() => _myTeamChips = List.of(ApiService.myTeamData.value));
   }
 
+  // 탭 전환 — 슬라이드 애니메이션 (제스처 hijack 없이 프로그램적 이동)
+  void _goToTab(int i) {
+    if (i < 0 || i >= _screens.length || i == _currentIndex) return;
+    _pageController.animateToPage(i,
+        duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
+  }
+
   @override
   void dispose() {
     ApiService.myTeamData.removeListener(_onMyTeamDataChanged);
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -134,13 +143,20 @@ class _HomeScreenState extends State<HomeScreen> {
             behavior: HitTestBehavior.deferToChild,
             onHorizontalDragEnd: (details) {
               final v = details.primaryVelocity ?? 0;
-              if (v < -250 && _currentIndex < _screens.length - 1) {
-                setState(() => _currentIndex++);
-              } else if (v > 250 && _currentIndex > 0) {
-                setState(() => _currentIndex--);
+              if (v < -250) {
+                _goToTab(_currentIndex + 1);
+              } else if (v > 250) {
+                _goToTab(_currentIndex - 1);
               }
             },
-            child: IndexedStack(index: _currentIndex, children: _screens),
+            // PageView(스와이프 비활성) + animateToPage = 탭 전환 슬라이드 (콘텐츠 가로스크롤 hijack 없음)
+            // keepalive 래퍼로 IndexedStack처럼 전 탭 상태 보존
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              onPageChanged: (i) => setState(() => _currentIndex = i),
+              children: _screens.map((s) => _KeepAlivePage(child: s)).toList(),
+            ),
           ),
           // Floating NavBar — 시스템 내비게이션 바 위로 올림
           Positioned(
@@ -153,14 +169,12 @@ class _HomeScreenState extends State<HomeScreen> {
               onHorizontalDragEnd: (d) {
                 final v = d.primaryVelocity ?? 0;
                 if (v.abs() < 150) return;
-                final next = _currentIndex + (v < 0 ? 1 : -1);
-                if (next < 0 || next >= _screens.length) return;
-                setState(() => _currentIndex = next);
+                _goToTab(_currentIndex + (v < 0 ? 1 : -1));
               },
               child: _FloatingNavBar(
                 currentIndex: _currentIndex,
                 isDark: isDark,
-                onTap: (i) => setState(() => _currentIndex = i),
+                onTap: _goToTab,
                 items: _navItems,
                 myTeamItems: _myTeamChips,
                 onMyTeamTap: (item) => Navigator.push(context,
@@ -172,6 +186,24 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+}
+
+// PageView 탭 상태 보존 (IndexedStack 대체)
+class _KeepAlivePage extends StatefulWidget {
+  final Widget child;
+  const _KeepAlivePage({required this.child});
+  @override
+  State<_KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<_KeepAlivePage> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 
