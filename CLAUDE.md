@@ -165,6 +165,7 @@ stadiums 1=서울 2=고척 3=수원 4=인천 5=대전 6=광주 7=대구 8=창원
 
 ### batter_stats / pitcher_stats
 (시즌 누적 — 컬럼 광범위. sb_pct는 이미 % 단위 ×100 금지)
+⚠️ **statiz 미제공 파생지표 = crawler `recompute_pitcher_derived`/`recompute_batter_derived`(statiz_crawler.py)가 raw서 계산** — statiz INSERT/ON CONFLICT엔 없어 안 채우면 0. 투수: fip·k_per_9·bb_per_9·babip·k_bb·h_per_9·hr_per_9·wpct·k_pct·bb_pct·k_bb_pct / 타자: tb·xbh·bb_k·gpa·bb_pct·k_pct. 이닝 .1/.2=⅓⅔ 변환, FIP 리그상수(시즌집계), BABIP tbf>0 가드, K%/BB%는 % 단위(×100 저장). save_players_and_stats 끝서 호출. **신규 파생 추가 시 recompute에 넣을 것**. go/ao류는 statiz 미제공=계산불가
 batter: avg,obp,slg,ops,woba,wrc_plus,babip,iso,war,risp,fpct,po,assists,dp,pb …
 pitcher: era,whip,fip,k_per_9,bb_per_9,babip,war,qs,blown_saves,avg_against …
 

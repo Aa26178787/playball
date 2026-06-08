@@ -759,6 +759,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   static String _f2(dynamic v) => (v as num?)?.toStringAsFixed(2) ?? '-';
   static String _f1(dynamic v) => (v as num?)?.toStringAsFixed(1) ?? '-';
   static String _i0(dynamic v) => '${(v as num?)?.toInt() ?? 0}';
+  static String _pct(dynamic v) => (v == null || v == 0) ? '-' : '${(v as num).toStringAsFixed(1)}%';
 
   Widget _seasonGridSection(String title, List<(String, String)> items,
       {Color? tc, bool main = false}) {
@@ -829,12 +830,15 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
            ('세이브', _i0(cur['saves'])), ('홀드', _i0(cur['holds'])),
            ('패', _i0(cur['losses'])), ('피안타율', _f3(cur['avg_against'])), ('블론', _i0(cur['blown_saves']))]
         : [('안타', _i0(cur['hits'])), ('도루', _i0(cur['stolen_bases'])), ('볼넷', _i0(cur['walks'])),
-           ('삼진', _i0(cur['strikeouts'])), ('출루율', _f3(cur['obp'])), ('장타율', _f3(cur['slg']))];
+           ('삼진', _i0(cur['strikeouts'])), ('출루율', _f3(cur['obp'])), ('장타율', _f3(cur['slg'])),
+           ('루타', _i0(cur['tb'])), ('장타', _i0(cur['xbh'])), ('BB/K', _f2(cur['bb_k']))];
     final advanced = isPitcher
         ? [('FIP', _f2(cur['fip'])), ('K/9', _f2(cur['k_per_9'])), ('BB/9', _f2(cur['bb_per_9'])),
-           ('WAR', _f1(cur['war'])), ('BABIP', _f3(cur['babip'])), ('QS', _i0(cur['qs']))]
+           ('WAR', _f1(cur['war'])), ('BABIP', _f3(cur['babip'])), ('QS', _i0(cur['qs'])),
+           ('K%', _pct(cur['k_pct'])), ('BB%', _pct(cur['bb_pct'])), ('K-BB%', _pct(cur['k_bb_pct']))]
         : [('wOBA', _f3(cur['woba'])), ('wRC+', _f1(cur['wrc_plus'])), ('WAR', _f1(cur['war'])),
-           ('BABIP', _f3(cur['babip'])), ('ISO', _f3(cur['iso'])), ('득점권', _f3(cur['risp']))];
+           ('BABIP', _f3(cur['babip'])), ('ISO', _f3(cur['iso'])), ('득점권', _f3(cur['risp'])),
+           ('BB%', _pct(cur['bb_pct'])), ('K%', _pct(cur['k_pct'])), ('GPA', _f3(cur['gpa']))];
     // 수비 (타자만 — fpct/po/assists 등 보유 시)
     final defense = isPitcher
         ? <(String, String)>[]
