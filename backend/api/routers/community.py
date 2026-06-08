@@ -30,6 +30,20 @@ def _validate_image(data: bytes, ext: str) -> bool:
             return ext in exts
     return False
 
+
+def _optional_user_id(request) -> Optional[int]:
+    """헤더 Bearer 토큰에서 user_id 추출 (없으면 None — 비로그인 열람 허용)"""
+    try:
+        auth = request.headers.get('authorization') or request.headers.get('Authorization')
+        if auth and auth.startswith('Bearer '):
+            from jose import jwt
+            from api.routers.auth import SECRET_KEY, ALGORITHM
+            payload = jwt.decode(auth.split(' ')[1], SECRET_KEY, algorithms=[ALGORITHM])
+            return int(payload.get('sub', 0)) or None
+    except Exception:
+        pass
+    return None
+
 # 조회수 throttle: (post_id, ip) → 마지막 조회 시각
 _view_cache: dict = {}
 _VIEW_COOLDOWN = timedelta(minutes=10)
@@ -102,6 +116,7 @@ class ReportCreate(BaseModel):
 
 @router.get("/posts")
 def get_posts(
+    request: Request,
     team_id: Optional[int] = None,
     category: Optional[str] = None,
     sort: str = "latest",
@@ -115,11 +130,12 @@ def get_posts(
 
     cur = conn.cursor()
     offset = (page - 1) * limit
+    viewer_id = _optional_user_id(request)
 
     query = """
         SELECT p.id, p.title, p.category, p.views, p.likes,
                p.created_at, u.nickname, u.profile_image,
-               t.name AS team_name, p.team_id,
+               t.name AS team_name, p.team_id, p.user_id,
                (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count
         FROM posts p
         JOIN users u ON p.user_id = u.id
@@ -127,6 +143,11 @@ def get_posts(
         WHERE 1=1
     """
     params = []
+
+    # 차단한 유저의 글 숨김
+    if viewer_id:
+        query += " AND p.user_id NOT IN (SELECT blocked_id FROM user_blocks WHERE blocker_id = %s)"
+        params.append(viewer_id)
 
     if team_id:
         query += " AND p.team_id = %s"
@@ -166,7 +187,8 @@ def get_posts(
                 "author_image":  r[7],
                 "team_name":     r[8],
                 "team_id":       r[9],
-                "comment_count": r[10],
+                "author_id":     r[10],
+                "comment_count": r[11],
             }
             for r in rows
         ]
@@ -235,9 +257,11 @@ def get_post_detail(post_id: int, request: Request):
         JOIN users u ON c.user_id = u.id
         LEFT JOIN comment_likes cl ON cl.comment_id = c.id
         WHERE c.post_id = %s
+          AND (%s::int IS NULL OR c.user_id NOT IN (
+                SELECT blocked_id FROM user_blocks WHERE blocker_id = %s))
         GROUP BY c.id, c.content, c.created_at, u.id, u.nickname, u.profile_image
         ORDER BY c.created_at ASC
-    """, (current_user_id, post_id))
+    """, (current_user_id, post_id, current_user_id, current_user_id))
     comments = cur.fetchall()
 
     conn.commit()
@@ -467,6 +491,69 @@ def report_post(post_id: int, body: ReportCreate, current_user: dict = Depends(g
     cur.close()
     conn.close()
     return {"message": "신고가 접수되었습니다"}
+
+
+@router.post("/users/{user_id}/block")
+def block_user(user_id: int, current_user: dict = Depends(get_current_user)):
+    """유저 차단 — 해당 유저의 글/댓글이 내 피드에서 숨겨짐."""
+    me = current_user["user_id"]
+    if user_id == me:
+        raise HTTPException(status_code=400, detail="자신은 차단할 수 없습니다")
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM users WHERE id = %s", (user_id,))
+    if not cur.fetchone():
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다")
+    cur.execute(
+        """INSERT INTO user_blocks (blocker_id, blocked_id) VALUES (%s, %s)
+           ON CONFLICT (blocker_id, blocked_id) DO NOTHING""",
+        (me, user_id)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"blocked": True}
+
+
+@router.delete("/users/{user_id}/block")
+def unblock_user(user_id: int, current_user: dict = Depends(get_current_user)):
+    """차단 해제."""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute(
+        "DELETE FROM user_blocks WHERE blocker_id = %s AND blocked_id = %s",
+        (current_user["user_id"], user_id)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"blocked": False}
+
+
+@router.get("/blocks")
+def get_blocks(current_user: dict = Depends(get_current_user)):
+    """내가 차단한 유저 목록."""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT u.id, u.nickname, u.profile_image
+        FROM user_blocks b JOIN users u ON b.blocked_id = u.id
+        WHERE b.blocker_id = %s ORDER BY b.created_at DESC
+    """, (current_user["user_id"],))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {"blocks": [
+        {"user_id": r[0], "nickname": r[1], "profile_image": r[2]} for r in rows
+    ]}
 
 
 @router.get("/my-posts")
