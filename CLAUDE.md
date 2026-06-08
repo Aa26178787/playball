@@ -245,6 +245,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 경기 2h 전~ 10분 주기: save_game_roster(라인업 페이지 — 선발 타순) + save_preview_roster(preview — 선발투수 보강+후보/불펜)
 - 경기 시작(game_start): save_entry_roster 1회 (entry 변동분)
 - 진행 중 선발 타순 비면 재크롤. upsert: 기존 선발 행 is_starter 보존, style/position COALESCE 보충
+- ⚠️ **reconcile_starter_positions(cur, game_id)** = 대주자/대타가 선발로 표기되고 실포지션 선수가 backup으로 빠지는 경우 교정(promote/demote) — **save_game_roster + save_preview_roster + save_entry_roster 3곳 모두 끝에서 호출 필수** (한 곳만 하면 backup 나중 삽입 시 stale → 필드뷰 야수 누락, 06-08 롯데-한화 1루수 실종 사고)
 
 ### scheduler.py 주기 작업
 - 30초: smart_update (라이브 이닝/선수/투구 저장 — 투구는 현재+직전 이닝)
