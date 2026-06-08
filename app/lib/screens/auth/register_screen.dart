@@ -287,7 +287,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Checkbox(
                   value: _agreedTerms,
                   onChanged: (v) => setState(() => _agreedTerms = v ?? false),
-                  activeColor: SemColor.panelDark,
+                  activeColor: SemColor.brand(context),
                 ),
                 const Expanded(
                   child: Text(

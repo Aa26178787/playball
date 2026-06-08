@@ -76,8 +76,8 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(Icons.mark_email_unread_outlined,
-                size: 56, color: SemColor.panelDark),
+            Icon(Icons.mark_email_unread_outlined,
+                size: 56, color: SemColor.brand(context)),
             const SizedBox(height: 16),
             const Text(
               '가입한 이메일로 인증번호를 발송합니다.\n인증 후 커뮤니티 글쓰기가 가능합니다.',

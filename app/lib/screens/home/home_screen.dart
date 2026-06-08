@@ -1364,8 +1364,8 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                     icon: const Icon(Icons.refresh, size: 16),
                     label: const Text('다시 시도'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: SemColor.panelDark,
-                      side: const BorderSide(color: SemColor.panelDark),
+                      foregroundColor: SemColor.brand(context),
+                      side: BorderSide(color: SemColor.brand(context)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     ),
                   ),
@@ -1397,8 +1397,8 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                       icon: const Icon(Icons.sports_baseball, size: 16),
                       label: const Text('전체 경기 보기'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: SemColor.panelDark,
-                        side: const BorderSide(color: SemColor.panelDark),
+                        foregroundColor: SemColor.brand(context),
+                        side: BorderSide(color: SemColor.brand(context)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       ),
                     ),

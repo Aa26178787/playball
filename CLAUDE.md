@@ -303,7 +303,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - [~] **법무**: 정책 페이지 배포 완료 → `https://playball.duckdns.org/privacy` · `/terms` (HTML=`backend/static/legal/`, nginx exact-match). 잔여 = ① 문의메일 placeholder(`playball.support@gmail.com`) 실계정 교체 ② 출시 전 법률 검토 ③ (옵션)앱 마이페이지 약관 링크 ④ KBO/Naver 저작권 최종 판단
 ### 중기 (코드 품질)
 - [ ] empty catch~41 debugPrint / non-null `!` audit / AppErrorView 전면 / ~~서버 print→logging~~(✅ 2026-06-09 런타임서비스 fcm/weather/email/sms → `api/log_setup.py` 중앙설정+모듈 logger. prediction CLI·scheduler 운영 print는 유지)
-- [ ] Radii 토큰·SemColor.panelDark 잔여 점진 치환
+- [~] **SemColor.panelDark 감사**(2026-06-09): 80개 분류 — A(라이트잉크 `isDark?light:panelDark` ~40)·A2/A3·B(SnackBar/헤더그라디언트/온보딩 의도)는 **유지**. **Pattern-C 버그**(무조건 panelDark를 fg/fill/border에 → 다크 안 보임) ~22개. 수정완료 6: home OutlinedButton×2·login/register checkbox·phone icon → `SemColor.brand(context)`(다크0xFFE5E5E7/라이트panelDark). **잔여 C-fg**(brand 적용): TabBar label/indicator(gd 3430·3432·3684·3686)·gd OutlinedButton(4307/4308)·player_stats 텍스트(65·314)·player_compare(285). **잔여 C-bg**(brand 아님, surface색 필요): player_screen 칩(818·836)·gd TableRow(3863·3889)·CircleAvatar(3364·3770)·BoxDecoration(3301). ⚠️무차별 치환 금지(A/B 다수). / Radii 토큰 잔여
 - [ ] Golden test(다크+라이트) / ~~pre-commit grep hook~~(✅ 2026-06-09 `.githooks/pre-commit`: 음수 letterSpacing WARN + `baseUrl http://` BLOCK. 클론마다 활성화 `git config core.hooksPath .githooks`) / ~~nginx 보안헤더~~(✅ 2026-06-09 HSTS+CSP+Permissions-Policy 등 7종 적용·검증)
 - [x] 이닝중계 진행이닝 TTL 30→10s 검토 → **유지 결정**(클라 폴링 30s 고정이라 하향=Naver 부하 3배·UX 이득 0)
 ### 장기

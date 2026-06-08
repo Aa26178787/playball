@@ -129,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Checkbox(
                     value: _autoLogin,
                     onChanged: (v) => setState(() => _autoLogin = v ?? false),
-                    activeColor: SemColor.panelDark,
+                    activeColor: SemColor.brand(context),
                   ),
                   const Text('자동 로그인', style: TextStyle(fontSize: 14)),
                   if (_hasSavedCredentials) ...[
