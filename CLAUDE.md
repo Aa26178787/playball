@@ -103,19 +103,20 @@ GET /games/{id}/predict | /predictions — ML 승리확률 + 팬 투표
 
 ### 선수
 ```
-GET /players/search | /hitters | /pitchers (sort_by, team_id, limit)
+GET /players/search | /hitters | /pitchers (sort_by, team_id, limit) — number 포함, hitters position=game_rosters 주포지션(mode) 세부값(1루수/유격수 등)
 GET /players/rankings @300 — 부문별 TOP10 일괄 (14→1 호출)
 GET /players/{id} @300 — 프로필+시즌별+roster_status+team_code+insta_handle
 GET /players/{id}/daily | /pitch-stats
 GET /players/{id}/pitch-design @3600 — 투수 구종별 5x5 존 분포 (stance R/L)
 GET /players/{id}/batter-zones @3600 — 타자 피투구/헛스윙/존별타율 (throws R/L)
-GET /players/popularity | POST /players/{id}/vote [Bearer]
+GET /players/{id}/pitcher-zones @3600 — 투수 존별 피투구분포/피안타율 (stance R/L, 구종합산, 인플레이↔타석결과 (game,inning,half,batter) zip)
+GET /players/popularity | POST /players/{id}/vote [Bearer] | GET /players/{id}/vote-status (비캐시, voted/vote_count)
 ```
 
 ### 팀
 ```
 GET /teams/ @3600 | /rankings @60 (last_series 라벨 포함)
-GET /teams/{id}/players|games|roster-changes|season-stats
+GET /teams/{id}/players(throws 포함)|games(home/away_code 포함)|roster-changes|season-stats
 GET /teams/postseason-odds @300 — Monte Carlo (odds 키 = id)
 GET /teams/popularity | POST /teams/{id}/vote
 ```
@@ -133,7 +134,7 @@ GET /user/stadium-ranking (5회 이상, 비로그인 가능) | /user/stadium-sta
 
 ### 커뮤니티 / 검색 / 구장 / 기타
 ```
-/community/posts CRUD + like/report/comments + my-* + upload-image (작성 = phone_verified 필수)
+/community/posts CRUD + like/report/comments + my-* + upload-image (작성 = phone_verified 필수) — posts.image_urls JSONB(다중사진, image_url=첫장 호환)
 GET /search?q= → players+teams
 /stadiums/* + food-places (pending_vote →5표→ pending_admin → approved, admin pw=playball1234)
 GET /widget/live-scores | /calendar/{y}/{m} (games dict keyed by yyyy-mm-dd)
@@ -272,7 +273,10 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 서버 pull 전 충돌 파일 rm (insta CSV 등 untracked 주의) / firebase-service-account.json push 금지
 - PgBouncer 6432 유지 / 커뮤니티 조회수 _view_cache 재시작 초기화(의도)
 - 새 알림 = notification_log dedup 패턴 필수
-- 테마 splashFactory = InkRipple (InkSparkle 반짝임 제거됨 — 되돌리지 말 것)
+- 테마 splashFactory = **NoSplash** + highlight/splash 투명 (탭 반짝임 전부 제거 — 06-08, 되돌리지 말 것). TabBarTheme overlayColor도 투명
+- 프로필 크롭 = `PhotoCropScreen`(crop_your_image, Flutter 인앱). 네이티브 image_cropper(uCrop)는 Android15 edge-to-edge status bar 겹침으로 폐기 — 프로필엔 다시 쓰지 말 것. photo_manager 권한 = 기존 READ_MEDIA_IMAGES 재사용
+- KT 팀컬러 = 0xFF3D424B 다크슬레이트 (원래 0xFF1A1A1A 검정 → 라이트모드 검은텍스트와 구분 안 됨). 팔레트 빨강(SSG/KIA/롯데)·네이비(NC/두산) 多 → 충돌 주의
+- 팀상세/홈 메인탭 = PageView(`NeverScrollableScrollPhysics`)+`_KeepAlive` — 콘텐츠 가로 칩스크롤 hijack 방지 위해 PageView 스와이프 끔, 탭 전환은 `animateToPage`만
 - **showDatePicker/showTimePicker 직접 호출 금지** — 전역 `MediaQuery.withClampedTextScaling(min 0.85)`과 picker 내부 clamp 충돌 → `'maxScale > minScale'` assert 크래시. 반드시 `builder:`로 linear scaler 재설정 (cal_event_add_screen `_pickerBuilder` 패턴 복사)
 
 ## FCM (활성화 완료)
@@ -302,6 +306,21 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - **일정 수정**: PUT /user/calendar-events/{id} + CalEventAddScreen 수정 모드(타일 탭 진입)
 - 🔑 **DatePicker textScaler 크래시** 발견·수정 (전역 clamp min 0.85 충돌 → picker builder 가드, 주의사항 등재)
 - 맛집 FAB nav 위 정렬, 일정 색 팔레트 Option A 교체(gray 키=틸 표시), adb 원격 조작으로 실기 검증 루틴 확립 (screencap+uiautomator dump+input tap)
+
+### 06-08: 헤더 통일 + 선수/팀상세 Option A 전면 + 다중사진 + 인앱크롭 + 플로팅 슬라이드
+- **헤더 5탭 통일**: 홈/팀/선수/캘린더/커뮤니티 = `[화면전용][다크토글][마이페이지]` 우측, 32×32 bordered 버튼, 타이틀 h2/ls-0.5, 하단 line. 홈/팀 Material AppBar → 커스텀 헤더(SafeArea)
+- **마이페이지 Option A 전면**: 프로필/마이팀(전체 팀)/즐겨찾기(가로)/직관/글·댓글·좋아요/알림설정 접이식+커스텀토글/다크. `favoritePlayersChanged` 노티파이어 → 즐겨찾기 해제 실시간 반영
+- **팀 상세 Option A 전면**: 팀컬러 헤더(흰 _Btn32)·선수 2열(타자|투수 + 포지션/구위 필터)·경기 3+타순 서브탭(시리즈카드 3등분/월별 막대차트/상대전적 원형게이지+2열). fl_chart 제거
+- **선수 화면 다수**: 백넘버 `#-` 수정(getHitters/pitchers에 `p.number`), 상세 이미지 stretch(PlayerAvatar memCacheHeight 제거), 다크 검은텍스트(섹션라벨 등), 등록말소 백넘버 옆, **인기투표=상세 하트**(GET vote-status 비캐시), **피칭 존 히트맵(피안타율)**(GET pitcher-zones), 카드 3열, **세부 포지션 필터**(game_rosters mode → getHitters detail_pos), top3 스탯색 제거
+- **인스타식 인앱 크롭**: `PhotoCropScreen`(crop_your_image+photo_manager) — 1:1 고정틀+갤러리그리드, 네이티브 uCrop 폐기(Android15 status bar 겹침 해결), initialRectBuilder로 crop⊆image(밖 이동 방지). 프로필만 적용
+- **다중 이미지 게시글**: posts.image_urls JSONB, pickMultiImage(10)+썸네일스트립, 상세 다중표시
+- **플로팅탭 슬라이드**: 홈/팀상세 메인탭 PageView(NeverScrollable)+animateToPage+`_KeepAlive`(콘텐츠 가로스크롤 비충돌), 선택 하이라이트 LayoutBuilder+AnimatedPositioned 슬라이드(경기상세 pill 포함)
+- **모든 좌우스크롤 칩 페이드**(ShaderMask dstIn) + 고정높이 strip 칩 `alignment center`(세로 쏠림)
+- **가시성**: 전역 splash 제거(NoSplash), KT 팀컬러 0xFF1A1A1A→0xFF3D424B, 투구위치 시트 theme-aware(존 다크대응·히트맵토글 제거·범례 상단), 단상 금/은 텍스트 대비, 게임카드 최근5 패/무 색+최근선, 팀상세 경기 승=팀컬러/패무=무채색
+- **팀카드**: 홈구장 전체명+지도 진입(StadiumScreen), 승패무|경기|승률 정렬·폰트↑
+- 인스타 오배정 12건(225studio.official·team_futures) NULL, 미수집 605명 목록 추출
+- 백엔드: getTeamPlayers `throws`, getTeamGames home/away_code, 맛집 구장 '서울'→'잠실'
+- deps 추가: crop_your_image ^2.0.0, photo_manager ^3.6.4
 
 ## 진행 예정 / 백로그
 
