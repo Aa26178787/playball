@@ -349,7 +349,7 @@ class _FloatingNavBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           color: tk.paper,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(Radii.pill),
           border: Border.all(color: tk.line, width: 1),
           boxShadow: [
             BoxShadow(
@@ -1028,7 +1028,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: tk.ink, borderRadius: BorderRadius.circular(999),
+                    color: tk.ink, borderRadius: BorderRadius.circular(Radii.pill),
                   ),
                   child: Text('오늘',
                       style: TextStyle(
@@ -1054,7 +1054,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isActive ? activeColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(Radii.pill),
           border: Border.all(color: isActive ? activeColor : tk.line2, width: 1),
         ),
         child: Row(
@@ -1566,7 +1566,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(Radii.pill),
     ),
     child: Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w800)),
   );
@@ -1993,7 +1993,7 @@ class GameCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: _kLiveRed.withValues(alpha: isDark ? 0.20 : 0.10),
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(Radii.pill),
             border: Border.all(color: _kLiveRed.withValues(alpha: 0.45), width: 1),
           ),
           child: const Row(mainAxisSize: MainAxisSize.min, children: [
@@ -2011,7 +2011,7 @@ class GameCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: dangerOn.withValues(alpha: isDark ? 0.15 : 0.08),
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(Radii.pill),
             border: Border.all(color: dangerOn.withValues(alpha: 0.45), width: 1),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -2026,7 +2026,7 @@ class GameCard extends StatelessWidget {
       if (isFinished) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(999),
+          decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(Radii.pill),
               border: Border.all(color: t.line2, width: 1)),
           child: Text('경기 종료',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink3)),
@@ -2039,7 +2039,7 @@ class GameCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: const Color(0xFFFFA000).withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(Radii.pill),
             border: Border.all(color: const Color(0xFFFFA000).withValues(alpha: 0.45), width: 1),
           ),
           child: Text(label,
@@ -2049,7 +2049,7 @@ class GameCard extends StatelessWidget {
       // 예정 + 그 외 상태: 상태 텍스트만 (시작시간 X — 시간은 score 자리에 표시)
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(999),
+        decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(Radii.pill),
             border: Border.all(color: t.line2, width: 1)),
         child: Text(game.status.isEmpty ? '예정' : game.status,
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2)),
@@ -2458,7 +2458,7 @@ class _PredictionBarState extends State<_PredictionBar> {
         ),
         // 좌(홈) - 우(원정) 분할 바
         ClipRRect(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(Radii.pill),
           child: SizedBox(
             height: 24,
             child: Row(

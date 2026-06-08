@@ -312,7 +312,7 @@ class _TeamScreenState extends State<TeamScreen>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(Radii.pill),
             color: active ? ink : Colors.transparent,
             border: Border.all(color: active ? ink : line, width: 1),
           ),
@@ -331,7 +331,7 @@ class _TeamScreenState extends State<TeamScreen>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(Radii.pill),
             color: active ? ink : Colors.transparent,
             border: Border.all(color: active ? ink : line, width: 1),
           ),
@@ -1723,7 +1723,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 color: sel ? t.ink : Colors.transparent,
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(Radii.pill),
                 border: Border.all(color: sel ? t.ink : t.line2, width: 1),
               ),
               child: Text(
@@ -1820,13 +1820,13 @@ class _TeamStatsTabState extends State<TeamStatsTab>
                       const SizedBox(height: 7),
                       LayoutBuilder(builder: (_, box) {
                         return ClipRRect(
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(Radii.pill),
                           child: Container(
                             height: 6, width: box.maxWidth, color: tk.track,
                             child: FractionallySizedBox(
                               alignment: Alignment.centerLeft,
                               widthFactor: barFraction,
-                              child: Container(decoration: BoxDecoration(color: tc, borderRadius: BorderRadius.circular(999))),
+                              child: Container(decoration: BoxDecoration(color: tc, borderRadius: BorderRadius.circular(Radii.pill))),
                             ),
                           ),
                         );
@@ -2106,7 +2106,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 color: isSelected ? t.ink : Colors.transparent,
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(Radii.pill),
                 border: Border.all(color: isSelected ? t.ink : t.line2, width: 1),
               ),
               child: Text(

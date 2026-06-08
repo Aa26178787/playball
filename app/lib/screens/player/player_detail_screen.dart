@@ -870,7 +870,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: active ? ink : paper,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(Radii.pill),
           border: Border.all(color: active ? ink : line),
         ),
         child: Text(label,
@@ -1010,7 +1010,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: active ? ink : paper,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(Radii.pill),
           border: Border.all(color: active ? ink : line),
         ),
         child: Text(label,
@@ -1179,7 +1179,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: active ? ink : paper,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(Radii.pill),
           border: Border.all(color: active ? ink : line),
         ),
         child: Text(label,

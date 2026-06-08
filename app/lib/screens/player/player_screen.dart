@@ -416,7 +416,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
           decoration: BoxDecoration(
             color: active ? color.withValues(alpha: isDark ? 0.22 : 0.12) : paper2,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(Radii.pill),
             border: Border.all(color: active ? color.withValues(alpha: 0.45) : line),
           ),
           child: Text(label,
@@ -502,7 +502,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
                   color: sel ? ink : paper,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(Radii.pill),
                   border: Border.all(color: sel ? ink : line),
                 ),
                 child: Text(s['label']!,

@@ -1036,7 +1036,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
                             color: live.withValues(alpha: isDark ? 0.20 : 0.10),
-                            borderRadius: BorderRadius.circular(999),
+                            borderRadius: BorderRadius.circular(Radii.pill),
                           ),
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
                             Container(width: 5, height: 5,
@@ -1113,7 +1113,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                 decoration: BoxDecoration(
                                   color: Colors.black.withValues(alpha: 0.55),
-                                  borderRadius: BorderRadius.circular(999),
+                                  borderRadius: BorderRadius.circular(Radii.pill),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -1123,7 +1123,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                       decoration: BoxDecoration(
                                         // 진행중 빨강, 그 외 회색
                                         color: isLive ? live : const Color(0xFF9A9AA3),
-                                        borderRadius: BorderRadius.circular(999),
+                                        borderRadius: BorderRadius.circular(Radii.pill),
                                       ),
                                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                                         Container(width: 4, height: 4,
@@ -1205,7 +1205,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: paper2,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(Radii.pill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1545,7 +1545,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.55),
-                              borderRadius: BorderRadius.circular(999),
+                              borderRadius: BorderRadius.circular(Radii.pill),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -1554,7 +1554,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: isLive ? live : const Color(0xFF9A9AA3),
-                                    borderRadius: BorderRadius.circular(999),
+                                    borderRadius: BorderRadius.circular(Radii.pill),
                                   ),
                                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                                     Container(width: 4, height: 4, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
@@ -1865,7 +1865,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
                           decoration: BoxDecoration(
                             color: isSel ? ink : paper,
-                            borderRadius: BorderRadius.circular(999),
+                            borderRadius: BorderRadius.circular(Radii.pill),
                             border: Border.all(
                                 color: isSel ? ink : (isCur ? const Color(0xFFE53935) : line),
                                 width: isCur && !isSel ? 1.3 : 1),
@@ -2093,7 +2093,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: paper2, borderRadius: BorderRadius.circular(999),
+                      color: paper2, borderRadius: BorderRadius.circular(Radii.pill),
                       border: Border.all(color: line2, width: 1),
                     ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -2112,7 +2112,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               alignment: Alignment.centerLeft,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(color: resultBg, borderRadius: BorderRadius.circular(999)),
+                decoration: BoxDecoration(color: resultBg, borderRadius: BorderRadius.circular(Radii.pill)),
                 child: Text(result,
                     style: TextStyle(fontSize: 11, color: resultFg, fontWeight: FontWeight.w700)),
               ),
@@ -2735,7 +2735,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 decoration: BoxDecoration(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? const Color(0xFF26262C) : Colors.white,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(Radii.pill),
                   border: Border.all(
                       color: Theme.of(context).brightness == Brightness.dark
                           ? const Color(0xFF33333A) : const Color(0xFFE0E0E4)),
@@ -2857,7 +2857,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           child: Text(typeName, style: TextStyle(fontSize: 11, color: ink2, fontWeight: FontWeight.w600))),
                       Expanded(
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(Radii.pill),
                           child: LinearProgressIndicator(
                             value: (pk['ratio'] as num? ?? 0) / 100,
                             backgroundColor: track,
@@ -2951,7 +2951,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: c.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(Radii.pill),
                         ),
                         child: Text(r,
                             style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w700)),
@@ -3922,7 +3922,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: BorderRadius.circular(Radii.pill),
                       ),
                       child: Text(type,
                           style: TextStyle(
@@ -4113,7 +4113,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                             decoration: BoxDecoration(
                               color: const Color(0xFFE53935),
-                              borderRadius: BorderRadius.circular(999),
+                              borderRadius: BorderRadius.circular(Radii.pill),
                             ),
                             child: const Text('Shorts',
                                 style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
