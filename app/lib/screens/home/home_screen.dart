@@ -1614,22 +1614,49 @@ class GameCard extends StatelessWidget {
   }
 
   Widget _buildMini5(List<String> recent, Color accent, _Tok t, bool isDark) {
-    if (recent.isEmpty) return const SizedBox(height: 13);
+    if (recent.isEmpty) return const SizedBox(height: 17);
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: recent.map((r) {
+      children: recent.asMap().entries.map((e) {
+        final i = e.key;
+        final r = e.value;
         final isW = r == 'W';
-        final fill = isW ? accent : t.track;
-        final fg = isW ? (isDark ? const Color(0xFF0F0F12) : Colors.white) : t.sub;
+        final isL = r == 'L';
+        final isRecent = i == recent.length - 1; // 가장 최근(우측 끝)
+        final Color fill;
+        final Color fg;
+        Border? border;
+        if (isW) {
+          fill = accent;
+          fg = isDark ? const Color(0xFF0F0F12) : Colors.white;
+        } else if (isL) {
+          fill = SemColor.live.withValues(alpha: isDark ? 0.85 : 0.92);
+          fg = Colors.white;
+        } else {
+          // 무 — track + 테두리로 배경과 구분
+          fill = t.track;
+          fg = t.ink3;
+          border = Border.all(color: t.line2);
+        }
         return Padding(
           padding: const EdgeInsets.only(right: 2.5),
-          child: Container(
-            width: 13, height: 13,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(4)),
-            child: Text(r,
-                style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: fg)),
-          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 13, height: 13,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(4), border: border),
+              child: Text(r, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: fg)),
+            ),
+            const SizedBox(height: 2),
+            // 가장 최근 경기 표시 — 블럭 아래 선
+            Container(
+              width: 13, height: 2,
+              decoration: BoxDecoration(
+                color: isRecent ? t.ink2 : Colors.transparent,
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          ]),
         );
       }).toList(),
     );

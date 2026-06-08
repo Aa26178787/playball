@@ -490,15 +490,15 @@ class _TeamScreenState extends State<TeamScreen>
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                             Text('$wins승 $losses패${draws > 0 ? ' $draws무' : ''}',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ink3,
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: ink3,
                                     fontFeatures: const [FontFeature.tabularFigures()])),
-                            Container(width: 1, height: 9, margin: const EdgeInsets.symmetric(horizontal: 8), color: line2),
+                            Container(width: 1, height: 11, margin: const EdgeInsets.symmetric(horizontal: 8), color: line2),
                             Text('$totalGames경기',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ink3,
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: ink3,
                                     fontFeatures: const [FontFeature.tabularFigures()])),
-                            Container(width: 1, height: 9, margin: const EdgeInsets.symmetric(horizontal: 8), color: line2),
+                            Container(width: 1, height: 11, margin: const EdgeInsets.symmetric(horizontal: 8), color: line2),
                             Text(winRatePct,
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ink,
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ink,
                                     fontFeatures: const [FontFeature.tabularFigures()])),
                           ]),
                           // 홈구장 전체명 + 지도 진입 (좌측 정렬, 버튼)
@@ -845,7 +845,9 @@ class _TeamScreenState extends State<TeamScreen>
                     Text('최근 5경기',
                         style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600)),
                     const SizedBox(width: 8),
-                    ...recent5.map((r) => _recentDot(r)),
+                    ...recent5.asMap().entries.map((e) => _recentDot(e.value,
+                        isRecent: e.key == recent5.length - 1,
+                        glow: teamColor((team['short_name'] as String?) ?? ''))),
                     const Spacer(),
                     Text(_streakText(streak),
                         style: TextStyle(
@@ -991,7 +993,9 @@ class _TeamScreenState extends State<TeamScreen>
                                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
                                       color: _streakColor(streak))),
                               const Spacer(),
-                              ...recent5.map((r) => _recentDot(r, size: 16)),
+                              ...recent5.asMap().entries.map((e) => _recentDot(e.value, size: 16,
+                                  isRecent: e.key == recent5.length - 1,
+                                  glow: teamColor((team['short_name'] as String?) ?? ''))),
                             ],
                           ),
                           if (odds != null) ...[
@@ -1473,7 +1477,7 @@ class _TeamScreenState extends State<TeamScreen>
     return Container(width: 0.5, height: 28, color: Colors.grey[300]);
   }
 
-  Widget _recentDot(String result, {double size = 22}) {
+  Widget _recentDot(String result, {double size = 22, bool isRecent = false, Color? glow}) {
     Color color;
     String label;
     switch (result) {
@@ -1485,7 +1489,13 @@ class _TeamScreenState extends State<TeamScreen>
       width: size,
       height: size,
       margin: const EdgeInsets.only(right: 4),
-      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle, color: color,
+        // 가장 최근 경기 — 팀컬러 glow
+        boxShadow: isRecent && glow != null
+            ? [BoxShadow(color: glow.withValues(alpha: 0.65), blurRadius: 7, spreadRadius: 1.5)]
+            : null,
+      ),
       alignment: Alignment.center,
       child: Text(label,
           style: TextStyle(color: Colors.white, fontSize: size * 0.45, fontWeight: FontWeight.bold)),
