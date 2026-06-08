@@ -1,0 +1,24 @@
+#!/bin/sh
+# pre-push hook: 보안 체크 (pip-audit, 시크릿 패턴 탐지)
+
+echo "[pre-push] 보안 체크 실행 중..."
+
+# 1) 하드코딩 시크릿 패턴 검사 (JWT 시크릿, 패스워드 등)
+BANNED=$(git diff --cached --name-only --diff-filter=ACM | xargs grep -l \
+  -E "(password\s*=\s*['\"][^'\"]{4,}['\"]|secret_key\s*=\s*['\"][^'\"]{8,}['\"]|api_key\s*=\s*['\"][^'\"]{8,}['\"])" \
+  2>/dev/null | grep -v "\.md$" | grep -v "example" | grep -v "test")
+
+if [ -n "$BANNED" ]; then
+  echo "[WARN] 하드코딩 시크릿 의심 파일:"
+  echo "$BANNED"
+  echo "      (firebase-service-account.json, .env 파일은 push하지 마세요)"
+fi
+
+# 2) firebase-service-account.json push 차단
+if git diff --name-only HEAD..@{u} 2>/dev/null | grep -q "firebase-service-account.json"; then
+  echo "[ERROR] firebase-service-account.json은 push 금지!"
+  exit 1
+fi
+
+echo "[pre-push] 완료"
+exit 0
