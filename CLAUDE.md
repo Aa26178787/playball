@@ -323,6 +323,19 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - 백엔드: getTeamPlayers `throws`, getTeamGames home/away_code, 맛집 구장 '서울'→'잠실'
 - deps 추가: crop_your_image ^2.0.0, photo_manager ^3.6.4
 
+### 06-08b: 출시 준비 — 보안·안정화 (반드시→감사→UI)
+- **시크릿 외부화**: DB pw·admin pw env(os.environ.get DB_PASSWORD), prediction admin = URL pw → X-Admin-Key 헤더+ADMIN_KEY+감사로그(stadiums 패턴 통일), .gitignore/.env.example 보강. (DB/Gmail/Kakao 키 회전은 미룸 — 권한/PgBouncer 위험)
+- **rate limit**: 글로벌 200/min은 기존. 민감경로(login/register/password/email·phone verify/check-) prefix별 강화. 🔑 **`request.client.host`는 nginx 뒤 항상 127.0.0.1 → 전역버킷 무력화** → `X-Real-IP` 사용(8000은 127.0.0.1만 ACCEPT라 스푸핑 불가). `_client_ip()`
+- **업로드**: community 글 업로드도 magic-byte 검증(프로필과 파리티)
+- 🔑 **회원탈퇴 cascade**: posts/comments/post_likes/push_tokens/user_settings/favorite_*/notifications가 users FK **NO ACTION → 탈퇴 자체가 FK위반으로 깨져있었음** + 개인정보 잔존. 전부 CASCADE, 맛집 submitted_by=SET NULL. `migrate_user_delete_cascade.sql`
+- **차단(block)**: user_blocks 테이블 + POST/DELETE `/community/users/{id}/block` + GET `/community/blocks`. get_posts(viewer optional+author_id)·댓글 차단유저 숨김. 클라: post 메뉴/댓글 롱프레스 차단 + mypage BlockedUsersScreen
+- 🔑 **DB 백업**: 기존 `~/backups/backup.sh`가 파이프 `$?`(=gzip)로 pg_dump 실패 못잡아 **20B 빈 덤프 양산**(silent). `backend/Scripts/db_backup.sh`(PIPESTATUS+최소크기 가드, sudo -u postgres) + cron 교체
+- **watchdog**: `backend/Scripts/watchdog.py` cron */10 — 서비스/API/백업 신선도 점검 + 이메일경보(스케줄러 내부 _health_check는 자기죽음 못잡음 보완)
+- **Crashlytics**: firebase_crashlytics 3.4.9 + gradle plugin 3.0.2, main FlutterError/platformDispatcher.onError. debug 빌드 검증
+- **보안감사(공격자관점)**: auth 견고(64자 JWT secret env필수·bcrypt·enumeration無·mass-assign無·IDOR 전부 소유권체크·파라미터화SQL·uuid업로드). 위 rate-limit IP가 유일 실취약
+- **UI 일관성**: 🔑 `SemColor.panelDark(0xFF111113) == scaffoldDark(0xFF111113)` → 하드코딩 버튼 다크모드 **윤곽소실**. 글로벌 elevatedButtonTheme이 이미 isDark 반전 처리 → auth/login/game_detail 버튼의 bg/fg override 제거해 상속(register/forgot_password/phone_verify/login/game_detail 5곳). SnackBar/타순배지 panelDark는 의도라 유지
+- 미룸: empty catch~41·print→logging(Crashlytics가 완화), nginx 보안헤더(앱클라 저가치), DB/Gmail/Kakao 키회전·도메인/CF·Play Console·keystore백업(권한)
+
 ## 진행 예정 / 백로그
 
 ### 검증 도구 (권장)
