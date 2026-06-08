@@ -143,30 +143,38 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
     }).toList();
   }
 
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get _ink => _isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+  Color get _onInk => _isDark ? const Color(0xFF0F0F12) : Colors.white;
+  Color get _paper => _isDark ? const Color(0xFF18181C) : Colors.white;
+  Color get _paper2 => _isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
+  Color get _line => _isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+  Color get _sub => _isDark ? const Color(0xFF9A9AA3) : const Color(0xFF9A9AA2);
+
   @override
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      decoration: BoxDecoration(
+        color: _paper,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       ),
       child: Column(
         children: [
           Container(
             margin: const EdgeInsets.symmetric(vertical: 8),
             width: 40, height: 4,
-            decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+            decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(2)),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('투구 위치', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Text('투구 위치', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _ink, letterSpacing: -0.3)),
               if (widget.gameStatus == '진행') ...[
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(4)),
+                  decoration: BoxDecoration(color: SemColor.live, borderRadius: BorderRadius.circular(4)),
                   child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
               ],
@@ -175,14 +183,15 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                 onTap: () => setState(() => _heatmap = !_heatmap),
                 child: Container(
                   margin: const EdgeInsets.only(right: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: _heatmap ? SemColor.panelDark : Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
+                    color: _heatmap ? _ink : _paper2,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: _heatmap ? _ink : _line),
                   ),
                   child: Text(
                     _heatmap ? '히트맵' : '점 모드',
-                    style: TextStyle(fontSize: 11, color: _heatmap ? Colors.white : Colors.black87, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 11, color: _heatmap ? _onInk : _sub, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -208,7 +217,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                 const SizedBox(height: 14),
                 Text(
                   widget.gameStatus == '예정' ? '경기가 아직 시작되지 않았습니다' : '투구 위치 데이터가 없습니다',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black54),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: _ink),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -306,7 +315,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
       padding: const EdgeInsets.only(left: 16, top: 6, bottom: 2),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: SemColor.panelDark)),
+        child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _ink)),
       ),
     );
   }
@@ -333,10 +342,10 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: SemColor.panelDark.withValues(alpha: 0.1),
+                color: _ink.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(teamLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: SemColor.panelDark)),
+              child: Text(teamLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _ink)),
             ),
             const SizedBox(width: 6),
           ],
@@ -354,7 +363,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                         _selectedInning = null;
                         _selectedBatter = null;
                       }),
-                      child: _chip(p, sel, SemColor.panelDark),
+                      child: _chip(p, sel, _ink),
                     ),
                   );
                 }).toList(),
@@ -443,17 +452,19 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
   Widget _chip(String label, bool selected, Color color) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
+      alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: selected ? color : Colors.grey[100],
+        color: selected ? color : _paper2,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: selected ? color : Colors.grey[300]!, width: 1),
+        border: Border.all(color: selected ? color : _line, width: 1),
       ),
       child: Text(
         label,
         style: TextStyle(
           fontSize: 11,
-          color: selected ? Colors.white : Colors.black87,
+          // 선택 bg가 밝으면(_ink 다크모드=흰색) 검은 글씨로 대비 확보
+          color: selected ? (color.computeLuminance() > 0.6 ? Colors.black : Colors.white) : _sub,
           fontWeight: selected ? FontWeight.bold : FontWeight.normal,
         ),
       ),
@@ -471,7 +482,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
               child: Row(
                 children: _resultLabels.entries.map((e) {
                   final sel = _filter == e.key;
-                  final color = e.key == 'all' ? SemColor.panelDark : (_resultColors[e.key] ?? Colors.grey);
+                  final color = e.key == 'all' ? _ink : (_resultColors[e.key] ?? Colors.grey);
                   return Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: GestureDetector(
@@ -494,7 +505,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
       children: [
         Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.black87)),
+        Text(label, style: TextStyle(fontSize: 11, color: _sub)),
       ],
     );
   }
@@ -511,7 +522,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
           ),
         ),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.black87)),
+        Text(label, style: TextStyle(fontSize: 11, color: _sub)),
       ],
     );
   }
