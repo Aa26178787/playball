@@ -4830,6 +4830,9 @@ class _PlayerDot extends StatelessWidget {
                   ? CachedNetworkImage(
                       imageUrl: imageUrl!,
                       fit: BoxFit.cover,
+                      // fade 0 — 로드 중 setState 반복 시 placeholder↔이미지 fade로 선수 깜빡임 방지
+                      fadeInDuration: Duration.zero,
+                      fadeOutDuration: Duration.zero,
                       errorWidget: (_, _, _) => Icon(Icons.person, size: size * 0.55, color: Colors.white70),
                       placeholder: (_, _) => Container(color: Colors.black26),
                     )

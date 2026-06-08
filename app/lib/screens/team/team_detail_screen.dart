@@ -1348,7 +1348,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         child: Column(children: [
           Text('타순별 타율', style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
           const SizedBox(height: 14),
-          SizedBox(height: 110, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: stats.map((s) {
+          SizedBox(height: 116, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: stats.map((s) {
             final order = (s['batting_order'] as num?)?.toInt() ?? 0;
             final avg = (s['avg'] as num?)?.toDouble() ?? 0;
             return Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
