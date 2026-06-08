@@ -305,7 +305,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - [ ] empty catch~41 debugPrint / non-null `!` audit / AppErrorView 전면 / 서버 print→logging
 - [ ] Radii 토큰·SemColor.panelDark 잔여 점진 치환
 - [ ] Golden test(다크+라이트) / pre-commit grep hook(letterSpacing typo) / nginx 보안헤더
-- [ ] 이닝중계 진행이닝 TTL 30→10s 검토
+- [x] 이닝중계 진행이닝 TTL 30→10s 검토 → **유지 결정**(클라 폴링 30s 고정이라 하향=Naver 부하 3배·UX 이득 0)
 ### 장기
 - [ ] 홈화면 위젯(Android AppWidget native kotlin) / state restoration / i18n은 skip 확정
 

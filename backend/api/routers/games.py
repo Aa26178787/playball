@@ -62,6 +62,7 @@ def get_game_relay_all(game_id: int):
     #       → Naver IP 차단 + 서버 과부하 방지
     # TTL: 진행중=30초(클라이언트 새로고침 주기와 일치), 종료=3600초(불변)
     # 삭제 금지: 고부하 시 Naver 차단 즉시 재발
+    # 검토완료(2026-06-09): 30→10s 하향 무익 — 클라 폴링 30s 고정이라 더 잦은 fetch는 Naver 부하만 3배. 하향 시 클라 폴링 동반 필요
     from api.cache import cache_get, cache_set
     _cache_key = f"relay_all:{game_id}"
     _hit, _cached = cache_get(_cache_key)
