@@ -6,9 +6,11 @@ OpenWeatherMap 날씨 서비스
 import os
 import threading
 import time
+import logging
 import requests
 
 API_KEY = os.environ.get('OPENWEATHER_API_KEY', '')
+logger = logging.getLogger(__name__)
 BASE_URL = 'https://api.openweathermap.org/data/2.5'
 
 # stadium_id → (lat, lon, 실내여부)
@@ -57,7 +59,7 @@ def _spawn(key, fetch_fn):
         try:
             fetch_fn()
         except Exception as e:
-            print(f'[Weather] 백그라운드 갱신 실패 {key}: {e}')
+            logger.warning(f'[Weather] 백그라운드 갱신 실패 {key}: {e}')
         finally:
             with _refresh_lock:
                 _refreshing.discard(key)

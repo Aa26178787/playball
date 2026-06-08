@@ -7,6 +7,9 @@ from fastapi.staticfiles import StaticFiles
 import time
 import threading
 from collections import defaultdict, deque
+from api.log_setup import setup_logging
+
+setup_logging()
 
 _ALLOWED_ORIGINS = [
     "https://playball.duckdns.org",

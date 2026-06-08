@@ -4,7 +4,10 @@ Firebase Admin SDK 사용.
 서비스 계정 키: ~/playball/backend/firebase-service-account.json
 """
 import os
+import logging
 from database.connection import get_connection
+
+logger = logging.getLogger(__name__)
 
 _app = None
 
@@ -26,7 +29,7 @@ def _get_app():
         _app = firebase_admin.initialize_app(cred)
         return _app
     except Exception as e:
-        print(f"[FCM] Firebase 초기화 실패: {e}")
+        logger.error(f"[FCM] Firebase 초기화 실패: {e}")
         return None
 
 
@@ -62,7 +65,7 @@ def _get_targets(notify_type: str, team_ids: list[int]) -> list[tuple[int, str]]
         """, (team_ids,))
         return cur.fetchall()
     except Exception as e:
-        print(f"[FCM] 토큰 조회 실패: {e}")
+        logger.error(f"[FCM] 토큰 조회 실패: {e}")
         return []
     finally:
         conn.close()
@@ -93,7 +96,7 @@ def _get_team_fan_targets(team_id: int, setting_col: str = None) -> list[tuple[i
             """, (team_id,))
         return cur.fetchall()
     except Exception as e:
-        print(f"[FCM] 팬 토큰 조회 실패: {e}")
+        logger.error(f"[FCM] 팬 토큰 조회 실패: {e}")
         return []
     finally:
         conn.close()
@@ -116,7 +119,7 @@ def _get_player_fan_targets(player_id: int, setting_col: str = 'notify_roster') 
         """, (player_id,))
         return cur.fetchall()
     except Exception as e:
-        print(f"[FCM] 선수 팬 토큰 조회 실패: {e}")
+        logger.error(f"[FCM] 선수 팬 토큰 조회 실패: {e}")
         return []
     finally:
         conn.close()
@@ -161,7 +164,7 @@ def _save_notifications(user_ids: list[int], title: str, body: str,
         conn.commit()
         cur.close()
     except Exception as e:
-        print(f"[FCM] 알림 저장 실패: {e}")
+        logger.error(f"[FCM] 알림 저장 실패: {e}")
     finally:
         conn.close()
 
@@ -215,7 +218,7 @@ def _send(targets: list[tuple[int, str]], title: str, body: str,
             tokens=tokens,
         )
         resp = messaging.send_each_for_multicast(msg)
-        print(f"[FCM] {title}: {resp.success_count}성공/{resp.failure_count}실패")
+        logger.info(f"[FCM] {title}: {resp.success_count}성공/{resp.failure_count}실패")
         _INVALID_TOKEN_MSGS = (
             'registration-token-not-registered',
             'Requested entity was not found',
@@ -228,7 +231,7 @@ def _send(targets: list[tuple[int, str]], title: str, body: str,
         ]
         _remove_invalid_tokens(failed)
     except Exception as e:
-        print(f"[FCM] 발송 실패: {e}")
+        logger.error(f"[FCM] 발송 실패: {e}")
 
 
 # ── 경기 알림 (user_settings 반영) ───────────────────────────────────────────
@@ -720,7 +723,7 @@ def notify_milestone(player_id: int, player_name: str, team_name: str,
         conn.commit()
         cur.close()
     except Exception as e:
-        print(f"[FCM] 마일스톤 저장 실패: {e}")
+        logger.error(f"[FCM] 마일스톤 저장 실패: {e}")
         return
     finally:
         conn.close()

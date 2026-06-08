@@ -3082,6 +3082,8 @@ def run_scheduler():
 
 
 if __name__ == "__main__":
+    from api.log_setup import setup_logging
+    setup_logging()
     print("=== 즉시 실행 테스트 ===")
     try:
         _update_today_games()

@@ -4,8 +4,10 @@ import hashlib
 import random
 import string
 import time
+import logging
 import requests
 
+logger = logging.getLogger(__name__)
 API_KEY = os.environ.get('COOLSMS_API_KEY', '')
 API_SECRET = os.environ.get('COOLSMS_API_SECRET', '')
 SENDER = os.environ.get('COOLSMS_SENDER', '')
@@ -17,7 +19,7 @@ def generate_code() -> str:
 
 def send_verification_sms(phone: str, code: str) -> bool:
     if not API_KEY or not API_SECRET or not SENDER:
-        print(f'[SMS Dev] {phone} → 인증번호: {code}')
+        logger.info(f'[SMS Dev] {phone} → 인증번호: {code}')
         return True
     try:
         timestamp = str(int(time.time() * 1000))
@@ -48,5 +50,5 @@ def send_verification_sms(phone: str, code: str) -> bool:
         )
         return res.status_code == 200
     except Exception as e:
-        print(f'[SMS Error] {e}')
+        logger.error(f'[SMS Error] {e}')
         return False

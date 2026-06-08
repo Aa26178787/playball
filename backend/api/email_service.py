@@ -1,14 +1,16 @@
 import smtplib
 import os
+import logging
 from email.message import EmailMessage
 
+logger = logging.getLogger(__name__)
 EMAIL_USER = os.environ.get('EMAIL_USER', '')
 EMAIL_PASS = os.environ.get('EMAIL_PASS', '')
 
 
 def send_verification_email(to: str, code: str) -> bool:
     if not EMAIL_USER or not EMAIL_PASS:
-        print(f'[Email Dev] {to} → 인증번호: {code}')
+        logger.info(f'[Email Dev] {to} → 인증번호: {code}')
         return True
     try:
         msg = EmailMessage()
@@ -25,5 +27,5 @@ def send_verification_email(to: str, code: str) -> bool:
             smtp.send_message(msg)
         return True
     except Exception as e:
-        print(f'[Email Error] {e}')
+        logger.error(f'[Email Error] {e}')
         return False
