@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
+import '../../utils/app_theme.dart';
 import '../../api/api_service.dart';
 import 'player_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -139,8 +140,8 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
           Container(
             constraints: const BoxConstraints(maxHeight: 160),
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: Colors.grey[300]!),
+              color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceDark : Colors.white,
+              border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? AppColors.borderDark : Colors.grey[300]!),
               borderRadius: BorderRadius.circular(8),
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)],
             ),
@@ -271,6 +272,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
 
   Widget _buildStatRow(String label, String v1, String v2,
       bool higherIsBetter, bool shaded) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     double? n1 = double.tryParse(v1);
     double? n2 = double.tryParse(v2);
     bool p1Better = false, p2Better = false;
@@ -282,11 +284,15 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
     TextStyle boldStyle(bool highlight) => TextStyle(
           fontSize: 14,
           fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
-          color: highlight ? SemColor.panelDark : Colors.black87,
+          color: highlight
+              ? (isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark)
+              : (isDark ? const Color(0xFFB7B7BE) : Colors.black87),
         );
 
     return Container(
-      color: shaded ? const Color(0xFFF5F5F5) : Colors.white,
+      color: shaded
+          ? (isDark ? AppColors.surface2Dark : const Color(0xFFF5F5F5))
+          : (isDark ? AppColors.surfaceDark : Colors.white),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
@@ -295,7 +301,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
             child: Text(label,
                 style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
                     fontWeight: FontWeight.w500),
                 textAlign: TextAlign.center),
           ),
