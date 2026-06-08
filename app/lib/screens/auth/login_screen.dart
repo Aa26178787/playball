@@ -158,12 +158,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: isLoading ? null : _login,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: SemColor.panelDark,
-                    foregroundColor: Colors.white,
-                  ),
+                  // bg/fg는 글로벌 theme-aware 버튼 상속 (다크 윤곽소실 방지)
                   child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? CircularProgressIndicator(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? SemColor.panelDark : Colors.white)
                       : const Text('로그인', style: TextStyle(fontSize: 16)),
                 ),
               ),

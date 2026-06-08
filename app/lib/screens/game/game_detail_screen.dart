@@ -4314,14 +4314,14 @@ class _GameShareSheetState extends State<_GameShareSheet> {
                 child: ElevatedButton.icon(
                   onPressed: _sharing ? null : _captureAndShare,
                   icon: _sharing
-                      ? const SizedBox(width: 16, height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? SizedBox(width: 16, height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? SemColor.panelDark : Colors.white))
                       : const Icon(Icons.image, size: 16),
                   label: const Text('이미지 공유'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: SemColor.panelDark,
-                    foregroundColor: Colors.white,
-                  ),
+                  // bg/fg는 글로벌 theme-aware 버튼 상속 (다크 윤곽소실 방지)
                 ),
               ),
             ],
