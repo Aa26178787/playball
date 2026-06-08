@@ -235,23 +235,33 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
     // 3순위: API — getPlayerDetail / getPlayerDaily 독립 처리 (한 쪽 실패해도 다른 쪽 표시)
     try {
-      // daily(최근5)는 프로필과 독립 → 병렬 시작 (순차 await 제거로 '한박자' 지연 해소)
+      // daily(최근5) 병렬 시작
       _loadDaily();
+      // 하위섹션(구종분포/로케이션/히트맵)을 player_type 알면 프로필 대기 없이 즉시 병렬 발화
+      // (리스트→상세는 initialData, 재방문은 memCached에 type 존재) → '한박자' 지연 제거
+      final earlyType = (memCached?['player_type'] ?? widget.initialData?['player_type']) as String?;
+      bool subsFired = false;
+      if (earlyType != null) { _fireSubsections(earlyType); subsFired = true; }
+
       final playerData = await ApiService.getPlayerDetail(widget.playerId);
       ApiService.setPlayerDetailMem(widget.playerId, playerData);
       if (mounted) setState(() { _playerData = playerData; _isLoading = false; _bodyLoading = false; });
       LocalCache.set(_cacheKey, playerData).catchError((_) {});
 
-      // 타입별 하위 섹션(구종분포/로케이션/히트맵)도 병렬 fire-and-forget
-      if (playerData['player_type'] == '투수') {
-        _loadPitchStats();
-        _loadPitchDesign();
-        _loadPitcherZones();
-      } else {
-        _loadBatterZones();
-      }
+      // type 미확보였으면 프로필 받은 뒤 발화 (fallback)
+      if (!subsFired) _fireSubsections(playerData['player_type'] as String? ?? '');
     } catch (e) {
       if (mounted) setState(() { _isLoading = false; _bodyLoading = false; });
+    }
+  }
+
+  void _fireSubsections(String type) {
+    if (type == '투수') {
+      _loadPitchStats();
+      _loadPitchDesign();
+      _loadPitcherZones();
+    } else {
+      _loadBatterZones();
     }
   }
 
