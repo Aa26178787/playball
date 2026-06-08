@@ -8,10 +8,18 @@ import '../../utils/team_theme.dart';
 import '../../utils/local_cache.dart';
 import '../player/player_detail_screen.dart';
 import '../mypage/my_page_screen.dart';
+import '../stadium/stadium_screen.dart';
 import 'team_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
+
+// 팀 홈구장 → (표시명, StadiumScreen 인덱스)
+const Map<String, (String, int)> _kHomeStadium = {
+  'LG': ('잠실', 0), 'OB': ('잠실', 1), 'WO': ('고척', 2), 'KT': ('수원', 3),
+  'SK': ('인천', 4), 'HH': ('대전', 5), 'HT': ('광주', 6), 'SS': ('대구', 7),
+  'NC': ('창원', 8), 'LT': ('사직', 9),
+};
 
 class TeamScreen extends StatefulWidget {
   const TeamScreen({super.key});
@@ -478,8 +486,7 @@ class _TeamScreenState extends State<TeamScreen>
                           ]),
                           const SizedBox(height: 7),
                           Row(
-                            crossAxisAlignment: CrossAxisAlignment.baseline,
-                            textBaseline: TextBaseline.alphabetic,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                             Text('$wins승 $losses패${draws > 0 ? ' $draws무' : ''}',
                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ink3,
@@ -489,13 +496,26 @@ class _TeamScreenState extends State<TeamScreen>
                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ink3,
                                     fontFeatures: const [FontFeature.tabularFigures()])),
                             Container(width: 1, height: 9, margin: const EdgeInsets.symmetric(horizontal: 8), color: line2),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 1),
-                              child: Text(winRatePct,
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ink,
-                                      fontFeatures: const [FontFeature.tabularFigures()])),
-                            ),
+                            Text(winRatePct,
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ink,
+                                    fontFeatures: const [FontFeature.tabularFigures()])),
                           ]),
+                          // 홈구장 + 지도 진입
+                          if (_kHomeStadium[code] != null) ...[
+                            const SizedBox(height: 5),
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => Navigator.push(context, MaterialPageRoute(
+                                  builder: (_) => StadiumScreen(initialIndex: _kHomeStadium[code]!.$2))),
+                              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                Icon(Icons.place_outlined, size: 12, color: ink3),
+                                const SizedBox(width: 3),
+                                Text(_kHomeStadium[code]!.$1,
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ink3)),
+                                Icon(Icons.chevron_right, size: 13, color: ink3),
+                              ]),
+                            ),
+                          ],
                           // PS bar 제거 — 'PS 확률' 별도 탭으로 분리 (2026-06-06)
                         ],
                       ),

@@ -5,7 +5,7 @@ import '../../utils/design_tokens.dart';
 import '../../api/api_service.dart';
 
 const _kStadiums = [
-  (id: 1, name: '서울'),
+  (id: 1, name: '잠실'),
   (id: 2, name: '고척'),
   (id: 3, name: '수원'),
   (id: 4, name: '인천'),

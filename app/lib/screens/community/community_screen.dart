@@ -564,7 +564,7 @@ class _Tag extends StatelessWidget {
 // ===== 맛집 탭 =====
 
 const _stadiums = [
-  (id: 1, name: '서울'),
+  (id: 1, name: '잠실'),
   (id: 2, name: '고척'),
   (id: 3, name: '수원'),
   (id: 4, name: '인천'),
