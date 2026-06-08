@@ -14,11 +14,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 
-// 팀 홈구장 → (표시명, StadiumScreen 인덱스)
+// 팀 홈구장 → (구장 전체명, StadiumScreen 인덱스)
 const Map<String, (String, int)> _kHomeStadium = {
-  'LG': ('잠실', 0), 'OB': ('잠실', 1), 'WO': ('고척', 2), 'KT': ('수원', 3),
-  'SK': ('인천', 4), 'HH': ('대전', 5), 'HT': ('광주', 6), 'SS': ('대구', 7),
-  'NC': ('창원', 8), 'LT': ('사직', 9),
+  'LG': ('잠실야구장', 0), 'OB': ('잠실야구장', 1), 'WO': ('고척스카이돔', 2),
+  'KT': ('수원KT위즈파크', 3), 'SK': ('인천SSG랜더스필드', 4), 'HH': ('대전한화생명볼파크', 5),
+  'HT': ('광주기아챔피언스필드', 6), 'SS': ('대구삼성라이온즈파크', 7),
+  'NC': ('창원NC파크', 8), 'LT': ('사직야구장', 9),
 };
 
 class TeamScreen extends StatefulWidget {
@@ -500,20 +501,32 @@ class _TeamScreenState extends State<TeamScreen>
                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ink,
                                     fontFeatures: const [FontFeature.tabularFigures()])),
                           ]),
-                          // 홈구장 + 지도 진입
+                          // 홈구장 전체명 + 지도 진입 (좌측 정렬, 버튼)
                           if (_kHomeStadium[code] != null) ...[
-                            const SizedBox(height: 5),
-                            GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () => Navigator.push(context, MaterialPageRoute(
-                                  builder: (_) => StadiumScreen(initialIndex: _kHomeStadium[code]!.$2))),
-                              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                Icon(Icons.place_outlined, size: 12, color: ink3),
-                                const SizedBox(width: 3),
-                                Text(_kHomeStadium[code]!.$1,
-                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ink3)),
-                                Icon(Icons.chevron_right, size: 13, color: ink3),
-                              ]),
+                            const SizedBox(height: 7),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () => Navigator.push(context, MaterialPageRoute(
+                                    builder: (_) => StadiumScreen(initialIndex: _kHomeStadium[code]!.$2))),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: paper2,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: line),
+                                  ),
+                                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                    Icon(Icons.place_outlined, size: 14, color: ink),
+                                    const SizedBox(width: 5),
+                                    Text(_kHomeStadium[code]!.$1,
+                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink)),
+                                    const SizedBox(width: 2),
+                                    Icon(Icons.chevron_right, size: 15, color: ink3),
+                                  ]),
+                                ),
+                              ),
                             ),
                           ],
                           // PS bar 제거 — 'PS 확률' 별도 탭으로 분리 (2026-06-06)
