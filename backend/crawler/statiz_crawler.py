@@ -317,6 +317,31 @@ def get_pitcher_stats(season=2026):
         return []
 
 
+def recompute_pitcher_derived(cur, season=2026):
+    """투수 파생율(fip/k9/bb9/h9/hr9/k_bb/babip)을 raw 카운팅에서 재계산.
+    statiz가 이 컬럼을 안 주므로(INSERT/ON CONFLICT에 없음) raw 갱신 후 매번 재계산 필요 — 안 하면 stale/0.
+    이닝 .1/.2 = 1/3·2/3 변환, FIP 리그상수는 해당 시즌 집계, BABIP는 tbf>0+분모>0 가드."""
+    cur.execute("""
+        WITH lg AS (
+          SELECT sum(earned_runs)*9.0/sum(floor(innings_pitched)+(innings_pitched-floor(innings_pitched))*10/3) lg_era,
+                 sum(home_runs_allowed) hr, sum(walks) bb, sum(hbp) hbp, sum(strikeouts) k,
+                 sum(floor(innings_pitched)+(innings_pitched-floor(innings_pitched))*10/3) ip
+          FROM pitcher_stats WHERE season=%s AND innings_pitched>0
+        ), cfip AS (SELECT lg_era-(13*hr+3*(bb+hbp)-2*k)/ip c FROM lg)
+        UPDATE pitcher_stats ps SET
+          k_per_9  = round(ps.strikeouts*9.0/(floor(ps.innings_pitched)+(ps.innings_pitched-floor(ps.innings_pitched))*10/3),2),
+          bb_per_9 = round(ps.walks*9.0/(floor(ps.innings_pitched)+(ps.innings_pitched-floor(ps.innings_pitched))*10/3),2),
+          h_per_9  = round(ps.hits_allowed*9.0/(floor(ps.innings_pitched)+(ps.innings_pitched-floor(ps.innings_pitched))*10/3),2),
+          hr_per_9 = round(ps.home_runs_allowed*9.0/(floor(ps.innings_pitched)+(ps.innings_pitched-floor(ps.innings_pitched))*10/3),2),
+          k_bb     = round(ps.strikeouts::numeric/NULLIF(ps.walks,0),2),
+          fip      = round((13*ps.home_runs_allowed+3*(ps.walks+ps.hbp)-2*ps.strikeouts)/(floor(ps.innings_pitched)+(ps.innings_pitched-floor(ps.innings_pitched))*10/3)+(SELECT c FROM cfip),2),
+          babip    = CASE WHEN ps.tbf>0 AND (ps.tbf-ps.walks-ps.hbp-ps.sac-ps.strikeouts-ps.home_runs_allowed)>0
+                          THEN round((ps.hits_allowed-ps.home_runs_allowed)::numeric/(ps.tbf-ps.walks-ps.hbp-ps.sac-ps.strikeouts-ps.home_runs_allowed),3)
+                          ELSE ps.babip END
+        WHERE ps.season=%s AND ps.innings_pitched>0
+    """, (season, season))
+
+
 def save_players_and_stats(players, player_type):
     """선수 정보 + 통계 DB 저장"""
     
@@ -469,6 +494,9 @@ def save_players_and_stats(players, player_type):
             cur.execute("ROLLBACK TO SAVEPOINT sp_player")
             continue
 
+    # 투수 파생율 재계산 (statiz 미제공 — raw 갱신분 반영, stale 방지)
+    if player_type == "PITCHER" and players:
+        recompute_pitcher_derived(cur, players[0].get("season", 2026))
     conn.commit()
     cur.close()
     conn.close()
