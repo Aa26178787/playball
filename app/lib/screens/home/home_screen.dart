@@ -1347,11 +1347,11 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             Column(
               children: [
                 if (_loadError && !_myTeamOnly) ...[
-                  Icon(Icons.wifi_off, size: 64, color: Colors.grey[300]),
+                  Icon(Icons.wifi_off, size: 64, color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[600] : Colors.grey[300]),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     '불러오기 실패',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black54),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54),
                   ),
                   const SizedBox(height: 8),
                   Text('네트워크를 확인하고 다시 시도해주세요', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
@@ -1372,12 +1372,12 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 ] else ...[
                   Icon(
                     _myTeamOnly ? Icons.star_border : Icons.sports_baseball,
-                    size: 64, color: Colors.grey[300],
+                    size: 64, color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[600] : Colors.grey[300],
                   ),
                   const SizedBox(height: 16),
                   Text(
                     _myTeamOnly ? '마이팀 경기가 없습니다' : '경기가 없는 날입니다',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black54),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54),
                   ),
                   const SizedBox(height: 8),
                   Text(
