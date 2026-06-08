@@ -89,13 +89,15 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
               ElevatedButton.icon(
                 onPressed: _sending ? null : _sendCode,
                 icon: _sending
-                    ? const SizedBox(width: 18, height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? SizedBox(width: 18, height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? SemColor.panelDark : Colors.white))
                     : const Icon(Icons.send),
                 label: Text(_sending ? '발송 중...' : '인증번호 발송'),
+                // bg/fg는 글로벌 theme-aware 버튼 상속 (다크 윤곽소실 방지)
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: SemColor.panelDark,
-                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
               ),

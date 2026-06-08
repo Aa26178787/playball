@@ -170,6 +170,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(title: const Text('회원가입')),
@@ -329,12 +330,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: ElevatedButton(
                   onPressed: (auth.isLoading || !_canRegister) ? null : _register,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: SemColor.panelDark,
-                    foregroundColor: Colors.white,
                     disabledBackgroundColor: Colors.grey[300],
                   ),
                   child: auth.isLoading
-                      ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                      ? CircularProgressIndicator(
+                          color: isDark ? SemColor.panelDark : Colors.white, strokeWidth: 2)
                       : const Text('회원가입', style: TextStyle(fontSize: 16)),
                 ),
               ),
@@ -346,9 +346,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  // bg/fg는 글로벌 elevatedButtonTheme(theme-aware) 상속 — 다크모드 윤곽소실 방지
   ButtonStyle _smallBtn() => ElevatedButton.styleFrom(
-    backgroundColor: SemColor.panelDark,
-    foregroundColor: Colors.white,
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
     textStyle: const TextStyle(fontSize: 13),
   );

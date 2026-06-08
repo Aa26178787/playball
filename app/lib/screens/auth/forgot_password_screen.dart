@@ -96,8 +96,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ElevatedButton(
           onPressed: () => Navigator.pop(context),
           style: ElevatedButton.styleFrom(
-            backgroundColor: SemColor.panelDark,
-            foregroundColor: Colors.white,
             minimumSize: const Size.fromHeight(48),
           ),
           child: const Text('로그인 화면으로'),
@@ -137,7 +135,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             onPressed: _loading ? null : _sendCode,
             style: _btnStyle(),
             child: _loading
-                ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                ? CircularProgressIndicator(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? SemColor.panelDark : Colors.white,
+                    strokeWidth: 2)
                 : const Text('인증번호 발송'),
           ),
         ],
@@ -207,23 +208,28 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Widget _stepDot(int step, String label) {
     final active = _step >= step;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // 활성 = theme-aware 액센트(다크 시 밝은 톤 — panelDark는 다크 배경서 윤곽소실)
+    final accent = SemColor.brand(context);
+    final onAccent = isDark ? SemColor.panelDark : Colors.white;
     return Column(
       children: [
         CircleAvatar(
           radius: 14,
-          backgroundColor: active ? SemColor.panelDark : Colors.grey[300],
+          backgroundColor: active ? accent : Colors.grey[300],
           child: Text('${step + 1}',
-              style: TextStyle(color: active ? Colors.white : Colors.grey, fontSize: 12)),
+              style: TextStyle(color: active ? onAccent : Colors.grey, fontSize: 12)),
         ),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 11, color: active ? SemColor.panelDark : Colors.grey)),
+        Text(label, style: TextStyle(fontSize: 11, color: active ? accent : Colors.grey)),
       ],
     );
   }
 
+  // color 지정 시 그 색(+흰 글씨), 미지정 시 글로벌 theme-aware 버튼 상속(다크 윤곽소실 방지)
   ButtonStyle _btnStyle([Color? color]) => ElevatedButton.styleFrom(
-    backgroundColor: color ?? SemColor.panelDark,
-    foregroundColor: Colors.white,
+    backgroundColor: color,
+    foregroundColor: color != null ? Colors.white : null,
     minimumSize: const Size.fromHeight(48),
   );
 }
