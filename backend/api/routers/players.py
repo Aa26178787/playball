@@ -988,16 +988,17 @@ def get_player_detail(player_id: int):
             maxg = cur.fetchone()[0] or 0
             is_dom = not player[14]   # 국내 선수만 국내랭크 표시
 
-            def _cmp(table, where_extra, where_params, stats):
+            def _cmp(table, where_extra, where_params, stats, guard_zero=True):
                 # stats: [(key, col, higher_better)] — 컬럼명은 하드코딩(주입 안전)
+                # guard_zero: rate 하위-better(ERA 등)는 0=무데이터 제외, counting 하위-better(실책 등)는 0=최고라 미제외
                 cols = [f"round(AVG(t.{c})::numeric,3)" for (k, c, h) in stats]
                 cols += ["COUNT(*)", "COUNT(*) FILTER (WHERE NOT pl.is_foreign)"]
                 vps = []
                 for (k, c, h) in stats:
-                    op = ">" if h else "<"; g = "" if h else f" AND t.{c}>0"
+                    op = ">" if h else "<"; g = "" if (h or not guard_zero) else f" AND t.{c}>0"
                     cols.append(f"COUNT(*) FILTER (WHERE t.{c} {op} %s{g})"); vps.append(latest.get(k) or 0)
                 for (k, c, h) in stats:
-                    op = ">" if h else "<"; g = "" if h else f" AND t.{c}>0"
+                    op = ">" if h else "<"; g = "" if (h or not guard_zero) else f" AND t.{c}>0"
                     cols.append(f"COUNT(*) FILTER (WHERE t.{c} {op} %s{g} AND NOT pl.is_foreign)"); vps.append(latest.get(k) or 0)
                 cur.execute(
                     f"SELECT {', '.join(cols)} FROM {table} t JOIN players pl ON pl.id=t.player_id "
@@ -1015,21 +1016,40 @@ def get_player_detail(player_id: int):
                 return out
 
             if player[2] == "타자":
-                cc = _cmp("batter_stats", "AND t.pa>0", [],
-                          [("home_runs", "home_runs", True), ("rbis", "rbis", True),
-                           ("hits", "hits", True), ("stolen_bases", "stolen_bases", True)])
-                if (latest.get("pa") or 0) >= maxg * 3.1:
-                    cc.update(_cmp("batter_stats", "AND t.pa>=%s", [maxg * 3.1],
-                                   [("avg", "avg", True), ("obp", "obp", True),
-                                    ("slg", "slg", True), ("ops", "ops", True)]))
+                qual = (latest.get("pa") or 0) >= maxg * 3.1
+                result["qualified"] = qual
+                # counting (전체 풀, 항상). 하위-better: strikeouts(삼진)·errors·pb
+                cc = _cmp("batter_stats", "AND t.pa>0", [], [
+                    ("home_runs", "home_runs", True), ("rbis", "rbis", True), ("hits", "hits", True),
+                    ("stolen_bases", "stolen_bases", True), ("walks", "walks", True), ("strikeouts", "strikeouts", False),
+                    ("tb", "tb", True), ("xbh", "xbh", True), ("war", "war", True), ("runs", "runs", True),
+                    ("errors", "errors", False), ("po", "po", True), ("assists", "assists", True),
+                    ("dp", "dp", True), ("pb", "pb", False),
+                ], guard_zero=False)
+                if qual:  # rate (규정 풀)
+                    cc.update(_cmp("batter_stats", "AND t.pa>=%s", [maxg * 3.1], [
+                        ("avg", "avg", True), ("obp", "obp", True), ("slg", "slg", True), ("ops", "ops", True),
+                        ("woba", "woba", True), ("wrc_plus", "wrc_plus", True), ("babip", "babip", True),
+                        ("iso", "iso", True), ("risp", "risp", True), ("bb_pct", "bb_pct", True),
+                        ("k_pct", "k_pct", False), ("gpa", "gpa", True), ("bb_k", "bb_k", True), ("fpct", "fpct", True),
+                    ]))
                 result["core_compare"] = cc
             elif player[2] == "투수":
-                cc = _cmp("pitcher_stats", "AND t.innings_pitched>0", [],
-                          [("strikeouts", "strikeouts", True), ("wins", "wins", True),
-                           ("saves", "saves", True), ("holds", "holds", True), ("qs", "qs", True)])
-                if (latest.get("innings_pitched") or 0) >= maxg * 1.0:
-                    cc.update(_cmp("pitcher_stats", "AND t.innings_pitched>=%s", [maxg * 1.0],
-                                   [("era", "era", False), ("whip", "whip", False), ("k_per_9", "k_per_9", True)]))
+                qual = (latest.get("innings_pitched") or 0) >= maxg * 1.0
+                result["qualified"] = qual
+                # counting (전체 풀, 항상). 하위-better: losses·blown_saves
+                cc = _cmp("pitcher_stats", "AND t.innings_pitched>0", [], [
+                    ("strikeouts", "strikeouts", True), ("wins", "wins", True), ("saves", "saves", True),
+                    ("holds", "holds", True), ("qs", "qs", True), ("innings_pitched", "innings_pitched", True),
+                    ("war", "war", True), ("losses", "losses", False), ("blown_saves", "blown_saves", False),
+                ], guard_zero=False)
+                if qual:  # rate (규정 풀)
+                    cc.update(_cmp("pitcher_stats", "AND t.innings_pitched>=%s", [maxg * 1.0], [
+                        ("era", "era", False), ("whip", "whip", False), ("k_per_9", "k_per_9", True),
+                        ("bb_per_9", "bb_per_9", False), ("fip", "fip", False), ("babip", "babip", False),
+                        ("avg_against", "avg_against", False), ("k_pct", "k_pct", True),
+                        ("bb_pct", "bb_pct", False), ("k_bb_pct", "k_bb_pct", True),
+                    ]))
                 result["core_compare"] = cc
     except Exception:
         pass
