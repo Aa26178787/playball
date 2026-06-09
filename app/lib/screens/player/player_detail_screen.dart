@@ -966,20 +966,24 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final avgStyle = TextStyle(fontSize: 12, color: sub);
     final explain = _statExplain(key, isPitcher); // 용어 설명도 함께
     final avgStr = lg != null ? '리그 평균 ${_fmtStat(key, lg)}' : '';
-    // 줄 균형 폭: 각 텍스트가 같은 줄 수를 유지하는 최소 폭 → 마지막 줄에 몇 글자만 남는 orphan 제거
+    // 줄 균형 폭: 각 블록을 자기 균형폭으로 개별 wrap → 마지막 줄에 몇 글자만 남는 orphan 제거
+    // (공통 폭 쓰면 짧은 블록이 넓은 폭서 다시 orphan 생김 → 블록별 폭)
     const maxW = bw - 32;
-    double contentW = _lineFitWidth(res.$1, sentStyle, maxW);
-    if (avgStr.isNotEmpty) { final w = _lineFitWidth(avgStr, avgStyle, maxW); if (w > contentW) contentW = w; }
-    if (explain.isNotEmpty) { final w = _lineFitWidth(explain, explainStyle, maxW); if (w > contentW) contentW = w; }
-    if (contentW < 140) contentW = 140;
+    final sentW = _lineFitWidth(res.$1, sentStyle, maxW) + 1;
+    final avgW = avgStr.isNotEmpty ? _lineFitWidth(avgStr, avgStyle, maxW) + 1 : 0.0;
+    final explW = explain.isNotEmpty ? _lineFitWidth(explain, explainStyle, maxW) + 1 : 0.0;
+    double contentW = sentW;
+    if (avgW > contentW) contentW = avgW;
+    if (explW > contentW) contentW = explW;
+    if (contentW < 130) contentW = 130;
     final boxW = contentW + 32;
-    // 선택된 폭 기준 높이 측정
+    // 각 블록 자기 폭 기준 높이 측정
     final tp = TextPainter(text: TextSpan(text: res.$1, style: sentStyle),
-        textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: contentW);
+        textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: sentW);
     double explainH = 0;
     if (explain.isNotEmpty) {
       final etp = TextPainter(text: TextSpan(text: explain, style: explainStyle),
-          textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: contentW);
+          textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: explW);
       explainH = 17 + etp.height; // 구분선 영역 + 텍스트
     }
     final avgH = lg != null ? 22.0 : 0.0;
@@ -997,16 +1001,16 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final content = Padding(
       padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(res.$1, style: sentStyle),
+        SizedBox(width: sentW, child: Text(res.$1, style: sentStyle)),
         if (lg != null) ...[
           const SizedBox(height: 6),
-          Text(avgStr, style: avgStyle),
+          SizedBox(width: avgW, child: Text(avgStr, style: avgStyle)),
         ],
         if (explain.isNotEmpty) ...[
           const SizedBox(height: 8),
           Container(height: 1, color: sub.withValues(alpha: 0.22)),
           const SizedBox(height: 8),
-          Text(explain, style: explainStyle),
+          SizedBox(width: explW, child: Text(explain, style: explainStyle)),
         ],
       ]),
     );
