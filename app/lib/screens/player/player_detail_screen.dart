@@ -1014,20 +1014,23 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     style: TextStyle(fontSize: 12, color: sub)),
             ]),
             const SizedBox(height: 6),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: SizedBox(height: 7, child: Stack(children: [
-                Container(width: double.infinity, color: line),
-                FractionallySizedBox(widthFactor: fill, child: Container(color: tc)),
-                // 리그 평균 마커 (중앙 ≈ 평균 순위) — 흰 테두리로 양쪽 대비
-                Align(alignment: Alignment.center,
-                    child: Container(width: 3,
-                        decoration: BoxDecoration(
-                          color: ink,
-                          border: Border.symmetric(vertical: BorderSide(color: paper, width: 0.5)),
-                        ))),
-              ])),
-            ),
+            SizedBox(height: 15, child: Stack(alignment: Alignment.center, children: [
+              // 바 본체 (세로 중앙)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: SizedBox(height: 7, child: Stack(children: [
+                  Container(width: double.infinity, color: line),
+                  FractionallySizedBox(widthFactor: fill, child: Container(color: tc)),
+                ])),
+              ),
+              // 리그 평균 마커 — 바 위아래로 돌출(paper 위) + 흰코어/잉크테두리 = 팀컬러·트랙 무관 대비
+              Container(width: 4, height: 15,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFFF4F4F5) : Colors.white,
+                    border: Border.symmetric(vertical: BorderSide(color: ink, width: 0.8)),
+                    borderRadius: BorderRadius.circular(2),
+                  )),
+            ])),
             const SizedBox(height: 4),
             _avgDeltaLabel(it.$3, c['lg'] as num?, cur[it.$3], isPitcher, tc, sub),
           ] else if (_rateStats.contains(it.$3) && !qualified) ...[
