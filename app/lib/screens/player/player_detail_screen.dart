@@ -101,6 +101,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     _loadPlayer();
     _loadFavStatus();
     _loadVoteStatus();
+    _loadCoreKeys();
   }
 
   Future<void> _loadVoteStatus() async {
@@ -819,7 +820,90 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     );
   }
 
-  // 핵심 2x2 — 리그 평균 대비 + 상위% 바
+  // ── 핵심 스탯 피커 ──────────────────────────────
+  static const Map<String, String> _statLabels = {
+    'avg': '타율', 'obp': '출루율', 'slg': '장타율', 'ops': 'OPS',
+    'home_runs': '홈런', 'rbis': '타점', 'hits': '안타', 'stolen_bases': '도루',
+    'era': 'ERA', 'whip': 'WHIP', 'k_per_9': 'K/9',
+    'strikeouts': '탈삼진', 'wins': '승', 'saves': '세이브', 'holds': '홀드', 'qs': 'QS',
+  };
+  static const List<String> _batterMenu = ['avg', 'obp', 'slg', 'ops', 'home_runs', 'rbis', 'hits', 'stolen_bases'];
+  static const List<String> _pitcherMenu = ['era', 'whip', 'k_per_9', 'strikeouts', 'wins', 'saves', 'holds', 'qs'];
+  List<String> _coreBatterKeys = const ['avg', 'home_runs', 'rbis', 'ops'];
+  List<String> _corePitcherKeys = const ['era', 'strikeouts', 'wins', 'whip'];
+
+  Future<void> _loadCoreKeys() async {
+    final b = await LocalCache.get('core_keys_batter');
+    final p = await LocalCache.get('core_keys_pitcher');
+    if (!mounted) return;
+    setState(() {
+      if (b is List && b.length == 4) _coreBatterKeys = b.cast<String>();
+      if (p is List && p.length == 4) _corePitcherKeys = p.cast<String>();
+    });
+  }
+
+  String _fmtStat(String key, dynamic v) {
+    final n = v as num?;
+    if (n == null) return '-';
+    if (key == 'avg' || key == 'obp' || key == 'slg' || key == 'ops') return n.toStringAsFixed(3);
+    if (key == 'era' || key == 'whip' || key == 'k_per_9') return n.toStringAsFixed(2);
+    return n.toInt().toString();
+  }
+
+  void _openCorePicker(bool isPitcher) {
+    final menu = isPitcher ? _pitcherMenu : _batterMenu;
+    final sel = List<String>.from(isPitcher ? _corePitcherKeys : _coreBatterKeys);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF18181C) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) {
+        final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+        final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 18, 20, 20 + MediaQuery.of(ctx).viewPadding.bottom),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('핵심 스탯 4개 선택', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
+            const SizedBox(height: 4),
+            Text('${sel.length}/4 · 순서대로 표시 (첫 항목 강조)', style: TextStyle(fontSize: 12, color: sub)),
+            const SizedBox(height: 14),
+            Wrap(spacing: 8, runSpacing: 8, children: menu.map((k) {
+              final on = sel.contains(k);
+              return GestureDetector(
+                onTap: () => setSheet(() {
+                  if (on) { sel.remove(k); }
+                  else if (sel.length < 4) { sel.add(k); }
+                }),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: on ? SemColor.brand(context) : (isDark ? const Color(0xFF26262C) : const Color(0xFFF1F1F4)),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(_statLabels[k] ?? k, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                      color: on ? (isDark ? SemColor.panelDark : Colors.white) : ink)),
+                ),
+              );
+            }).toList()),
+            const SizedBox(height: 18),
+            SizedBox(width: double.infinity, child: ElevatedButton(
+              onPressed: sel.length == 4 ? () {
+                setState(() {
+                  if (isPitcher) { _corePitcherKeys = sel; } else { _coreBatterKeys = sel; }
+                });
+                LocalCache.set(isPitcher ? 'core_keys_pitcher' : 'core_keys_batter', sel).catchError((_) {});
+                Navigator.pop(ctx);
+              } : null,
+              child: const Text('적용'),
+            )),
+          ]),
+        );
+      }),
+    );
+  }
+
+  // 핵심 2x2 — 리그 평균 대비 + 순위 바 (스탯 커스텀)
   Widget _buildCoreStatsGrid(Map<String, dynamic> player) {
     final cur = _latestSeason(player);
     if (cur == null) return const SizedBox.shrink();
@@ -833,17 +917,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
 
-    final items = isPitcher
-        ? [('ERA', _f2(cur['era']), 'era'), ('탈삼진', _i0(cur['strikeouts']), 'strikeouts'),
-           ('승', _i0(cur['wins']), 'wins'), ('WHIP', _f2(cur['whip']), 'whip')]
-        : [('타율', _f3(cur['avg']), 'avg'), ('홈런', _i0(cur['home_runs']), 'home_runs'),
-           ('타점', _i0(cur['rbis']), 'rbis'), ('OPS', _f3(cur['ops']), 'ops')];
-
-    String fmtLg(String key, num v) {
-      if (key == 'avg' || key == 'ops') return v.toStringAsFixed(3);
-      if (key == 'era' || key == 'whip') return v.toStringAsFixed(2);
-      return v.toStringAsFixed(0);
-    }
+    final keys = isPitcher ? _corePitcherKeys : _coreBatterKeys;
+    final items = [for (final k in keys) (_statLabels[k] ?? k, _fmtStat(k, cur[k]), k)];
 
     Widget card((String, String, String) it, bool highlight) {
       final c = cmp[it.$3] as Map?;
@@ -884,7 +959,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 ]),
               )),
               const SizedBox(width: 6),
-              Text('리그 평균 ${fmtLg(it.$3, (c['lg'] as num?) ?? 0)}',
+              Text('리그 평균 ${_fmtStat(it.$3, (c['lg'] as num?) ?? 0)}',
                   style: TextStyle(fontSize: 9, color: sub)),
             ]),
           ],
@@ -895,8 +970,18 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('${cur['season'] ?? ''} 시즌 핵심 기록',
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
+        Row(children: [
+          Expanded(child: Text('${cur['season'] ?? ''} 시즌 핵심 기록',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5))),
+          GestureDetector(
+            onTap: () => _openCorePicker(isPitcher),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.tune, size: 13, color: sub),
+              const SizedBox(width: 3),
+              Text('편집', style: TextStyle(fontSize: 11, color: sub, fontWeight: FontWeight.w600)),
+            ]),
+          ),
+        ]),
         const SizedBox(height: 12),
         GridView.count(
           crossAxisCount: 2, shrinkWrap: true,
