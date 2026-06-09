@@ -914,6 +914,50 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     );
   }
 
+  // 숫자 길게 누르면 리그 평균 대비 비교 팝업
+  void _showCompare(String label, String value, String key, Map? c, dynamic pv, bool isPitcher, Color tc) {
+    if (c == null) return;
+    final res = _compareText(key, c, pv, isPitcher);
+    if (res.$1.isEmpty) return;
+    final isRate = _rateStats.contains(key);
+    final lg = c['lg'] as num?;
+    final rank = (c['rank'] as num?)?.toInt();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF18181C) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+        final sub = isDark ? const Color(0xFFC4C4CC) : const Color(0xFF52525B);
+        return Padding(
+          padding: EdgeInsets.fromLTRB(22, 20, 22, 24 + MediaQuery.of(ctx).viewPadding.bottom),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: sub)),
+              const Spacer(),
+              Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: tc,
+                  fontFeatures: const [FontFeature.tabularFigures()])),
+            ]),
+            if (lg != null) ...[
+              const SizedBox(height: 6),
+              Text('리그 평균 ${_fmtStat(key, lg)}', style: TextStyle(fontSize: 13, color: sub)),
+            ],
+            const SizedBox(height: 16),
+            Text('${isRate ? '리그 평균보다 ' : ''}${res.$1}',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, height: 1.4,
+                    color: res.$2 ? tc : ink)),
+            if (rank != null) ...[
+              const SizedBox(height: 6),
+              Text('리그 $rank위${c['dom_rank'] != null ? ' · 국내 ${c['dom_rank']}위' : ''}',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: sub)),
+            ],
+          ]),
+        );
+      },
+    );
+  }
+
   // 세부/고급/수비 그리드 — 셀마다 기록명 + (ⓘ 설명)
   Widget _seasonGridSection(String title, List<(String, String, String)> items, {bool isPitcher = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1136,8 +1180,13 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 child: Icon(Icons.info_outline, size: 13, color: labelCol.withValues(alpha: 0.6)),
               ),
             ])),
-            Text(it.$2, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
-                color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
+            // 숫자 길게 누르면 리그 평균 대비 비교 팝업
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onLongPress: () => _showCompare(it.$1, it.$2, it.$3, c, cur[it.$3], isPitcher, tc),
+              child: Text(it.$2, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
+                  color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
+            ),
           ]),
           if (c != null) ...[
             const SizedBox(height: 8),
@@ -1156,18 +1205,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 FractionallySizedBox(widthFactor: fill, child: Container(color: tc)),
               ])),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 6),
             Text('리그 평균 ${_fmtStat(it.$3, (c['lg'] as num?) ?? 0)}',
-                style: TextStyle(fontSize: 10, color: sub)),
-            ...() {
-              final res = _compareText(it.$3, c, cur[it.$3], isPitcher);
-              if (res.$1.isEmpty) return <Widget>[];
-              return [
-                const SizedBox(height: 3),
-                Text(res.$1, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
-                    color: res.$2 ? tc : sub, height: 1.2)),
-              ];
-            }(),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: sub)),
           ] else if (_rateStats.contains(it.$3) && !qualified) ...[
             const SizedBox(height: 8),
             Text(isPitcher ? '규정이닝 미달' : '규정타석 미달',
@@ -1197,7 +1237,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           crossAxisCount: 2, shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 10, crossAxisSpacing: 10,
-          childAspectRatio: 1.0,
+          childAspectRatio: 1.3,
           children: [for (int i = 0; i < items.length; i++) card(items[i], i == 0)],
         ),
       ]),
