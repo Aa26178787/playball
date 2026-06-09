@@ -314,12 +314,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 child: LinearProgressIndicator())
             : null,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.compare_arrows),
-            tooltip: '선수 비교',
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const PlayerCompareScreen())),
-          ),
           _favLoading
               ? Padding(padding: const EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: SemColor.brand(context))))
               : IconButton(
@@ -330,8 +324,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.small(
-        tooltip: '상대전적 조회',
-        onPressed: () => _showMatchupSheet(player),
+        tooltip: '선수 비교 · 상대전적',
+        onPressed: () => _showPlayerActions(player),
         child: const Icon(Icons.compare_arrows),
       ),
       body: _bodyLoading
@@ -925,6 +919,37 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   void _dismissCompareBubble() {
     _compareBubble?.remove();
     _compareBubble = null;
+  }
+
+  // FAB — 선수 비교 + 상대전적 통합 메뉴
+  void _showPlayerActions(Map<String, dynamic> player) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final sub = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF6B6B73);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF18181C) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        Widget tile(IconData icon, String title, String desc, VoidCallback onTap) => ListTile(
+          leading: Icon(icon, color: SemColor.brand(context)),
+          title: Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: ink)),
+          subtitle: Text(desc, style: TextStyle(fontSize: 12, color: sub)),
+          onTap: () { Navigator.pop(ctx); onTap(); },
+        );
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              tile(Icons.compare_arrows, '선수 비교', '다른 선수와 기록을 나란히 비교',
+                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PlayerCompareScreen()))),
+              tile(Icons.query_stats, '상대전적 조회', '상대 선수와의 맞대결 기록',
+                  () => _showMatchupSheet(player)),
+            ]),
+          ),
+        );
+      },
+    );
   }
 
   // 단어(공백 구분) 내 글자를 WORD JOINER로 묶어 단어 중간 줄바꿈 방지 (한글 음절 분리 '높을/수록' 차단)
