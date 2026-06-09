@@ -861,18 +861,18 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(child: Text(it.$1, style: TextStyle(fontSize: 11, color: sub))),
-            Text(it.$2, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800,
+            Expanded(child: Text(it.$1, style: TextStyle(fontSize: 13, color: sub))),
+            Text(it.$2, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
                 color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
           ]),
           if (c != null) ...[
             const SizedBox(height: 8),
             Row(children: [
               Text('리그 ${c['rank']}위',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: tc)),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: tc)),
               if (c['dom_rank'] != null)
                 Text('  ·  국내 ${c['dom_rank']}위',
-                    style: TextStyle(fontSize: 10, color: sub)),
+                    style: TextStyle(fontSize: 12, color: sub)),
             ]),
             const SizedBox(height: 6),
             Row(children: [
@@ -884,7 +884,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 ]),
               )),
               const SizedBox(width: 6),
-              Text('리그 ${fmtLg(it.$3, (c['lg'] as num?) ?? 0)}',
+              Text('리그 평균 ${fmtLg(it.$3, (c['lg'] as num?) ?? 0)}',
                   style: TextStyle(fontSize: 9, color: sub)),
             ]),
           ],
@@ -902,7 +902,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           crossAxisCount: 2, shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 10, crossAxisSpacing: 10,
-          childAspectRatio: 1.5,
+          childAspectRatio: 1.4,
           children: [for (int i = 0; i < items.length; i++) card(items[i], i == 0)],
         ),
       ]),

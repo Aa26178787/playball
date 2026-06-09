@@ -993,7 +993,7 @@ def get_player_detail(player_id: int):
                     d["dom_rank"] = (dbetter or 0) + 1
                     d["dom_total"] = dtot or 0
                 return d
-            if player[2] == "타자":
+            if player[2] == "타자" and (latest.get("pa") or 0) >= maxg * 3.1:
                 pv = (latest.get("avg") or 0, latest.get("home_runs") or 0, latest.get("rbis") or 0, latest.get("ops") or 0)
                 cur.execute("""
                     SELECT round(AVG(bs.avg)::numeric,3), round(AVG(bs.home_runs)::numeric,1),
@@ -1011,7 +1011,7 @@ def get_player_detail(player_id: int):
                     "avg": mk(a[0], a[5], a[4], a[10], a[9]), "home_runs": mk(a[1], a[6], a[4], a[11], a[9]),
                     "rbis": mk(a[2], a[7], a[4], a[12], a[9]), "ops": mk(a[3], a[8], a[4], a[13], a[9]),
                 }
-            elif player[2] == "투수":
+            elif player[2] == "투수" and (latest.get("innings_pitched") or 0) >= maxg * 1.0:
                 pv = (latest.get("era") or 0, latest.get("strikeouts") or 0, latest.get("wins") or 0, latest.get("whip") or 0)
                 cur.execute("""
                     SELECT round(AVG(ps.era)::numeric,2), round(AVG(ps.strikeouts)::numeric,0),
