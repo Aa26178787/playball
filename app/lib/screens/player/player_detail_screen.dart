@@ -25,6 +25,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   Map<String, dynamic>? _playerData;
   List<dynamic> _dailyStats = [];
   Map<String, dynamic>? _pitchStats;
+  OverlayEntry? _compareBubble; // 숫자 길게누르기 비교 말풍선
   // 피칭 디자인 (구종별 5x5 존 분포)
   Map<String, dynamic>? _pitchDesign;
   String _pdStance = ''; // '' 전체 / 'R' vs우타 / 'L' vs좌타
@@ -102,6 +103,13 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     _loadFavStatus();
     _loadVoteStatus();
     _loadCoreKeys();
+  }
+
+  @override
+  void dispose() {
+    _compareBubble?.remove();
+    _compareBubble = null;
+    super.dispose();
   }
 
   Future<void> _loadVoteStatus() async {
@@ -914,41 +922,66 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     );
   }
 
-  // 숫자 길게 누르면 리그 평균 대비 비교 팝업
-  void _showCompare(String label, String value, String key, Map? c, dynamic pv, bool isPitcher, Color tc) {
+  void _dismissCompareBubble() {
+    _compareBubble?.remove();
+    _compareBubble = null;
+  }
+
+  // 숫자 길게 누르면 누른 위치에 말풍선으로 리그 평균 대비 비교 출력
+  void _showCompareBubble(Offset pos, String key, Map? c, dynamic pv, bool isPitcher, Color tc) {
     if (c == null) return;
     final res = _compareText(key, c, pv, isPitcher);
     if (res.$1.isEmpty) return;
+    _dismissCompareBubble();
     final lg = c['lg'] as num?;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? const Color(0xFF18181C) : Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) {
-        final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-        final sub = isDark ? const Color(0xFFC4C4CC) : const Color(0xFF52525B);
-        return Padding(
-          padding: EdgeInsets.fromLTRB(22, 20, 22, 24 + MediaQuery.of(ctx).viewPadding.bottom),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: sub)),
-              const Spacer(),
-              Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: tc,
-                  fontFeatures: const [FontFeature.tabularFigures()])),
+    final media = MediaQuery.of(context).size;
+    final bg = isDark ? const Color(0xFF232329) : Colors.white;
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final sub = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF6B6B73);
+    final mainCol = res.$2 ? tc : ink;
+    const bw = 250.0;
+    final left = (pos.dx - bw / 2).clamp(8.0, media.width - bw - 8);
+    // 누른 지점 위로 말풍선 (bottom 앵커 → 높이 미측정 가능)
+    _compareBubble = OverlayEntry(builder: (ctx) {
+      return Stack(children: [
+        Positioned.fill(child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _dismissCompareBubble,
+        )),
+        Positioned(
+          left: left,
+          bottom: media.height - pos.dy + 10,
+          width: bw,
+          child: Material(
+            color: Colors.transparent,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: mainCol.withValues(alpha: 0.35)),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.18),
+                      blurRadius: 16, offset: const Offset(0, 6))],
+                ),
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(res.$1, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, height: 1.4, color: mainCol)),
+                  if (lg != null) ...[
+                    const SizedBox(height: 6),
+                    Text('리그 평균 ${_fmtStat(key, lg)}', style: TextStyle(fontSize: 12, color: sub)),
+                  ],
+                ]),
+              ),
+              // 꼬리 (아래 방향) — 누른 숫자 가리킴
+              CustomPaint(size: const Size(18, 9),
+                  painter: _BubbleTail(bg, mainCol.withValues(alpha: 0.35))),
             ]),
-            if (lg != null) ...[
-              const SizedBox(height: 6),
-              Text('리그 평균 ${_fmtStat(key, lg)}', style: TextStyle(fontSize: 13, color: sub)),
-            ],
-            const SizedBox(height: 16),
-            Text(res.$1,
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, height: 1.4,
-                    color: res.$2 ? tc : ink)),
-          ]),
-        );
-      },
-    );
+          ),
+        ),
+      ]);
+    });
+    Overlay.of(context).insert(_compareBubble!);
   }
 
   // 세부/고급/수비 그리드 — 셀마다 기록명 + (ⓘ 설명)
@@ -1173,10 +1206,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 child: Icon(Icons.info_outline, size: 13, color: labelCol.withValues(alpha: 0.6)),
               ),
             ])),
-            // 숫자 길게 누르면 리그 평균 대비 비교 팝업
+            // 숫자 길게 누르면 누른 자리에 비교 말풍선
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onLongPress: () => _showCompare(it.$1, it.$2, it.$3, c, cur[it.$3], isPitcher, tc),
+              onLongPressStart: (d) => _showCompareBubble(d.globalPosition, it.$3, c, cur[it.$3], isPitcher, tc),
               child: Text(it.$2, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
                   color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
             ),
@@ -2283,4 +2316,27 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       ),
     );
   }
+}
+
+// 말풍선 아래 꼬리 (fill + 테두리)
+class _BubbleTail extends CustomPainter {
+  final Color fill;
+  final Color border;
+  _BubbleTail(this.fill, this.border);
+  @override
+  void paint(Canvas canvas, Size s) {
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(s.width, 0)
+      ..lineTo(s.width / 2, s.height)
+      ..close();
+    canvas.drawPath(path, Paint()..color = fill..style = PaintingStyle.fill..isAntiAlias = true);
+    // 좌우 변만 테두리 (윗변은 말풍선과 맞닿아 생략)
+    final bp = Paint()..color = border..style = PaintingStyle.stroke..strokeWidth = 1..isAntiAlias = true;
+    canvas.drawLine(Offset(0, 0), Offset(s.width / 2, s.height), bp);
+    canvas.drawLine(Offset(s.width, 0), Offset(s.width / 2, s.height), bp);
+  }
+
+  @override
+  bool shouldRepaint(_BubbleTail old) => old.fill != fill || old.border != border;
 }
