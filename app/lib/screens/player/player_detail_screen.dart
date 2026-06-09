@@ -936,13 +936,43 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final lg = c['lg'] as num?;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final media = MediaQuery.of(context).size;
+    final padTop = MediaQuery.of(context).padding.top;
     final bg = isDark ? const Color(0xFF232329) : Colors.white;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final sub = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF6B6B73);
     final mainCol = res.$2 ? tc : ink;
+    final borderCol = mainCol.withValues(alpha: 0.4);
     const bw = 250.0;
+    const tailH = 9.0;
+    const gap = 6.0;
+    final sentStyle = TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, height: 1.4, color: mainCol);
+    // 본문 높이 측정 → 위/아래 배치 결정 (높이 미리 알아야 헤더 침범·클리핑 판단)
+    final tp = TextPainter(
+      text: TextSpan(text: res.$1, style: sentStyle),
+      textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: bw - 32);
+    final avgH = lg != null ? 22.0 : 0.0;
+    final bubbleH = 26 + tp.height + avgH; // 상하 패딩 13*2
+    final totalH = bubbleH + tailH;
     final left = (pos.dx - bw / 2).clamp(8.0, media.width - bw - 8);
-    // 누른 지점 위로 말풍선 (bottom 앵커 → 높이 미측정 가능)
+    final tailX = pos.dx - left; // 꼬리는 항상 숫자 x 위치
+    // 헤더(앱바) 아래로만, 위로 올리면 잘릴 때 아래로 뒤집기
+    final safeTop = padTop + kToolbarHeight + 4;
+    final aboveTop = pos.dy - gap - totalH;
+    final placeAbove = aboveTop >= safeTop;
+    final top = placeAbove ? aboveTop : (pos.dy + gap);
+    final tailDown = placeAbove; // 위 배치면 꼬리 아래로(숫자 가리킴), 아래 배치면 꼬리 위로
+
+    final content = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(res.$1, style: sentStyle),
+        if (lg != null) ...[
+          const SizedBox(height: 6),
+          Text('리그 평균 ${_fmtStat(key, lg)}', style: TextStyle(fontSize: 12, color: sub)),
+        ],
+      ]),
+    );
+
     _compareBubble = OverlayEntry(builder: (ctx) {
       return Stack(children: [
         Positioned.fill(child: GestureDetector(
@@ -950,32 +980,15 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           onTap: _dismissCompareBubble,
         )),
         Positioned(
-          left: left,
-          bottom: media.height - pos.dy + 10,
-          width: bw,
+          left: left, top: top, width: bw, height: totalH,
           child: Material(
             color: Colors.transparent,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
-                decoration: BoxDecoration(
-                  color: bg,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: mainCol.withValues(alpha: 0.35)),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.18),
-                      blurRadius: 16, offset: const Offset(0, 6))],
-                ),
-                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(res.$1, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, height: 1.4, color: mainCol)),
-                  if (lg != null) ...[
-                    const SizedBox(height: 6),
-                    Text('리그 평균 ${_fmtStat(key, lg)}', style: TextStyle(fontSize: 12, color: sub)),
-                  ],
-                ]),
-              ),
-              // 꼬리 (아래 방향) — 누른 숫자 가리킴
-              CustomPaint(size: const Size(18, 9),
-                  painter: _BubbleTail(bg, mainCol.withValues(alpha: 0.35))),
+            child: Stack(children: [
+              // 사각형 + 꼬리 단일 path (이음새 없음)
+              Positioned.fill(child: CustomPaint(
+                painter: _BubbleShape(fill: bg, border: borderCol, tailX: tailX, tailH: tailH,
+                    tailDown: tailDown, shadow: isDark ? 0.0 : 1.0))),
+              Positioned(left: 0, right: 0, top: tailDown ? 0 : tailH, child: content),
             ]),
           ),
         ),
@@ -2318,25 +2331,52 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 }
 
-// 말풍선 아래 꼬리 (fill + 테두리)
-class _BubbleTail extends CustomPainter {
+// 말풍선 = 둥근 사각형 + 꼬리를 하나의 연속 외곽선 path로 (이음새 없음)
+class _BubbleShape extends CustomPainter {
   final Color fill;
   final Color border;
-  _BubbleTail(this.fill, this.border);
+  final double tailX;   // 꼬리 중심 x (말풍선 내 좌표)
+  final double tailH;
+  final bool tailDown;  // true=꼬리 아래(말풍선 위 배치) / false=꼬리 위
+  final double shadow;  // 0~1 그림자 세기
+  static const double tailW = 16;
+  static const double radius = 14;
+  _BubbleShape({required this.fill, required this.border, required this.tailX,
+      required this.tailH, required this.tailDown, this.shadow = 1.0});
+
   @override
-  void paint(Canvas canvas, Size s) {
-    final path = Path()
-      ..moveTo(0, 0)
-      ..lineTo(s.width, 0)
-      ..lineTo(s.width / 2, s.height)
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final r = radius;
+    final boxTop = tailDown ? 0.0 : tailH;
+    final boxBot = tailDown ? size.height - tailH : size.height;
+    final tx = tailX.clamp(r + tailW / 2 + 2, w - r - tailW / 2 - 2);
+    final path = Path()..moveTo(r, boxTop);
+    if (!tailDown) {
+      path..lineTo(tx - tailW / 2, boxTop)..lineTo(tx, 0)..lineTo(tx + tailW / 2, boxTop);
+    }
+    path
+      ..lineTo(w - r, boxTop)
+      ..arcToPoint(Offset(w, boxTop + r), radius: Radius.circular(r))
+      ..lineTo(w, boxBot - r)
+      ..arcToPoint(Offset(w - r, boxBot), radius: Radius.circular(r));
+    if (tailDown) {
+      path..lineTo(tx + tailW / 2, boxBot)..lineTo(tx, size.height)..lineTo(tx - tailW / 2, boxBot);
+    }
+    path
+      ..lineTo(r, boxBot)
+      ..arcToPoint(Offset(0, boxBot - r), radius: Radius.circular(r))
+      ..lineTo(0, boxTop + r)
+      ..arcToPoint(Offset(r, boxTop), radius: Radius.circular(r))
       ..close();
+    if (shadow > 0) {
+      canvas.drawShadow(path, Colors.black.withValues(alpha: 0.5 * shadow), 6, false);
+    }
     canvas.drawPath(path, Paint()..color = fill..style = PaintingStyle.fill..isAntiAlias = true);
-    // 좌우 변만 테두리 (윗변은 말풍선과 맞닿아 생략)
-    final bp = Paint()..color = border..style = PaintingStyle.stroke..strokeWidth = 1..isAntiAlias = true;
-    canvas.drawLine(Offset(0, 0), Offset(s.width / 2, s.height), bp);
-    canvas.drawLine(Offset(s.width, 0), Offset(s.width / 2, s.height), bp);
+    canvas.drawPath(path, Paint()..color = border..style = PaintingStyle.stroke..strokeWidth = 1..isAntiAlias = true);
   }
 
   @override
-  bool shouldRepaint(_BubbleTail old) => old.fill != fill || old.border != border;
+  bool shouldRepaint(_BubbleShape o) =>
+      o.fill != fill || o.border != border || o.tailX != tailX || o.tailDown != tailDown;
 }
