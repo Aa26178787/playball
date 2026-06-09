@@ -778,29 +778,29 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   static const Set<String> _lowerBetterBatter = {'strikeouts', 'errors', 'pb', 'k_pct'};
   static const Set<String> _lowerBetterPitcher = {'era', 'whip', 'fip', 'bb_per_9', 'babip', 'avg_against', 'losses', 'blown_saves', 'bb_pct'};
 
-  // rate 스탯 압축 친화 문구 (below=평균보다 낮을 때, above=높을 때) — '{p}'=퍼센트 자리.
-  // 바로 윗줄 '평균 X'가 맥락 → '평균보다' 접두 생략. 고급지표는 전문용어 대신 쉬운 말로 풀어씀.
+  // rate 스탯 비교 문장 (below=평균보다 낮을 때, above=높을 때) — '{p}'=퍼센트 자리.
+  // 팝업 전용(공간 여유) → 완성형 문장. 고급지표는 의미를 풀어 설명.
   static const Map<String, (String, String)> _comparePhrase = {
-    'era': ('실점 {p}% 적게 허용', '실점 {p}% 많이 허용'),
-    'whip': ('출루 {p}% 적게 허용', '출루 {p}% 많이 허용'),
-    'fip': ('수비 빼도 실점 {p}% 적음', '수비 빼도 실점 {p}% 많음'),
-    'avg_against': ('피안타 {p}% 적게 허용', '피안타 {p}% 많이 허용'),
-    'bb_per_9': ('9이닝당 볼넷 {p}% 적음', '9이닝당 볼넷 {p}% 많음'),
-    'k_per_9': ('9이닝당 탈삼진 {p}% 적음', '9이닝당 탈삼진 {p}% 많음'),
-    'k_bb_pct': ('삼진-볼넷 차 {p}% 작음', '삼진-볼넷 차 {p}% 큼'),
-    'avg': ('타율 {p}% 낮음', '타율 {p}% 높음'),
-    'obp': ('출루율 {p}% 낮음', '출루율 {p}% 높음'),
-    'slg': ('장타율 {p}% 낮음', '장타율 {p}% 높음'),
-    'ops': ('OPS {p}% 낮음', 'OPS {p}% 높음'),
-    'woba': ('공격 생산력 {p}% 낮음', '공격 생산력 {p}% 높음'),
-    'wrc_plus': ('득점 생산 {p}% 적음', '득점 생산 {p}% 많음'),
-    'iso': ('장타력 {p}% 낮음', '장타력 {p}% 높음'),
-    'risp': ('득점권 타율 {p}% 낮음', '득점권 타율 {p}% 높음'),
-    'gpa': ('타격 생산력 {p}% 낮음', '타격 생산력 {p}% 높음'),
-    'bb_k': ('선구안 {p}% 낮음', '선구안 {p}% 높음'),
-    'fpct': ('수비 성공률 {p}% 낮음', '수비 성공률 {p}% 높음'),
-    'bb_pct': ('볼넷 비율 {p}% 낮음', '볼넷 비율 {p}% 높음'),
-    'babip': ('인플레이 타율 {p}% 낮음', '인플레이 타율 {p}% 높음'),
+    'era': ('리그 평균보다 실점을 {p}% 적게 허용했어요', '리그 평균보다 실점을 {p}% 많이 허용했어요'),
+    'whip': ('리그 평균보다 이닝당 주자를 {p}% 적게 내보냈어요', '리그 평균보다 이닝당 주자를 {p}% 많이 내보냈어요'),
+    'fip': ('수비 도움을 빼고 봐도 리그 평균보다 {p}% 적게 실점했어요', '수비 도움을 빼고 보면 리그 평균보다 {p}% 많이 실점했어요'),
+    'avg_against': ('리그 평균보다 피안타율이 {p}% 낮아요', '리그 평균보다 피안타율이 {p}% 높아요'),
+    'bb_per_9': ('리그 평균보다 9이닝당 볼넷을 {p}% 적게 내줬어요', '리그 평균보다 9이닝당 볼넷을 {p}% 많이 내줬어요'),
+    'k_per_9': ('리그 평균보다 9이닝당 탈삼진을 {p}% 적게 잡았어요', '리그 평균보다 9이닝당 탈삼진을 {p}% 많이 잡았어요'),
+    'k_bb_pct': ('삼진에서 볼넷을 뺀 비율이 리그 평균보다 {p}% 낮아요', '삼진에서 볼넷을 뺀 비율이 리그 평균보다 {p}% 높아요'),
+    'avg': ('리그 평균보다 타율이 {p}% 낮아요', '리그 평균보다 타율이 {p}% 높아요'),
+    'obp': ('리그 평균보다 출루율이 {p}% 낮아요', '리그 평균보다 출루율이 {p}% 높아요'),
+    'slg': ('리그 평균보다 장타율이 {p}% 낮아요', '리그 평균보다 장타율이 {p}% 높아요'),
+    'ops': ('리그 평균보다 OPS가 {p}% 낮아요', '리그 평균보다 OPS가 {p}% 높아요'),
+    'woba': ('타격을 종합한 득점 생산력이 리그 평균보다 {p}% 낮아요', '타격을 종합한 득점 생산력이 리그 평균보다 {p}% 높아요'),
+    'wrc_plus': ('리그 평균보다 득점 생산력이 {p}% 낮아요', '리그 평균보다 득점 생산력이 {p}% 높아요'),
+    'iso': ('리그 평균보다 순수 장타력이 {p}% 낮아요', '리그 평균보다 순수 장타력이 {p}% 높아요'),
+    'risp': ('리그 평균보다 득점권 타율이 {p}% 낮아요', '리그 평균보다 득점권 타율이 {p}% 높아요'),
+    'gpa': ('리그 평균보다 타격 생산력이 {p}% 낮아요', '리그 평균보다 타격 생산력이 {p}% 높아요'),
+    'bb_k': ('볼넷 대비 삼진(선구안)이 리그 평균보다 {p}% 낮아요', '볼넷 대비 삼진(선구안)이 리그 평균보다 {p}% 높아요'),
+    'fpct': ('리그 평균보다 수비 성공률이 {p}% 낮아요', '리그 평균보다 수비 성공률이 {p}% 높아요'),
+    'bb_pct': ('리그 평균보다 볼넷 비율이 {p}% 낮아요', '리그 평균보다 볼넷 비율이 {p}% 높아요'),
+    'babip': ('인플레이 타구가 안타가 된 비율이 리그 평균보다 {p}% 낮아요', '인플레이 타구가 안타가 된 비율이 리그 평균보다 {p}% 높아요'),
   };
 
   // 리그 평균 대비 친화 문장 + 우열(better).
@@ -814,15 +814,15 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       if (pNum == null || lg == null || lg == 0) return ('', true);
       final lower = isPitcher ? _lowerBetterPitcher.contains(key) : _lowerBetterBatter.contains(key);
       final p = ((pNum - lg) / lg.abs()).abs() * 100;
-      if (p < 0.05) return ('평균과 같음', true);
+      if (p < 0.05) return ('리그 평균과 거의 같아요', true);
       final above = pNum > lg;
       final better = above ? !lower : lower;
       final pStr = p.toStringAsFixed(1);
       final tpl = key == 'k_pct'
-          ? ('삼진 비율 {p}% 낮음', '삼진 비율 {p}% 높음')
+          ? ('리그 평균보다 삼진 비율이 {p}% 낮아요', '리그 평균보다 삼진 비율이 {p}% 높아요')
           : _comparePhrase[key];
       if (tpl == null) {
-        return ('평균보다 ${above ? '높음' : '낮음'} ($pStr%)', better);
+        return ('리그 평균보다 ${above ? '{p}% 높아요' : '{p}% 낮아요'}'.replaceFirst('{p}', pStr), better);
       }
       return ((above ? tpl.$2 : tpl.$1).replaceFirst('{p}', pStr), better);
     }
@@ -832,7 +832,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     if (rank == null || total == null || total == 0) return ('', true);
     final pctTop = (rank / total) * 100;
     final better = pctTop <= 50;
-    final s = pctTop < 1 ? '리그 상위 1% 이내' : '리그 상위 ${pctTop.toStringAsFixed(pctTop < 10 ? 1 : 0)}%';
+    final s = pctTop < 1 ? '리그 상위 1% 이내예요' : '리그 상위 ${pctTop.toStringAsFixed(pctTop < 10 ? 1 : 0)}% 수준이에요';
     return (s, better);
   }
 
@@ -919,9 +919,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     if (c == null) return;
     final res = _compareText(key, c, pv, isPitcher);
     if (res.$1.isEmpty) return;
-    final isRate = _rateStats.contains(key);
     final lg = c['lg'] as num?;
-    final rank = (c['rank'] as num?)?.toInt();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
@@ -944,14 +942,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
               Text('리그 평균 ${_fmtStat(key, lg)}', style: TextStyle(fontSize: 13, color: sub)),
             ],
             const SizedBox(height: 16),
-            Text('${isRate ? '리그 평균보다 ' : ''}${res.$1}',
+            Text(res.$1,
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, height: 1.4,
                     color: res.$2 ? tc : ink)),
-            if (rank != null) ...[
-              const SizedBox(height: 6),
-              Text('리그 $rank위${c['dom_rank'] != null ? ' · 국내 ${c['dom_rank']}위' : ''}',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: sub)),
-            ],
           ]),
         );
       },
