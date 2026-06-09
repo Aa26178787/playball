@@ -769,11 +769,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     return cur;
   }
 
-  static String _f3(dynamic v) => (v as num?)?.toStringAsFixed(3) ?? '-';
-  static String _f2(dynamic v) => (v as num?)?.toStringAsFixed(2) ?? '-';
-  static String _f1(dynamic v) => (v as num?)?.toStringAsFixed(1) ?? '-';
-  static String _i0(dynamic v) => '${(v as num?)?.toInt() ?? 0}';
-  static String _pct(dynamic v) => (v == null || v == 0) ? '-' : '${(v as num).toStringAsFixed(1)}%';
 
   static const Set<String> _rateStats = {
     'avg', 'obp', 'slg', 'ops', 'woba', 'wrc_plus', 'babip', 'iso', 'risp', 'bb_pct', 'k_pct', 'gpa', 'bb_k', 'fpct',
@@ -781,8 +776,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   };
 
   // 세부/고급/수비 그리드 — 셀마다 리그순위 / 규정미달 표시
-  Widget _seasonGridSection(String title, List<(String, String, String)> items,
-      {Color? tc, Map cmp = const {}, bool qualified = true, bool isPitcher = false}) {
+  Widget _seasonGridSection(String title, List<(String, String, String)> items) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
@@ -874,9 +868,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 
   String _fmtStat(String key, dynamic v) {
+    if (v == null) return '-';
+    if (key == 'innings_pitched') return v.toString();
     final n = v as num?;
     if (n == null) return '-';
-    if (key == 'innings_pitched') return n.toString();
     if (_fmt3.contains(key)) return n.toStringAsFixed(3);
     if (_fmt2.contains(key)) return n.toStringAsFixed(2);
     if (_fmt1.contains(key)) return n.toStringAsFixed(1);
@@ -1045,41 +1040,35 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     );
   }
 
-  // 세부 3열 + 고급 지표 3열
+  // 세부/고급/수비 그리드 — 핵심 4개에 든 스탯은 제외 (중복·누락 방지, 핵심 변경 시 자동 반영)
+  static const List<String> _gBatterDetail = [
+    'avg', 'obp', 'slg', 'ops', 'hits', 'home_runs', 'rbis', 'runs', 'stolen_bases', 'walks', 'strikeouts', 'tb', 'xbh', 'bb_k',
+  ];
+  static const List<String> _gBatterAdv = ['woba', 'wrc_plus', 'war', 'babip', 'iso', 'risp', 'gpa', 'bb_pct', 'k_pct'];
+  static const List<String> _gBatterDef = ['fpct', 'errors', 'po', 'assists', 'dp', 'pb'];
+  static const List<String> _gPitcherDetail = [
+    'era', 'whip', 'wins', 'losses', 'saves', 'holds', 'qs', 'innings_pitched', 'strikeouts', 'avg_against', 'blown_saves',
+  ];
+  static const List<String> _gPitcherAdv = ['fip', 'k_per_9', 'bb_per_9', 'war', 'babip', 'k_pct', 'bb_pct', 'k_bb_pct'];
+
   Widget _buildDetailStatsGrids(Map<String, dynamic> player) {
     final cur = _latestSeason(player);
     if (cur == null) return const SizedBox.shrink();
     final isPitcher = (player['player_type'] as String? ?? '') == '투수';
-    final cmp = (player['core_compare'] as Map?) ?? const {};
-    final qualified = player['qualified'] as bool? ?? true;
-    final rawTc = teamColor(player['team_code'] as String? ?? '');
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final tc = isDark ? Color.lerp(rawTc, Colors.white, 0.25)! : rawTc;
-    final detail = isPitcher
-        ? [('이닝', cur['innings_pitched'] == null ? '-' : '${cur['innings_pitched']}', 'innings_pitched'),
-           ('세이브', _i0(cur['saves']), 'saves'), ('홀드', _i0(cur['holds']), 'holds'),
-           ('패', _i0(cur['losses']), 'losses'), ('피안타율', _f3(cur['avg_against']), 'avg_against'), ('블론', _i0(cur['blown_saves']), 'blown_saves')]
-        : [('안타', _i0(cur['hits']), 'hits'), ('도루', _i0(cur['stolen_bases']), 'stolen_bases'), ('볼넷', _i0(cur['walks']), 'walks'),
-           ('삼진', _i0(cur['strikeouts']), 'strikeouts'), ('출루율', _f3(cur['obp']), 'obp'), ('장타율', _f3(cur['slg']), 'slg'),
-           ('루타', _i0(cur['tb']), 'tb'), ('장타', _i0(cur['xbh']), 'xbh'), ('BB/K', _f2(cur['bb_k']), 'bb_k')];
-    final advanced = isPitcher
-        ? [('FIP', _f2(cur['fip']), 'fip'), ('K/9', _f2(cur['k_per_9']), 'k_per_9'), ('BB/9', _f2(cur['bb_per_9']), 'bb_per_9'),
-           ('WAR', _f1(cur['war']), 'war'), ('BABIP', _f3(cur['babip']), 'babip'), ('QS', _i0(cur['qs']), 'qs'),
-           ('K%', _pct(cur['k_pct']), 'k_pct'), ('BB%', _pct(cur['bb_pct']), 'bb_pct'), ('K-BB%', _pct(cur['k_bb_pct']), 'k_bb_pct')]
-        : [('wOBA', _f3(cur['woba']), 'woba'), ('wRC+', _f1(cur['wrc_plus']), 'wrc_plus'), ('WAR', _f1(cur['war']), 'war'),
-           ('BABIP', _f3(cur['babip']), 'babip'), ('ISO', _f3(cur['iso']), 'iso'), ('득점권', _f3(cur['risp']), 'risp'),
-           ('BB%', _pct(cur['bb_pct']), 'bb_pct'), ('K%', _pct(cur['k_pct']), 'k_pct'), ('GPA', _f3(cur['gpa']), 'gpa')];
-    // 수비 (타자만)
-    final defense = isPitcher
-        ? <(String, String, String)>[]
-        : [('수비율', _f3(cur['fpct']), 'fpct'), ('실책', _i0(cur['errors']), 'errors'), ('풋아웃', _i0(cur['po']), 'po'),
-           ('어시스트', _i0(cur['assists']), 'assists'), ('병살', _i0(cur['dp']), 'dp'), ('포일', _i0(cur['pb']), 'pb')];
-    final hasDefense = !isPitcher && defense.any((e) => e.$2 != '-' && e.$2 != '0');
+    final core = (isPitcher ? _corePitcherKeys : _coreBatterKeys).toSet();
+    List<(String, String, String)> build(List<String> keys) => [
+          for (final k in keys)
+            if (!core.contains(k)) (_statLabel(k, isPitcher), _fmtStat(k, cur[k]), k),
+        ];
+    final detail = build(isPitcher ? _gPitcherDetail : _gBatterDetail);
+    final advanced = build(isPitcher ? _gPitcherAdv : _gBatterAdv);
+    final defense = isPitcher ? <(String, String, String)>[] : build(_gBatterDef);
+    final hasDefense = defense.any((e) => e.$2 != '-' && e.$2 != '0');
 
     return Column(children: [
-      _seasonGridSection('세부 기록', detail, tc: tc, cmp: cmp, qualified: qualified, isPitcher: isPitcher),
-      _seasonGridSection('고급 지표', advanced, tc: tc, cmp: cmp, qualified: qualified, isPitcher: isPitcher),
-      if (hasDefense) _seasonGridSection('수비', defense, tc: tc, cmp: cmp, qualified: qualified, isPitcher: isPitcher),
+      if (detail.isNotEmpty) _seasonGridSection('세부 기록', detail),
+      if (advanced.isNotEmpty) _seasonGridSection('고급 지표', advanced),
+      if (hasDefense) _seasonGridSection('수비', defense),
     ]);
   }
 
