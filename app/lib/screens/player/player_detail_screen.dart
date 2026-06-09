@@ -836,8 +836,86 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     return (s, better);
   }
 
-  // 세부/고급/수비 그리드 — 셀마다 리그순위 / 규정미달 표시
-  Widget _seasonGridSection(String title, List<(String, String, String)> items) {
+  // 스탯 쉬운 설명 (야구 입문자용) — strikeouts·bb_pct·k_pct·babip는 타자/투수 의미 달라 함수서 분기
+  static const Map<String, String> _statExplainMap = {
+    'era': '한 경기(9이닝) 기준 평균 실점. 낮을수록 잘 막는 투수예요.',
+    'whip': '한 이닝당 내보낸 주자(안타+볼넷) 수. 낮을수록 안정적이에요.',
+    'fip': '수비 영향을 뺀 투수 본인 실력의 실점력. 낮을수록 좋아요.',
+    'avg_against': '상대 타자에게 허용한 타율. 낮을수록 잘 막아요.',
+    'bb_per_9': '9이닝당 내준 볼넷 수. 낮을수록 제구가 좋아요.',
+    'k_per_9': '9이닝당 잡아낸 삼진 수. 높을수록 탈삼진 능력이 좋아요.',
+    'k_bb_pct': '삼진 비율에서 볼넷 비율을 뺀 값. 높을수록 좋아요.',
+    'wins': '투수가 거둔 승리 수.',
+    'losses': '투수가 기록한 패배 수. 적을수록 좋아요.',
+    'saves': '리드를 끝까지 지켜 따낸 세이브 수(마무리 투수 지표).',
+    'holds': '중간 투수가 리드를 지켜낸 홀드 수.',
+    'qs': '선발이 6이닝 이상 3자책 이하로 막은 경기 수(퀄리티스타트).',
+    'blown_saves': '지키던 리드를 놓친 횟수. 적을수록 좋아요.',
+    'innings_pitched': '던진 총 이닝 수.',
+    'war': '평범한 대체 선수 대비 팀 승리에 기여한 정도. 높을수록 좋아요.',
+    'avg': '안타 ÷ 타수. 타격의 가장 기본 지표예요.',
+    'obp': '안타·볼넷 등으로 베이스에 나간 비율. 높을수록 좋아요.',
+    'slg': '한 타수당 때려낸 루타 수. 장타력을 봐요.',
+    'ops': '출루율 + 장타율. 타자의 종합 생산력이에요.',
+    'woba': '타격 결과를 득점 가치로 환산한 종합 지표. 높을수록 좋아요.',
+    'wrc_plus': '리그 평균을 100으로 둔 득점 생산력. 100보다 높으면 평균 이상이에요.',
+    'iso': '순수 장타력(장타율 − 타율). 높을수록 장타가 많아요.',
+    'risp': '득점권(주자 2·3루) 상황에서의 타율.',
+    'gpa': '출루·장타를 합쳐 본 타격 생산력. 높을수록 좋아요.',
+    'bb_k': '볼넷 ÷ 삼진. 높을수록 골라내는 눈(선구안)이 좋아요.',
+    'home_runs': '쳐낸 홈런 수.',
+    'rbis': '타점 — 자신의 타격으로 불러들인 득점 수예요.',
+    'hits': '쳐낸 안타 수.',
+    'runs': '득점 — 홈을 밟아 점수를 낸 횟수예요.',
+    'stolen_bases': '도루 성공 수.',
+    'walks': '볼넷으로 걸어 나간 수.',
+    'tb': '루타 수(1루타1·2루타2·3루타3·홈런4로 합산).',
+    'xbh': '2루타+3루타+홈런(장타) 수.',
+    'errors': '수비 실책 수. 적을수록 좋아요.',
+    'fpct': '수비 기회를 실수 없이 처리한 비율. 높을수록 좋아요.',
+    'po': '직접 아웃을 잡아낸 수(풋아웃).',
+    'assists': '아웃을 도운 송구 수(어시스트).',
+    'dp': '병살(한 번에 2아웃) 처리에 가담한 수.',
+    'pb': '포수가 놓친 공(포일) 수. 적을수록 좋아요.',
+  };
+
+  String _statExplain(String key, bool isPitcher) {
+    if (key == 'strikeouts') return isPitcher ? '잡아낸 삼진(탈삼진) 수. 많을수록 좋아요.' : '삼진 당한 수. 적을수록 좋아요.';
+    if (key == 'bb_pct') return isPitcher ? '상대한 타자 중 볼넷을 준 비율. 낮을수록 제구가 좋아요.' : '타석에서 볼넷으로 나간 비율. 높을수록 선구안이 좋아요.';
+    if (key == 'k_pct') return isPitcher ? '상대한 타자 중 삼진을 잡은 비율. 높을수록 좋아요.' : '타석에서 삼진 당한 비율. 낮을수록 좋아요.';
+    if (key == 'babip') return isPitcher ? '맞은 타구가 안타가 된 비율. 운의 영향을 봐요.' : '친 타구가 안타가 된 비율. 높을수록 잘 맞았어요.';
+    return _statExplainMap[key] ?? '';
+  }
+
+  void _showStatInfo(String label, String key, bool isPitcher) {
+    final txt = _statExplain(key, isPitcher);
+    if (txt.isEmpty) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF18181C) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+        final sub = isDark ? const Color(0xFFC4C4CC) : const Color(0xFF52525B);
+        return Padding(
+          padding: EdgeInsets.fromLTRB(22, 20, 22, 24 + MediaQuery.of(ctx).viewPadding.bottom),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Icon(Icons.info_outline, size: 18, color: SemColor.brand(context)),
+              const SizedBox(width: 7),
+              Text(label, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: ink)),
+            ]),
+            const SizedBox(height: 12),
+            Text(txt, style: TextStyle(fontSize: 14, height: 1.55, color: sub)),
+          ]),
+        );
+      },
+    );
+  }
+
+  // 세부/고급/수비 그리드 — 셀마다 기록명 + (ⓘ 설명)
+  Widget _seasonGridSection(String title, List<(String, String, String)> items, {bool isPitcher = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
@@ -855,7 +933,15 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05), blurRadius: 4, offset: const Offset(0, 1))],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(s.$1, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: labelCol)),
+          Row(children: [
+            Flexible(child: Text(s.$1, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: labelCol))),
+            const SizedBox(width: 3),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _showStatInfo(s.$1, s.$3, isPitcher),
+              child: Icon(Icons.info_outline, size: 11, color: labelCol.withValues(alpha: 0.6)),
+            ),
+          ]),
           const SizedBox(height: 6),
           Text(s.$2, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: ink,
               fontFeatures: const [FontFeature.tabularFigures()])),
@@ -1041,7 +1127,15 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(child: Text(it.$1, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: labelCol))),
+            Expanded(child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              Flexible(child: Text(it.$1, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: labelCol))),
+              const SizedBox(width: 3),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _showStatInfo(it.$1, it.$3, isPitcher),
+                child: Icon(Icons.info_outline, size: 13, color: labelCol.withValues(alpha: 0.6)),
+              ),
+            ])),
             Text(it.$2, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
                 color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
           ]),
@@ -1136,9 +1230,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final hasDefense = defense.any((e) => e.$2 != '-' && e.$2 != '0');
 
     return Column(children: [
-      if (detail.isNotEmpty) _seasonGridSection('세부 기록', detail),
-      if (advanced.isNotEmpty) _seasonGridSection('고급 지표', advanced),
-      if (hasDefense) _seasonGridSection('수비', defense),
+      if (detail.isNotEmpty) _seasonGridSection('세부 기록', detail, isPitcher: isPitcher),
+      if (advanced.isNotEmpty) _seasonGridSection('고급 지표', advanced, isPitcher: isPitcher),
+      if (hasDefense) _seasonGridSection('수비', defense, isPitcher: isPitcher),
     ]);
   }
 
