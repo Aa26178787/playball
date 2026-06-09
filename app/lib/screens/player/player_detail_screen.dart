@@ -1014,8 +1014,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     style: TextStyle(fontSize: 12, color: sub)),
             ]),
             const SizedBox(height: 6),
-            SizedBox(height: 15, child: Stack(alignment: Alignment.center, children: [
-              // 바 본체 (세로 중앙)
+            // 리그 평균 마커 = 바 위(▼)·아래(▲) 삼각형이 평균 지점(중앙) 가리킴 — paper 위라 팀컬러 무관 가시
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Center(child: _TriMark(color: ink, down: true)),
+              const SizedBox(height: 2),
               ClipRRect(
                 borderRadius: BorderRadius.circular(999),
                 child: SizedBox(height: 7, child: Stack(children: [
@@ -1023,14 +1025,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   FractionallySizedBox(widthFactor: fill, child: Container(color: tc)),
                 ])),
               ),
-              // 리그 평균 마커 — 바 위아래로 돌출(paper 위) + 흰코어/잉크테두리 = 팀컬러·트랙 무관 대비
-              Container(width: 4, height: 15,
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFFF4F4F5) : Colors.white,
-                    border: Border.symmetric(vertical: BorderSide(color: ink, width: 0.8)),
-                    borderRadius: BorderRadius.circular(2),
-                  )),
-            ])),
+              const SizedBox(height: 2),
+              Center(child: _TriMark(color: ink, down: false)),
+            ]),
             const SizedBox(height: 4),
             _avgDeltaLabel(it.$3, c['lg'] as num?, cur[it.$3], isPitcher, tc, sub),
           ] else if (_rateStats.contains(it.$3) && !qualified) ...[
@@ -2113,4 +2110,37 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       ),
     );
   }
+}
+
+// 평균 마커용 작은 삼각형 (down=true 아래향 / false 위향)
+class _TriMark extends StatelessWidget {
+  final Color color;
+  final bool down;
+  const _TriMark({required this.color, required this.down});
+  @override
+  Widget build(BuildContext context) =>
+      CustomPaint(size: const Size(9, 6), painter: _TriPainter(color, down));
+}
+
+class _TriPainter extends CustomPainter {
+  final Color color;
+  final bool down;
+  _TriPainter(this.color, this.down);
+  @override
+  void paint(Canvas canvas, Size s) {
+    final p = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+    final path = Path();
+    if (down) {
+      path..moveTo(0, 0)..lineTo(s.width, 0)..lineTo(s.width / 2, s.height)..close();
+    } else {
+      path..moveTo(s.width / 2, 0)..lineTo(0, s.height)..lineTo(s.width, s.height)..close();
+    }
+    canvas.drawPath(path, p);
+  }
+
+  @override
+  bool shouldRepaint(_TriPainter old) => old.color != color || old.down != down;
 }
