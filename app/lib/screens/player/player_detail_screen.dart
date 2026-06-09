@@ -985,6 +985,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
     Widget card((String, String, String) it, bool highlight) {
       final c = cmp[it.$3] as Map?;
+      final lower = isPitcher ? _lowerBetterPitcher.contains(it.$3) : _lowerBetterBatter.contains(it.$3);
       final rank = (c?['rank'] as num?)?.toInt();
       final total = (c?['total'] as num?)?.toInt();
       // 1위 = 만땅, 꼴찌 = 거의 빔. fill = (total-rank+1)/total
@@ -1002,7 +1003,12 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(child: Text(it.$1, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: labelCol))),
+            Expanded(child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              Flexible(child: Text(it.$1, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: labelCol))),
+              const SizedBox(width: 2),
+              // 방향: ↓=낮을수록 좋음 / ↑=높을수록 좋음 (팀컬러)
+              Text(lower ? '↓' : '↑', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: tc)),
+            ])),
             Text(it.$2, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
                 color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
           ]),
@@ -1018,7 +1024,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             const SizedBox(height: 6),
             // 리그 평균 마커 = 바 위(▼)·아래(▲) 삼각형이 평균 지점(중앙) 가리킴 — paper 위라 팀컬러 무관 가시
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Center(child: _TriMark(color: ink, down: true)),
+              Center(child: _TriMark(color: tc, down: true)),
               const SizedBox(height: 2),
               ClipRRect(
                 borderRadius: BorderRadius.circular(999),
@@ -1028,7 +1034,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 ])),
               ),
               const SizedBox(height: 2),
-              Center(child: _TriMark(color: ink, down: false)),
+              Center(child: _TriMark(color: tc, down: false)),
             ]),
             const SizedBox(height: 4),
             _avgDeltaLabel(it.$3, c['lg'] as num?, cur[it.$3], isPitcher, tc, sub),
@@ -1056,7 +1062,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             ]),
           ),
         ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
+        // 방향 범례
+        Text('↑ 높을수록 좋음 · ↓ 낮을수록 좋음', style: TextStyle(fontSize: 9, color: sub)),
+        const SizedBox(height: 10),
         GridView.count(
           crossAxisCount: 2, shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
