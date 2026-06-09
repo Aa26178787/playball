@@ -985,13 +985,13 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     if (explW > contentW) contentW = explW;
     if (contentW < 130) contentW = 130;
     final boxW = contentW + 32;
-    // 각 블록 자기 폭 기준 높이 측정
+    // 높이 측정 = 박스 전체폭 기준 (블록은 박스 폭을 꽉 채워 렌더 → 오른쪽 공간 없음)
     final tp = TextPainter(text: TextSpan(text: sentT, style: sentStyle),
-        textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: sentW);
+        textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: contentW);
     double explainH = 0;
     if (explain.isNotEmpty) {
       final etp = TextPainter(text: TextSpan(text: explainT, style: explainStyle),
-          textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: explW);
+          textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: contentW);
       explainH = 17 + etp.height; // 구분선 영역 + 텍스트
     }
     final avgH = lg != null ? 22.0 : 0.0;
@@ -1009,16 +1009,16 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final content = Padding(
       padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(width: sentW, child: Text(sentT, style: sentStyle)),
+        SizedBox(width: contentW, child: Text(sentT, style: sentStyle)),
         if (lg != null) ...[
           const SizedBox(height: 6),
-          SizedBox(width: avgW, child: Text(avgT, style: avgStyle)),
+          SizedBox(width: contentW, child: Text(avgT, style: avgStyle)),
         ],
         if (explain.isNotEmpty) ...[
           const SizedBox(height: 8),
           Container(height: 1, color: sub.withValues(alpha: 0.22)),
           const SizedBox(height: 8),
-          SizedBox(width: explW, child: Text(explainT, style: explainStyle)),
+          SizedBox(width: contentW, child: Text(explainT, style: explainStyle)),
         ],
       ]),
     );
