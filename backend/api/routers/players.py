@@ -979,56 +979,58 @@ def get_player_detail(player_id: int):
             for r in stats
         ]
 
-    # 핵심 스탯 리그 비교 (league avg + 상위%) — 비교 실패해도 본문 정상
+    # 핵심 스탯 비교 — rate(타율/ERA 등)=규정 풀·게이트, counting(홈런/세이브 등)=전체 풀·항상.
+    # 앱이 메뉴서 4개 골라 표시 → 서버는 메뉴 전체 비교 제공. 실패해도 본문 정상
     try:
         latest = result["stats"][0] if result.get("stats") else None
         if latest:
             cur.execute("SELECT COALESCE(MAX(games),0) FROM batter_stats WHERE season=%s", (latest["season"],))
             maxg = cur.fetchone()[0] or 0
             is_dom = not player[14]   # 국내 선수만 국내랭크 표시
-            def mk(lg, better, tot, dbetter, dtot):
-                d = {"lg": float(lg or 0), "top": max(1, round(100 * (better or 0) / (tot or 1))),
-                     "rank": (better or 0) + 1, "total": tot or 0}
-                if is_dom:
-                    d["dom_rank"] = (dbetter or 0) + 1
-                    d["dom_total"] = dtot or 0
-                return d
-            if player[2] == "타자" and (latest.get("pa") or 0) >= maxg * 3.1:
-                pv = (latest.get("avg") or 0, latest.get("home_runs") or 0, latest.get("rbis") or 0, latest.get("ops") or 0)
-                cur.execute("""
-                    SELECT round(AVG(bs.avg)::numeric,3), round(AVG(bs.home_runs)::numeric,1),
-                           round(AVG(bs.rbis)::numeric,1), round(AVG(bs.ops)::numeric,3), COUNT(*),
-                           COUNT(*) FILTER (WHERE bs.avg>%s), COUNT(*) FILTER (WHERE bs.home_runs>%s),
-                           COUNT(*) FILTER (WHERE bs.rbis>%s), COUNT(*) FILTER (WHERE bs.ops>%s),
-                           COUNT(*) FILTER (WHERE NOT pl.is_foreign),
-                           COUNT(*) FILTER (WHERE bs.avg>%s AND NOT pl.is_foreign), COUNT(*) FILTER (WHERE bs.home_runs>%s AND NOT pl.is_foreign),
-                           COUNT(*) FILTER (WHERE bs.rbis>%s AND NOT pl.is_foreign), COUNT(*) FILTER (WHERE bs.ops>%s AND NOT pl.is_foreign)
-                    FROM batter_stats bs JOIN players pl ON pl.id = bs.player_id
-                    WHERE bs.season=%s AND bs.pa>=%s
-                """, (pv[0], pv[1], pv[2], pv[3], pv[0], pv[1], pv[2], pv[3], latest["season"], maxg * 3.1))
-                a = cur.fetchone()
-                result["core_compare"] = {
-                    "avg": mk(a[0], a[5], a[4], a[10], a[9]), "home_runs": mk(a[1], a[6], a[4], a[11], a[9]),
-                    "rbis": mk(a[2], a[7], a[4], a[12], a[9]), "ops": mk(a[3], a[8], a[4], a[13], a[9]),
-                }
-            elif player[2] == "투수" and (latest.get("innings_pitched") or 0) >= maxg * 1.0:
-                pv = (latest.get("era") or 0, latest.get("strikeouts") or 0, latest.get("wins") or 0, latest.get("whip") or 0)
-                cur.execute("""
-                    SELECT round(AVG(ps.era)::numeric,2), round(AVG(ps.strikeouts)::numeric,0),
-                           round(AVG(ps.wins)::numeric,0), round(AVG(ps.whip)::numeric,2), COUNT(*),
-                           COUNT(*) FILTER (WHERE ps.era<%s AND ps.era>0), COUNT(*) FILTER (WHERE ps.strikeouts>%s),
-                           COUNT(*) FILTER (WHERE ps.wins>%s), COUNT(*) FILTER (WHERE ps.whip<%s AND ps.whip>0),
-                           COUNT(*) FILTER (WHERE NOT pl.is_foreign),
-                           COUNT(*) FILTER (WHERE ps.era<%s AND ps.era>0 AND NOT pl.is_foreign), COUNT(*) FILTER (WHERE ps.strikeouts>%s AND NOT pl.is_foreign),
-                           COUNT(*) FILTER (WHERE ps.wins>%s AND NOT pl.is_foreign), COUNT(*) FILTER (WHERE ps.whip<%s AND ps.whip>0 AND NOT pl.is_foreign)
-                    FROM pitcher_stats ps JOIN players pl ON pl.id = ps.player_id
-                    WHERE ps.season=%s AND ps.innings_pitched>=%s
-                """, (pv[0], pv[1], pv[2], pv[3], pv[0], pv[1], pv[2], pv[3], latest["season"], maxg * 1.0))
-                a = cur.fetchone()
-                result["core_compare"] = {
-                    "era": mk(a[0], a[5], a[4], a[10], a[9]), "strikeouts": mk(a[1], a[6], a[4], a[11], a[9]),
-                    "wins": mk(a[2], a[7], a[4], a[12], a[9]), "whip": mk(a[3], a[8], a[4], a[13], a[9]),
-                }
+
+            def _cmp(table, where_extra, where_params, stats):
+                # stats: [(key, col, higher_better)] — 컬럼명은 하드코딩(주입 안전)
+                cols = [f"round(AVG(t.{c})::numeric,3)" for (k, c, h) in stats]
+                cols += ["COUNT(*)", "COUNT(*) FILTER (WHERE NOT pl.is_foreign)"]
+                vps = []
+                for (k, c, h) in stats:
+                    op = ">" if h else "<"; g = "" if h else f" AND t.{c}>0"
+                    cols.append(f"COUNT(*) FILTER (WHERE t.{c} {op} %s{g})"); vps.append(latest.get(k) or 0)
+                for (k, c, h) in stats:
+                    op = ">" if h else "<"; g = "" if h else f" AND t.{c}>0"
+                    cols.append(f"COUNT(*) FILTER (WHERE t.{c} {op} %s{g} AND NOT pl.is_foreign)"); vps.append(latest.get(k) or 0)
+                cur.execute(
+                    f"SELECT {', '.join(cols)} FROM {table} t JOIN players pl ON pl.id=t.player_id "
+                    f"WHERE t.season=%s {where_extra}",
+                    vps + [latest["season"]] + where_params)
+                r = cur.fetchone(); n = len(stats)
+                avgs, tot, dtot = r[0:n], r[n], r[n + 1]
+                lbet, dbet = r[n + 2:2 * n + 2], r[2 * n + 2:3 * n + 2]
+                out = {}
+                for i, (k, c, h) in enumerate(stats):
+                    d = {"lg": float(avgs[i] or 0), "rank": (lbet[i] or 0) + 1, "total": tot or 0}
+                    if is_dom:
+                        d["dom_rank"] = (dbet[i] or 0) + 1; d["dom_total"] = dtot or 0
+                    out[k] = d
+                return out
+
+            if player[2] == "타자":
+                cc = _cmp("batter_stats", "AND t.pa>0", [],
+                          [("home_runs", "home_runs", True), ("rbis", "rbis", True),
+                           ("hits", "hits", True), ("stolen_bases", "stolen_bases", True)])
+                if (latest.get("pa") or 0) >= maxg * 3.1:
+                    cc.update(_cmp("batter_stats", "AND t.pa>=%s", [maxg * 3.1],
+                                   [("avg", "avg", True), ("obp", "obp", True),
+                                    ("slg", "slg", True), ("ops", "ops", True)]))
+                result["core_compare"] = cc
+            elif player[2] == "투수":
+                cc = _cmp("pitcher_stats", "AND t.innings_pitched>0", [],
+                          [("strikeouts", "strikeouts", True), ("wins", "wins", True),
+                           ("saves", "saves", True), ("holds", "holds", True), ("qs", "qs", True)])
+                if (latest.get("innings_pitched") or 0) >= maxg * 1.0:
+                    cc.update(_cmp("pitcher_stats", "AND t.innings_pitched>=%s", [maxg * 1.0],
+                                   [("era", "era", False), ("whip", "whip", False), ("k_per_9", "k_per_9", True)]))
+                result["core_compare"] = cc
     except Exception:
         pass
 
