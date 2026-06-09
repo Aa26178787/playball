@@ -1061,7 +1061,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           crossAxisCount: 2, shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 10, crossAxisSpacing: 10,
-          childAspectRatio: 1.4,
+          childAspectRatio: 1.3,
           children: [for (int i = 0; i < items.length; i++) card(items[i], i == 0)],
         ),
       ]),
