@@ -778,23 +778,77 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   static const Set<String> _lowerBetterBatter = {'strikeouts', 'errors', 'pb', 'k_pct'};
   static const Set<String> _lowerBetterPitcher = {'era', 'whip', 'fip', 'bb_per_9', 'babip', 'avg_against', 'losses', 'blown_saves', 'bb_pct'};
 
-  // 평균 대비 방향 인식 라벨 (▲/▼ + 우수/열세 색상)
-  Widget _avgDeltaLabel(String key, num? lg, dynamic pv, bool isPitcher, Color tc, Color sub) {
+  // 스탯별 친화 문구: (평균보다 낮을 때, 높을 때) — 'P'=퍼센트 자리
+  static const Map<String, (String, String)> _comparePhrase = {
+    // 투수
+    'era': ('실점을 P% 적게 허용했어요', '실점을 P% 많이 허용했어요'),
+    'whip': ('주자를 P% 적게 내보냈어요', '주자를 P% 많이 내보냈어요'),
+    'fip': ('FIP가 P% 낮아요', 'FIP가 P% 높아요'),
+    'avg_against': ('피안타율이 P% 낮아요', '피안타율이 P% 높아요'),
+    'bb_per_9': ('볼넷을 P% 적게 내줬어요', '볼넷을 P% 많이 내줬어요'),
+    'k_per_9': ('탈삼진을 P% 적게 잡았어요', '탈삼진을 P% 많이 잡았어요'),
+    'wins': ('승리를 P% 적게 거뒀어요', '승리를 P% 많이 거뒀어요'),
+    'losses': ('패배가 P% 적어요', '패배가 P% 많아요'),
+    'saves': ('세이브를 P% 적게 올렸어요', '세이브를 P% 많이 올렸어요'),
+    'holds': ('홀드를 P% 적게 기록했어요', '홀드를 P% 많이 기록했어요'),
+    'qs': ('퀄리티스타트가 P% 적어요', '퀄리티스타트가 P% 많아요'),
+    'blown_saves': ('블론세이브가 P% 적어요', '블론세이브가 P% 많아요'),
+    'innings_pitched': ('이닝을 P% 적게 던졌어요', '이닝을 P% 많이 던졌어요'),
+    'war': ('WAR가 P% 낮아요', 'WAR가 P% 높아요'),
+    'k_bb_pct': ('K-BB%가 P% 낮아요', 'K-BB%가 P% 높아요'),
+    // 타자
+    'avg': ('타율이 P% 낮아요', '타율이 P% 높아요'),
+    'obp': ('출루율이 P% 낮아요', '출루율이 P% 높아요'),
+    'slg': ('장타율이 P% 낮아요', '장타율이 P% 높아요'),
+    'ops': ('OPS가 P% 낮아요', 'OPS가 P% 높아요'),
+    'woba': ('wOBA가 P% 낮아요', 'wOBA가 P% 높아요'),
+    'wrc_plus': ('wRC+가 P% 낮아요', 'wRC+가 P% 높아요'),
+    'iso': ('순장타율이 P% 낮아요', '순장타율이 P% 높아요'),
+    'risp': ('득점권 타율이 P% 낮아요', '득점권 타율이 P% 높아요'),
+    'gpa': ('GPA가 P% 낮아요', 'GPA가 P% 높아요'),
+    'bb_k': ('볼넷/삼진이 P% 낮아요', '볼넷/삼진이 P% 높아요'),
+    'home_runs': ('홈런을 P% 적게 쳤어요', '홈런을 P% 많이 쳤어요'),
+    'rbis': ('타점을 P% 적게 올렸어요', '타점을 P% 많이 올렸어요'),
+    'hits': ('안타를 P% 적게 쳤어요', '안타를 P% 많이 쳤어요'),
+    'runs': ('득점을 P% 적게 했어요', '득점을 P% 많이 했어요'),
+    'stolen_bases': ('도루를 P% 적게 했어요', '도루를 P% 많이 했어요'),
+    'walks': ('볼넷을 P% 적게 골랐어요', '볼넷을 P% 많이 골랐어요'),
+    'tb': ('루타를 P% 적게 기록했어요', '루타를 P% 많이 기록했어요'),
+    'xbh': ('장타를 P% 적게 쳤어요', '장타를 P% 많이 쳤어요'),
+    'errors': ('실책을 P% 적게 범했어요', '실책을 P% 많이 범했어요'),
+    'fpct': ('수비율이 P% 낮아요', '수비율이 P% 높아요'),
+    'po': ('자살을 P% 적게 기록했어요', '자살을 P% 많이 기록했어요'),
+    'assists': ('보살을 P% 적게 기록했어요', '보살을 P% 많이 기록했어요'),
+    'dp': ('병살을 P% 적게 처리했어요', '병살을 P% 많이 처리했어요'),
+    'pb': ('포일이 P% 적어요', '포일이 P% 많아요'),
+    'bb_pct': ('볼넷 비율이 P% 낮아요', '볼넷 비율이 P% 높아요'),
+    'babip': ('BABIP가 P% 낮아요', 'BABIP가 P% 높아요'),
+  };
+
+  // 리그 평균 대비 친화 문장 + 우열(better) 반환. strikeouts·k_pct는 타자/투수 문구 분리
+  (String, bool) _compareText(String key, num? lg, dynamic pv, bool isPitcher) {
     final pNum = pv is num ? pv : num.tryParse('$pv');
-    if (pNum == null || lg == null) {
-      return SizedBox(width: double.infinity, child: Text(
-          '리그 평균 ${_fmtStat(key, lg ?? 0)}',
-          textAlign: TextAlign.center, style: TextStyle(fontSize: 10, color: sub)));
-    }
+    if (pNum == null || lg == null || lg == 0) return ('', true);
     final lower = isPitcher ? _lowerBetterPitcher.contains(key) : _lowerBetterBatter.contains(key);
-    final delta = pNum - lg;
-    final better = lower ? pNum < lg : pNum > lg;
-    final arrow = pNum < lg ? '▼' : '▲';
-    final sign = delta >= 0 ? '+' : '-';
-    return SizedBox(width: double.infinity, child: Text(
-        '$arrow 리그평균 ${_fmtStat(key, lg)} ($sign${_fmtStat(key, delta.abs())} ${better ? '우수' : '열세'})',
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: better ? tc : sub)));
+    final p = ((pNum - lg) / lg.abs()).abs() * 100;
+    if (p < 0.05) return ('리그 평균과 같아요', true);
+    final above = pNum > lg;
+    final better = above ? !lower : lower;
+    final pStr = p.toStringAsFixed(1);
+    (String, String)? tpl;
+    if (key == 'strikeouts') {
+      tpl = isPitcher ? ('탈삼진을 P% 적게 잡았어요', '탈삼진을 P% 많이 잡았어요')
+                      : ('삼진을 P% 적게 당했어요', '삼진을 P% 많이 당했어요');
+    } else if (key == 'k_pct') {
+      tpl = isPitcher ? ('삼진 비율이 P% 낮아요', '삼진 비율이 P% 높아요')
+                      : ('삼진 비율이 P% 낮아요', '삼진 비율이 P% 높아요');
+    } else {
+      tpl = _comparePhrase[key];
+    }
+    if (tpl == null) {
+      return ('리그 평균보다 ${above ? '높아요' : '낮아요'} ($pStr%)', better);
+    }
+    return ('리그 평균보다 ${(above ? tpl.$2 : tpl.$1).replaceFirst('P', pStr)}', better);
   }
 
   // 세부/고급/수비 그리드 — 셀마다 리그순위 / 규정미달 표시
@@ -985,7 +1039,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
     Widget card((String, String, String) it, bool highlight) {
       final c = cmp[it.$3] as Map?;
-      final lower = isPitcher ? _lowerBetterPitcher.contains(it.$3) : _lowerBetterBatter.contains(it.$3);
       final rank = (c?['rank'] as num?)?.toInt();
       final total = (c?['total'] as num?)?.toInt();
       // 1위 = 만땅, 꼴찌 = 거의 빔. fill = (total-rank+1)/total
@@ -1003,12 +1056,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              Flexible(child: Text(it.$1, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: labelCol))),
-              const SizedBox(width: 2),
-              // 방향: ↓=낮을수록 좋음 / ↑=높을수록 좋음 (팀컬러)
-              Text(lower ? '↓' : '↑', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: tc)),
-            ])),
+            Expanded(child: Text(it.$1, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: labelCol))),
             Text(it.$2, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
                 color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
           ]),
@@ -1022,22 +1070,25 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     style: TextStyle(fontSize: 12, color: sub)),
             ]),
             const SizedBox(height: 6),
-            // 리그 평균 마커 = 바 위(▼)·아래(▲) 삼각형이 평균 지점(중앙) 가리킴 — paper 위라 팀컬러 무관 가시
-            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Center(child: _TriMark(color: tc, down: true)),
-              const SizedBox(height: 2),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: SizedBox(height: 7, child: Stack(children: [
-                  Container(width: double.infinity, color: line),
-                  FractionallySizedBox(widthFactor: fill, child: Container(color: tc)),
-                ])),
-              ),
-              const SizedBox(height: 2),
-              Center(child: _TriMark(color: tc, down: false)),
-            ]),
-            const SizedBox(height: 4),
-            _avgDeltaLabel(it.$3, c['lg'] as num?, cur[it.$3], isPitcher, tc, sub),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: SizedBox(height: 7, child: Stack(children: [
+                Container(width: double.infinity, color: line),
+                FractionallySizedBox(widthFactor: fill, child: Container(color: tc)),
+              ])),
+            ),
+            const SizedBox(height: 5),
+            Text('리그 평균 ${_fmtStat(it.$3, (c['lg'] as num?) ?? 0)}',
+                style: TextStyle(fontSize: 10, color: sub)),
+            ...() {
+              final res = _compareText(it.$3, c['lg'] as num?, cur[it.$3], isPitcher);
+              if (res.$1.isEmpty) return <Widget>[];
+              return [
+                const SizedBox(height: 3),
+                Text(res.$1, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                    color: res.$2 ? tc : sub, height: 1.25)),
+              ];
+            }(),
           ] else if (_rateStats.contains(it.$3) && !qualified) ...[
             const SizedBox(height: 8),
             Text(isPitcher ? '규정이닝 미달' : '규정타석 미달',
@@ -1062,15 +1113,12 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             ]),
           ),
         ]),
-        const SizedBox(height: 4),
-        // 방향 범례
-        Text('↑ 높을수록 좋음 · ↓ 낮을수록 좋음', style: TextStyle(fontSize: 9, color: sub)),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         GridView.count(
           crossAxisCount: 2, shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 10, crossAxisSpacing: 10,
-          childAspectRatio: 1.3,
+          childAspectRatio: 1.0,
           children: [for (int i = 0; i < items.length; i++) card(items[i], i == 0)],
         ),
       ]),
@@ -2123,37 +2171,4 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       ),
     );
   }
-}
-
-// 평균 마커용 작은 삼각형 (down=true 아래향 / false 위향)
-class _TriMark extends StatelessWidget {
-  final Color color;
-  final bool down;
-  const _TriMark({required this.color, required this.down});
-  @override
-  Widget build(BuildContext context) =>
-      CustomPaint(size: const Size(9, 6), painter: _TriPainter(color, down));
-}
-
-class _TriPainter extends CustomPainter {
-  final Color color;
-  final bool down;
-  _TriPainter(this.color, this.down);
-  @override
-  void paint(Canvas canvas, Size s) {
-    final p = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-    final path = Path();
-    if (down) {
-      path..moveTo(0, 0)..lineTo(s.width, 0)..lineTo(s.width / 2, s.height)..close();
-    } else {
-      path..moveTo(s.width / 2, 0)..lineTo(0, s.height)..lineTo(s.width, s.height)..close();
-    }
-    canvas.drawPath(path, p);
-  }
-
-  @override
-  bool shouldRepaint(_TriPainter old) => old.color != color || old.down != down;
 }
