@@ -839,15 +839,41 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
   // ── 핵심 스탯 피커 ──────────────────────────────
   static const Map<String, String> _statLabels = {
+    // 타자
     'avg': '타율', 'obp': '출루율', 'slg': '장타율', 'ops': 'OPS',
+    'woba': 'wOBA', 'wrc_plus': 'wRC+', 'babip': 'BABIP', 'iso': 'ISO', 'risp': '득점권',
+    'gpa': 'GPA', 'bb_k': 'BB/K', 'fpct': '수비율',
     'home_runs': '홈런', 'rbis': '타점', 'hits': '안타', 'stolen_bases': '도루',
-    'era': 'ERA', 'whip': 'WHIP', 'k_per_9': 'K/9',
-    'strikeouts': '탈삼진', 'wins': '승', 'saves': '세이브', 'holds': '홀드', 'qs': 'QS',
+    'walks': '볼넷', 'strikeouts': '삼진', 'tb': '루타', 'xbh': '장타', 'war': 'WAR',
+    'runs': '득점', 'errors': '실책', 'po': '풋아웃', 'assists': '어시스트', 'dp': '병살', 'pb': '포일',
+    // 투수
+    'era': 'ERA', 'whip': 'WHIP', 'k_per_9': 'K/9', 'bb_per_9': 'BB/9', 'fip': 'FIP',
+    'avg_against': '피안타율', 'k_pct': 'K%', 'bb_pct': 'BB%', 'k_bb_pct': 'K-BB%',
+    'wins': '승', 'losses': '패', 'saves': '세이브', 'holds': '홀드', 'qs': 'QS',
+    'blown_saves': '블론', 'innings_pitched': '이닝',
   };
-  static const List<String> _batterMenu = ['avg', 'obp', 'slg', 'ops', 'home_runs', 'rbis', 'hits', 'stolen_bases'];
-  static const List<String> _pitcherMenu = ['era', 'whip', 'k_per_9', 'strikeouts', 'wins', 'saves', 'holds', 'qs'];
+  // 핵심 기록 = 어떤 스탯이든 선택 가능 (rate 스탯은 규정 충족 시 순위, 미달 시 값만)
+  static const List<String> _batterMenu = [
+    'avg', 'obp', 'slg', 'ops', 'woba', 'wrc_plus', 'babip', 'iso', 'risp', 'gpa', 'bb_k',
+    'home_runs', 'rbis', 'hits', 'runs', 'stolen_bases', 'walks', 'strikeouts', 'tb', 'xbh', 'war',
+    'bb_pct', 'k_pct', 'fpct', 'errors', 'po', 'assists', 'dp', 'pb',
+  ];
+  static const List<String> _pitcherMenu = [
+    'era', 'whip', 'fip', 'k_per_9', 'bb_per_9', 'babip', 'avg_against', 'k_pct', 'bb_pct', 'k_bb_pct',
+    'strikeouts', 'wins', 'losses', 'saves', 'holds', 'qs', 'blown_saves', 'innings_pitched', 'war',
+  ];
   List<String> _coreBatterKeys = const ['avg', 'home_runs', 'rbis', 'ops'];
   List<String> _corePitcherKeys = const ['era', 'strikeouts', 'wins', 'whip'];
+
+  String _statLabel(String k, bool isPitcher) {
+    if (k == 'strikeouts') return isPitcher ? '탈삼진' : '삼진';
+    return _statLabels[k] ?? k;
+  }
+
+  static const Set<String> _fmt3 = {'avg', 'obp', 'slg', 'ops', 'woba', 'babip', 'iso', 'risp', 'gpa', 'avg_against', 'fpct'};
+  static const Set<String> _fmt2 = {'era', 'whip', 'k_per_9', 'bb_per_9', 'fip', 'bb_k'};
+  static const Set<String> _fmt1 = {'war', 'wrc_plus'};
+  static const Set<String> _fmtPctStat = {'bb_pct', 'k_pct', 'k_bb_pct'};
 
   Future<void> _loadCoreKeys() async {
     final b = await LocalCache.get('core_keys_batter');
@@ -862,8 +888,11 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   String _fmtStat(String key, dynamic v) {
     final n = v as num?;
     if (n == null) return '-';
-    if (key == 'avg' || key == 'obp' || key == 'slg' || key == 'ops') return n.toStringAsFixed(3);
-    if (key == 'era' || key == 'whip' || key == 'k_per_9') return n.toStringAsFixed(2);
+    if (key == 'innings_pitched') return n.toString();
+    if (_fmt3.contains(key)) return n.toStringAsFixed(3);
+    if (_fmt2.contains(key)) return n.toStringAsFixed(2);
+    if (_fmt1.contains(key)) return n.toStringAsFixed(1);
+    if (_fmtPctStat.contains(key)) return '${n.toStringAsFixed(1)}%';
     return n.toInt().toString();
   }
 
@@ -885,24 +914,26 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             const SizedBox(height: 4),
             Text('${sel.length}/4 · 순서대로 표시 (첫 항목 강조)', style: TextStyle(fontSize: 12, color: sub)),
             const SizedBox(height: 14),
-            Wrap(spacing: 8, runSpacing: 8, children: menu.map((k) {
-              final on = sel.contains(k);
-              return GestureDetector(
-                onTap: () => setSheet(() {
-                  if (on) { sel.remove(k); }
-                  else if (sel.length < 4) { sel.add(k); }
-                }),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                  decoration: BoxDecoration(
-                    color: on ? SemColor.brand(context) : (isDark ? const Color(0xFF26262C) : const Color(0xFFF1F1F4)),
-                    borderRadius: BorderRadius.circular(999),
+            Flexible(child: SingleChildScrollView(
+              child: Wrap(spacing: 8, runSpacing: 8, children: menu.map((k) {
+                final on = sel.contains(k);
+                return GestureDetector(
+                  onTap: () => setSheet(() {
+                    if (on) { sel.remove(k); }
+                    else if (sel.length < 4) { sel.add(k); }
+                  }),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: on ? SemColor.brand(context) : (isDark ? const Color(0xFF26262C) : const Color(0xFFF1F1F4)),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(_statLabel(k, isPitcher), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                        color: on ? (isDark ? SemColor.panelDark : Colors.white) : ink)),
                   ),
-                  child: Text(_statLabels[k] ?? k, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-                      color: on ? (isDark ? SemColor.panelDark : Colors.white) : ink)),
-                ),
-              );
-            }).toList()),
+                );
+              }).toList()),
+            )),
             const SizedBox(height: 18),
             SizedBox(width: double.infinity, child: ElevatedButton(
               onPressed: sel.length == 4 ? () {
@@ -935,12 +966,15 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
 
     final keys = isPitcher ? _corePitcherKeys : _coreBatterKeys;
-    final items = [for (final k in keys) (_statLabels[k] ?? k, _fmtStat(k, cur[k]), k)];
+    final items = [for (final k in keys) (_statLabel(k, isPitcher), _fmtStat(k, cur[k]), k)];
 
     Widget card((String, String, String) it, bool highlight) {
       final c = cmp[it.$3] as Map?;
-      final top = (c?['top'] as num?)?.toInt();
-      final fill = top != null ? ((100 - top) / 100).clamp(0.0, 1.0) : 0.0;
+      final rank = (c?['rank'] as num?)?.toInt();
+      final total = (c?['total'] as num?)?.toInt();
+      // 1위 = 만땅, 꼴찌 = 거의 빔. fill = (total-rank+1)/total
+      final fill = (rank != null && total != null && total > 0)
+          ? ((total - rank + 1) / total).clamp(0.0, 1.0) : 0.0;
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
