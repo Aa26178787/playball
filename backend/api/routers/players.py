@@ -1123,3 +1123,24 @@ def get_player_vote_status(player_id: int, current_user: dict | None = Depends(g
         voted = cur.fetchone() is not None
     cur.close(); conn.close()
     return {"vote_count": count, "voted": voted}
+
+
+@router.post("/{player_id}/report-insta")
+def report_insta(player_id: int, current_user: dict | None = Depends(get_optional_user)):
+    """인스타 핸들 오류 신고 (이 계정이 선수 본인이 아닐 때). 비로그인도 가능. 검토는 insta_handle_reports psql."""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("SELECT insta_handle FROM players WHERE id=%s", (player_id,))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        raise HTTPException(status_code=404, detail="선수를 찾을 수 없습니다")
+    uid = current_user['user_id'] if current_user else None
+    cur.execute(
+        "INSERT INTO insta_handle_reports (player_id, handle, user_id) VALUES (%s, %s, %s)",
+        (player_id, row[0], uid))
+    conn.commit()
+    cur.close(); conn.close()
+    return {"ok": True}

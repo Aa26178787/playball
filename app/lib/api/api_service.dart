@@ -947,6 +947,13 @@ class ApiService {
     return Map<String, dynamic>.from(res.data);
   }
 
+  // 인스타 핸들 오류 신고 (계정이 선수 본인이 아닐 때)
+  static Future<void> reportInstaHandle(int playerId) async {
+    final headers = await authHeaders();
+    await _dio.post('/players/$playerId/report-insta',
+        options: Options(headers: headers));
+  }
+
   static Future<Map<String, dynamic>> getTeamPopularity() async {
     final headers = await authHeaders();
     final res = await _dio.get('/teams/popularity',

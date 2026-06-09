@@ -726,6 +726,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                                   await launchUrl(url, mode: LaunchMode.externalApplication);
                                 }
                               },
+                              onLongPress: () => _reportInsta(player),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                                 decoration: BoxDecoration(
@@ -919,6 +920,37 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   void _dismissCompareBubble() {
     _compareBubble?.remove();
     _compareBubble = null;
+  }
+
+  // 인스타 핸들 오류 신고 (버튼 길게 누르기)
+  Future<void> _reportInsta(Map<String, dynamic> player) async {
+    final handle = player['insta_handle'];
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('인스타 계정 신고'),
+        content: Text('@$handle 계정이 ${player['name'] ?? '이 선수'} 본인이 아닌가요?\n신고하면 검토 후 수정합니다.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(context, true),
+              child: const Text('신고', style: TextStyle(fontWeight: FontWeight.bold))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ApiService.reportInstaHandle(widget.playerId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('신고가 접수되었어요. 확인 후 수정할게요')));
+      }
+    } catch (e) {
+      debugPrint('report insta: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('신고 접수 실패. 잠시 후 다시 시도해주세요')));
+      }
+    }
   }
 
   // FAB — 선수 비교 + 상대전적 통합 메뉴
