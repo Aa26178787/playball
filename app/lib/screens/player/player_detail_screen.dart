@@ -886,7 +886,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
   void _openCorePicker(bool isPitcher) {
     final menu = isPitcher ? _pitcherMenu : _batterMenu;
-    final sel = List<String>.from(isPitcher ? _corePitcherKeys : _coreBatterKeys);
+    // 4 고정 슬롯 — 해제 시 자리 비우고, 새 선택은 빈 자리에 채움 (위치 보존)
+    final slots = List<String?>.from(isPitcher ? _corePitcherKeys : _coreBatterKeys);
+    while (slots.length < 4) { slots.add(null); }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
@@ -900,15 +902,19 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('핵심 스탯 4개 선택', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
             const SizedBox(height: 4),
-            Text('${sel.length}/4 · 순서대로 표시 (첫 항목 강조)', style: TextStyle(fontSize: 12, color: sub)),
+            Text('${slots.where((e) => e != null).length}/4 · 순서대로 표시 (첫 항목 강조)', style: TextStyle(fontSize: 12, color: sub)),
             const SizedBox(height: 14),
             Flexible(child: SingleChildScrollView(
               child: Wrap(spacing: 8, runSpacing: 8, children: menu.map((k) {
-                final on = sel.contains(k);
+                final on = slots.contains(k);
                 return GestureDetector(
                   onTap: () => setSheet(() {
-                    if (on) { sel.remove(k); }
-                    else if (sel.length < 4) { sel.add(k); }
+                    final idx = slots.indexOf(k);
+                    if (idx >= 0) { slots[idx] = null; }      // 해제 → 자리 비움
+                    else {
+                      final empty = slots.indexOf(null);
+                      if (empty >= 0) slots[empty] = k;        // 빈 자리 채움 (위치 유지)
+                    }
                   }),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -924,7 +930,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             )),
             const SizedBox(height: 18),
             SizedBox(width: double.infinity, child: ElevatedButton(
-              onPressed: sel.length == 4 ? () {
+              onPressed: !slots.contains(null) ? () {
+                final sel = slots.cast<String>();
                 setState(() {
                   if (isPitcher) { _corePitcherKeys = sel; } else { _coreBatterKeys = sel; }
                 });
