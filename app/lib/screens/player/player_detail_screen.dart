@@ -784,7 +784,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     if (pNum == null || lg == null) {
       return SizedBox(width: double.infinity, child: Text(
           '리그 평균 ${_fmtStat(key, lg ?? 0)}',
-          textAlign: TextAlign.center, style: TextStyle(fontSize: 9, color: sub)));
+          textAlign: TextAlign.center, style: TextStyle(fontSize: 10, color: sub)));
     }
     final lower = isPitcher ? _lowerBetterPitcher.contains(key) : _lowerBetterBatter.contains(key);
     final delta = pNum - lg;
@@ -794,7 +794,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     return SizedBox(width: double.infinity, child: Text(
         '$arrow 리그평균 ${_fmtStat(key, lg)} ($sign${_fmtStat(key, delta.abs())} ${better ? '우수' : '열세'})',
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: better ? tc : sub)));
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: better ? tc : sub)));
   }
 
   // 세부/고급/수비 그리드 — 셀마다 리그순위 / 규정미달 표시
@@ -1016,12 +1016,16 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             const SizedBox(height: 6),
             ClipRRect(
               borderRadius: BorderRadius.circular(999),
-              child: SizedBox(height: 6, child: Stack(children: [
+              child: SizedBox(height: 7, child: Stack(children: [
                 Container(width: double.infinity, color: line),
                 FractionallySizedBox(widthFactor: fill, child: Container(color: tc)),
-                // 리그 평균 마커 (중앙 ≈ 평균 순위)
+                // 리그 평균 마커 (중앙 ≈ 평균 순위) — 흰 테두리로 양쪽 대비
                 Align(alignment: Alignment.center,
-                    child: Container(width: 2, color: ink.withValues(alpha: 0.55))),
+                    child: Container(width: 3,
+                        decoration: BoxDecoration(
+                          color: ink,
+                          border: Border.symmetric(vertical: BorderSide(color: paper, width: 0.5)),
+                        ))),
               ])),
             ),
             const SizedBox(height: 4),
