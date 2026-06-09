@@ -946,12 +946,20 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     const tailH = 9.0;
     const gap = 6.0;
     final sentStyle = TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, height: 1.4, color: mainCol);
+    final explainStyle = TextStyle(fontSize: 12, height: 1.45, color: sub);
+    final explain = _statExplain(key, isPitcher); // 용어 설명도 함께
     // 본문 높이 측정 → 위/아래 배치 결정 (높이 미리 알아야 헤더 침범·클리핑 판단)
     final tp = TextPainter(
       text: TextSpan(text: res.$1, style: sentStyle),
       textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: bw - 32);
+    double explainH = 0;
+    if (explain.isNotEmpty) {
+      final etp = TextPainter(text: TextSpan(text: explain, style: explainStyle),
+          textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: bw - 32);
+      explainH = 17 + etp.height; // 구분선 영역 + 텍스트
+    }
     final avgH = lg != null ? 22.0 : 0.0;
-    final bubbleH = 26 + tp.height + avgH; // 상하 패딩 13*2
+    final bubbleH = 26 + tp.height + avgH + explainH; // 상하 패딩 13*2
     final totalH = bubbleH + tailH;
     final left = (pos.dx - bw / 2).clamp(8.0, media.width - bw - 8);
     final tailX = pos.dx - left; // 꼬리는 항상 숫자 x 위치
@@ -969,6 +977,12 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         if (lg != null) ...[
           const SizedBox(height: 6),
           Text('리그 평균 ${_fmtStat(key, lg)}', style: TextStyle(fontSize: 12, color: sub)),
+        ],
+        if (explain.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(height: 1, color: sub.withValues(alpha: 0.22)),
+          const SizedBox(height: 8),
+          Text(explain, style: explainStyle),
         ],
       ]),
     );
