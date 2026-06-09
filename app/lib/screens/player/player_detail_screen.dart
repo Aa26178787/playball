@@ -992,18 +992,21 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     style: TextStyle(fontSize: 12, color: sub)),
             ]),
             const SizedBox(height: 6),
-            Row(children: [
-              Expanded(child: ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: Stack(children: [
-                  Container(height: 5, width: double.infinity, color: line),
-                  FractionallySizedBox(widthFactor: fill, child: Container(height: 5, color: tc)),
-                ]),
-              )),
-              const SizedBox(width: 6),
-              Text('리그 평균 ${_fmtStat(it.$3, (c['lg'] as num?) ?? 0)}',
-                  style: TextStyle(fontSize: 9, color: sub)),
-            ]),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: SizedBox(height: 6, child: Stack(children: [
+                Container(width: double.infinity, color: line),
+                FractionallySizedBox(widthFactor: fill, child: Container(color: tc)),
+                // 리그 평균 마커 (중앙 ≈ 평균 순위)
+                Align(alignment: Alignment.center,
+                    child: Container(width: 2, color: ink.withValues(alpha: 0.55))),
+              ])),
+            ),
+            const SizedBox(height: 4),
+            SizedBox(width: double.infinity, child: Text(
+                '▲ 리그 평균 ${_fmtStat(it.$3, (c['lg'] as num?) ?? 0)}',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 9, color: sub))),
           ] else if (_rateStats.contains(it.$3) && !qualified) ...[
             const SizedBox(height: 8),
             Text(isPitcher ? '규정이닝 미달' : '규정타석 미달',
