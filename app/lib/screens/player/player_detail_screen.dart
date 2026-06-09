@@ -790,15 +790,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
 
     Widget statCard((String, String, String) s) {
-      final c = cmp[s.$3] as Map?;
-      String? note;
-      bool reg = false;
-      if (c != null) {
-        note = '리그 ${c['rank']}위';
-      } else if (_rateStats.contains(s.$3) && !qualified) {
-        note = isPitcher ? '규정이닝 미달' : '규정타석 미달';
-        reg = true;
-      }
       return Container(
         padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
@@ -810,13 +801,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(s.$1, style: TextStyle(fontSize: 9, color: sub)),
           const SizedBox(height: 6),
-          Text(s.$2, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: ink,
+          Text(s.$2, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: ink,
               fontFeatures: const [FontFeature.tabularFigures()])),
-          if (note != null) ...[
-            const SizedBox(height: 4),
-            Text(note, style: TextStyle(fontSize: 8.5,
-                color: reg ? sub : (tc ?? sub), fontWeight: reg ? FontWeight.w500 : FontWeight.w700)),
-          ],
         ]),
       );
     }
@@ -830,7 +816,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           crossAxisCount: 3, shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 8, crossAxisSpacing: 8,
-          childAspectRatio: 0.95,
+          childAspectRatio: 1.1,
           children: [for (final it in items) statCard(it)],
         ),
       ]),
@@ -960,6 +946,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final tc = isDark ? Color.lerp(rawTc, Colors.white, 0.25)! : rawTc;
     final cmp = (player['core_compare'] as Map?) ?? const {};
+    final qualified = player['qualified'] as bool? ?? true;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
@@ -1013,6 +1000,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
               Text('리그 평균 ${_fmtStat(it.$3, (c['lg'] as num?) ?? 0)}',
                   style: TextStyle(fontSize: 9, color: sub)),
             ]),
+          ] else if (_rateStats.contains(it.$3) && !qualified) ...[
+            const SizedBox(height: 8),
+            Text(isPitcher ? '규정이닝 미달' : '규정타석 미달',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: sub)),
           ],
         ]),
       );
