@@ -855,10 +855,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     'k_bb_pct': '삼진 비율에서 볼넷 비율을 뺀 값. 높을수록 좋아요.',
     'wins': '투수가 거둔 승리 수.',
     'losses': '투수가 기록한 패배 수. 적을수록 좋아요.',
-    'saves': '리드를 끝까지 지켜 따낸 세이브 수(마무리 투수 지표).',
-    'holds': '중간 투수가 리드를 지켜낸 홀드 수.',
-    'qs': '선발이 6이닝 이상 3자책 이하로 막은 경기 수(퀄리티스타트).',
-    'blown_saves': '지키던 리드를 놓친 횟수. 적을수록 좋아요.',
+    'saves': '구원 투수가 리드를 끝까지 지켜 경기를 마무리하면 주는 기록. 보통 3점 이하 리드에서 등판해 끝내면 인정돼요(마무리 투수 지표).',
+    'holds': '중간 계투가 세이브 상황(보통 3점 이하 리드)에서 등판해 리드를 지킨 뒤 다음 투수에게 넘기면 주는 기록.',
+    'qs': '선발이 6이닝 이상 던지고 3자책 이하로 막은 경기 수(퀄리티스타트).',
+    'blown_saves': '세이브 기회(리드를 지켜야 하는 상황)에서 동점·역전을 허용한 횟수. 적을수록 좋아요.',
     'innings_pitched': '던진 총 이닝 수.',
     'war': '평범한 대체 선수 대비 팀 승리에 기여한 정도. 높을수록 좋아요.',
     'avg': '안타 ÷ 타수. 타격의 가장 기본 지표예요.',
@@ -942,7 +942,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final sub = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF6B6B73);
     final mainCol = res.$2 ? tc : ink;
     final borderCol = mainCol.withValues(alpha: 0.4);
-    const bw = 250.0;
+    const bw = 268.0;
     const tailH = 9.0;
     const gap = 6.0;
     final sentStyle = TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, height: 1.4, color: mainCol);
@@ -994,16 +994,18 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           onTap: _dismissCompareBubble,
         )),
         Positioned(
-          left: left, top: top, width: bw, height: totalH,
+          left: left, top: top, width: bw,
           child: Material(
             color: Colors.transparent,
-            child: Stack(children: [
-              // 사각형 + 꼬리 단일 path (이음새 없음)
-              Positioned.fill(child: CustomPaint(
-                painter: _BubbleShape(fill: bg, border: borderCol, tailX: tailX, tailH: tailH,
-                    tailDown: tailDown, shadow: isDark ? 0.0 : 1.0))),
-              Positioned(left: 0, right: 0, top: tailDown ? 0 : tailH, child: content),
-            ]),
+            // 박스 높이는 콘텐츠로 자동 (추정 고정 X → 하단 빈 공간 없음)
+            child: CustomPaint(
+              painter: _BubbleShape(fill: bg, border: borderCol, tailX: tailX, tailH: tailH,
+                  tailDown: tailDown, shadow: isDark ? 0.0 : 1.0),
+              child: Padding(
+                padding: EdgeInsets.only(top: tailDown ? 0 : tailH, bottom: tailDown ? tailH : 0),
+                child: content,
+              ),
+            ),
           ),
         ),
       ]);
