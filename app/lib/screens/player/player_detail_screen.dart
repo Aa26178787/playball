@@ -927,6 +927,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     _compareBubble = null;
   }
 
+  // 단어(공백 구분) 내 글자를 WORD JOINER로 묶어 단어 중간 줄바꿈 방지 (한글 음절 분리 '높을/수록' 차단)
+  String _keepWords(String s) =>
+      s.split(' ').map((w) => w.runes.map(String.fromCharCode).join('⁠')).join(' ');
+
   // 줄 수를 유지하는 최소 폭 (줄을 꽉 채워 orphan 글자 방지)
   double _lineFitWidth(String text, TextStyle style, double maxW) {
     final tp = TextPainter(text: TextSpan(text: text, style: style), textDirection: TextDirection.ltr)
@@ -966,23 +970,27 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final avgStyle = TextStyle(fontSize: 12, color: sub);
     final explain = _statExplain(key, isPitcher); // 용어 설명도 함께
     final avgStr = lg != null ? '리그 평균 ${_fmtStat(key, lg)}' : '';
+    // 단어 중간 줄바꿈 방지(공백에서만 끊기) — 측정·렌더 동일 문자열 사용
+    final sentT = _keepWords(res.$1);
+    final avgT = _keepWords(avgStr);
+    final explainT = _keepWords(explain);
     // 줄 균형 폭: 각 블록을 자기 균형폭으로 개별 wrap → 마지막 줄에 몇 글자만 남는 orphan 제거
     // (공통 폭 쓰면 짧은 블록이 넓은 폭서 다시 orphan 생김 → 블록별 폭)
     const maxW = bw - 32;
-    final sentW = _lineFitWidth(res.$1, sentStyle, maxW) + 1;
-    final avgW = avgStr.isNotEmpty ? _lineFitWidth(avgStr, avgStyle, maxW) + 1 : 0.0;
-    final explW = explain.isNotEmpty ? _lineFitWidth(explain, explainStyle, maxW) + 1 : 0.0;
+    final sentW = _lineFitWidth(sentT, sentStyle, maxW) + 1;
+    final avgW = avgStr.isNotEmpty ? _lineFitWidth(avgT, avgStyle, maxW) + 1 : 0.0;
+    final explW = explain.isNotEmpty ? _lineFitWidth(explainT, explainStyle, maxW) + 1 : 0.0;
     double contentW = sentW;
     if (avgW > contentW) contentW = avgW;
     if (explW > contentW) contentW = explW;
     if (contentW < 130) contentW = 130;
     final boxW = contentW + 32;
     // 각 블록 자기 폭 기준 높이 측정
-    final tp = TextPainter(text: TextSpan(text: res.$1, style: sentStyle),
+    final tp = TextPainter(text: TextSpan(text: sentT, style: sentStyle),
         textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: sentW);
     double explainH = 0;
     if (explain.isNotEmpty) {
-      final etp = TextPainter(text: TextSpan(text: explain, style: explainStyle),
+      final etp = TextPainter(text: TextSpan(text: explainT, style: explainStyle),
           textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: explW);
       explainH = 17 + etp.height; // 구분선 영역 + 텍스트
     }
@@ -1001,16 +1009,16 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final content = Padding(
       padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(width: sentW, child: Text(res.$1, style: sentStyle)),
+        SizedBox(width: sentW, child: Text(sentT, style: sentStyle)),
         if (lg != null) ...[
           const SizedBox(height: 6),
-          SizedBox(width: avgW, child: Text(avgStr, style: avgStyle)),
+          SizedBox(width: avgW, child: Text(avgT, style: avgStyle)),
         ],
         if (explain.isNotEmpty) ...[
           const SizedBox(height: 8),
           Container(height: 1, color: sub.withValues(alpha: 0.22)),
           const SizedBox(height: 8),
-          SizedBox(width: explW, child: Text(explain, style: explainStyle)),
+          SizedBox(width: explW, child: Text(explainT, style: explainStyle)),
         ],
       ]),
     );
