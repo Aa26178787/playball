@@ -2063,12 +2063,20 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
 
-    Widget summaryCell(String label, String value) => Column(children: [
+    Widget summaryCell(String label, String value, String key) => Column(children: [
       Text(value,
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: ink,
               letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()])),
       const SizedBox(height: 3),
-      Text(label, style: TextStyle(fontSize: 9, color: sub)),
+      GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _showStatInfo(label, key, !isHitter),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text(label, style: TextStyle(fontSize: 9, color: sub)),
+          const SizedBox(width: 2),
+          Icon(Icons.info_outline, size: 10, color: sub.withValues(alpha: 0.7)),
+        ]),
+      ),
     ]);
 
     final summary = isHitter ? _hitterSummaryItems(recent) : _pitcherSummaryItems(recent);
@@ -2096,7 +2104,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [for (final s in summary) summaryCell(s.$1, s.$2)],
+                  children: [for (final s in summary) summaryCell(s.$1, s.$2, s.$3)],
                 ),
                 const SizedBox(height: 12),
                 Container(height: 1, color: line),
@@ -2110,7 +2118,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     );
   }
 
-  List<(String, String)> _hitterSummaryItems(List<dynamic> rows) {
+  List<(String, String, String)> _hitterSummaryItems(List<dynamic> rows) {
     final totalAb = rows.fold<int>(0, (s, d) => s + ((d['ab'] as num?)?.toInt() ?? 0));
     final totalH  = rows.fold<int>(0, (s, d) => s + ((d['hits'] as num?)?.toInt() ?? 0));
     final totalHr = rows.fold<int>(0, (s, d) => s + ((d['home_runs'] as num?)?.toInt() ?? 0));
@@ -2125,14 +2133,14 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final obpD = totalAb + totalBb + totalHbp;
     final obp  = obpD > 0 ? (totalH + totalBb + totalHbp) / obpD : 0.0;
     return [
-      ('AVG', avg.toStringAsFixed(3)),
-      ('OPS', (obp + slg).toStringAsFixed(3)),
-      ('HR', '$totalHr'),
-      ('RBI', '$totalRbi'),
+      ('AVG', avg.toStringAsFixed(3), 'avg'),
+      ('OPS', (obp + slg).toStringAsFixed(3), 'ops'),
+      ('HR', '$totalHr', 'home_runs'),
+      ('RBI', '$totalRbi', 'rbis'),
     ];
   }
 
-  List<(String, String)> _pitcherSummaryItems(List<dynamic> rows) {
+  List<(String, String, String)> _pitcherSummaryItems(List<dynamic> rows) {
     final totalEr = rows.fold<int>(0, (s, d) => s + ((d['er'] as num?)?.toInt() ?? 0));
     final totalH  = rows.fold<int>(0, (s, d) => s + ((d['h'] as num?)?.toInt() ?? 0));
     final totalBb = rows.fold<int>(0, (s, d) => s + ((d['bb'] as num?)?.toInt() ?? 0));
@@ -2141,10 +2149,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final era  = realIp > 0 ? totalEr * 9 / realIp : 0.0;
     final whip = realIp > 0 ? (totalH + totalBb) / realIp : 0.0;
     return [
-      ('ERA', era.toStringAsFixed(2)),
-      ('WHIP', whip.toStringAsFixed(2)),
-      ('K', '$totalSo'),
-      ('IP', _fmtRealIp(realIp)),
+      ('ERA', era.toStringAsFixed(2), 'era'),
+      ('WHIP', whip.toStringAsFixed(2), 'whip'),
+      ('K', '$totalSo', 'strikeouts'),
+      ('IP', _fmtRealIp(realIp), 'innings_pitched'),
     ];
   }
 
