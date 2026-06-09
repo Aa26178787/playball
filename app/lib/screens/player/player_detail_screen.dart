@@ -862,8 +862,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   static const Set<String> _fmtPctStat = {'bb_pct', 'k_pct', 'k_bb_pct'};
 
   Future<void> _loadCoreKeys() async {
-    final b = await LocalCache.get('core_keys_batter');
-    final p = await LocalCache.get('core_keys_pitcher');
+    // 선수별 저장 (전역 통일 X)
+    final id = widget.playerId;
+    final b = await LocalCache.get('core_keys_b_$id');
+    final p = await LocalCache.get('core_keys_p_$id');
     if (!mounted) return;
     setState(() {
       if (b is List && b.length == 4) _coreBatterKeys = b.cast<String>();
@@ -926,7 +928,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 setState(() {
                   if (isPitcher) { _corePitcherKeys = sel; } else { _coreBatterKeys = sel; }
                 });
-                LocalCache.set(isPitcher ? 'core_keys_pitcher' : 'core_keys_batter', sel).catchError((_) {});
+                LocalCache.set('core_keys_${isPitcher ? 'p' : 'b'}_${widget.playerId}', sel).catchError((_) {});
                 Navigator.pop(ctx);
               } : null,
               child: const Text('적용'),
