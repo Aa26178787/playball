@@ -802,6 +802,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final labelCol = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF52525B); // 기록명 — sub보다 선명
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
 
@@ -815,7 +816,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05), blurRadius: 4, offset: const Offset(0, 1))],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(s.$1, style: TextStyle(fontSize: 9, color: sub)),
+          Text(s.$1, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: labelCol)),
           const SizedBox(height: 6),
           Text(s.$2, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: ink,
               fontFeatures: const [FontFeature.tabularFigures()])),
@@ -975,6 +976,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final qualified = player['qualified'] as bool? ?? true;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final labelCol = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF52525B); // 기록명 — sub보다 선명
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
 
@@ -1000,7 +1002,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(child: Text(it.$1, style: TextStyle(fontSize: 13, color: sub))),
+            Expanded(child: Text(it.$1, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: labelCol))),
             Text(it.$2, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
                 color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
           ]),
@@ -2038,6 +2040,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final types = (_pitchStats?['pitch_types'] as List?) ?? [];
     final total = (_pitchStats?['total'] as num?)?.toInt() ?? 0;
     if (types.isEmpty || total == 0) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final track = isDark ? const Color(0xFF26262C) : Colors.grey[100]!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
       child: Card(
@@ -2066,7 +2070,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     ),
                     Expanded(
                       child: Stack(children: [
-                        Container(height: 14, decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(4))),
+                        Container(height: 14, decoration: BoxDecoration(color: track, borderRadius: BorderRadius.circular(4))),
                         FractionallySizedBox(
                           widthFactor: pct / 100,
                           child: Container(height: 14, decoration: BoxDecoration(color: color.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(4))),
