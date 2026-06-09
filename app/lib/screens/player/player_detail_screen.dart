@@ -855,10 +855,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     'k_bb_pct': '삼진 비율에서 볼넷 비율을 뺀 값. 높을수록 좋아요.',
     'wins': '투수가 거둔 승리 수.',
     'losses': '투수가 기록한 패배 수. 적을수록 좋아요.',
-    'saves': '구원 투수가 리드를 끝까지 지켜 경기를 마무리하면 주는 기록. 보통 3점 이하 리드에서 등판해 끝내면 인정돼요(마무리 투수 지표).',
-    'holds': '중간 계투가 세이브 상황(보통 3점 이하 리드)에서 등판해 리드를 지킨 뒤 다음 투수에게 넘기면 주는 기록.',
-    'qs': '선발이 6이닝 이상 던지고 3자책 이하로 막은 경기 수(퀄리티스타트).',
-    'blown_saves': '세이브 기회(리드를 지켜야 하는 상황)에서 동점·역전을 허용한 횟수. 적을수록 좋아요.',
+    'saves': '리드를 끝까지 지켜 경기를 마무리한 횟수(보통 3점 이하 리드). 마무리 투수 지표예요.',
+    'holds': '세이브 상황에서 리드를 지킨 뒤 다음 투수에게 넘긴 횟수. 중간 계투 지표예요.',
+    'qs': '선발이 6이닝 이상 3자책 이하로 막은 경기 수(퀄리티스타트).',
+    'blown_saves': '리드를 지켜야 할 상황에서 동점·역전을 허용한 횟수. 적을수록 좋아요.',
     'innings_pitched': '던진 총 이닝 수.',
     'war': '평범한 대체 선수 대비 팀 승리에 기여한 정도. 높을수록 좋아요.',
     'avg': '안타 ÷ 타수. 타격의 가장 기본 지표예요.',
@@ -927,6 +927,22 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     _compareBubble = null;
   }
 
+  // 줄 수를 유지하는 최소 폭 (줄을 꽉 채워 orphan 글자 방지)
+  double _lineFitWidth(String text, TextStyle style, double maxW) {
+    final tp = TextPainter(text: TextSpan(text: text, style: style), textDirection: TextDirection.ltr)
+      ..layout(maxWidth: maxW);
+    final lines = tp.computeLineMetrics().length;
+    if (lines <= 1) return tp.width;
+    double lo = 60, hi = maxW;
+    for (int i = 0; i < 14; i++) {
+      final mid = (lo + hi) / 2;
+      tp.layout(maxWidth: mid);
+      if (tp.computeLineMetrics().length <= lines) { hi = mid; } else { lo = mid; }
+    }
+    tp.layout(maxWidth: hi);
+    return tp.width;
+  }
+
   // 숫자 길게 누르면 누른 위치에 말풍선으로 리그 평균 대비 비교 출력
   void _showCompareBubble(Offset pos, String key, Map? c, dynamic pv, bool isPitcher, Color tc) {
     if (c == null) return;
@@ -947,21 +963,29 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     const gap = 6.0;
     final sentStyle = TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, height: 1.4, color: mainCol);
     final explainStyle = TextStyle(fontSize: 12, height: 1.45, color: sub);
+    final avgStyle = TextStyle(fontSize: 12, color: sub);
     final explain = _statExplain(key, isPitcher); // 용어 설명도 함께
-    // 본문 높이 측정 → 위/아래 배치 결정 (높이 미리 알아야 헤더 침범·클리핑 판단)
-    final tp = TextPainter(
-      text: TextSpan(text: res.$1, style: sentStyle),
-      textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: bw - 32);
+    final avgStr = lg != null ? '리그 평균 ${_fmtStat(key, lg)}' : '';
+    // 줄 균형 폭: 각 텍스트가 같은 줄 수를 유지하는 최소 폭 → 마지막 줄에 몇 글자만 남는 orphan 제거
+    const maxW = bw - 32;
+    double contentW = _lineFitWidth(res.$1, sentStyle, maxW);
+    if (avgStr.isNotEmpty) { final w = _lineFitWidth(avgStr, avgStyle, maxW); if (w > contentW) contentW = w; }
+    if (explain.isNotEmpty) { final w = _lineFitWidth(explain, explainStyle, maxW); if (w > contentW) contentW = w; }
+    if (contentW < 140) contentW = 140;
+    final boxW = contentW + 32;
+    // 선택된 폭 기준 높이 측정
+    final tp = TextPainter(text: TextSpan(text: res.$1, style: sentStyle),
+        textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: contentW);
     double explainH = 0;
     if (explain.isNotEmpty) {
       final etp = TextPainter(text: TextSpan(text: explain, style: explainStyle),
-          textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: bw - 32);
+          textDirection: TextDirection.ltr, maxLines: 6)..layout(maxWidth: contentW);
       explainH = 17 + etp.height; // 구분선 영역 + 텍스트
     }
     final avgH = lg != null ? 22.0 : 0.0;
     final bubbleH = 26 + tp.height + avgH + explainH; // 상하 패딩 13*2
     final totalH = bubbleH + tailH;
-    final left = (pos.dx - bw / 2).clamp(8.0, media.width - bw - 8);
+    final left = (pos.dx - boxW / 2).clamp(8.0, media.width - boxW - 8);
     final tailX = pos.dx - left; // 꼬리는 항상 숫자 x 위치
     // 헤더(앱바) 아래로만, 위로 올리면 잘릴 때 아래로 뒤집기
     final safeTop = padTop + kToolbarHeight + 4;
@@ -976,7 +1000,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         Text(res.$1, style: sentStyle),
         if (lg != null) ...[
           const SizedBox(height: 6),
-          Text('리그 평균 ${_fmtStat(key, lg)}', style: TextStyle(fontSize: 12, color: sub)),
+          Text(avgStr, style: avgStyle),
         ],
         if (explain.isNotEmpty) ...[
           const SizedBox(height: 8),
@@ -994,7 +1018,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           onTap: _dismissCompareBubble,
         )),
         Positioned(
-          left: left, top: top, width: bw,
+          left: left, top: top, width: boxW,
           child: Material(
             color: Colors.transparent,
             // 박스 높이는 콘텐츠로 자동 (추정 고정 X → 하단 빈 공간 없음)
