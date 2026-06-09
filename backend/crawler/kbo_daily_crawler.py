@@ -576,6 +576,12 @@ def crawl_kbo_pitcher_season_stats(season=2026):
             l = _ci(i_loss)
             wpct_val = round(w / (w + l), 3) if (w or 0) + (l or 0) > 0 else None
 
+            # sanity: 세이브·홀드는 경기수 초과 불가 → 잘못된 컬럼 읽기/스파이크 방어 (GREATEST로 영구 고정되던 사고 방지)
+            sv  = _ci(i_sv)
+            hld = _ci(i_hold)
+            if sv  is not None and g and sv  > g: sv  = None
+            if hld is not None and g and hld > g: hld = None
+
             cur.execute("""
                 INSERT INTO pitcher_stats (
                     player_id, season, games, wins, losses, saves, holds,
@@ -588,7 +594,8 @@ def crawl_kbo_pitcher_season_stats(season=2026):
                     wins               = GREATEST(COALESCE(EXCLUDED.wins,  0),              COALESCE(pitcher_stats.wins,  0)),
                     losses             = GREATEST(COALESCE(EXCLUDED.losses, 0),             COALESCE(pitcher_stats.losses, 0)),
                     saves              = GREATEST(COALESCE(EXCLUDED.saves,   0),            COALESCE(pitcher_stats.saves,   0)),
-                    holds              = GREATEST(COALESCE(EXCLUDED.holds,   0),            COALESCE(pitcher_stats.holds,   0)),
+                    holds              = LEAST(COALESCE(EXCLUDED.holds, pitcher_stats.holds, 0),
+                                               COALESCE(NULLIF(EXCLUDED.games, 0), pitcher_stats.games, 9999)),
                     innings_pitched    = GREATEST(COALESCE(EXCLUDED.innings_pitched, 0),    COALESCE(pitcher_stats.innings_pitched, 0)),
                     hits_allowed       = GREATEST(COALESCE(EXCLUDED.hits_allowed,      0), COALESCE(pitcher_stats.hits_allowed,      0)),
                     home_runs_allowed  = GREATEST(COALESCE(EXCLUDED.home_runs_allowed, 0), COALESCE(pitcher_stats.home_runs_allowed, 0)),
@@ -603,7 +610,7 @@ def crawl_kbo_pitcher_season_stats(season=2026):
             """, (
                 player_id, season,
                 g, w, l,
-                _ci(i_sv),    _ci(i_hold), ip_val,
+                sv,           hld,         ip_val,
                 _ci(i_ha),    _ci(i_hra),  _ci(i_bb),
                 _ci(i_hbp),   _ci(i_so),   _ci(i_r),
                 _ci(i_er),    _cf(i_era),  _cf(i_whip), wpct_val,
