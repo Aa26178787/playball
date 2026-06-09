@@ -774,6 +774,28 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     'avg', 'obp', 'slg', 'ops', 'woba', 'wrc_plus', 'babip', 'iso', 'risp', 'bb_pct', 'k_pct', 'gpa', 'bb_k', 'fpct',
     'era', 'whip', 'k_per_9', 'bb_per_9', 'fip', 'avg_against', 'k_bb_pct',
   };
+  // 낮을수록 좋은 지표 (서버 core_compare 방향과 동일). 타자/투수 분리 (bb_pct·k_pct·strikeouts·babip 방향 반대)
+  static const Set<String> _lowerBetterBatter = {'strikeouts', 'errors', 'pb', 'k_pct'};
+  static const Set<String> _lowerBetterPitcher = {'era', 'whip', 'fip', 'bb_per_9', 'babip', 'avg_against', 'losses', 'blown_saves', 'bb_pct'};
+
+  // 평균 대비 방향 인식 라벨 (▲/▼ + 우수/열세 색상)
+  Widget _avgDeltaLabel(String key, num? lg, dynamic pv, bool isPitcher, Color tc, Color sub) {
+    final pNum = pv is num ? pv : num.tryParse('$pv');
+    if (pNum == null || lg == null) {
+      return SizedBox(width: double.infinity, child: Text(
+          '리그 평균 ${_fmtStat(key, lg ?? 0)}',
+          textAlign: TextAlign.center, style: TextStyle(fontSize: 9, color: sub)));
+    }
+    final lower = isPitcher ? _lowerBetterPitcher.contains(key) : _lowerBetterBatter.contains(key);
+    final delta = pNum - lg;
+    final better = lower ? pNum < lg : pNum > lg;
+    final arrow = pNum < lg ? '▼' : '▲';
+    final sign = delta >= 0 ? '+' : '-';
+    return SizedBox(width: double.infinity, child: Text(
+        '$arrow 리그평균 ${_fmtStat(key, lg)} ($sign${_fmtStat(key, delta.abs())} ${better ? '우수' : '열세'})',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: better ? tc : sub)));
+  }
 
   // 세부/고급/수비 그리드 — 셀마다 리그순위 / 규정미달 표시
   Widget _seasonGridSection(String title, List<(String, String, String)> items) {
@@ -1003,10 +1025,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
               ])),
             ),
             const SizedBox(height: 4),
-            SizedBox(width: double.infinity, child: Text(
-                '▲ 리그 평균 ${_fmtStat(it.$3, (c['lg'] as num?) ?? 0)}',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 9, color: sub))),
+            _avgDeltaLabel(it.$3, c['lg'] as num?, cur[it.$3], isPitcher, tc, sub),
           ] else if (_rateStats.contains(it.$3) && !qualified) ...[
             const SizedBox(height: 8),
             Text(isPitcher ? '규정이닝 미달' : '규정타석 미달',
