@@ -229,6 +229,32 @@ class _MyPageScreenState extends State<MyPageScreen> {
     if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
+  Future<void> _resetSettings() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('설정 초기화'),
+        content: const Text('테마·화면 토글·선수별 핵심 기록·도움말 등 앱 환경설정을 기본값으로 되돌립니다.\n로그인·즐겨찾기·작성 글은 그대로 유지됩니다.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('초기화', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await LocalCache.resetSettings();
+    if (!mounted) return;
+    await context.read<ThemeProvider>().reset();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('설정을 기본값으로 초기화했어요')),
+      );
+    }
+  }
+
   Future<void> _deleteAccount() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -382,6 +408,23 @@ class _MyPageScreenState extends State<MyPageScreen> {
                               Icon(Icons.block, size: 18, color: cs.sub),
                               const SizedBox(width: 12),
                               Expanded(child: Text('차단한 사용자',
+                                  style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.ink))),
+                              Icon(Icons.chevron_right, size: 18, color: cs.sub),
+                            ]),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+                        child: GestureDetector(
+                          onTap: _resetSettings,
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: _cardDeco(cs),
+                            child: Row(children: [
+                              Icon(Icons.restart_alt, size: 18, color: cs.sub),
+                              const SizedBox(width: 12),
+                              Expanded(child: Text('설정 초기화',
                                   style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.ink))),
                               Icon(Icons.chevron_right, size: 18, color: cs.sub),
                             ]),

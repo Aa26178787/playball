@@ -24,4 +24,12 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setBool('dark_mode', isDark);
     notifyListeners();
   }
+
+  // 설정 초기화 — 기본값(다크)으로 복귀
+  Future<void> reset() async {
+    _themeMode = ThemeMode.dark;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('dark_mode', true);
+    notifyListeners();
+  }
 }

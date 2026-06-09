@@ -67,6 +67,21 @@ class LocalCache {
     await prefs.remove('${_prefix}flag_$key');
   }
 
+  // 설정 초기화 — UI 환경설정/토글/도움말 힌트만 제거 (로그인·즐겨찾기 데이터는 유지)
+  static Future<void> resetSettings() async {
+    final prefs = await _getPrefs();
+    final keys = prefs.getKeys().where((k) =>
+        k.startsWith('${_prefix}flag_') ||            // 1회성 도움말/온보딩 힌트
+        k.startsWith('${_prefix}core_keys_') ||       // 선수별 핵심 기록 커스텀
+        k.contains('compact') ||                      // compact 뷰 토글
+        k.contains('strip') ||                        // 날짜/구장 스트립 확장 상태
+        k.contains('toggle') || k.contains('view_')   // 기타 뷰 토글
+    ).toList();
+    for (final k in keys) {
+      await prefs.remove(k);
+    }
+  }
+
   // 로그아웃 시 호출 — 유저 개인 데이터 캐시 삭제
   static Future<void> clearUser() async {
     final prefs = await _getPrefs();
