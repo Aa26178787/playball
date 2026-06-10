@@ -101,6 +101,56 @@ class _PlayerScreenState extends State<PlayerScreen>
     _loadHitters();
     _loadPitchers();
     _checkLogin();
+    _loadRecent();
+  }
+
+  List _recent = [];
+  Future<void> _loadRecent() async {
+    final r = await LocalCache.getRecentPlayers();
+    if (mounted) setState(() => _recent = r);
+  }
+
+  Widget _buildRecentStrip(Color ink, Color sub) {
+    if (_recent.isEmpty) return const SizedBox.shrink();
+    return Container(
+      height: 38,
+      margin: const EdgeInsets.only(bottom: 6),
+      child: Row(children: [
+        const SizedBox(width: 14),
+        Icon(Icons.history, size: 14, color: sub),
+        const SizedBox(width: 6),
+        Expanded(child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: _recent.length,
+          separatorBuilder: (c, i) => const SizedBox(width: 6),
+          itemBuilder: (_, i) {
+            final p = _recent[i] as Map;
+            final code = p['team_code'] as String? ?? '';
+            final tc = teamColor(code);
+            return GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(
+                playerId: p['id'] as int,
+                initialData: {'name': p['name'], 'team_code': code, 'team': teamDisplayName(code)},
+              ))).then((_) { if (mounted) _loadRecent(); }),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                decoration: BoxDecoration(
+                  color: tc.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: tc.withValues(alpha: 0.30)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(width: 6, height: 6, decoration: BoxDecoration(color: tc, shape: BoxShape.circle)),
+                  const SizedBox(width: 6),
+                  Text(p['name'] ?? '', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: ink)),
+                ]),
+              ),
+            );
+          },
+        )),
+        const SizedBox(width: 8),
+      ]),
+    );
   }
 
   @override
@@ -525,7 +575,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         playerId: p['id'],
         initialData: {'name': p['name'], 'team': teamDisplayName(code), 'profile_image': p['profile_image'], 'number': p['number'], 'player_type': p['player_type'], 'team_code': code},
       )),
-    );
+    ).then((_) { if (mounted) _loadRecent(); });
   }
 
   // 선수 이미지 원형 아바타 (팀컬러 테두리, 이미지 없으면 등번호 fallback)
@@ -993,7 +1043,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                           MaterialPageRoute(builder: (_) => PlayerDetailScreen(
                             playerId: item['id'] as int,
                             initialData: {'name': item['name'], 'team': item['team_name'] ?? teamDisplayName(item['team_code'] ?? ''), 'profile_image': item['profile_image'], 'position': item['position'], 'player_type': item['player_type']},
-                          ))),
+                          ))).then((_) { if (mounted) _loadRecent(); }),
                     );
                   }
                 },
@@ -1173,6 +1223,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                           MaterialPageRoute(builder: (_) => const MyPageScreen()))),
                 ]),
               ),
+              _buildRecentStrip(ink, sub),
               TabBar(
                 controller: _tabController,
                 tabs: const [Tab(text: '타자'), Tab(text: '투수'), Tab(text: '인기투표')],

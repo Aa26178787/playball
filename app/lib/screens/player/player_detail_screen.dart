@@ -256,6 +256,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       ApiService.setPlayerDetailMem(widget.playerId, playerData);
       if (mounted) setState(() { _playerData = playerData; _isLoading = false; _bodyLoading = false; });
       LocalCache.set(_cacheKey, playerData).catchError((_) {});
+      // 최근 본 선수 기록
+      LocalCache.addRecentPlayer(widget.playerId,
+          (playerData['name'] as String?) ?? '',
+          playerData['team_code'] as String?).catchError((_) {});
 
       // type 미확보였으면 프로필 받은 뒤 발화 (fallback)
       if (!subsFired) _fireSubsections(playerData['player_type'] as String? ?? '');

@@ -46,6 +46,18 @@ class LocalCache {
     }
   }
 
+  // 최근 본 선수 (최신순, 최대 15, TTL 없음)
+  static Future<void> addRecentPlayer(int id, String name, String? teamCode) async {
+    final list = (await getStale('recent_players') as List?)?.toList() ?? [];
+    list.removeWhere((e) => e is Map && e['id'] == id);
+    list.insert(0, {'id': id, 'name': name, 'team_code': teamCode ?? ''});
+    if (list.length > 15) list.removeRange(15, list.length);
+    await set('recent_players', list);
+  }
+
+  static Future<List> getRecentPlayers() async =>
+      (await getStale('recent_players') as List?) ?? [];
+
   static Future<void> remove(String key) async {
     final prefs = await _getPrefs();
     await prefs.remove('$_prefix$key');
