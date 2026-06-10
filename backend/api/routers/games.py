@@ -1436,6 +1436,22 @@ def get_game_relay(game_id: int):
         except Exception:
             field_view = None
 
+        # 인게임 홈 승리확률 (자체 모델 — Naver 승률 미제공 대체)
+        _hwp = None
+        try:
+            from api.prediction.ingame_model import predict_home_win
+            _hwp = round(predict_home_win(
+                int(relay.get("inn") or 1), home_or_away,
+                int(game_state.get("out", 0) or 0),
+                int(game_state.get("homeScore", 0) or 0),
+                int(game_state.get("awayScore", 0) or 0),
+                game_state.get("base1") not in [None, "0", 0],
+                game_state.get("base2") not in [None, "0", 0],
+                game_state.get("base3") not in [None, "0", 0],
+            ) * 100, 1)
+        except Exception:
+            _hwp = None
+
         return {
             "game_id":      game_id,
             "inning":       relay.get("inn"),
@@ -1447,6 +1463,7 @@ def get_game_relay(game_id: int):
                 "base1":      game_state.get("base1") not in [None, "0", 0],
                 "base2":      game_state.get("base2") not in [None, "0", 0],
                 "base3":      game_state.get("base3") not in [None, "0", 0],
+                "home_win_prob": _hwp,
                 "home_score": game_state.get("homeScore"),
                 "away_score": game_state.get("awayScore"),
                 "home_hit":   game_state.get("homeHit"),
@@ -1831,3 +1848,76 @@ def get_game_highlights(game_id: int):
 
 
 # 팬 승리예측(투표) 제거 — /prediction/game/{id} (ML 모델) 으로 대체
+
+@router.get("/{game_id}/win-prob-series")
+@cached(30)
+def get_win_prob_series(game_id: int):
+    """타석별 홈팀 승리확률 시계열 (승리확률 그래프 소스)
+
+    저장 테이블 없음 — game_pitches를 PA 파싱(pa_parser 재사용) 후
+    타석마다: Naver 승률 있으면(시즌 초 경기) 그 값, 없으면 인게임 모델 적용.
+    진행 경기는 30초 캐시로 최신 타석까지 따라감.
+    """
+    from api.pa_parser import parse_game_pas
+    from api.prediction.ingame_model import predict_home_win
+
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT status, home_score, away_score FROM games WHERE id = %s", (game_id,))
+        g = cur.fetchone()
+        if not g:
+            raise HTTPException(status_code=404, detail="경기 없음")
+        status, g_hs, g_as = g
+        cur.execute("""
+            SELECT inning, inning_half, seqno, type, batter_name, pitcher_name, title,
+                   strike, ball, out, base1, base2, base3,
+                   home_score, away_score, home_win_rate
+            FROM game_pitches
+            WHERE game_id = %s
+            ORDER BY inning, inning_half, seqno, id
+        """, (game_id,))
+        rows = cur.fetchall()
+        cur.close()
+    finally:
+        conn.close()
+
+    # 스냅샷 기록 여부 (시즌 초 경기는 카운트/주자 미기록 → 모델 적용 불가)
+    has_ctx = any(r[3] == 1 and ((r[7] or 0) > 0 or (r[8] or 0) > 0 or (r[9] or 0) > 0
+                                 or r[10] or r[11] or r[12]) for r in rows)
+    pas = parse_game_pas(rows)
+    series = []
+    for pa in pas:
+        prob = None
+        if pa.get('win_rate_before') is not None:
+            prob = float(pa['win_rate_before'])
+        elif has_ctx:
+            prob = round(predict_home_win(
+                pa['inning'], pa['inning_half'], pa['outs_before'] or 0,
+                pa['home_score'] or 0, pa['away_score'] or 0,
+                bool(pa['base1']), bool(pa['base2']), bool(pa['base3'])) * 100, 1)
+        if prob is None:
+            continue
+        series.append({
+            "inning": pa['inning'],
+            "half": pa['inning_half'],
+            "pa_seq": pa['pa_seq'],
+            "batter": pa['batter_name'],
+            "result": pa['result_class'],
+            "home_score": pa['home_score'],
+            "away_score": pa['away_score'],
+            "prob": prob,
+        })
+    final_prob = None
+    if status == '종료' and g_hs is not None and g_as is not None and g_hs != g_as:
+        final_prob = 100.0 if g_hs > g_as else 0.0
+    return {
+        "game_id": game_id,
+        "status": status,
+        "model": "ingame_v1" if has_ctx else "naver",
+        "series": series,
+        "final_prob": final_prob,
+    }
