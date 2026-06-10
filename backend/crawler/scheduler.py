@@ -27,6 +27,7 @@ from crawler.statiz_crawler import (
     save_players_and_stats,
 )
 from database.connection import get_connection
+from api.event_stream import emit_event
 from datetime import datetime, timezone
 import json
 
@@ -1069,6 +1070,9 @@ def _check_pitcher_change(game_id: int, game_info: dict):
             notify_pitcher_change(game_id, game_info.get('home_team', ''), game_info.get('away_team', ''),
                                   name, team_name or '', prev_name or '',
                                   game_info.get('home_team_id', 0), game_info.get('away_team_id', 0))
+            emit_event(game_id, 'pitcher_change',
+                       {'team': team_name or '', 'new': name, 'prev': prev_name or '', 'side': side},
+                       dedup_key=str(player_id))
             print(f"[FCM] 투수 교체 알림: {prev_name} → {name} ({team_name}, game_id={game_id})")
     except Exception as e:
         print(f"[FCM] 투수 교체 알림 오류: {e}")
@@ -1306,6 +1310,7 @@ def smart_update():
                 if cs == '취소' and not _already_notified(gid, 'cancelled'):
                     notify_game_cancelled(gid, curr['home_team'], curr['away_team'],
                                           curr['home_team_id'], curr['away_team_id'])
+                    emit_event(gid, 'cancelled', {'home': curr['home_team'], 'away': curr['away_team']})
                     _mark_notified(gid, 'cancelled')
                     continue
 
@@ -1333,6 +1338,8 @@ def smart_update():
                                     notify_starter_announced(gid, curr['home_team'], curr['away_team'],
                                                              curr['home_team_id'], curr['away_team_id'],
                                                              _la_hs, _la_ls)
+                                    emit_event(gid, 'starter_announced',
+                                               {'home_starter': _la_hs, 'away_starter': _la_ls})
                                     _mark_notified(gid, 'starter_announced')
                                     # 라인업 발표 → 예측 캐시 무효화 (해당 game만) + 재로깅
                                     try:
@@ -1369,6 +1376,10 @@ def smart_update():
                                       curr['home_team_id'], curr['away_team_id'],
                                       start_time=curr.get('start_time', ''),
                                       home_starter=_hs, away_starter=_ls)
+                    emit_event(gid, 'game_start',
+                               {'home': curr['home_team'], 'away': curr['away_team'],
+                                'home_starter': _hs, 'away_starter': _ls,
+                                'start_time': curr.get('start_time', '')})
                     _mark_notified(gid, 'game_start')
                     # 경기 시작 시 entry 로스터 1회 보강 — 후보/불펜은 relay 발행 후에만 존재
                     try:
@@ -1447,6 +1458,16 @@ def smart_update():
                                         batter=batter, pitcher=pitcher, play_text=play_text,
                                         stuff=stuff, speed=speed, homein=homein,
                                         pitch_num=pitch_num)
+                    emit_event(gid, 'score_change',
+                               {'home_score': ch, 'away_score': ca,
+                                'prev_home': ph, 'prev_away': pa,
+                                'scoring_team': scoring_team, 'runs': runs_scored,
+                                'comeback': is_comeback, 'big_comeback': is_big_comeback,
+                                'batter': batter, 'pitcher': pitcher,
+                                'play_text': play_text, 'homein': homein},
+                               inning=inning_now or None,
+                               inning_half=str(curr.get('inning_half', ''))[:1] or None,
+                               dedup_key=score_subid)
                     _mark_notified(gid, 'score_change', score_subid)
                     _check_new_hrs(gid, curr['home_team_id'], curr['away_team_id'])
                     _check_game_milestones(gid)
@@ -1480,6 +1501,8 @@ def smart_update():
                     notify_extra_innings(gid, curr['home_team'], curr['away_team'],
                                          curr_inn,
                                          curr['home_team_id'], curr['away_team_id'])
+                    emit_event(gid, 'extra_innings', {'inning': curr_inn},
+                               inning=curr_inn, dedup_key=str(curr_inn))
                     _mark_notified(gid, 'extra_innings', str(curr_inn))
 
                 # 진행 중 투수 교체 감지
@@ -1528,6 +1551,18 @@ def smart_update():
                             save_game_pitches(gid, naver_gid, max_inn - 1)
                     except Exception as sgp_err:
                         print(f"[{datetime.now()}] save_game_pitches 오류: {sgp_err}")
+                    # 도메인 이벤트: 경기 종료 (UNIQUE dedup라 재실행 안전)
+                    emit_event(gid, 'game_end',
+                               {'home_score': curr.get('home_score', 0),
+                                'away_score': curr.get('away_score', 0),
+                                'innings': max_inn})
+                    # 타석(PA) 정규화 적재 — per-PA 모델/WPA/matchup 소스
+                    try:
+                        from api.pa_parser import save_plate_appearances_for_game
+                        n_pa = save_plate_appearances_for_game(gid)
+                        print(f"[{datetime.now()}] PA 적재: game_id={gid} {n_pa}타석")
+                    except Exception as pa_err:
+                        print(f"[{datetime.now()}] PA 적재 오류 game={gid}: {pa_err}")
                     # 동명이인 자동 정정 (game_pitchers + game_batters)
                     # 1) 합쳐진 케이스: raw stats 재INSERT
                     try:
@@ -1638,6 +1673,10 @@ def smart_update():
                     notify_walkoff(gid, curr['home_team'], curr['away_team'],
                                    curr['home_score'], curr['away_score'],
                                    curr['home_team_id'], curr['away_team_id'])
+                    emit_event(gid, 'walkoff',
+                               {'home': curr['home_team'], 'away': curr['away_team'],
+                                'home_score': curr.get('home_score', 0),
+                                'away_score': curr.get('away_score', 0)})
                     _mark_notified(gid, 'walkoff')
             except Exception as wo_err:
                 print(f"[FCM] 끝내기 알림 오류: {wo_err}")
