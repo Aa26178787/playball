@@ -74,6 +74,47 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   int? _selectedRelayInning;
   final ScrollController _inningChipCtrl = ScrollController();
   int? _lastAutoScrolledInning; // 칩 자동 스크롤 dedup (이닝 바뀔 때만 이동)
+
+  // 현재 타석 맞대결 통산 (plate_appearances 기반) — 타자·투수 조합 바뀔 때만 fetch
+  Map<String, dynamic>? _matchupData;
+  String _matchupKey = '';
+
+  void _maybeLoadMatchup(Map<String, dynamic>? fieldView) {
+    final b = fieldView?['batter'] as Map<String, dynamic>?;
+    final p = fieldView?['pitcher'] as Map<String, dynamic>?;
+    final bid = b?['player_id'] as int?;
+    final pid = p?['player_id'] as int?;
+    if (bid == null || pid == null) return;
+    final key = '$bid:$pid';
+    if (key == _matchupKey) return;
+    _matchupKey = key;
+    _matchupData = null;
+    () async {
+      try {
+        final d = await ApiService.getMatchupStats(bid, pid);
+        if (mounted && _matchupKey == key) setState(() => _matchupData = d);
+      } catch (e) {
+        debugPrint('game_detail matchup: $e');
+      }
+    }();
+  }
+
+  String? get _matchupLine {
+    final d = _matchupData;
+    if (d == null) return null;
+    final pa = d['pa'] as int? ?? 0;
+    if (pa == 0) return '첫 맞대결';
+    final ab = d['at_bats'] ?? 0;
+    final h = d['hits'] ?? 0;
+    final hr = d['home_runs'] ?? 0;
+    final bb = d['walks'] ?? 0;
+    final k = d['strikeouts'] ?? 0;
+    final parts = <String>['$ab타수 $h안타'];
+    if (hr > 0) parts.add('홈런$hr');
+    if (bb > 0) parts.add('볼넷$bb');
+    if (k > 0) parts.add('삼진$k');
+    return parts.join(' · ');
+  }
   int _relaySwipeDir = 1; // 슬라이드 방향 (1=다음: 우→좌, -1=이전: 좌→우)
   List _sameDayGames = [];
   int _lineupSubIndex = 0;
@@ -834,12 +875,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       final relayState = _relayData!['current_state'];
       final fieldView  = _relayData!['field_view'] as Map<String, dynamic>?;
       if (relayState != null) {
+        _maybeLoadMatchup(fieldView);
         fieldWidget = _FullFieldView(
           base1: relayState['base1'] == true,
           base2: relayState['base2'] == true,
           base3: relayState['base3'] == true,
           fieldView: fieldView,
           isDark: isDark,
+          matchupLine: _matchupLine,
         );
       }
     } else if (_rosterData != null) {
@@ -1444,12 +1487,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       final relayState = _relayData!['current_state'];
       final fieldView  = _relayData!['field_view'] as Map<String, dynamic>?;
       if (relayState != null) {
+        _maybeLoadMatchup(fieldView);
         fieldWidget = _FullFieldView(
           base1: relayState['base1'] == true,
           base2: relayState['base2'] == true,
           base3: relayState['base3'] == true,
           fieldView: fieldView,
           isDark: isDark,
+          matchupLine: _matchupLine,
         );
       }
     } else if (_rosterData != null) {
@@ -1712,6 +1757,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 base1: base1, base2: base2, base3: base3,
                 fieldView: fieldView,
                 isDark: isDark,
+                matchupLine: _matchupLine,
               ),
             ),
           ],
@@ -4523,10 +4569,11 @@ class _GameShareSheetState extends State<_GameShareSheet> {
 class _FullFieldView extends StatelessWidget {
   final bool base1, base2, base3, isDark;
   final Map<String, dynamic>? fieldView;
+  final String? matchupLine; // 현재 타석 맞대결 통산 (좌하단 오버레이)
 
   const _FullFieldView({
     required this.base1, required this.base2, required this.base3,
-    required this.isDark, this.fieldView,
+    required this.isDark, this.fieldView, this.matchupLine,
   });
 
   static const _baseLabel = {
@@ -4753,6 +4800,31 @@ class _FullFieldView extends StatelessWidget {
                 isBatter: true,
               ),
               68, 40,
+            ),
+          // ── 맞대결 통산 오버레이 (좌하단 — 다음타석과 대칭) ──
+          if (matchupLine != null && batter != null && pitcher != null)
+            Positioned(
+              left: 4, bottom: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('맞대결 통산',
+                        style: TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 1),
+                    Text(
+                      matchupLine!,
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
+              ),
             ),
           // ── 다음 타석 오버레이 (우하단, 2층 텍스트) ──
           if (nextBatter != null)

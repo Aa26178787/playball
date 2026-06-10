@@ -501,8 +501,10 @@ def get_player_popularity(limit: int = 20, current_user: dict | None = Depends(g
 
 
 @router.get("/matchup")
+@cached(600)
 def get_matchup_stats(batter_id: int, pitcher_id: int):
-    """타자 vs 투수 상대전적 (반대팀으로 같은 경기 출전 시 타자 성적 합산)"""
+    """타자 vs 투수 직접 맞대결 — plate_appearances 타석 단위 정밀 집계
+    (구버전은 같은 경기 출전이면 타 투수 상대 타석까지 합산하던 근사치였음)"""
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -516,32 +518,40 @@ def get_matchup_stats(batter_id: int, pitcher_id: int):
         raise HTTPException(status_code=404, detail="선수 없음")
     cur.execute("""
         SELECT
-            COUNT(DISTINCT gb.game_id) as games,
-            COALESCE(SUM(gb.at_bats), 0) as at_bats,
-            COALESCE(SUM(gb.hits), 0) as hits,
-            COALESCE(SUM(gb.home_runs), 0) as home_runs,
-            COALESCE(SUM(gb.rbis), 0) as rbis,
-            COALESCE(SUM(gb.walks), 0) as walks,
-            COALESCE(SUM(gb.strikeouts), 0) as strikeouts
-        FROM game_batters gb
-        JOIN game_pitchers gp ON gb.game_id = gp.game_id AND gb.team_side != gp.team_side
-        WHERE gb.player_id = %s AND gp.player_id = %s
-    """, (batter_id, pitcher_id))
+            COUNT(*) AS pa,
+            COUNT(DISTINCT game_id) AS games,
+            COUNT(*) FILTER (WHERE result_class IN
+              ('single','double','triple','hr','out','so','error','fc','reach_other')) AS at_bats,
+            COUNT(*) FILTER (WHERE is_hit) AS hits,
+            COUNT(*) FILTER (WHERE result_class = 'hr') AS home_runs,
+            COUNT(*) FILTER (WHERE result_class = 'double') AS doubles,
+            COUNT(*) FILTER (WHERE result_class = 'triple') AS triples,
+            COUNT(*) FILTER (WHERE result_class IN ('bb','ibb')) AS walks,
+            COUNT(*) FILTER (WHERE result_class = 'hbp') AS hbp,
+            COUNT(*) FILTER (WHERE result_class = 'so') AS strikeouts
+        FROM plate_appearances
+        WHERE batter_name = %s AND pitcher_name = %s
+    """, (b[1], p[1]))
     row = cur.fetchone()
     cur.close(); conn.close()
-    games, ab, h, hr, rbi, bb, k = row
+    pa, games, ab, h, hr, d2, d3, bb, hbp, k = row
     avg = round(h / ab, 3) if ab > 0 else 0.0
+    obp_den = ab + bb + hbp
     return {
         "batter": {"id": b[0], "name": b[1]},
         "pitcher": {"id": p[0], "name": p[1]},
+        "pa": pa,
         "games": games,
         "at_bats": ab,
         "hits": h,
         "home_runs": hr,
-        "rbis": rbi,
+        "doubles": d2,
+        "triples": d3,
         "walks": bb,
+        "hbp": hbp,
         "strikeouts": k,
         "avg": avg,
+        "obp": round((h + bb + hbp) / obp_den, 3) if obp_den > 0 else 0.0,
     }
 
 

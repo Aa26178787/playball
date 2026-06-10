@@ -489,13 +489,14 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final batter = data['batter'] as Map;
     final pitcher = data['pitcher'] as Map;
     final games = data['games'] ?? 0;
+    final pa = data['pa'] ?? 0;
     final ab = data['at_bats'] ?? 0;
     final h = data['hits'] ?? 0;
     final hr = data['home_runs'] ?? 0;
-    final rbi = data['rbis'] ?? 0;
     final bb = data['walks'] ?? 0;
     final k = data['strikeouts'] ?? 0;
     final avg = (data['avg'] as num?)?.toStringAsFixed(3) ?? '.000';
+    final obp = ((data['obp'] as num?) ?? 0).toStringAsFixed(3);
 
     return Expanded(
       child: Column(
@@ -514,7 +515,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    Text('$games경기 출전', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text('$games경기 · $pa타석 직접 맞대결', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -529,10 +530,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _statBox('타점', '$rbi'),
                         _statBox('볼넷', '$bb'),
                         _statBox('삼진', '$k'),
-                        _statBox('출루율', ab > 0 ? ((h + bb) / (ab + bb)).toStringAsFixed(3) : '.000'),
+                        _statBox('출루율', obp),
                       ],
                     ),
                   ],
