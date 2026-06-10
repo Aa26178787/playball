@@ -942,7 +942,12 @@ def save_preview_roster(db_game_id, naver_game_id):
             return
         cur = conn.cursor()
 
-        def _pid(pcode, name):
+        # 경기 양팀 team_id (신규 선수 자동생성 시 소속 배정용)
+        cur.execute("SELECT home_team_id, away_team_id FROM games WHERE id = %s", (db_game_id,))
+        _tr = cur.fetchone()
+        _team_of = {'home': _tr[0] if _tr else None, 'away': _tr[1] if _tr else None}
+
+        def _pid(pcode, name, side=None, ptype='선수'):
             if pcode:
                 cur.execute("SELECT id FROM players WHERE naver_player_id = %s LIMIT 1", (str(pcode),))
                 r = cur.fetchone()
@@ -952,6 +957,19 @@ def save_preview_roster(db_game_id, naver_game_id):
                 cur.execute("SELECT id FROM players WHERE name = %s LIMIT 1", (name,))
                 r = cur.fetchone()
                 if r:
+                    # naver_player_id 보강 (다음부터 코드 매칭)
+                    if pcode:
+                        cur.execute("UPDATE players SET naver_player_id = %s WHERE id = %s AND (naver_player_id IS NULL OR naver_player_id = '')", (str(pcode), r[0]))
+                    return r[0]
+            # 미등록 — 자동 생성 (신규 외국인 선발 등 누락 방지, 2026-06-11)
+            if name and side and _team_of.get(side):
+                cur.execute("""
+                    INSERT INTO players (name, team_id, player_type, naver_player_id)
+                    VALUES (%s, %s, %s, %s) RETURNING id
+                """, (name, _team_of[side], ptype, str(pcode) if pcode else None))
+                r = cur.fetchone()
+                if r:
+                    print(f"신규 선수 자동 추가(preview): {name} (팀={_team_of[side]}, code={pcode})")
                     return r[0]
             return None
 
@@ -962,7 +980,7 @@ def save_preview_roster(db_game_id, naver_game_id):
             for e in (lu.get('fullLineUp') or []):
                 if (e.get('positionName') or '') != '선발투수':
                     continue
-                pid = _pid(e.get('playerCode'), e.get('playerName'))
+                pid = _pid(e.get('playerCode'), e.get('playerName'), side, '투수')
                 if pid is None:
                     continue
                 cur.execute("""
@@ -977,7 +995,7 @@ def save_preview_roster(db_game_id, naver_game_id):
                 n += 1
             # 불펜
             for e in (lu.get('pitcherBullpen') or []):
-                pid = _pid(e.get('playerCode'), e.get('playerName'))
+                pid = _pid(e.get('playerCode'), e.get('playerName'), side, '투수')
                 if pid is None:
                     continue
                 cur.execute("""
@@ -991,7 +1009,7 @@ def save_preview_roster(db_game_id, naver_game_id):
                 n += 1
             # 후보 야수
             for e in (lu.get('batterCandidate') or []):
-                pid = _pid(e.get('playerCode'), e.get('playerName'))
+                pid = _pid(e.get('playerCode'), e.get('playerName'), side, '타자')
                 if pid is None:
                     continue
                 cur.execute("""
