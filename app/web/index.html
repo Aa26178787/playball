@@ -33,6 +33,12 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- flutter_inappwebview_web 등록 크래시 회피 shim — 웹은 카카오맵 미지원이나
+       플러그인이 시작 시 자동 등록되며 window.flutter_inappwebview.nativeCommunication에
+       써서 undefined 에러→흰화면. 빈 객체 선주입으로 무해화 (web 전용) -->
+  <script>
+    window.flutter_inappwebview = window.flutter_inappwebview || {};
+  </script>
   <!-- CanvasKit 로컬 로드는 빌드 플래그 --no-web-resources-cdn로 처리 (gstatic 차단/iOS 흰화면 회피) -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
