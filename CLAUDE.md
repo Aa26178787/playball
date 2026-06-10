@@ -176,7 +176,8 @@ pitcher: era,whip,fip,k_per_9,bb_per_9,babip,war,qs,blown_saves,avg_against …
 ### 플랫폼 코어 (2026-06-11 — 메가A/B 토대)
 - **game_event_stream**: 도메인 이벤트 (scheduler 8종 발행: game_start/score_change/game_end/cancelled/extra_innings/pitcher_change/walkoff/starter_announced). `api/event_stream.emit_event`, UNIQUE(game_id,type,dedup_key) dedup. ⚠️ 기존 `game_events`(naver_crawler 텍스트 적재)와 별개 테이블. 소비자(예정): 타임라인·WPA·리플레이·브리핑
 - **plate_appearances**: PA 정규화 (`api/pa_parser.py` — game_pitches type 8/1/13 파싱). 컬럼: 타자/투수/result_class(single~hr/bb/hbp/so/sac/error/fc/reach_other/out)/is_hit/n_pitches/outs_before/주자/스코어/**win_rate_before·after(홈 기준 — WPA 재료)**/seq범위. 종료 후처리서 자동 적재 + `crawler/backfill_pa.py`(재실행 안전 upsert)
-- ⚠️ **데이터 기간 결손**: 3/12~5/8(205경기)=win_rate만 있고 카운트/주자 스냅샷 없음(→컨텍스트 NULL 적재) / 5/9~(135경기)=스냅샷 있고 **win_rate 없음(5/9 크롤러 개편 때 Naver metricOption 미수신 — 라이브 시간대에 relay 원본서 필드 존재 확인 필요, 복원 시 WPA 전구간 확보)**. PA 소비 시 NULL 가드 필수
+- ~~데이터 기간 결손~~ → **win_rate 버그 해결**(2026-06-11): 원인 = metricOption이 textRelays **항목 레벨**인데 textOptions 내부서 조회(naver_crawler 레벨 착오). 수정+`backfill_winrate.py`로 5/9~ 재크롤 → 전 기간 WPA 가능. 잔여 결손 = 3/12~5/8 카운트/주자 스냅샷만(컨텍스트 NULL 유지). ※Naver metricOption에 **wpaByPlate**(타석 WPA 직접 제공)도 있음 — 필요 시 활용
+- **과거 시즌(24·25) 수집 = GO 판정**(2025-06-11 파일럿): 일정·relay API 과거 시즌 완전 보존(구조 동일). 비용 0(대역 2-4GB·저장 ~70MB), 시즌당 야간 배치 8-9시간(1.5s 간격). 선행 = 과거 games 행 INSERT(일정 크롤). 이득 = matchup 진짜 통산 + per-PA 재평가(AUC 천장 ~0.55) + 2시즌 아카이브
 - 안타판정: result_class 분기 순서 의존 ('땅볼로 출루'=reach_other, '삼진 아웃'=so). 대타 교체=동일 pa_seq 슬롯 대체, 무결과 타석(3아웃 주자사)=미적재
 - **인게임 승률 모델** (`api/prediction/ingame_model.py`): PA 컨텍스트+승패 라벨 로지스틱, **계수 JSON**(`ingame_coef.json` — pickle 불요, 추론 순수 파이썬). v1 = 8,488타석 AUC .853/Brier .154. 재학습 = 서버서 `python3 -m api.prediction.ingame_model` → coef scp 회수 커밋. 소비: relay home_win_prob·win-prob-series·(예정)결정적순간 푸시/WPA. matchup도 PA 기반 교체 완료(/players/matchup — 직접대결 정밀, 필드뷰 좌하단 캡션)
 
