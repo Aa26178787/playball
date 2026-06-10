@@ -1,7 +1,7 @@
 # 선수 인스타 핸들 검증 (players.insta_handle)
 
 ## 현황 (2026-06-10b — 전수 재검증 완료)
-- **등록 367명 / 미등록 ~127명** (활성 기준. 358 전수 dual-viewer 재검증 → 동명이인 4 제거 + naver 신규 13 추가)
+- **등록 370명 / 미등록 ~124명** (활성 기준. 358 전수 dual-viewer 재검증 → 동명이인 4 제거 + naver 신규 13 + 보류해소 3)
 - 재검증 내역: VERIFIED 304(이름) + 10(bio이름/구단) / GONE_OR_PRIVATE 17(비공개·삭제 — namu 등급 유지) / 잔여 수동확인 ~22(외국인 로마자 등 본인 판정 다수 포함)
 - 원본(namu만 크롤)서 가족계정 ~9건·동명이인 다수 박멸 + **2차 전수서 고팔로워 동명이인 3(아이돌 박지훈 7.6M·MLB 박찬호·배우 이준혁 996K) + 핸들양도 의심 1(신동건) 추가 박멸**
 
@@ -50,8 +50,8 @@
 - **제거 4**: 박지훈(KT) 0529.jihoon.ig=아이돌(7.6M·[RE:FLECT]) · 박찬호(OB·95년생) chanhopark61=MLB 레전드(등번호61) · 이준혁(NC) leejunhyuk05=배우(996.7K) · 신동건(LT) s1nd0ngun=표시이름 tnpzi_ 무관(양도 의심)
 - **신규 13**: 화이트 owen_white12·데일 jarryd_dale·강민성 k__a_ng_·장현식 sikkkkkkkkk_·김진욱 _jinukkim_·데이비슨 mattdavidson_24·오영수 yeongsuoh·김민석(OB) kmszz__·타케다 shotatakeda18·디아즈 lewin_dh19·알칸타라 alcantararaul26·유토 yuto.hros.1480·김현수(KT) hyeon0_0soo
 - **본인 확인(유지)**: 조상우 940904no.11(생년 일치)·장성우 zzangdoo22(등번호22)·한석현 han9405(94.05생)·외국인 본명 로마자 전원(페라자=Yonathan Perlaza 등)·전준우/노진혁/한준수/장승현(bio 1인칭)·임병욱 lim.bang_(한자 林秉昱=임병욱)
-- **보류(수동확인 필요)**: SK 김민준 동명 2명(투수#40 06년생 vs 내야수#5 04년생) 모두 skyjun_16 후보 — 판별불가 미등록 · LG 이민호 minoooooooo0o0(빈계정) · LG 김진수 jinsu_jung_a0531(야구흔적無) · 박세혁 parksseho(철자 seho — @oakleykorea 스폰 단서로 유지 중) · 이상영 _lee_s_y_(disp '이상빵' 별명 추정 유지) · 강승호/서건창(picnob 200인데 이름 파싱 실패 — 재확인)
-- SQL = `insta_audit_20260610.sql` / 산출물 = insta_dual.csv·insta_recheck.csv·insta_fill_verified.csv (로컬)
+- **보류 6건 수동확인 완료(2026-06-10c — namu 본인문서 SNS란 대조)**: ① skyjun_16 = **김민준(2004) 문서 등재 → id 3958(내야수#5)** 등록 (06년생 투수 김민준 #164는 IG 미상 유지) ② 이민호(2001) 문서 = minoooooooo0o0 → id 348 등록 (0팔로워 = 계정 재생성 추정) ③ **김진수 진짜 핸들 = l._.star_** (김진수(1998) 문서 + imginn disp ⭐️김진수⭐️ + bio 'LG트윈스 김진수') → id 3777 등록. naver 후보 jinsu_jung_a0531 = 동명이인(거부 정당) ④ 박세혁 parksseho — namu 등재 확인 = 본인 확정 유지 ⑤ 강승호 atoi_zila·서건창 seo___bb — namu 등재 = 본인(비공개, '높음' 등급) ⑥ 이상영 _lee_s_y_ — namu 변형 404·naver 무소득 = '약함' 등급 유지 (disp '이상빵' 별명 추정)
+- SQL = `insta_audit_20260610.sql`(+보류 3건 수동 UPDATE) / 산출물 = insta_dual.csv·insta_recheck.csv·insta_fill_verified.csv (로컬) / **최종 370명**
 
 ## 색출·정정한 오류 (namu/Wikidata만으론 못 잡던 것 — imginn이 잡음)
 - **가족계정**: 양석환 luvinbloom(꽃집)→ysghw_53 · 김재윤 extraordinaryleia(아기)→제거 · 김도영 im.__.zandi(강아지)→do_0000 · 류지혁 i_hyun_deun_el(자녀)→ryujihyuk_ · 허경민 heo_jamong_(자몽맘=아내)→kyoungmin1623 · 양창섭 cello_min_(자녀)→제거 · 박동원/이유찬/오영수 가족·없음 → 제거
