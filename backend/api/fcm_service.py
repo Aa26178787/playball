@@ -543,6 +543,15 @@ def notify_game_summary(game_id: int, home_team: str, away_team: str,
           {"game_id": str(game_id), "type": "game_summary"}, "game_end", game_id)
 
 
+# ── 아침 브리핑 ───────────────────────────────────────────────────────────────
+
+def notify_daily_briefing(team_id: int, title: str, body: str):
+    """아침 브리핑 (어제 마이팀 결과 + 오늘 경기) — notify_game_start ON 팬에게 팀별 1통"""
+    targets = _get_targets('notify_game_start', [team_id])
+    _send(targets, title, body,
+          {"type": "daily_briefing"}, "daily_briefing", None)
+
+
 # ── 즐겨찾기 선수 선발 출전 ────────────────────────────────────────────────────
 
 def notify_fav_player_lineup(player_id: int, player_name: str, team_name: str,

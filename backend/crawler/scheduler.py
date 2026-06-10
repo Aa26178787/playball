@@ -2889,6 +2889,76 @@ def _crawl_news_hourly():
         print(f"[{datetime.now()}] 뉴스 시간별 크롤링 오류: {e}")
 
 
+def _daily_briefing():
+    """아침 브리핑 (KST 09:00) — 팀별 1통: 어제 마이팀 결과 + 오늘 경기 안내.
+    notify_game_start 설정 준용, notification_log(game_id=0, sub_id=날짜_팀) dedup."""
+    from datetime import timedelta
+    from api.fcm_service import notify_daily_briefing
+    today = datetime.now()
+    today_str = today.strftime('%Y-%m-%d')
+    yesterday_str = (today - timedelta(days=1)).strftime('%Y-%m-%d')
+
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT g.home_team_id, g.away_team_id, t1.name, t2.name,
+                   COALESCE(g.start_time, ''), COALESCE(s.name, '')
+            FROM games g
+            JOIN teams t1 ON t1.id = g.home_team_id
+            JOIN teams t2 ON t2.id = g.away_team_id
+            LEFT JOIN stadiums s ON s.id = g.stadium_id
+            WHERE g.game_date = %s AND g.status != '취소'
+        """, (today_str,))
+        today_rows = cur.fetchall()
+        cur.execute("""
+            SELECT g.home_team_id, g.away_team_id, g.home_score, g.away_score, t1.name, t2.name
+            FROM games g
+            JOIN teams t1 ON t1.id = g.home_team_id
+            JOIN teams t2 ON t2.id = g.away_team_id
+            WHERE g.game_date = %s AND g.status = '종료'
+        """, (yesterday_str,))
+        y_rows = cur.fetchall()
+        cur.execute("SELECT id, name FROM teams")
+        teams = cur.fetchall()
+        cur.close()
+    except Exception as e:
+        print(f"[{datetime.now()}] 아침 브리핑 조회 오류: {e}")
+        return
+    finally:
+        conn.close()
+
+    for team_id, team_name in teams:
+        sub_id = f"{today_str}_{team_id}"
+        if _already_notified(0, 'daily_briefing', sub_id):
+            continue
+        parts = []
+        for h_id, a_id, hs, a_s, hname, aname in y_rows:
+            if team_id not in (h_id, a_id):
+                continue
+            my_home = team_id == h_id
+            my, opp = (hs or 0, a_s or 0) if my_home else (a_s or 0, hs or 0)
+            opp_name = aname if my_home else hname
+            tag = '승리' if my > opp else ('패배' if my < opp else '무승부')
+            parts.append(f"어제 {my}:{opp} {tag} vs {opp_name}")
+        for h_id, a_id, hname, aname, st, stadium in today_rows:
+            if team_id not in (h_id, a_id):
+                continue
+            opp_name = aname if team_id == h_id else hname
+            where = f" @{stadium}" if stadium else ""
+            when = f"{st} " if st else ""
+            parts.append(f"오늘 {when}vs {opp_name}{where}")
+        if not parts:
+            continue  # 어제도 오늘도 경기 없음 → 발송 안 함
+        try:
+            notify_daily_briefing(team_id, f"🌅 오늘의 {team_name}", " · ".join(parts))
+            _mark_notified(0, 'daily_briefing', sub_id)
+        except Exception as e:
+            print(f"[{datetime.now()}] 아침 브리핑 발송 오류({team_name}): {e}")
+
+
 def _send_pregame_notifications():
     """경기 시작 전 알림 — 유저별 notify_before_minutes(30/60/120) 기준"""
     conn = get_connection()
@@ -3026,6 +3096,9 @@ def run_scheduler():
 
     # 매일 UTC 00:30 (KST 09:30): 등록말소 크롤링
     schedule.every().day.at("00:30").do(_update_roster_changes)
+
+    # 아침 브리핑 (UTC 00:00 = KST 09:00) — 마이팀 어제 결과 + 오늘 경기
+    schedule.every().day.at("00:00").do(_daily_briefing)
 
     # 매일 UTC 15:30 (KST 00:30): 예측 정확도 평가 + 일별 집계 + 오늘 로깅 + 재학습
     def _prediction_daily():
