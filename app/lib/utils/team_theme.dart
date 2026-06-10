@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'web_image.dart';
 
 // 일반 사이즈 (size < 200): Naver CDN f92_88 (기존 원본)
@@ -97,18 +96,16 @@ class TeamLogo extends StatelessWidget {
       // 큰 사이즈일수록 고품질 보간
       final fq = size >= 80 ? FilterQuality.high : FilterQuality.medium;
       final isOverlay = size >= 200;
-      final img = CachedNetworkImage(
-        imageUrl: webSafeImageUrl(resolvedUrl),
+      final img = netImage(
+        resolvedUrl,
         width: size,
         height: size,
         fit: isOverlay ? BoxFit.contain : BoxFit.cover,
         filterQuality: fq,
         memCacheWidth: (size * 2).toInt().clamp(100, 800),
         memCacheHeight: (size * 2).toInt().clamp(100, 800),
-        fadeInDuration: Duration.zero,
-        fadeOutDuration: Duration.zero,
-        errorWidget: (ctx, url, err) => _avatar(color, abbr),
-        placeholder: (ctx, url) => _avatar(color, abbr),
+        error: () => _avatar(color, abbr),
+        placeholder: () => _avatar(color, abbr),
       );
       return isOverlay ? img : ClipOval(child: img);
     }
