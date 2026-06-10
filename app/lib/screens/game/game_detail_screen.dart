@@ -72,6 +72,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   bool _stripExpanded = true;
   // 이닝별 중계 — 선택 이닝 (null = 자동: 라이브 현재 이닝 / 종료 1회)
   int? _selectedRelayInning;
+  final ScrollController _inningChipCtrl = ScrollController();
+  int? _lastAutoScrolledInning; // 칩 자동 스크롤 dedup (이닝 바뀔 때만 이동)
   int _relaySwipeDir = 1; // 슬라이드 방향 (1=다음: 우→좌, -1=이전: 좌→우)
   List _sameDayGames = [];
   int _lineupSubIndex = 0;
@@ -157,6 +159,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     _refreshTimer?.cancel();
     _tabController.dispose();
     _inningScrollController.dispose();
+    _inningChipCtrl.dispose();
     _restorableTabIndex.dispose();
     _restorableLineupSub.dispose();
     _restorableStatsSub.dispose();
@@ -1851,6 +1854,21 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     if (!grouped.containsKey(selected) && sortedInnings.isNotEmpty) {
                       selected = sortedInnings.last;
                     }
+                    // 선택 이닝 칩 자동 스크롤 (연장전 등 화면 밖 이닝 — 이닝 변경 시 1회)
+                    if (_lastAutoScrolledInning != selected) {
+                      _lastAutoScrolledInning = selected;
+                      final idx = sortedInnings.indexOf(selected);
+                      if (idx >= 0) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!mounted || !_inningChipCtrl.hasClients) return;
+                          final off = (idx * 48.0 - 120.0)
+                              .clamp(0.0, _inningChipCtrl.position.maxScrollExtent);
+                          _inningChipCtrl.animateTo(off,
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOut);
+                        });
+                      }
+                    }
                     final items = grouped[selected] ?? [];
                     final topItems = items.where((r) => (r['inning_half']?.toString() ?? '0') == '0').toList();
                     final botItems = items.where((r) => (r['inning_half']?.toString() ?? '0') == '1').toList();
@@ -1903,6 +1921,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SingleChildScrollView(
+                          controller: _inningChipCtrl,
                           scrollDirection: Axis.horizontal,
                           child: Row(children: [for (final n in sortedInnings) chip(n)]),
                         ),

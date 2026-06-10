@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import '../../utils/design_tokens.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -125,6 +126,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 
   Future<void> _toggleVote() async {
+    HapticFeedback.mediumImpact();
     try {
       final res = await ApiService.votePlayer(widget.playerId);
       if (mounted) {

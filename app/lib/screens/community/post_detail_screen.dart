@@ -196,7 +196,34 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final isMyPost = myUserId != null && myUserId == postUserId;
     final comments = _post!['comments'] as List? ?? [];
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      // 댓글 작성 중 뒤로가기 → 유실 경고 (작성 내용 없으면 즉시 pop)
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final nav = Navigator.of(context);
+        if (_commentController.text.trim().isEmpty) {
+          nav.pop();
+          return;
+        }
+        final leave = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('작성 중인 댓글이 있습니다'),
+            content: const Text('나가면 작성한 내용이 사라집니다.'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('계속 작성')),
+              TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('나가기', style: TextStyle(color: Colors.red))),
+            ],
+          ),
+        );
+        if (leave == true) nav.pop();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('게시글'),
         actions: [
@@ -397,6 +424,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

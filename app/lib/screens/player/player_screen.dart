@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../utils/design_tokens.dart';
 import 'dart:async';
 import 'package:dio/dio.dart';
@@ -192,6 +193,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Future<void> _votePlayer(int playerId) async {
+    HapticFeedback.mediumImpact();
     if (!_isLoggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('로그인 후 투표할 수 있습니다')));
@@ -235,6 +237,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   Future<void> _voteTeam(int teamId) async {
+    HapticFeedback.mediumImpact();
     if (!_isLoggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('로그인 후 투표할 수 있습니다')));

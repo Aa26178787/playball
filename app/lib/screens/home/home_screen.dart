@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../utils/design_tokens.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
@@ -294,7 +295,10 @@ class _FloatingNavBar extends StatelessWidget {
                   return Expanded(
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: () => onTap(i),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        onTap(i);
+                      },
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -1342,7 +1346,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           _selectedDate.day == DateTime.now().day;
       final isPast = _selectedDate.isBefore(DateTime.now().subtract(const Duration(days: 1)));
       return RefreshIndicator(
-        onRefresh: _loadGames,
+        onRefresh: () {
+          HapticFeedback.lightImpact();
+          return _loadGames();
+        },
         child: ListView(
           padding: EdgeInsets.only(bottom: _listBottomPad(context)),
           children: [
@@ -1416,7 +1423,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     final rankMap = {for (final r in _rankings) (r['id'] as int): r['rank'] as int?};
 
     return RefreshIndicator(
-      onRefresh: _loadGames,
+      onRefresh: () {
+        HapticFeedback.lightImpact();
+        return _loadGames();
+      },
       child: ListView.builder(
         controller: _gameScrollController,
         padding: EdgeInsets.fromLTRB(16, 8, 16, _listBottomPad(context)),
