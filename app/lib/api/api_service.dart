@@ -298,6 +298,17 @@ class ApiService {
         data: {'code': code}, options: Options(headers: headers));
   }
 
+  // ===== 앱 원격 설정 (강제 업데이트/킬스위치/공지) =====
+  static Future<Map<String, dynamic>?> getAppConfig() async {
+    try {
+      final res = await _dio.get('/app-config');
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('api_service: $e');
+      return null;
+    }
+  }
+
   // ===== 경기 API =====
   static Future<Map<String, dynamic>> getTodayGames() async {
     final res = await _dio.get('/games/today');

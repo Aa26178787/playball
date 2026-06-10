@@ -13,8 +13,10 @@ import 'providers/team_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'api/api_service.dart';
 import 'utils/app_theme.dart';
+import 'utils/app_config.dart';
 
 final FlutterLocalNotificationsPlugin _localNotif = FlutterLocalNotificationsPlugin();
 
@@ -170,7 +172,34 @@ class _AppEntryPointState extends State<AppEntryPoint>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AuthProvider>().checkLoginStatus();
+      _checkAppConfig();
     });
+  }
+
+  Future<void> _checkAppConfig() async {
+    await AppConfig.load();
+    if (!mounted || !AppConfig.forceUpdate) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: const Text('업데이트가 필요합니다'),
+          content: const Text('원활한 사용을 위해 최신 버전으로 업데이트해주세요.'),
+          actions: [
+            TextButton(
+              onPressed: () => launchUrl(
+                Uri.parse(
+                    'https://play.google.com/store/apps/details?id=com.playball.app'),
+                mode: LaunchMode.externalApplication,
+              ),
+              child: const Text('업데이트'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override

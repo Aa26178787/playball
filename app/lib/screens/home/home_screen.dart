@@ -4,9 +4,11 @@ import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:shimmer/shimmer.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/game.dart';
 import '../../utils/local_cache.dart';
+import '../../utils/app_config.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import '../../utils/app_theme.dart';
@@ -1178,6 +1180,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
               ],
             ),
           ),
+          _buildServerBanner(),
           if (_todayRosterChanges.isNotEmpty && _isSameDay(_selectedDate, DateTime.now()))
             _buildTodayRosterBanner(),
           Padding(
@@ -1461,6 +1464,53 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       return {'code': oppCode, 'name': oppName, 'date': gameDate};
     }
     return null;
+  }
+
+  /// 서버 공지 배너 (/app-config banner — 점검/이벤트 공지)
+  Widget _buildServerBanner() {
+    return ValueListenableBuilder<Map<String, dynamic>?>(
+      valueListenable: AppConfig.bannerNotifier,
+      builder: (ctx, banner, _) {
+        if (banner == null) return const SizedBox.shrink();
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final warn = banner['level'] == 'warn';
+        final bg = warn
+            ? (isDark ? const Color(0xFF3A2A12) : const Color(0xFFFFF3E0))
+            : (isDark ? const Color(0xFF13243A) : const Color(0xFFE8F1FF));
+        final fg = warn
+            ? (isDark ? const Color(0xFFFFB74D) : const Color(0xFFE65100))
+            : (isDark ? const Color(0xFF90CAF9) : const Color(0xFF1565C0));
+        final url = banner['url'] as String?;
+        return InkWell(
+          onTap: (url != null && url.isNotEmpty)
+              ? () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)
+              : null,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Icon(warn ? Icons.warning_amber_rounded : Icons.campaign_outlined,
+                    size: 18, color: fg),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    banner['message'] as String? ?? '',
+                    style: TextStyle(
+                        fontSize: 12.5, fontWeight: FontWeight.w600, color: fg),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   bool _rosterBannerExpanded = false;
