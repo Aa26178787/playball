@@ -335,6 +335,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 ### 베타/출시 배포 경로 (2026-06-11 결정)
 - **Android 베타 = Firebase App Distribution** (이미 Firebase 연동·Crashlytics 동일 콘솔·완전 무료·Play Console $25 불요·자동 업데이트 알림). release keystore 생성+안전백업 선행(분실=업뎃 불가). 지인 이메일 등록→링크 설치
 - **iOS = $99 회피 불가** (Apple 서명 인증서가 Developer Program에 묶임 — TestFlight·App Distribution·Scarlet 모두 그 위. Mac은 Codemagic 무료티어로 회피 가능하나 $99는 별개). 지인 소수 = **웹 PWA 맛보기**(무료·안전), 정식 iOS = $99+Codemagic→TestFlight
+- **웹 PWA 배포 완료** (2026-06-11): `https://playball.duckdns.org/app/` — 지인 iOS 사파리서 '홈 화면에 추가' = 설치. 빌드 = `MSYS_NO_PATHCONV=1 flutter build web --release --base-href "/app/"`(Git Bash 경로변환 회피 필수) → `build/web` tar→ `/var/www/playball_web/` rsync. nginx `location /app/` alias+SPA try_files + **CSP 재선언**(server의 `script-src 'none'`이 location add_header로 덮여야 Flutter JS 작동 — script 'self'+unsafe-inline+wasm-unsafe-eval, img https:). 갱신 = 재빌드→rsync (nginx 불변). ⚠️재빌드 시 base-href·MSYS 플래그 누락 주의
 - **웹 PWA 빌드 시 불가 기능**: 푸시(firebase_messaging/local_notifications)·구장지도(flutter_inappwebview)·갤러리(photo_manager)·이미지공유(path_provider+share_plus 파일)·캘린더내보내기(add_2_calendar). 크롭·secure_storage·Crashlytics=반쪽. ✅정상=홈/경기상세(필드뷰·중계·승률그래프·맞대결·불펜)·선수(피칭디자인·존히트맵)·순위·커뮤니티텍스트·검색·인증
 
 ### 장기 / 출시 외부작업 (네 권한·비용 — **물어보면 안내**)
