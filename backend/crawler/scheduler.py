@@ -2905,7 +2905,7 @@ def _daily_briefing():
         cur = conn.cursor()
         cur.execute("""
             SELECT g.home_team_id, g.away_team_id, t1.name, t2.name,
-                   COALESCE(g.start_time, ''), COALESCE(s.name, '')
+                   COALESCE(TO_CHAR(g.start_time, 'HH24:MI'), ''), COALESCE(s.name, '')
             FROM games g
             JOIN teams t1 ON t1.id = g.home_team_id
             JOIN teams t2 ON t2.id = g.away_team_id
