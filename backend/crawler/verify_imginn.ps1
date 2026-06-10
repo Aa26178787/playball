@@ -19,8 +19,13 @@ $i = 0
 foreach ($r in $rows) {
   $i++
   $disp = ''; $bio = ''; $verdict = 'unknown'
-  try {
-    $resp = Invoke-WebRequest -UseBasicParsing -Uri "https://imginn.com/$($r.handle)/" -Headers $UA -TimeoutSec 15
+  # 차단/타임아웃 시 1회 재시도 (느린 재실행 — unknown 최소화)
+  $resp = $null
+  for ($attempt = 0; $attempt -lt 2 -and -not $resp; $attempt++) {
+    try { $resp = Invoke-WebRequest -UseBasicParsing -Uri "https://imginn.com/$($r.handle)/" -Headers $UA -TimeoutSec 20 }
+    catch { $resp = $null; if ($attempt -eq 0) { Start-Sleep -Seconds 5 } }
+  }
+  if ($resp) {
     if ($resp.Content -match 'og:title" content="([^"]+)"') {
       $disp = ($Matches[1] -replace '\(@.*$', '').Trim()
     }
@@ -34,11 +39,11 @@ foreach ($r in $rows) {
       elseif ($kw -and ($bio -match $kw -or $disp -match $kw)) { $verdict = 'VERIFIED_TEAM' }
       else { $verdict = 'NAME_MISMATCH' }
     }
-  } catch { $verdict = 'unknown' }
+  }
   $out.Add([pscustomobject]@{ id=$r.id; team=$r.team; name=$r.name; handle=$r.handle; verdict=$verdict; disp=$disp; bio=($bio.Substring(0,[Math]::Min(60,$bio.Length))) })
   if ($verdict -eq 'NAME_MISMATCH') { Write-Output "[$i/$($rows.Count)] *** MISMATCH $($r.team) $($r.name) @$($r.handle) disp=$disp" }
   else { Write-Output "[$i/$($rows.Count)] $verdict $($r.team) $($r.name)" }
-  Start-Sleep -Milliseconds 1600
+  Start-Sleep -Milliseconds 3000
 }
 $out | Export-Csv -Path "$PSScriptRoot\insta_imginn.csv" -NoTypeInformation -Encoding UTF8
 $mm = @($out | Where-Object { $_.verdict -eq 'NAME_MISMATCH' })
