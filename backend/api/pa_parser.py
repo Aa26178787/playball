@@ -125,9 +125,9 @@ def parse_game_pas(rows) -> list[dict]:
                 open_pa['seq_end'] = seqno
         elif rtype == _T_RESULT and open_pa is not None:
             txt = (title or '').strip()
-            if '교체' in txt:
-                # 선수 교체 공지(대타/수비교체)가 type 13으로 발행됨 — 타석 결과 아님.
-                # 대타 교체면 진행 중 타석의 타자만 갱신하고 타석은 유지
+            if '교체' in txt or '체크스윙' in txt:
+                # type 13으로 오는 비결과 공지: 선수 교체 / 체크스윙 판정 — 타석 유지.
+                # 대타 교체면 진행 중 타석의 타자만 갱신
                 m = re.search(r'대타\s+(\S+)', txt)
                 if m:
                     open_pa['batter_name'] = m.group(1).strip()
