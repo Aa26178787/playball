@@ -11,6 +11,7 @@ router = APIRouter()
 
 RATE_LIMIT_SECONDS = 60   # 1분 내 재발송 차단
 CLEANUP_KEEP_DAYS = 1     # 만료 레코드 1일 후 삭제
+MAX_VERIFY_ATTEMPTS = 5   # 코드당 검증 실패 허용 횟수 (초과 시 코드 무효화)
 
 
 def _generate_code() -> str:
@@ -101,6 +102,23 @@ def verify_code(req: VerifyRequest, current_user: dict = Depends(get_current_use
     )
     vrow = cur.fetchone()
     if not vrow:
+        # 실패 시도 카운트 — 활성 코드에 5회 실패 누적 시 코드 무효화 (brute-force 차단)
+        cur.execute(
+            '''SELECT id, COALESCE(attempts, 0) FROM phone_verifications
+               WHERE user_id=%s AND phone_number=%s AND expires_at > NOW() AND used=FALSE
+               ORDER BY created_at DESC LIMIT 1''',
+            (current_user["user_id"], email)
+        )
+        active = cur.fetchone()
+        if active:
+            if active[1] + 1 >= MAX_VERIFY_ATTEMPTS:
+                cur.execute('UPDATE phone_verifications SET used=TRUE WHERE id=%s', (active[0],))
+                conn.commit()
+                cur.close()
+                conn.close()
+                raise HTTPException(status_code=400, detail="시도 횟수를 초과했습니다. 인증번호를 다시 발송해주세요")
+            cur.execute('UPDATE phone_verifications SET attempts=COALESCE(attempts,0)+1 WHERE id=%s', (active[0],))
+            conn.commit()
         cur.close()
         conn.close()
         raise HTTPException(status_code=400, detail="인증번호가 올바르지 않거나 만료되었습니다")

@@ -403,6 +403,7 @@ def register_push_token(body: PushToken, current_user: dict = Depends(get_curren
 from fastapi import UploadFile, File, Request
 import os, uuid, shutil
 from api.security_log import log_upload
+from api.image_utils import strip_metadata
 
 PROFILE_DIR = '/home/ubuntu/playball/backend/static/profiles'
 BASE_URL = 'https://playball.duckdns.org'
@@ -439,6 +440,10 @@ async def upload_profile_image(
         raise HTTPException(status_code=413, detail='파일 크기는 5MB를 초과할 수 없습니다')
     if not _validate_image(data, ext):
         raise HTTPException(status_code=400, detail='유효하지 않은 이미지 파일입니다')
+    try:
+        data = strip_metadata(data, ext)  # EXIF(GPS) 제거
+    except ValueError:
+        raise HTTPException(status_code=400, detail='이미지 처리에 실패했습니다')
     filename = f"{current_user['user_id']}_{uuid.uuid4().hex[:8]}{ext}"
     path = os.path.join(PROFILE_DIR, filename)
     with open(path, 'wb') as f:

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from database.connection import get_connection
 from api.routers.auth import get_current_user
 from api.security_log import log_upload
+from api.image_utils import strip_metadata
 
 POST_IMG_DIR = '/home/ubuntu/playball/backend/static/posts'
 BASE_URL = 'https://playball.duckdns.org'
@@ -698,6 +699,10 @@ async def upload_post_image(
         raise HTTPException(status_code=413, detail='파일 크기는 5MB를 초과할 수 없습니다')
     if not _validate_image(data, ext):
         raise HTTPException(status_code=400, detail='유효한 이미지 파일이 아닙니다')
+    try:
+        data = strip_metadata(data, ext)  # EXIF(GPS) 제거
+    except ValueError:
+        raise HTTPException(status_code=400, detail='이미지 처리에 실패했습니다')
     filename = f"post_{current_user['user_id']}_{uuid.uuid4().hex[:8]}{ext}"
     path = os.path.join(POST_IMG_DIR, filename)
     with open(path, 'wb') as f:

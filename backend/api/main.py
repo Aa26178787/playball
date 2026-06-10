@@ -1,8 +1,8 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse
-from api.routers import games, players, teams, auth, user, stadiums, widget, community, calendar, phone, email_verify, password_reset, search, news, prediction
+from fastapi.responses import JSONResponse, ORJSONResponse
+from api.routers import games, players, teams, auth, user, stadiums, widget, community, calendar, phone, email_verify, password_reset, search, news, prediction, app_config
 from fastapi.staticfiles import StaticFiles
 import time
 import threading
@@ -23,6 +23,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url=None,   # 프로덕션 Swagger UI 비활성화
     redoc_url=None,
+    default_response_class=ORJSONResponse,  # orjson 직렬화 (대형 JSON 3-10x)
 )
 
 _MAX_BODY = 10 * 1024 * 1024  # 10MB (파일업로드 고려)
@@ -131,6 +132,7 @@ app.include_router(phone.router, prefix="/user/phone", tags=["전화인증"])
 app.include_router(email_verify.router, prefix="/user/email", tags=["이메일인증"])
 app.include_router(password_reset.router, prefix="/auth/password", tags=["비밀번호재설정"])
 app.include_router(search.router, prefix="/search", tags=["검색"])
+app.include_router(app_config.router, tags=["설정"])
 app.include_router(news.router)
 app.include_router(prediction.router)
 from api.routers import allstar
