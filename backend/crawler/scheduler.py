@@ -1281,6 +1281,7 @@ def smart_update():
     curr_statuses = {gid: d['status'] for gid, d in curr_details.items()}
 
     _update_live_games_realtime()
+    _update_probable_starters()
     _update_lineup_by_starttime()
     _update_lineup_fallback()
     _update_roster_changes_pregame()
@@ -2070,6 +2071,43 @@ def _update_lineup_by_starttime():
                 log_prediction(gid)
         except Exception as _pe:
             print(f"[prediction] 라인업 크롤 후 재로깅 오류: {_pe}")
+
+
+def _update_probable_starters():
+    """선발투수 조기 노출 — 오늘 예정 경기에 선발 pitcher 미저장이면 30분마다 preview 크롤.
+    naver는 선발투수를 경기 2h보다 훨씬 일찍 공개 → 게임카드 '선발 확정'을 일찍 표시.
+    (기존 _update_lineup_by_starttime은 2h 전부터 full 로스터/타순 — 카드 선발 표시가 늦던 문제 해결)"""
+    now_utc = datetime.now(timezone.utc)
+    if now_utc.minute % 30 != 0:
+        return
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, naver_game_id FROM games
+        WHERE game_date = CURRENT_DATE
+        AND status = '예정'
+        AND naver_game_id IS NOT NULL
+        AND NOT EXISTS (
+            SELECT 1 FROM game_rosters gr
+            WHERE gr.game_id = games.id
+            AND gr.is_starter = TRUE
+            AND gr.roster_type = 'pitcher'
+        )
+    """)
+    games_ = cur.fetchall()
+    cur.close()
+    conn.close()
+    if not games_:
+        return
+    print(f"[{datetime.now()}] 선발투수 조기 크롤: {len(games_)}개")
+    for (db_game_id, naver_game_id) in games_:
+        try:
+            save_preview_roster(db_game_id, naver_game_id)
+        except Exception as e:
+            print(f"[probable starter] {db_game_id}: {e}")
+        time.sleep(0.5)
 
 
 def _update_lineup_fallback():
