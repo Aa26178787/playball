@@ -332,6 +332,11 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - [x] postgres listen_addresses → localhost (`ALTER SYSTEM` — 범인은 auto.conf의 과거 ALTER SYSTEM '*') / rpcbind disable / 이메일 인증 5회 실패 시 코드 무효화(`phone_verifications.attempts`)
 - [x] 백업 오프사이트: `backup_pull.ps1` + schtasks PlayballBackupPull(매일 12:00 트리거, 6일 스로틀=주1 pull, `~/playball_backups/` 4개 보관, 1MB 미만=실패 간주)
 
+### 베타/출시 배포 경로 (2026-06-11 결정)
+- **Android 베타 = Firebase App Distribution** (이미 Firebase 연동·Crashlytics 동일 콘솔·완전 무료·Play Console $25 불요·자동 업데이트 알림). release keystore 생성+안전백업 선행(분실=업뎃 불가). 지인 이메일 등록→링크 설치
+- **iOS = $99 회피 불가** (Apple 서명 인증서가 Developer Program에 묶임 — TestFlight·App Distribution·Scarlet 모두 그 위. Mac은 Codemagic 무료티어로 회피 가능하나 $99는 별개). 지인 소수 = **웹 PWA 맛보기**(무료·안전), 정식 iOS = $99+Codemagic→TestFlight
+- **웹 PWA 빌드 시 불가 기능**: 푸시(firebase_messaging/local_notifications)·구장지도(flutter_inappwebview)·갤러리(photo_manager)·이미지공유(path_provider+share_plus 파일)·캘린더내보내기(add_2_calendar). 크롭·secure_storage·Crashlytics=반쪽. ✅정상=홈/경기상세(필드뷰·중계·승률그래프·맞대결·불펜)·선수(피칭디자인·존히트맵)·순위·커뮤니티텍스트·검색·인증
+
 ### 장기 / 출시 외부작업 (네 권한·비용 — **물어보면 안내**)
 - [ ] **도메인 + Cloudflare**: 웹사이트 Free 플랜 + Tunnel(IP은닉, duckdns/certbot 제거). ⚠️ Bot Fight Mode OFF(앱 API 차단), 동적 JSON 캐시 bypass
 - [ ] **Play Console**($25) + keystore 안전백업(분실=업데이트 불가) + Data Safety + targetSdk 확인
