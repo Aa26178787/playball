@@ -3,6 +3,37 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// web 안전 보안저장 래퍼 — web은 flutter_secure_storage(Web Crypto) 실패 잦아
+/// SharedPreferences(localStorage)로 폴백. Android/iOS는 secure_storage 그대로.
+class _SafeStore {
+  static const _s = FlutterSecureStorage();
+  static Future<void> write(String key, String value) async {
+    if (kIsWeb) {
+      try { (await SharedPreferences.getInstance()).setString(key, value); return; }
+      catch (e) { debugPrint('_SafeStore.write web: $e'); }
+    }
+    try { await _s.write(key: key, value: value); }
+    catch (e) { debugPrint('_SafeStore.write: $e'); }
+  }
+  static Future<String?> read(String key) async {
+    if (kIsWeb) {
+      try { return (await SharedPreferences.getInstance()).getString(key); }
+      catch (e) { debugPrint('_SafeStore.read web: $e'); return null; }
+    }
+    try { return await _s.read(key: key); }
+    catch (e) { debugPrint('_SafeStore.read: $e'); return null; }
+  }
+  static Future<void> delete(String key) async {
+    if (kIsWeb) {
+      try { (await SharedPreferences.getInstance()).remove(key); return; }
+      catch (e) { debugPrint('_SafeStore.delete web: $e'); }
+    }
+    try { await _s.delete(key: key); }
+    catch (e) { debugPrint('_SafeStore.delete: $e'); }
+  }
+}
 
 enum _RefreshResult { success, authFailed, networkError }
 
@@ -18,21 +49,23 @@ class ApiService {
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 8),
       receiveTimeout: const Duration(seconds: 8),
-      headers: {'Accept-Encoding': 'identity'},  // gzip 디코드 hang 회피
+      // Accept-Encoding 수동지정은 native HttpClient용 (web은 브라우저가 관리 — 미설정)
+      headers: kIsWeb ? null : {'Accept-Encoding': 'identity'},
     ));
-    // D-C: WiFi 환경 동시 호출 큐잉 완화 — maxConnectionsPerHost 6→20
-    dio.httpClientAdapter = IOHttpClientAdapter(
-      createHttpClient: () {
-        final client = HttpClient();
-        client.maxConnectionsPerHost = 20;
-        return client;
-      },
-    );
+    // web은 dart:io HttpClient 미지원 → 브라우저 기본 어댑터 사용 (IO 어댑터 설정 금지)
+    if (!kIsWeb) {
+      dio.httpClientAdapter = IOHttpClientAdapter(
+        createHttpClient: () {
+          final client = HttpClient();
+          client.maxConnectionsPerHost = 20;
+          return client;
+        },
+      );
+    }
     return dio;
   }
   static bool _interceptorAdded = false;
 
-  static const _secure = FlutterSecureStorage();
   static String? _cachedToken;
 
   // 세션 메모리 캐시 — async 없이 동기 읽기 (shimmer 제거용)
@@ -147,7 +180,7 @@ class ApiService {
   }
 
   static Future<_RefreshResult> _doRefresh() async {
-    final refreshToken = await _secure.read(key: 'refresh_token');
+    final refreshToken = await _SafeStore.read('refresh_token');
     if (refreshToken == null) return _RefreshResult.authFailed;
     try {
       final res = await Dio(BaseOptions(
@@ -160,8 +193,8 @@ class ApiService {
       );
       final data = res.data as Map<String, dynamic>;
       _cachedToken = data['access_token'] as String;
-      await _secure.write(key: 'access_token', value: data['access_token'] as String);
-      await _secure.write(key: 'refresh_token', value: data['refresh_token'] as String);
+      await _SafeStore.write('access_token', data['access_token'] as String);
+      await _SafeStore.write('refresh_token', data['refresh_token'] as String);
       return _RefreshResult.success;
     } on DioException catch (e) {
       // 401/403 = refresh token 무효, 5xx/network = 일시적 오류
@@ -175,45 +208,45 @@ class ApiService {
 
   // ===== 토큰 관리 (Android Keystore / iOS Keychain + 메모리 캐시) =====
   static Future<String?> getToken() async {
-    _cachedToken ??= await _secure.read(key: 'access_token');
+    _cachedToken ??= await _SafeStore.read('access_token');
     return _cachedToken;
   }
 
   static Future<void> saveToken(String token) async {
     _cachedToken = token;
-    await _secure.write(key: 'access_token', value: token);
+    await _SafeStore.write('access_token', token);
   }
 
   static Future<void> saveRefreshToken(String token) async {
-    await _secure.write(key: 'refresh_token', value: token);
+    await _SafeStore.write('refresh_token', token);
   }
 
   static Future<String?> getRefreshToken() async {
-    return _secure.read(key: 'refresh_token');
+    return _SafeStore.read('refresh_token');
   }
 
   static Future<void> deleteToken() async {
     _cachedToken = null;
-    await _secure.delete(key: 'access_token');
-    await _secure.delete(key: 'refresh_token');
+    await _SafeStore.delete('access_token');
+    await _SafeStore.delete('refresh_token');
   }
 
   // ===== 자동 로그인 자격증명 =====
   static Future<void> saveAutoLoginCredentials(String email, String password) async {
-    await _secure.write(key: 'auto_email', value: email);
-    await _secure.write(key: 'auto_password', value: password);
+    await _SafeStore.write('auto_email', email);
+    await _SafeStore.write('auto_password', password);
   }
 
   static Future<Map<String, String>?> getAutoLoginCredentials() async {
-    final email = await _secure.read(key: 'auto_email');
-    final password = await _secure.read(key: 'auto_password');
+    final email = await _SafeStore.read('auto_email');
+    final password = await _SafeStore.read('auto_password');
     if (email != null && password != null) return {'email': email, 'password': password};
     return null;
   }
 
   static Future<void> clearAutoLoginCredentials() async {
-    await _secure.delete(key: 'auto_email');
-    await _secure.delete(key: 'auto_password');
+    await _SafeStore.delete('auto_email');
+    await _SafeStore.delete('auto_password');
   }
 
   static Future<void> serverLogout(String refreshToken) async {
