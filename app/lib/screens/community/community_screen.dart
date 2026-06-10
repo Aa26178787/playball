@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../utils/web_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
@@ -508,7 +509,7 @@ class _PostCard extends StatelessWidget {
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
                   child: CachedNetworkImage(
-                    imageUrl: imageUrl,
+                    imageUrl: webSafeImageUrl(imageUrl),
                     fit: BoxFit.cover,
                     errorWidget: (_, _, _) => Container(
                       color: cs.paper2,

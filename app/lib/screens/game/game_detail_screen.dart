@@ -14,6 +14,7 @@ import '../../utils/design_tokens.dart';
 import 'pitch_location_chart.dart';
 import '../player/player_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../utils/web_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:fl_chart/fl_chart.dart';
 
@@ -4274,7 +4275,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     children: [
                       thumbnail.isNotEmpty
                           ? CachedNetworkImage(
-                              imageUrl: thumbnail,
+                              imageUrl: webSafeImageUrl(thumbnail),
                               width: double.infinity,
                               height: isShorts ? 180 : 160,
                               fit: isShorts ? BoxFit.contain : BoxFit.cover,
@@ -4351,7 +4352,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     children: [
                       thumbnail.isNotEmpty
                           ? CachedNetworkImage(
-                              imageUrl: thumbnail,
+                              imageUrl: webSafeImageUrl(thumbnail),
                               width: 110, height: 66, fit: BoxFit.cover,
                               placeholder: (_, _) => Container(color: paper2),
                               errorWidget: (_, _, _) => Container(color: paper2,
@@ -4646,11 +4647,11 @@ class _GameShareSheetState extends State<_GameShareSheet> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (winPitcher != null)
-                    _pitcherChip('승 $winPitcher', Colors.blue.shade300, imageUrl: g['win_pitcher_image'] as String?),
+                    _pitcherChip('승 $winPitcher', Colors.blue.shade300, imageUrl: webSafeImageUrl(g['win_pitcher_image'] as String?)),
                   if (winPitcher != null && losePitcher != null)
                     const SizedBox(width: 8),
                   if (losePitcher != null)
-                    _pitcherChip('패 $losePitcher', Colors.red.shade300, imageUrl: g['lose_pitcher_image'] as String?),
+                    _pitcherChip('패 $losePitcher', Colors.red.shade300, imageUrl: webSafeImageUrl(g['lose_pitcher_image'] as String?)),
                 ],
               ),
           ],
@@ -4745,7 +4746,7 @@ class _FullFieldView extends StatelessWidget {
               Row(children: [
                 _PlayerDot(
                   name: '',
-                  imageUrl: p['image'] as String?,
+                  imageUrl: webSafeImageUrl(p['image'] as String?),
                   label: '',
                   isOffense: true, isDark: isDark, size: 44,
                 ),
@@ -4858,7 +4859,7 @@ class _FullFieldView extends StatelessWidget {
           coord,
           _PlayerDot(
             name: p['name'] as String? ?? '',
-            imageUrl: p['image'] as String?,
+            imageUrl: webSafeImageUrl(p['image'] as String?),
             label: label,
             isOffense: false,
             isDark: isDark,
@@ -4877,7 +4878,7 @@ class _FullFieldView extends StatelessWidget {
             onTap: () => _showBaseSheet(ctx, baseKey, p, isOccupied),
             child: _PlayerDot(
               name: runnerName,
-              imageUrl: p?['image'] as String?,
+              imageUrl: webSafeImageUrl(p?['image'] as String?),
               label: '',
               isOffense: true,
               isDark: isDark,
@@ -4912,7 +4913,7 @@ class _FullFieldView extends StatelessWidget {
                   : _baseCoords['batter']!,
               _PlayerDot(
                 name: batter['name'] as String? ?? '',
-                imageUrl: batter['image'] as String?,
+                imageUrl: webSafeImageUrl(batter['image'] as String?),
                 label: '타자',
                 isOffense: true,
                 isDark: isDark,
@@ -5044,7 +5045,7 @@ class _PlayerDot extends StatelessWidget {
             child: ClipOval(
               child: imageUrl != null && imageUrl!.isNotEmpty
                   ? CachedNetworkImage(
-                      imageUrl: imageUrl!,
+                      imageUrl: webSafeImageUrl(imageUrl!),
                       fit: BoxFit.cover,
                       // fade 0 — 로드 중 setState 반복 시 placeholder↔이미지 fade로 선수 깜빡임 방지
                       fadeInDuration: Duration.zero,

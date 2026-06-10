@@ -5,6 +5,7 @@ import '../../api/api_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/mention_text.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../utils/web_image.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final int postId;
@@ -316,7 +317,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       padding: const EdgeInsets.only(bottom: 8),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: CachedNetworkImage(imageUrl: u, fit: BoxFit.cover, width: double.infinity,
+                        child: CachedNetworkImage(imageUrl: webSafeImageUrl(u), fit: BoxFit.cover, width: double.infinity,
                           errorWidget: (_, _, _) => const SizedBox.shrink()),
                       ),
                     )),

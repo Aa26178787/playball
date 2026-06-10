@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../utils/web_image.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
@@ -502,7 +503,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: CachedNetworkImage(
-                  imageUrl: thumbnail,
+                  imageUrl: webSafeImageUrl(thumbnail),
                   width: 72, height: 54, fit: BoxFit.cover,
                   placeholder: (_, _) => Container(width: 72, height: 54, color: cs.paper2),
                   errorWidget: (_, _, _) => Container(width: 72, height: 54, color: cs.paper2,

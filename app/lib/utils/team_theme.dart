@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'web_image.dart';
 
 // 일반 사이즈 (size < 200): Naver CDN f92_88 (기존 원본)
 const Map<String, String> kTeamLogoUrls = {
@@ -97,7 +98,7 @@ class TeamLogo extends StatelessWidget {
       final fq = size >= 80 ? FilterQuality.high : FilterQuality.medium;
       final isOverlay = size >= 200;
       final img = CachedNetworkImage(
-        imageUrl: resolvedUrl,
+        imageUrl: webSafeImageUrl(resolvedUrl),
         width: size,
         height: size,
         fit: isOverlay ? BoxFit.contain : BoxFit.cover,
