@@ -146,6 +146,16 @@ def save_plate_appearances_for_game(game_id: int) -> int:
         return 0
     try:
         cur = conn.cursor()
+        # 시즌 초 경기는 크롤러가 카운트/주자/스코어 스냅샷을 안 채움(전부 0/false)
+        # → 미기록 게임은 컨텍스트를 NULL로 적재 (0/false로 두면 모델이 거짓 학습)
+        cur.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM game_pitches
+                WHERE game_id = %s AND type = 1
+                  AND (strike > 0 OR ball > 0 OR out > 0 OR base1 OR base2 OR base3)
+            )
+        """, (game_id,))
+        has_ctx = bool(cur.fetchone()[0])
         cur.execute("""
             SELECT inning, inning_half, seqno, type, batter_name, pitcher_name, title,
                    strike, ball, out, base1, base2, base3,
@@ -155,6 +165,11 @@ def save_plate_appearances_for_game(game_id: int) -> int:
             ORDER BY inning, inning_half, seqno, id
         """, (game_id,))
         pas = parse_game_pas(cur.fetchall())
+        if not has_ctx:
+            for pa in pas:
+                pa['outs_before'] = None
+                pa['base1'] = pa['base2'] = pa['base3'] = None
+                pa['home_score'] = pa['away_score'] = None
         for pa in pas:
             cur.execute("""
                 INSERT INTO plate_appearances
