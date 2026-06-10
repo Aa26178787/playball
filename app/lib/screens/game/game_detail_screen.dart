@@ -147,7 +147,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final d = _matchupData;
     if (d == null) return null;
     final pa = d['pa'] as int? ?? 0;
-    if (pa == 0) return '첫 맞대결';
+    final prob = (d['hit_prob'] as num?)?.toDouble();
+    final probTxt = prob != null ? '안타확률 ${prob.toStringAsFixed(0)}%' : null;
+    if (pa == 0) return probTxt != null ? '첫 맞대결 · $probTxt' : '첫 맞대결';
     final ab = d['at_bats'] ?? 0;
     final h = d['hits'] ?? 0;
     final hr = d['home_runs'] ?? 0;
@@ -157,6 +159,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     if (hr > 0) parts.add('홈런$hr');
     if (bb > 0) parts.add('볼넷$bb');
     if (k > 0) parts.add('삼진$k');
+    if (probTxt != null) parts.add(probTxt);
     return parts.join(' · ');
   }
   int _relaySwipeDir = 1; // 슬라이드 방향 (1=다음: 우→좌, -1=이전: 좌→우)

@@ -533,6 +533,15 @@ def get_matchup_stats(batter_id: int, pitcher_id: int):
         WHERE batter_name = %s AND pitcher_name = %s
     """, (b[1], p[1]))
     row = cur.fetchone()
+    # 이번 타석 안타확률 (per-PA 모델 — 실패해도 응답은 정상)
+    hit_prob = None
+    try:
+        from api.prediction.pa_hit_model import predict_hit_prob
+        hp = predict_hit_prob(conn, b[1], p[1])
+        if hp is not None:
+            hit_prob = round(hp * 100, 1)
+    except Exception:
+        hit_prob = None
     cur.close(); conn.close()
     pa, games, ab, h, hr, d2, d3, bb, hbp, k = row
     avg = round(h / ab, 3) if ab > 0 else 0.0
@@ -540,6 +549,7 @@ def get_matchup_stats(batter_id: int, pitcher_id: int):
     return {
         "batter": {"id": b[0], "name": b[1]},
         "pitcher": {"id": p[0], "name": p[1]},
+        "hit_prob": hit_prob,
         "pa": pa,
         "games": games,
         "at_bats": ab,
