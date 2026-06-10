@@ -75,11 +75,18 @@ def parse_game_pas(rows) -> list[dict]:
     counters: dict[tuple, int] = {}
     open_pa: dict | None = None
     last_wr = None  # 직전 non-null 홈 승률 (행 누락 가드)
+    # 직전 투구행 스냅샷 — 타자 등장(8) 행은 out/base/score가 비어 있어(전부 0)
+    # 같은 이닝half의 마지막 투구행 상태를 타석 시작 컨텍스트로 사용
+    ctx_key = None
+    ctx = {'out': 0, 'b1': False, 'b2': False, 'b3': False, 'hs': 0, 'as': 0}
 
     for (inning, half, seqno, rtype, batter, pitcher, title,
          strike, ball, out, b1, b2, b3, hs, a_s, hwr) in rows:
         if rtype == _T_BATTER:
             key = (inning, half)
+            if ctx_key != key:  # 이닝 전환 — 컨텍스트 리셋
+                ctx = {'out': 0, 'b1': False, 'b2': False, 'b3': False, 'hs': 0, 'as': 0}
+                ctx_key = key
             if open_pa is not None and (open_pa['inning'], open_pa['inning_half']) == key:
                 seq = open_pa['pa_seq']  # 대타 교체 — 같은 타석 슬롯 대체
             else:
@@ -91,18 +98,30 @@ def parse_game_pas(rows) -> list[dict]:
                 'pitcher_name': (pitcher or '').strip(),
                 'result_text': '', 'result_class': '', 'is_hit': False,
                 'n_pitches': 0,
-                'outs_before': out or 0,
-                'base1': bool(b1), 'base2': bool(b2), 'base3': bool(b3),
-                'home_score': hs or 0, 'away_score': a_s or 0,
+                'outs_before': ctx['out'],
+                'base1': ctx['b1'], 'base2': ctx['b2'], 'base3': ctx['b3'],
+                'home_score': ctx['hs'], 'away_score': ctx['as'],
                 'win_rate_before': hwr if hwr is not None else last_wr,
                 'win_rate_after': None,
                 'seq_start': seqno, 'seq_end': seqno,
             }
-        elif rtype == _T_PITCH and open_pa is not None:
-            open_pa['n_pitches'] += 1
-            if pitcher and pitcher.strip():
-                open_pa['pitcher_name'] = pitcher.strip()
-            open_pa['seq_end'] = seqno
+        elif rtype == _T_PITCH:
+            ctx_key = (inning, half)
+            ctx = {'out': out or 0, 'b1': bool(b1), 'b2': bool(b2), 'b3': bool(b3),
+                   'hs': hs or 0, 'as': a_s or 0}
+            if open_pa is not None:
+                if open_pa['n_pitches'] == 0:
+                    # 타석 첫 투구행 스냅샷 = 정확한 타석 시작 상태
+                    # (직전 타석 마지막 투구는 그 결과(안타 등) 반영 전이라 부정확)
+                    open_pa['outs_before'] = out or 0
+                    open_pa['base1'], open_pa['base2'], open_pa['base3'] = bool(b1), bool(b2), bool(b3)
+                    open_pa['home_score'], open_pa['away_score'] = hs or 0, a_s or 0
+                    if hwr is not None:
+                        open_pa['win_rate_before'] = hwr
+                open_pa['n_pitches'] += 1
+                if pitcher and pitcher.strip():
+                    open_pa['pitcher_name'] = pitcher.strip()
+                open_pa['seq_end'] = seqno
         elif rtype == _T_RESULT and open_pa is not None:
             txt = (title or '').strip()
             cls, is_hit = classify_result(txt)
