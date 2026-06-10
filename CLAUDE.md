@@ -265,6 +265,12 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 서버: 커넥션 풀+자동복구, @cached TTL 전 엔드포인트, GZip, 병렬 이닝 fetch(4), Naver timeout 5s, swap 4G, **날씨 백그라운드 워머**
 - 클라: cached_network_image 전면, Shimmer, LocalCache SWR, _dedupGet(stampede 차단), maxConnectionsPerHost=20, _loadGen race 가드
 
+### 성능 백로그 (2026-06-10 — 측정 먼저: TimingMiddleware+nginx $request_time 로그+DevTools 타임라인으로 병목 확정 후 착수)
+- 즉효(서버, ~10분씩): **orjson**(`ORJSONResponse` default_response_class — rankings/relay_all 직렬화 3-10x)·**uvicorn[standard]**(uvloop+httptools 스루풋 +20~40%)·nginx TLS1.3+ssl_session_cache+OCSP stapling(핸드셰이크 RTT 절감)
+- 중간: **ETag/304**(30s 폴링이 매번 풀바디 재전송 중 — 해시 ETag+If-None-Match면 변화 없을 때 헤더만, 서버+클라 _dedupGet 양쪽 수정)·**서버측 캐시 SWR**(@cached 만료 시 stale 반환+백그라운드 갱신 — cold 시 Naver 5s 블로킹이 p99 원인, 날씨 워머 패턴 일반화)·**프로필 이미지 썸네일**(크롤 시 88px/리스트용 사전 리사이즈 — 목록 스크롤 대역폭/디코드)
+- 큰 체감(반나절+): **`/home/bootstrap` 집계 엔드포인트**(홈 진입 burst 20+요청→1요청 — RTT 왕복 절감, LTE서 최대 체감. rate limit 버스트 사고 원인도 제거)·대형 JSON `compute()` isolate 파싱(메인스레드 jank)·홈 위계 로딩(첫 프레임=오늘경기만, 나머지 후순위)
+- 장기: Cloudflare CDN(이미지 edge 캐시 — 도메인 계획과 묶음)·dio+http2_adapter(h2 멀티플렉싱 — bootstrap 도입 시 가치 하락하니 후순위)·uvicorn --workers(인메모리 캐시 워커별 중복 → Naver fetch 배수 트레이드오프, 부하 생기면 검토)
+
 ## 주의사항
 - **baseUrl HTTPS 고정** / git push --force / 커밋·배포·로그·APK는 묻지 않고 실행
 - **배포 시 playball + playball-scheduler 둘 다 재시작**
@@ -309,11 +315,65 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - [~] **SemColor.panelDark 감사**(2026-06-09): 80개 분류 — A(라이트잉크 `isDark?light:panelDark` ~40)·A2/A3·B(SnackBar/헤더그라디언트/온보딩 의도)는 **유지**. **Pattern-C 버그**(무조건 panelDark를 fg/fill/border에 → 다크 안 보임) ~22개. 수정완료 6: home OutlinedButton×2·login/register checkbox·phone icon → `SemColor.brand(context)`(다크0xFFE5E5E7/라이트panelDark). **C-fg 수정완료**: home버튼·auth체크박스·phone아이콘 + game_detail TabBar label/indicator(×2)·OutlinedButton → `brand(context)`(analyze clean). **C-fg defer**: player_stats(65·314)·player_compare(285) = 위젯이 다크 미대응(context 파라미터 없음 + grey200/black87 혼재) → 단독 swap 불가, AppErrorView/홀리스틱 다크패스와 묶을 것. player_compare 203 = 다크 헤더 의도(B 재분류). **C-bg 결정**(다크 surface=기존 `AppColors.surfaceDark 0xFF18181C/surface2Dark` 재사용, 새 토큰 불요): player_screen 선수/구단 토글(818·836 bg + 825·843 텍스트반전)=✅`brand(context)`+invert. **gd C-bg defer→홀리스틱 다크패스**(헤더3301·avatar3364/3770·TableRow3863/3889): StatelessWidget 헬퍼는 context 없음 + 테이블 border(`0xFFE0E0E4`)·셀 비테마라 단독 fix 불일치. **홀리스틱 착수**: player_compare 테이블/검색카드 테마화 ✅(2026-06-09, State라 `context` 가용·AppColors.surfaceDark/surface2Dark 사용, 헤더는 의도 다크밴드 유지). player_stats ✅(2026-06-09 헤딩/섹션라벨 color 제거→테마 텍스트색 상속, 토글 brand+반전, _buildContent에 context 스레딩). game_detail ✅(2026-06-09 통계테이블 border/헤더row + 로스터헤더(3301) + 타순배지(3364·3770) → 인라인 다크 hex 0xFF1F1F24/26262C, `_tableCell` 데이터셀은 color:null이라 이미 테마구동). **홀리스틱 다크패스 3화면(player_compare·player_stats·game_detail) 완료**. ⚠️**전체 육안검증 미완**(헤드리스 컴파일만) → `flutter run` 다크모드 점검 필수. ⚠️무차별 치환 금지(A/B 다수). / **Radii**: magic `circular(999)`→`Radii.pill` 33곳 ✅(2026-06-09, 5파일). 수치 스케일(4/8/12/16/20)은 off-scale 값(10/13/14 등) 多 혼재 → 부분 토큰화=일관성↓라 점진 보류
 - [~] ~~Golden test(다크+라이트)~~(✅ 2026-06-09 인프라 구축: `app/test/golden/` built-in `matchesGoldenFile`, AppErrorView 라이트/다크 PNG 기준 커밋. 갱신=`flutter test --update-goldens test/golden`, 확장=테마인식 위젯 동일 패턴 추가. ※폰트 미로드로 텍스트=tofu box지만 색/레이아웃 회귀엔 충분. 잔여=주요화면 골든 확대) / ~~pre-commit grep hook~~(✅ 2026-06-09 `.githooks/pre-commit`: 음수 letterSpacing WARN + `baseUrl http://` BLOCK. 클론마다 활성화 `git config core.hooksPath .githooks`) / ~~nginx 보안헤더~~(✅ 2026-06-09 HSTS+CSP+Permissions-Policy 등 7종 적용·검증)
 - [x] 이닝중계 진행이닝 TTL 30→10s 검토 → **유지 결정**(클라 폴링 30s 고정이라 하향=Naver 부하 3배·UX 이득 0)
+### 보안 점검 잔여 (2026-06-10 서버 감사 — 기본기 양호: ufw deny-default·fail2ban(nginx jail 포함)·SSH 키온리·unattended-upgrades·pip-audit 주간·bcrypt·refresh rotation+서버측 revoke 확인됨)
+- [ ] **업로드 EXIF 제거** ⭐: 프로필/게시글 이미지 GPS 메타 그대로 저장 중 → 직관샷=집/위치 유출. Pillow 재인코딩(이미지 새로 save하면 EXIF 탈락)으로 magic-byte 검증부에 추가
+- [ ] postgres `listen_addresses='*'`(0.0.0.0:5432 바인딩) → `'localhost'`로 (ufw가 막고 있으나 심층방어 — ufw 실수 한 번이면 노출). 변경=restart 필요(수초 다운) → 새벽/배포 타이밍에
+- [ ] rpcbind(111) 불필요 서비스 외부 바인딩 → `systemctl disable --now rpcbind`
+- [ ] 백업 오프사이트 부재 — 서버 사망=백업 동반 소실. 주 1회 로컬 PC scp pull 또는 Oracle Object Storage
+- [ ] 이메일 인증코드 verify 시도횟수 제한 없음(재발송 1분+만료 5분만) — 5회 실패 시 코드 무효화 권장 (rate limit이 완화 중이라 우선순위 낮음)
+
 ### 장기 / 출시 외부작업 (네 권한·비용 — **물어보면 안내**)
 - [ ] **도메인 + Cloudflare**: 웹사이트 Free 플랜 + Tunnel(IP은닉, duckdns/certbot 제거). ⚠️ Bot Fight Mode OFF(앱 API 차단), 동적 JSON 캐시 bypass
 - [ ] **Play Console**($25) + keystore 안전백업(분실=업데이트 불가) + Data Safety + targetSdk 확인
 - [ ] **법무 잔여**: 정책 페이지(`/privacy`·`/terms`)·HTML(`backend/static/legal/`) 배포 완료. 남음 = ① 문의메일 placeholder(`playball.support@gmail.com`) 실계정 교체 ② 출시 전 법률 검토 ③ (옵션)앱 마이페이지 약관 링크 ④ KBO/Naver 저작권 최종 판단
 - [ ] 홈화면 위젯(Android AppWidget native kotlin) / state restoration / i18n=skip 확정 / 골든 테스트 확대 / Radii 수치 스케일 토큰화
+
+## 기능 백로그 (2026-06-10 브레인스톰 — 우선순위 미정, 착수 전 상의)
+
+### 신규 기능
+- 라이브: 실시간 승리확률 그래프(ML 재사용)·현재타석 matchup 통산기록(game_pitches로 계산)·결정적순간 푸시(확률 급변 ±20%p)·불펜 피로도 보드(game_pitchers 최근 등판일/투구수)·우천취소 확률(weather 재사용)
+- 기록: 마일스톤 트래커 화면(알림 백엔드 보유)·신인왕/MVP 레이스(WAR)·순위변동 타임라인·오늘의 MVP(종료 시 자동선정)·매직넘버(PS odds 재사용)·선수 스플릿(홈원정/주야/vs팀)·팀 H2H 매트릭스
+- 참여: 승부예측 포인트/랭킹(game_predictions 보유 — 리텐션 1순위)·데일리픽·직관뱃지(전구장 정복 등 visit_record)·이상형월드컵·선수카드/직관기록 공유이미지(RepaintBoundary+share_plus)·경기별 응원톡(모더레이션 비용 고려)
+- 유틸: 선수 팔로우 알림(선발등판/타순 포함 — favorite_players 보유)·아침 브리핑 푸시(어제결과+오늘 선발 1통)·중계채널 안내(정적 매핑)·티켓오픈 알림·ICS 캘린더 내보내기
+
+### UI/UX 개선
+- 전역: Hero 전환(목록 아바타→상세)·햅틱(투표/새로고침/탭)·오프라인 배너(connectivity+SWR 표시)·빈상태 공용 AppEmptyView(AppErrorView 패턴)·당겨새로고침 통일·긴 리스트 위로가기 FAB·스낵바 톤 통일·하단바 스와이프 힌트(1회 flag)
+- 홈: 라이브 펄스 dot(30s 폴링 시각화)·경기없는날 마이팀 다음경기 D-day 카드·날짜스트립 길게누르기 픽커(_pickerBuilder 필수)·compact 토글 첫실행 툴팁
+- 경기상세: 현재이닝 칩 자동포커스·새 중계 항목 amber 페이드인·필드뷰 풀스크린 오버레이(작은폰 비좁음)
+- 선수: 초성검색(ㄱㄷㅇ→김도영)·목록 길게누르기 2명 비교선택·히트맵 범례ⓘ(표본<5 회색 설명)·투표 결과 바 애니메이션
+- 캘린더/커뮤: 직관기록 다중사진(image_urls 인프라 재사용)·이미지 핀치줌 갤러리 뷰어·댓글 작성중 이탈경고·달력 월 스와이프
+
+### 운영/출시 인프라
+- ⭐강제 업데이트 게이트(`/app-config` min_version — **출시 전 필수**, 나중엔 못 넣음)·킬스위치(Firebase Remote Config 기능별 off)·공지배너(app-config에 banner 필드)
+- admin 콘솔 웹(insta/게시글 신고·맛집 승인 — 현재 psql 수동, X-Admin-Key 재사용)·배포후 스모크 curl 스크립트(scheduler 미재시작류 사고 감지)
+- 알림: quiet hours(22~08 보류 — 심야 푸시=삭제 1순위)·Android 채널 분리(라이브/마이팀/커뮤 — OS 선택 차단 가능)
+- 성장: 딥링크(게시글/경기/선수 공유→앱)·인앱리뷰(직관 '승리' 기록 직후)·Play 내부테스트 트랙(push_tokens 다수 검증 겸용)
+- 품질: 외국인 한글↔영문 이름매핑 테이블(인스타 검증도 필요)·pitch_locations 시즌 아카이빙 계획(106k+/시즌)·GitHub Actions CI(analyze+골든)·앱 백그라운드 시 폴링 중단 확인(배터리/서버)
+
+### 팬 세그먼트별 (올드팬=기록 깊이 / 라이트팬=쉬움·재미. 현재 앱=올드팬 강·라이트팬 funnel 약)
+- 올드팬 분석계(보유 데이터로 즉시 가능): 볼배합 시퀀스 분석(game_pitches 구종순서·초구 성향)·**과거경기 필드뷰 리플레이(game_relay_archive JSONB 보유 — 타앱 없는 유니크 자산)**·보더라인 판정 분석(ABS존 px)·클러치 WPA/LI 리더보드(승률모델 재사용)·파크팩터(구장별 타고/투고 보정)·페이스 프로젝션(시즌 환산+마일스톤 ETA)·좌우 스플릿 수치 테이블(존히트맵 데이터 표화)·박스스코어 기록지 뷰(전통 스코어카드+이미지 저장)·등록말소/부상 타임라인(roster_changes 보유)·PS 확률 분포 그래프(odds 확장)·**타석 안타확률 모델(per-PA, 아래 별도)**
+- 올드팬 확장계(크롤/콘텐츠 추가 필요): 통산 커리어 합산 뷰·2군 기록/콜업 워치(퓨처스 크롤)·연봉 대비 WAR 가성비(연봉 공시 크롤)·KBO 오늘의 역사(정적 JSON)·역대 기록실·조건 알림 빌더("X가 OPS 1.0 도달 시" — 마일스톤 인프라 연장)·기록 CSV 내보내기·커스텀 스탯 대시보드 확장(핵심스탯 피커 연장)·라인업 시뮬레이터(타순 기대득점)
+- 라이트팬 진입장벽: 응원팀 찾기 테스트(온보딩 취향 퀴즈→팀 추천, 결과 공유=바이럴)·쉬운 스탯 모드(OPS→S~C 등급, 리그 백분위)·**"지금 무슨 상황?" 라이브 캡션(relay→"2사 만루, 한 방이면 역전" 자연어 한줄)**·야구 입문 코스(기존 ⓘ 용어 모아 단계별)·룰 일러스트 사전(인필드플라이 등)·첫 직관 가이드(체크리스트+구장별)·용어 팝업 퀴즈
+- 라이트팬 재미/콘텐츠: 경기 3줄 요약(game_summary 자연어 강화)·하이라이트 몰아보기 피드·"오늘의 한 장"(종료 시 사진1+한줄 자동)·최애 포토카드 꾸미기(프로필+스탯 커스텀→공유)·선수 생일/데뷔 기념일 알림·응원가 가사 링크집(저작권→링크만)·야구퀴즈/밸런스게임·시즌 연말결산 카드(Wrapped式 — 직관/예측/투표 데이터)·다이제스트 모드(푸시 대신 하루 1통 요약)
+- 소셜/게이미피케이션(공통): 팬 레벨(출석+예측+커뮤니티+직관 포인트 통합)·1:1 예측 대결(친구 초대)·오늘의 승리 MVP 팬투표(인기투표 인프라 재사용)·주간 미션(시즌패스式 무료)·출석 스탬프
+- 모드 컨셉: 온보딩 "야구 얼마나 보세요?" → 프로/캐주얼 모드(스탯 밀도·푸시 빈도·홈 구성 프리셋 — compact 토글·커스텀 피커가 씨앗)
+### 추가 영역 (2차 브레인스톰)
+- ML 확장(모델/데이터 보유): 투수 교체 타이밍 예측(불펜 패턴)·경기 소요시간 예측(직관러 귀가용)·익일 선발라인업 예측·선수 시즌 최종성적 프로젝션 밴드·LLM 자동 경기 프리뷰/리뷰 기사(Claude API — 매일 5경기, 비용 소액)·기록 질문 챗봇(RAG over own DB — 차별화 크나 API 비용 검토)
+- 커뮤니티 심화: 경기별 라이브 스레드 자동 개설/종료시 아카이브·투표(poll) 첨부 게시글·직관샷/팬아트 갤러리 탭(이미지 그리드 뷰)·월간 베스트글 명예의전당. ⚠️지역 직관모임 매칭=모더레이션/안전 부담 커서 비추
+- **오프시즌 모드(비시즌 DAU 방어 — 야구앱 최대 갭)**: 스토브리그 FA 트래커·연말결산 카드·명장면 리플레이 큐레이션·올타임 팀 뽑기·퀴즈 시즌제·개막 D-day
+- 시즌 이벤트: 포스트시즌 브라켓 예측(10월 참여 폭발)·골든글러브/올스타 예측 이벤트
+- 수익화(출시 후): AdMob 네이티브(게임카드 사이 1개 수준)·프리미엄 구독(광고제거+심화 분석+위젯 커스텀)·티켓/굿즈 어필리에이트
+- 플랫폼: Flutter web 커뮤니티(SEO 유입)·태블릿 2컬럼 레이아웃. TV/WearOS=비추(니치)
+- 접근성: 스크린리더 시맨틱·색각보조(팀컬러에 패턴/라벨 병기)·시니어 모드(큰글씨+단순화 — 고령 올드팬 실수요)
+- 신뢰: 기록 갱신시각 표시("5초 전")·오류신고 일반화(인스타 신고 패턴→전 기록)·데이터 출처 고지 페이지·오픈소스 라이선스 화면
+- **타석 안타확률(per-PA) 모델**: 라벨=game_pitches 타석결과(1루타/2루타/3루타/홈런/내야안타 — '안타' 단독표기 없음 규칙 재사용), ~5.5만 타석/시즌. 피처=타자 시즌누적(시점까지만 — leakage 금지, player_daily_stats rolling)+최근폼+플래툰(bats×throws)+투수 피성적+**존 겹침점수(타자 핫존5x5 × 투수 투구분포5x5 내적 — 양쪽 보유, 차별화 피처)**+매치업 통산(표본少→empirical Bayes shrinkage)+구장 파크팩터+홈원정. 모델=LR/GBM+기존 calibration 모듈, 시간순 split(승리예측 관행). 기대성능 정직하게: base ~27%, AUC ~0.58-0.62(야구 per-PA 본질 한계) — 절대값보다 "오늘 매치업 21% vs 33%" 상대 비교 가치. 확장=멀티클래스(아웃/볼넷/단타/장타)→xwOBA식 기대치, 볼카운트 반영 실시간 업데이트(pitch별 재계산). 서빙=relay 응답에 batter 확률 필드 or /games/{id}/pa-prob @10s
+
+### 사업성 메모 (2026-06-10 평가)
+- 순풍: KBO 1000만 관중 시대(2030·여성 신규팬 급증)+티빙 모바일 중계 유료화 → **무료 텍스트/시각화 라이브 수요 공백** = 필드뷰가 정조준. 경쟁(네이버=범용 문자중계, KBO공식앱=품질낮음, 팀앱=단일팀)에 비해 분석깊이+직관기록+커뮤니티 통합이 차별점
+- ⭐최대 리스크 = **데이터 종속**: 네이버 비공식 API+statiz 크롤 — 상업화 시 약관/저작권 노출 급증, 차단=서비스 사망. **수익화 마케팅 전 KBO 데이터 제휴/라이선스 검토 필수** (법무 잔여항목과 연결). 하이라이트=링크만(영상 호스팅 금지) 유지
+- 기타 리스크: 1인 운영(모더레이션/CS)·서버비용(현 무료티어, 캐시로 버팀)·비시즌 DAU 폭락(오프시즌 모드로 방어)
+- 수익 현실치: DAU 1만 가정 — 네이티브광고 월 ~100-200만원, 구독(전환 1-3%) 월 ~50-100만원. 1년차 현실 목표 MAU 1~5만 = 사이드수익 구간. 단독 스타트업 스케일은 데이터 라이선스 해결+니치 장악 후 판단
+- 전략: ①니치 1개 집중(직관러 도구 or 라이브 필드뷰) ②무료+가벼운 광고로 시작 ③데이터 리스크 해결 전 공격적 마케팅 자제 ④포스트시즌(10월) 모멘텀 활용
 
 ## 알려진 이슈
 - push_tokens 사용자 1명 — 다수 유저 알림 시나리오 미검증

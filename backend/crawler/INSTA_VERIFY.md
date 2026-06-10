@@ -1,15 +1,26 @@
 # 선수 인스타 핸들 검증 (players.insta_handle)
 
-## 현황 (2026-06-10)
-- **등록 358명 / 미등록 140명** (활성 2026 batter/pitcher_stats 기준, 미등록 중 외국인 ~31)
-- imginn 본인확인 ~290 + namu 본인섹션(비공개) ~30 + 이름철자 추정 소수
-- 원본(namu만 크롤)서 가족계정 ~9건·동명이인 다수 박멸함
+## 현황 (2026-06-10b — 전수 재검증 완료)
+- **등록 367명 / 미등록 ~127명** (활성 기준. 358 전수 dual-viewer 재검증 → 동명이인 4 제거 + naver 신규 13 추가)
+- 재검증 내역: VERIFIED 304(이름) + 10(bio이름/구단) / GONE_OR_PRIVATE 17(비공개·삭제 — namu 등급 유지) / 잔여 수동확인 ~22(외국인 로마자 등 본인 판정 다수 포함)
+- 원본(namu만 크롤)서 가족계정 ~9건·동명이인 다수 박멸 + **2차 전수서 고팔로워 동명이인 3(아이돌 박지훈 7.6M·MLB 박찬호·배우 이준혁 996K) + 핸들양도 의심 1(신동건) 추가 박멸**
 
 ## 핵심 원리
 - **IG는 완전 로그인월** — 비로그인 직접 검증 불가 (og메타 제거됨, 계정 존재확인도 실제/가짜 동일 780KB 셸)
 - **imginn.com = 우회 (⭐ gold)** — 3rd-party 뷰어가 비로그인서 **프로필 표시이름+바이오+팔로워** 노출. `og:title="이름(@핸들)"` → 선수명 대조로 **본인확인**. 가족계정(꽃집·아기·강아지·자녀)·동명이인(배우·가수·아이돌) 색출의 결정타.
   - imginn 상태: 200=데이터 / **410=비공개 or 삭제** / 429=일시차단(재시도하면 풀림)
   - **NFC 정규화 필수** (imginn 한글 NFD vs DB NFC → 안 하면 강백호=강백호도 불일치)
+
+## 2026-06-10b 전수 재검증 체계 (신규)
+- **picnob.com = 2번째 독립 뷰어** (`/profile/{handle}/`, 구 pixwox) — imginn 410/429 폴백. ⚠️ PS5.1 Invoke-WebRequest는 TLS 지문 403 → **curl.exe 필수**
+- `verify_dual_all.ps1` — 등록 전수 재검증 (imginn→picnob 폴백). `-InFile/-OutFile/-Limit` 파라미터. 판정: VERIFIED_NAME(표시이름) / **VERIFIED_NAME_BIO(bio에 선수명 — '롯데자이언츠 전준우입니다' 류)** / VERIFIED_TEAM(구단 키워드) / GONE_OR_PRIVATE / NAME_MISMATCH
+- `collect_naver_candidates.ps1` — 미등록자 naver 웹검색서 후보 핸들 수집 (검증은 안 함)
+- `verify_candidates.ps1` — 후보를 imginn/picnob 본인검증, 첫 VERIFIED 채택
+- **NFKC 정규화** — 장식문자 표시이름(𝑯𝒂𝒏𝒘𝒉𝒂·𝗥𝗬𝗨) → 일반문자. NFC만으론 못 풀음
+- **팔로워 스윕** — VERIFIED_NAME이어도 bio 팔로워 100K+ & 야구키워드 0 = 동명이인 의심 (박지훈·이준혁 검출 패턴)
+- **생년 대조** — 핸들 숫자 vs players.birth_date (조상우 940904=94-09-04 확정 사례)
+- ⚠️ **.ps1 한글 리터럴 = UTF-8 BOM 필수** — BOM 없으면 PS5.1이 CP949로 읽어 한글 정규식 깨짐(전부 0건/오판정 사고)
+- ⚠️ naver 후보 함정 (VERIFIED_TEAM 단독 채택 금지 사례): 구단 공식계정(always_kia_tigers·busanlottegiants·heroesbaseballclub)·정치인 김민석·식당(타무라 제주·더로아 '삼성'점)·타 선수 계정(나승엽이 김세민 후보로)·바이오에 구단명 있는 팬계정 → **신규 채택 = NAME 계열 or TEAM+본명일치만**
 
 ## 검증 도구 (backend/crawler/ — ⚠️ 전부 로컬 PC 전용. 서버 IP는 namu/imginn 403/차단)
 - `verify_imginn.ps1` — ⭐ imginn 표시이름 vs 선수명(NFC) 본인검증. 3s+1회재시도. 입력 insta_review.tsv → insta_imginn.csv
@@ -34,6 +45,13 @@
 - AI 개요가 `이니셜_숫자`(m_jun_02·s_wook_38·dong_jin_0…) 패턴으로 **200+ 핸들 통째 지어냄.** 유명선수 몇 개만 실제값.
 - 샘플 10개 imginn 검증 → **8개 HTTP_410(존재안함)**. **bulk 적용 시 검증된 진짜 핸들 파괴.**
 - **모든 핸들은 imginn 검증 통과분만 적용.** AI 개요·Naver 무검증 적용 금지.
+
+## 2026-06-10b 색출·정정 (전수 재검증)
+- **제거 4**: 박지훈(KT) 0529.jihoon.ig=아이돌(7.6M·[RE:FLECT]) · 박찬호(OB·95년생) chanhopark61=MLB 레전드(등번호61) · 이준혁(NC) leejunhyuk05=배우(996.7K) · 신동건(LT) s1nd0ngun=표시이름 tnpzi_ 무관(양도 의심)
+- **신규 13**: 화이트 owen_white12·데일 jarryd_dale·강민성 k__a_ng_·장현식 sikkkkkkkkk_·김진욱 _jinukkim_·데이비슨 mattdavidson_24·오영수 yeongsuoh·김민석(OB) kmszz__·타케다 shotatakeda18·디아즈 lewin_dh19·알칸타라 alcantararaul26·유토 yuto.hros.1480·김현수(KT) hyeon0_0soo
+- **본인 확인(유지)**: 조상우 940904no.11(생년 일치)·장성우 zzangdoo22(등번호22)·한석현 han9405(94.05생)·외국인 본명 로마자 전원(페라자=Yonathan Perlaza 등)·전준우/노진혁/한준수/장승현(bio 1인칭)·임병욱 lim.bang_(한자 林秉昱=임병욱)
+- **보류(수동확인 필요)**: SK 김민준 동명 2명(투수#40 06년생 vs 내야수#5 04년생) 모두 skyjun_16 후보 — 판별불가 미등록 · LG 이민호 minoooooooo0o0(빈계정) · LG 김진수 jinsu_jung_a0531(야구흔적無) · 박세혁 parksseho(철자 seho — @oakleykorea 스폰 단서로 유지 중) · 이상영 _lee_s_y_(disp '이상빵' 별명 추정 유지) · 강승호/서건창(picnob 200인데 이름 파싱 실패 — 재확인)
+- SQL = `insta_audit_20260610.sql` / 산출물 = insta_dual.csv·insta_recheck.csv·insta_fill_verified.csv (로컬)
 
 ## 색출·정정한 오류 (namu/Wikidata만으론 못 잡던 것 — imginn이 잡음)
 - **가족계정**: 양석환 luvinbloom(꽃집)→ysghw_53 · 김재윤 extraordinaryleia(아기)→제거 · 김도영 im.__.zandi(강아지)→do_0000 · 류지혁 i_hyun_deun_el(자녀)→ryujihyuk_ · 허경민 heo_jamong_(자몽맘=아내)→kyoungmin1623 · 양창섭 cello_min_(자녀)→제거 · 박동원/이유찬/오영수 가족·없음 → 제거
