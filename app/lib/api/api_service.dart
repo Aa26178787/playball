@@ -298,6 +298,17 @@ class ApiService {
         data: {'code': code}, options: Options(headers: headers));
   }
 
+  // ===== 승리확률 시계열 (인게임 모델) =====
+  static Future<Map<String, dynamic>?> getWinProbSeries(int gameId) async {
+    try {
+      final res = await _dio.get('/games/$gameId/win-prob-series');
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('api_service winprob: $e');
+      return null;
+    }
+  }
+
   // ===== 앱 원격 설정 (강제 업데이트/킬스위치/공지) =====
   static Future<Map<String, dynamic>?> getAppConfig() async {
     try {

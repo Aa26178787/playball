@@ -15,6 +15,7 @@ import 'pitch_location_chart.dart';
 import '../player/player_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class GameDetailScreen extends StatefulWidget {
   final int gameId;
@@ -74,6 +75,49 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   int? _selectedRelayInning;
   final ScrollController _inningChipCtrl = ScrollController();
   int? _lastAutoScrolledInning; // 칩 자동 스크롤 dedup (이닝 바뀔 때만 이동)
+
+  // 승리확률 시계열 (인게임 모델) — 중계 탭 첫 빌드 시 lazy 로드, 라이브 30s 갱신
+  Map<String, dynamic>? _winProbData;
+  bool _winProbLoading = false;
+
+  void _loadWinProb() {
+    if (_winProbLoading) return;
+    final status = _gameData?['game']?['status'] as String? ?? '';
+    if (status != '진행' && status != '종료') return;
+    _winProbLoading = true;
+    () async {
+      try {
+        final d = await ApiService.getWinProbSeries(widget.gameId);
+        if (mounted && d != null) setState(() => _winProbData = d);
+      } catch (e) {
+        debugPrint('game_detail winprob: $e');
+      } finally {
+        _winProbLoading = false;
+      }
+    }();
+  }
+
+  Widget _buildWinProbCard() {
+    final d = _winProbData;
+    if (d == null) {
+      _loadWinProb(); // lazy 시작 (비동기 — 빌드 안전)
+      return const SizedBox.shrink();
+    }
+    final series = (d['series'] as List? ?? []).whereType<Map>().toList();
+    if (series.length < 5) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _WinProbChart(
+        series: series,
+        finalProb: (d['final_prob'] as num?)?.toDouble(),
+        homeColor: teamColor(_gameData?['game']?['home_team_code'] as String? ?? ''),
+        homeName: _gameData?['game']?['home_team'] as String? ?? '홈',
+        awayName: _gameData?['game']?['away_team'] as String? ?? '원정',
+        isLive: (_gameData?['game']?['status'] as String? ?? '') == '진행',
+        isDark: Theme.of(context).brightness == Brightness.dark,
+      ),
+    );
+  }
 
   // 현재 타석 맞대결 통산 (plate_appearances 기반) — 타자·투수 조합 바뀔 때만 fetch
   Map<String, dynamic>? _matchupData;
@@ -449,6 +493,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               }
             })
             .catchError((_) { if (mounted && _relayAllData == null) _scheduleRelayRetry(); });
+        _loadWinProb();
       } else {
         // 경기 종료 감지 시 타이머 취소 후 전체 데이터 새로고침
         _refreshTimer?.cancel();
@@ -1966,6 +2011,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // ── 승리확률 그래프 (타석별 시계열 — 인게임 모델) ──
+                        _buildWinProbCard(),
                         SingleChildScrollView(
                           controller: _inningChipCtrl,
                           scrollDirection: Axis.horizontal,
@@ -5269,4 +5316,183 @@ class _DashedRectPainter extends CustomPainter {
   @override
   bool shouldRepaint(_DashedRectPainter old) =>
       old.color != color || old.radius != radius || old.dashLength != dashLength || old.gap != gap;
+}
+
+// ─── 승리확률 그래프 (타석별 시계열 — 인게임 모델/Naver 승률) ──────────────────
+class _WinProbChart extends StatelessWidget {
+  final List<Map> series;
+  final double? finalProb;
+  final Color homeColor;
+  final String homeName, awayName;
+  final bool isLive, isDark;
+
+  const _WinProbChart({
+    required this.series, required this.finalProb,
+    required this.homeColor, required this.homeName, required this.awayName,
+    required this.isLive, required this.isDark,
+  });
+
+  static const Map<String, String> _resultKo = {
+    'single': '안타', 'double': '2루타', 'triple': '3루타', 'hr': '홈런',
+    'bb': '볼넷', 'ibb': '고의4구', 'hbp': '사구', 'so': '삼진',
+    'out': '아웃', 'sac_bunt': '희생번트', 'sac_fly': '희생플라이',
+    'error': '실책', 'fc': '야수선택', 'reach_other': '출루',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final ink = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final hc = isDark ? Color.lerp(homeColor, Colors.white, 0.25)! : homeColor;
+
+    final spots = <FlSpot>[];
+    for (var i = 0; i < series.length; i++) {
+      final p = (series[i]['prob'] as num?)?.toDouble();
+      if (p != null) spots.add(FlSpot(i.toDouble(), p));
+    }
+    if (finalProb != null && spots.isNotEmpty) {
+      spots.add(FlSpot(spots.length.toDouble(), finalProb!));
+    }
+    if (spots.length < 5) return const SizedBox.shrink();
+
+    // 이닝 경계 x 위치 → 하단 라벨
+    final inningTicks = <int, int>{};
+    int? prevInning;
+    for (var i = 0; i < series.length; i++) {
+      final inn = series[i]['inning'] as int?;
+      if (inn != null && inn != prevInning) {
+        inningTicks[i] = inn;
+        prevInning = inn;
+      }
+    }
+
+    final lastProb = spots.last.y;
+    final homeLeading = lastProb >= 50;
+    final headLabel = isLive
+        ? '$homeName ${lastProb.toStringAsFixed(0)}%'
+        : (finalProb != null
+            ? '${finalProb! >= 50 ? homeName : awayName} 승리'
+            : '$homeName ${lastProb.toStringAsFixed(0)}%');
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      decoration: BoxDecoration(
+        color: paper,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('승리 확률',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ink)),
+              const SizedBox(width: 6),
+              Text('타석별 · $awayName vs $homeName',
+                  style: TextStyle(fontSize: 9.5, color: sub)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: (homeLeading ? hc : sub).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(headLabel,
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800,
+                        color: homeLeading ? hc : ink)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 130,
+            child: LineChart(
+              LineChartData(
+                minY: 0, maxY: 100,
+                minX: 0, maxX: (spots.length - 1).toDouble(),
+                clipData: const FlClipData.all(),
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                extraLinesData: ExtraLinesData(horizontalLines: [
+                  HorizontalLine(
+                    y: 50,
+                    color: sub.withValues(alpha: 0.35),
+                    strokeWidth: 1,
+                    dashArray: [4, 4],
+                  ),
+                ]),
+                titlesData: FlTitlesData(
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 16,
+                      interval: 1,
+                      getTitlesWidget: (v, meta) {
+                        final inn = inningTicks[v.toInt()];
+                        if (inn == null) return const SizedBox.shrink();
+                        return Text('$inn',
+                            style: TextStyle(fontSize: 8.5, color: sub, fontWeight: FontWeight.w600));
+                      },
+                    ),
+                  ),
+                ),
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (_) =>
+                        isDark ? const Color(0xFF26262C) : const Color(0xFF111113),
+                    getTooltipItems: (touched) => touched.map((t) {
+                      final i = t.x.toInt();
+                      if (i >= series.length) {
+                        return LineTooltipItem('최종',
+                            const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700));
+                      }
+                      final s = series[i];
+                      final half = (s['half']?.toString() ?? '0') == '0' ? '초' : '말';
+                      final res = _resultKo[s['result']] ?? '';
+                      return LineTooltipItem(
+                        '${s['inning']}회$half ${s['batter'] ?? ''} $res\n$homeName ${t.y.toStringAsFixed(1)}%',
+                        const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: false,
+                    barWidth: 2,
+                    color: hc,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [hc.withValues(alpha: 0.18), hc.withValues(alpha: 0.02)],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              Text('↑ $homeName', style: TextStyle(fontSize: 8.5, color: hc, fontWeight: FontWeight.w700)),
+              const SizedBox(width: 8),
+              Text('↓ $awayName', style: TextStyle(fontSize: 8.5, color: sub)),
+              const Spacer(),
+              Text('숫자 = 이닝', style: TextStyle(fontSize: 8.5, color: sub)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
