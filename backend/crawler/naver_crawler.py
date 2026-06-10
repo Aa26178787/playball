@@ -78,6 +78,9 @@ def save_game_pitches(db_game_id, naver_game_id, inning):
                 continue
 
             inning_half = item.get('homeOrAway', '0')
+            # 승률(metricOption)은 textRelays 항목(타석) 레벨에 있음 — textOptions 내부 아님.
+            # (2026-06-11 발견: 5/9 개편 후 win_rate 전부 NULL이던 원인 = 조회 레벨 착오)
+            item_metric = item.get('metricOption') or {}
 
             if prev_inning_half is not None and inning_half != prev_inning_half:
                 current_batter = None
@@ -116,8 +119,9 @@ def save_game_pitches(db_game_id, naver_game_id, inning):
                 if rtype is None:
                     continue
 
-                win_rate = opt.get('currentGameState', {}) or {}
-                metric = opt.get('metricOption') or {}
+                # 타석 결과(13) 행에만 승률 기록 — '타석 종료 후 승률' 의미 유지
+                # (PA 파서가 before=직전 13행, after=현재 13행으로 해석)
+                metric = opt.get('metricOption') or (item_metric if rtype == 13 else {})
                 home_win_rate = metric.get('homeTeamWinRate')
                 away_win_rate = metric.get('awayTeamWinRate')
 
