@@ -7,7 +7,8 @@ SRV="ubuntu@168.107.61.147"
 cd "$(dirname "$0")/app"
 
 echo "== flutter build web =="
-MSYS_NO_PATHCONV=1 flutter build web --release --base-href "/app/" --no-web-resources-cdn
+# --pwa-strategy=none: 서비스워커 비활성 (베타 중 캐시된 깨진 빌드 문제 근절, 매 로드 최신)
+MSYS_NO_PATHCONV=1 flutter build web --release --base-href "/app/" --no-web-resources-cdn --pwa-strategy=none
 
 echo "== 압축/전송 =="
 cd build
