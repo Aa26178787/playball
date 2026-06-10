@@ -3,7 +3,6 @@ import '../../utils/design_tokens.dart';
 import '../../utils/app_theme.dart';
 import '../../api/api_service.dart';
 import 'player_detail_screen.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/web_image.dart';
 
 class PlayerCompareScreen extends StatefulWidget {
@@ -156,7 +155,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
                   leading: CircleAvatar(
                     radius: 14,
                     backgroundImage: p['profile_image'] != null
-                        ? CachedNetworkImageProvider(webSafeImageUrl(p['profile_image']))
+                        ? netImageProvider(p['profile_image'])
                         : null,
                     child: p['profile_image'] == null
                         ? const Icon(Icons.person, size: 14)
@@ -253,7 +252,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
           CircleAvatar(
             radius: 30,
             backgroundImage: p['profile_image'] != null
-                ? CachedNetworkImageProvider(webSafeImageUrl(p['profile_image']))
+                ? netImageProvider(p['profile_image'])
                 : null,
             backgroundColor: Colors.white24,
             child: p['profile_image'] == null

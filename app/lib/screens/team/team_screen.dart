@@ -11,7 +11,7 @@ import '../player/player_detail_screen.dart';
 import '../mypage/my_page_screen.dart';
 import '../stadium/stadium_screen.dart';
 import 'team_detail_screen.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../utils/web_image.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 
@@ -2150,7 +2150,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
               children: [
                 CircleAvatar(
                   radius: rank == 1 ? 32 : 24,
-                  backgroundImage: (img != null && img.isNotEmpty) ? CachedNetworkImageProvider(img) : null,
+                  backgroundImage: (img != null && img.isNotEmpty) ? netImageProvider(img) : null,
                   backgroundColor: medalColor.withValues(alpha: 0.15),
                   child: (img == null || img.isEmpty)
                       ? Icon(Icons.person, size: rank == 1 ? 28 : 20, color: medalColor)
@@ -2387,7 +2387,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                   radius: 18,
                   backgroundColor: tc.withValues(alpha: isDark ? 0.35 : 0.18),
                   backgroundImage: (profileImage != null && profileImage.isNotEmpty)
-                      ? CachedNetworkImageProvider(profileImage) : null,
+                      ? netImageProvider(profileImage) : null,
                   child: (profileImage == null || profileImage.isEmpty)
                       ? Text(teamDisplayName(teamCode).substring(0,
                               teamDisplayName(teamCode).length.clamp(0, 2)),

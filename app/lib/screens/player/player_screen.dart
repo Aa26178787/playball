@@ -12,7 +12,6 @@ import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import 'player_detail_screen.dart';
 import '../mypage/my_page_screen.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/web_image.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -610,9 +609,9 @@ class _PlayerScreenState extends State<PlayerScreen>
               ),
               clipBehavior: Clip.antiAlias,
               child: (img != null && img.isNotEmpty)
-                  ? CachedNetworkImage(
-                      imageUrl: webSafeImageUrl(img), fit: BoxFit.cover,
-                      errorWidget: (_, _, _) => fallback,
+                  ? netImage(
+                      img, fit: BoxFit.cover,
+                      error: () => fallback,
                     )
                   : fallback,
             ),
@@ -743,9 +742,9 @@ class _PlayerScreenState extends State<PlayerScreen>
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: ((p['profile_image'] as String?)?.isNotEmpty ?? false)
-                      ? CachedNetworkImage(
-                          imageUrl: webSafeImageUrl(p['profile_image'] as String), fit: BoxFit.cover,
-                          errorWidget: (_, _, _) => Center(child: Text('#${p['number'] ?? '-'}',
+                      ? netImage(
+                          p['profile_image'] as String, fit: BoxFit.cover,
+                          error: () => Center(child: Text('#${p['number'] ?? '-'}',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white))),
                         )
                       : Center(child: Text('#${p['number'] ?? '-'}',
@@ -1005,7 +1004,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                             radius: 20,
                             backgroundColor: teamColor(code).withValues(alpha: 0.15),
                             backgroundImage: (img != null && img.isNotEmpty)
-                                ? CachedNetworkImageProvider(img)
+                                ? netImageProvider(img)
                                 : null,
                             child: (img == null || img.isEmpty)
                                 ? Text(teamDisplayName(code).characters.take(2).string,

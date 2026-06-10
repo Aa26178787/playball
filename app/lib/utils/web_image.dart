@@ -17,6 +17,13 @@ String webSafeImageUrl(String? url) {
   return url;
 }
 
+/// 플랫폼 안전 ImageProvider (CircleAvatar.backgroundImage 등):
+/// web=NetworkImage / native=CachedNetworkImageProvider. URL 자동 프록시 변환.
+ImageProvider netImageProvider(String url) {
+  final u = webSafeImageUrl(url);
+  return kIsWeb ? NetworkImage(u) : CachedNetworkImageProvider(u);
+}
+
 /// 플랫폼 안전 네트워크 이미지 위젯:
 /// - web: `Image.network`(CanvasKit 렌더 안정 — cached_network_image web 지원 불안정)
 /// - native: `CachedNetworkImage`(디스크 캐시)

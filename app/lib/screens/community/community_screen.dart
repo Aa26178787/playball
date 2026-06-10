@@ -1,7 +1,6 @@
 // community_screen.dart — Option A 디자인 시스템 반영
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/web_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../api/api_service.dart';
@@ -508,10 +507,10 @@ class _PostCard extends StatelessWidget {
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
-                  child: CachedNetworkImage(
-                    imageUrl: webSafeImageUrl(imageUrl),
+                  child: netImage(
+                    imageUrl,
                     fit: BoxFit.cover,
-                    errorWidget: (_, _, _) => Container(
+                    error: () => Container(
                       color: cs.paper2,
                       child: Icon(Icons.broken_image, color: cs.sub),
                     ),

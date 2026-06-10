@@ -17,6 +17,7 @@ import '../community/post_detail_screen.dart';
 import 'phone_verify_screen.dart';
 import 'blocked_users_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../utils/web_image.dart';
 
 class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
@@ -485,7 +486,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   shape: BoxShape.circle, color: cs.paper2,
                   border: Border.all(color: cs.line2, width: 2),
                   image: (img != null && img.isNotEmpty)
-                      ? DecorationImage(image: CachedNetworkImageProvider(img), fit: BoxFit.cover)
+                      ? DecorationImage(image: netImageProvider(img), fit: BoxFit.cover)
                       : null,
                 ),
                 child: (img == null || img.isEmpty) ? Icon(Icons.person_outline, size: 28, color: cs.sub) : null,
@@ -638,7 +639,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: c.withValues(alpha: 0.25)),
                               image: (img != null && img.isNotEmpty)
-                                  ? DecorationImage(image: CachedNetworkImageProvider(img), fit: BoxFit.cover)
+                                  ? DecorationImage(image: netImageProvider(img), fit: BoxFit.cover)
                                   : null,
                             ),
                             child: (img == null || img.isEmpty) ? Center(child: Icon(Icons.person, size: 22, color: c)) : null,

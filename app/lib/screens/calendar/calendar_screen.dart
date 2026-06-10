@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/web_image.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
@@ -939,12 +938,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   const SizedBox(height: 10),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: webSafeImageUrl(imageUrl),
+                    child: netImage(
+                      imageUrl,
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: 140,
-                      errorWidget: (_, _, _) => const SizedBox.shrink(),
+                      error: () => const SizedBox.shrink(),
                     ),
                   ),
                 ],

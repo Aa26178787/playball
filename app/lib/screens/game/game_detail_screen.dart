@@ -3412,7 +3412,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   CircleAvatar(
                     radius: 18,
                     backgroundImage: starterPitcher['profile_image'] != null
-                        ? CachedNetworkImageProvider(starterPitcher['profile_image'])
+                        ? netImageProvider(starterPitcher['profile_image'])
                         : null,
                     child: starterPitcher['profile_image'] == null
                         ? const Icon(Icons.person, size: 18)
@@ -3542,7 +3542,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           CircleAvatar(
             radius: 18,
             backgroundImage: b['profile_image'] != null
-                ? CachedNetworkImageProvider(b['profile_image'])
+                ? netImageProvider(b['profile_image'])
                 : null,
             child: b['profile_image'] == null
                 ? const Icon(Icons.person, size: 18)
@@ -3583,7 +3583,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       leading: CircleAvatar(
         radius: 18,
-        backgroundImage: profileImage != null ? CachedNetworkImageProvider(profileImage) : null,
+        backgroundImage: profileImage != null ? netImageProvider(profileImage) : null,
         child: profileImage == null ? const Icon(Icons.person, size: 18) : null,
       ),
       title: Row(
@@ -3708,7 +3708,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         leading: CircleAvatar(
           radius: 20,
-          backgroundImage: profileImage != null ? CachedNetworkImageProvider(profileImage) : null,
+          backgroundImage: profileImage != null ? netImageProvider(profileImage) : null,
           child: profileImage == null ? const Icon(Icons.person, size: 20) : null,
         ),
         title: Row(
@@ -3948,7 +3948,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   CircleAvatar(
                     radius: 18,
                     backgroundImage:
-                        profileImage != null ? CachedNetworkImageProvider(profileImage) : null,
+                        profileImage != null ? netImageProvider(profileImage) : null,
                     child: profileImage == null
                         ? const Icon(Icons.person, size: 18)
                         : null,
@@ -4274,13 +4274,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     alignment: Alignment.center,
                     children: [
                       thumbnail.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: webSafeImageUrl(thumbnail),
+                          ? netImage(
+                              thumbnail,
                               width: double.infinity,
                               height: isShorts ? 180 : 160,
                               fit: isShorts ? BoxFit.contain : BoxFit.cover,
-                              placeholder: (_, _) => Container(height: isShorts ? 180 : 160, color: paper2),
-                              errorWidget: (_, _, _) => Container(
+                              placeholder: () => Container(height: isShorts ? 180 : 160, color: paper2),
+                              error: () => Container(
                                 height: isShorts ? 180 : 160, color: paper2,
                                 child: Icon(Icons.broken_image, color: sub),
                               ),
@@ -4351,11 +4351,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     alignment: Alignment.center,
                     children: [
                       thumbnail.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: webSafeImageUrl(thumbnail),
+                          ? netImage(
+                              thumbnail,
                               width: 110, height: 66, fit: BoxFit.cover,
-                              placeholder: (_, _) => Container(color: paper2),
-                              errorWidget: (_, _, _) => Container(color: paper2,
+                              placeholder: () => Container(color: paper2),
+                              error: () => Container(color: paper2,
                                   child: Icon(Icons.broken_image, size: 18, color: sub)),
                             )
                           : Container(color: paper2,
@@ -4422,10 +4422,10 @@ class _GameShareSheetState extends State<_GameShareSheet> {
       final winImgUrl = g['win_pitcher_image'] as String?;
       final loseImgUrl = g['lose_pitcher_image'] as String?;
       // precache all images via CachedNetworkImage so they render in RepaintBoundary
-      if (homeUrl != null && mounted) await precacheImage(CachedNetworkImageProvider(homeUrl), context);
-      if (awayUrl != null && mounted) await precacheImage(CachedNetworkImageProvider(awayUrl), context);
-      if (winImgUrl != null && mounted) await precacheImage(CachedNetworkImageProvider(winImgUrl), context);
-      if (loseImgUrl != null && mounted) await precacheImage(CachedNetworkImageProvider(loseImgUrl), context);
+      if (homeUrl != null && mounted) await precacheImage(netImageProvider(homeUrl), context);
+      if (awayUrl != null && mounted) await precacheImage(netImageProvider(awayUrl), context);
+      if (winImgUrl != null && mounted) await precacheImage(netImageProvider(winImgUrl), context);
+      if (loseImgUrl != null && mounted) await precacheImage(netImageProvider(loseImgUrl), context);
       // wait 2 frames so CachedNetworkImage finishes decoding + layout
       await WidgetsBinding.instance.endOfFrame;
       await WidgetsBinding.instance.endOfFrame;
@@ -4674,7 +4674,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
           CircleAvatar(
             radius: 10,
             backgroundColor: color.withValues(alpha: 0.2),
-            backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl) : null,
+            backgroundImage: imageUrl != null ? netImageProvider(imageUrl) : null,
             child: imageUrl == null ? Icon(Icons.person, size: 11, color: color) : null,
           ),
           const SizedBox(width: 5),
@@ -5044,14 +5044,11 @@ class _PlayerDot extends StatelessWidget {
             ),
             child: ClipOval(
               child: imageUrl != null && imageUrl!.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: webSafeImageUrl(imageUrl!),
+                  ? netImage(
+                      imageUrl!,
                       fit: BoxFit.cover,
-                      // fade 0 — 로드 중 setState 반복 시 placeholder↔이미지 fade로 선수 깜빡임 방지
-                      fadeInDuration: Duration.zero,
-                      fadeOutDuration: Duration.zero,
-                      errorWidget: (_, _, _) => Icon(Icons.person, size: size * 0.55, color: Colors.white70),
-                      placeholder: (_, _) => Container(color: Colors.black26),
+                      error: () => Icon(Icons.person, size: size * 0.55, color: Colors.white70),
+                      placeholder: () => Container(color: Colors.black26),
                     )
                   : Icon(Icons.person, size: size * 0.55, color: Colors.white70),
             ),

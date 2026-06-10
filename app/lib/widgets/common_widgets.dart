@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../utils/web_image.dart';
 import '../utils/design_tokens.dart';
 import '../utils/team_theme.dart';
@@ -93,15 +92,14 @@ class PlayerAvatar extends StatelessWidget {
       final dpr = MediaQuery.of(ctx).devicePixelRatio;
       final cacheSize = (size * dpr).toInt().clamp(80, 800);
       return ClipOval(
-        child: CachedNetworkImage(
-          imageUrl: webSafeImageUrl(imageUrl!),
+        child: netImage(
+          imageUrl!,
           width: size, height: size, fit: BoxFit.cover,
           // memCacheWidth만 지정 — width+height 동시 지정 시 비정사각 원본이
           // 정사각으로 강제 디코드되어 가로 왜곡(stretch). 한 축만 줘 비율 보존.
           memCacheWidth: cacheSize,
-          fadeInDuration: Duration.zero,
-          errorWidget: (_, _, _) => fallback(),
-          placeholder: (_, _) => fallback(),
+          error: () => fallback(),
+          placeholder: () => fallback(),
         ),
       );
     });
