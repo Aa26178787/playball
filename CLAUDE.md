@@ -171,6 +171,12 @@ stadiums 1=서울 2=고척 3=수원 4=인천 5=대전 6=광주 7=대구 8=창원
 batter: avg,obp,slg,ops,woba,wrc_plus,babip,iso,war,risp,fpct,po,assists,dp,pb …
 pitcher: era,whip,fip,k_per_9,bb_per_9,babip,war,qs,blown_saves,avg_against …
 
+### 플랫폼 코어 (2026-06-11 — 메가A/B 토대)
+- **game_event_stream**: 도메인 이벤트 (scheduler 8종 발행: game_start/score_change/game_end/cancelled/extra_innings/pitcher_change/walkoff/starter_announced). `api/event_stream.emit_event`, UNIQUE(game_id,type,dedup_key) dedup. ⚠️ 기존 `game_events`(naver_crawler 텍스트 적재)와 별개 테이블. 소비자(예정): 타임라인·WPA·리플레이·브리핑
+- **plate_appearances**: PA 정규화 (`api/pa_parser.py` — game_pitches type 8/1/13 파싱). 컬럼: 타자/투수/result_class(single~hr/bb/hbp/so/sac/error/fc/reach_other/out)/is_hit/n_pitches/outs_before/주자/스코어/**win_rate_before·after(홈 기준 — WPA 재료)**/seq범위. 종료 후처리서 자동 적재 + `crawler/backfill_pa.py`(재실행 안전 upsert)
+- ⚠️ **데이터 기간 결손**: 3/12~5/8(205경기)=win_rate만 있고 카운트/주자 스냅샷 없음(→컨텍스트 NULL 적재) / 5/9~(135경기)=스냅샷 있고 **win_rate 없음(5/9 크롤러 개편 때 Naver metricOption 미수신 — 라이브 시간대에 relay 원본서 필드 존재 확인 필요, 복원 시 WPA 전구간 확보)**. PA 소비 시 NULL 가드 필수
+- 안타판정: result_class 분기 순서 의존 ('땅볼로 출루'=reach_other, '삼진 아웃'=so). 대타 교체=동일 pa_seq 슬롯 대체, 무결과 타석(3아웃 주자사)=미적재
+
 ### 알림/투표/기타
 - user_notifications: type = game_start/score_change/comeback/game_end/extra_innings/cancelled/rank_change/winning·losing_streak/roster_change/new_comment
 - notification_log: UNIQUE(game_id,type,sub_id) — scheduler 영속 dedup. **새 알림 추가 시 동일 패턴 필수**
