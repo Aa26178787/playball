@@ -12,7 +12,9 @@ String webSafeImageUrl(String? url) {
   final m = RegExp(r'^https?://((?:sports-phinf|phinf|ssl)\.pstatic\.net)/(.*)$')
       .firstMatch(url);
   if (m != null) {
-    return 'https://playball.duckdns.org/ni/${m.group(1)}/${m.group(2)}';
+    // _cb: 프록시 Origin-403 수정 전 캐싱된 실패응답 우회용 캐시버스터 (값 바뀌면 강제 재요청)
+    final sep = m.group(2)!.contains('?') ? '&' : '?';
+    return 'https://playball.duckdns.org/ni/${m.group(1)}/${m.group(2)}${sep}_cb=2';
   }
   return url;
 }
