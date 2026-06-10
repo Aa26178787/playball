@@ -1,14 +1,17 @@
 """per-PA 안타확률 모델 — P(이번 타석 안타 | 타자·투수·맞대결 이력)
 
+⚠️ 2026-06-11 검증 결론: **표면 노출 보류** (서빙 미연결 — 코드 보존용)
+- 홀드아웃 AUC 0.497 (안타 라벨) / 0.510 (출루 라벨) / 타자 누적율 단독 0.51-0.52
+- 원인 = 1시즌(24.5k PA) 데이터에선 타자 간 실력 분산이 타석 단위 노이즈에 묻힘.
+  모델링 문제 아닌 표본량 문제 (MLB도 멀티시즌+타구물리 피처로 ~0.55 수준)
+- 재평가 시점: 2시즌 이상 축적 후 (또는 pitch_locations 존겹침 피처 추가 실험)
+- 데일리픽 등 이 모델 의존 백로그 기능도 동반 보류
+
 학습: plate_appearances 시간순 누적 — 각 타석의 피처는 '그 시점까지' 이력만 사용
 (leakage 방지). 라벨 = is_hit (PA 기준, base rate ~0.214).
 전 비율 피처는 empirical Bayes shrinkage: (hits + P·N) / (pa + N), P=리그 평균.
 
-계수 JSON(pa_hit_coef.json) 저장 — 추론 순수 파이썬 (ingame_model과 동일 패턴).
-야구 per-PA 본질상 AUC ~0.6 기대 — 절대 적중이 아니라 매치업 간 상대 비교 용도.
-
 학습(서버): cd ~/playball/backend && python3 -m api.prediction.pa_hit_model
-서빙: /players/matchup 응답 hit_prob (필드뷰 맞대결 캡션)
 """
 import json
 import math
