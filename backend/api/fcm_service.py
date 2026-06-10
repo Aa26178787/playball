@@ -543,6 +543,22 @@ def notify_game_summary(game_id: int, home_team: str, away_team: str,
           {"game_id": str(game_id), "type": "game_summary"}, "game_end", game_id)
 
 
+# ── 결정적 순간 (승률 급변) ───────────────────────────────────────────────────
+
+def notify_clutch_moment(game_id: int, home_team: str, away_team: str,
+                         home_team_id: int, away_team_id: int,
+                         situation: str, gainer: str,
+                         prob_from: float, prob_to: float):
+    """인게임 승률 ±20%p 급변 — notify_score_change ON 양팀 팬에게.
+    situation: '8회말 2사 1·3루' / gainer: 유리해진 팀명"""
+    targets = _get_targets('notify_score_change', [home_team_id, away_team_id])
+    title = f"🔥 결정적 순간! {home_team} vs {away_team}"
+    body = (f"{situation} — {gainer} 승률 "
+            f"{prob_from:.0f}%→{prob_to:.0f}%")
+    _send(targets, title, body,
+          {"game_id": str(game_id), "type": "clutch_moment"}, "clutch_moment", game_id)
+
+
 # ── 아침 브리핑 ───────────────────────────────────────────────────────────────
 
 def notify_daily_briefing(team_id: int, title: str, body: str):

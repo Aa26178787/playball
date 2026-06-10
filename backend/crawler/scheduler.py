@@ -1511,6 +1511,8 @@ def smart_update():
                         _check_pitcher_change(gid, curr)
                     except Exception:
                         pass
+                    # 결정적 순간 (승률 급변 ±20%p, 5회 이후)
+                    _check_clutch_moment(gid, curr)
 
         except Exception as fcm_err:
             print(f"[FCM] 알림 처리 오류: {fcm_err}")
@@ -2996,6 +2998,72 @@ def _daily_briefing():
             _mark_notified(0, 'daily_briefing', sub_id)
         except Exception as e:
             print(f"[{datetime.now()}] 아침 브리핑 발송 오류({team_name}): {e}")
+
+
+_clutch_prev: dict = {}  # {game_id: 직전 사이클 홈 승률} — 재시작 시 비어서 첫 사이클은 기록만
+
+
+def _check_clutch_moment(gid: int, curr: dict):
+    """인게임 승률 급변(±20%p) 감지 → 결정적 순간 푸시 + 이벤트.
+    상태 소스 = game_pitches 최신 투구행 (smart_update가 30초마다 적재).
+    5회 이후만 (초반 노이즈/스팸 방지), dedup = 이닝+스코어+방향."""
+    try:
+        from api.prediction.ingame_model import predict_home_win
+        conn = get_connection()
+        if not conn:
+            return
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT inning, inning_half, out, base1, base2, base3,
+                       home_score, away_score
+                FROM game_pitches
+                WHERE game_id = %s AND type = 1
+                ORDER BY id DESC LIMIT 1
+            """, (gid,))
+            row = cur.fetchone()
+            cur.close()
+        finally:
+            conn.close()
+        if not row:
+            return
+        inning, half, outs, b1, b2, b3, hs, a_s = row
+        if not inning:
+            return
+        prob = predict_home_win(inning, half, outs or 0, hs or 0, a_s or 0,
+                                bool(b1), bool(b2), bool(b3)) * 100
+        prev = _clutch_prev.get(gid)
+        _clutch_prev[gid] = prob
+        if prev is None or inning < 5:
+            return
+        delta = prob - prev
+        if abs(delta) < 20:
+            return
+        sub_id = f"{inning}_{half}_{hs or 0}_{a_s or 0}_{'up' if delta > 0 else 'dn'}"
+        if _already_notified(gid, 'clutch_moment', sub_id):
+            return
+        # 상황 텍스트
+        half_txt = '초' if str(half) == '0' else '말'
+        outs_txt = f"{outs or 0}사"
+        bases = [n for n, b in (('1루', b1), ('2루', b2), ('3루', b3)) if b]
+        base_txt = '만루' if len(bases) == 3 else ('·'.join(b[0] for b in bases) + '루' if bases else '주자 없음')
+        situation = f"{inning}회{half_txt} {outs_txt} {base_txt}"
+        gainer = curr.get('home_team', '홈') if delta > 0 else curr.get('away_team', '원정')
+        g_from = prev if delta > 0 else 100 - prev
+        g_to = prob if delta > 0 else 100 - prob
+        from api.fcm_service import notify_clutch_moment
+        notify_clutch_moment(gid, curr.get('home_team', ''), curr.get('away_team', ''),
+                             curr.get('home_team_id', 0), curr.get('away_team_id', 0),
+                             situation, gainer, g_from, g_to)
+        emit_event(gid, 'clutch_moment',
+                   {'situation': situation, 'gainer': gainer,
+                    'prob_from': round(g_from, 1), 'prob_to': round(g_to, 1),
+                    'home_prob': round(prob, 1)},
+                   inning=inning, inning_half=str(half)[:1], dedup_key=sub_id)
+        _mark_notified(gid, 'clutch_moment', sub_id)
+        print(f"[FCM] 결정적 순간: game={gid} {situation} {gainer} {g_from:.0f}→{g_to:.0f}%")
+    except Exception as e:
+        print(f"[clutch] 오류 game={gid}: {e}")
 
 
 def _send_pregame_notifications():
