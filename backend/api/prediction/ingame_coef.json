@@ -1,0 +1,26 @@
+{
+ "features": [
+  "diff",
+  "progress",
+  "diff_x_prog",
+  "sign",
+  "sign_b1",
+  "sign_b2",
+  "sign_b3",
+  "sign_outs_left"
+ ],
+ "coef": [
+  0.442332,
+  -0.157819,
+  0.554736,
+  -0.20211,
+  0.138992,
+  0.111707,
+  0.303287,
+  0.400908
+ ],
+ "intercept": 0.288798,
+ "n_samples": 8488,
+ "auc_holdout": 0.8526,
+ "brier_holdout": 0.1538
+}
