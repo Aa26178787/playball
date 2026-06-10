@@ -10,6 +10,7 @@ game_pitches type 코드: 0=이닝 시작, 1=투구, 8=타자 등장, 13=타석 
 win_rate_before/after는 홈팀 기준 Naver 승률(0~100).
 """
 import logging
+import re
 
 from database.connection import get_connection
 
@@ -124,6 +125,15 @@ def parse_game_pas(rows) -> list[dict]:
                 open_pa['seq_end'] = seqno
         elif rtype == _T_RESULT and open_pa is not None:
             txt = (title or '').strip()
+            if '교체' in txt:
+                # 선수 교체 공지(대타/수비교체)가 type 13으로 발행됨 — 타석 결과 아님.
+                # 대타 교체면 진행 중 타석의 타자만 갱신하고 타석은 유지
+                m = re.search(r'대타\s+(\S+)', txt)
+                if m:
+                    open_pa['batter_name'] = m.group(1).strip()
+                if hwr is not None:
+                    last_wr = hwr
+                continue
             cls, is_hit = classify_result(txt)
             open_pa['result_text'] = txt[:200]
             open_pa['result_class'] = cls
