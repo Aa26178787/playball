@@ -749,6 +749,22 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                                 ]),
                               ),
                             ),
+                          // 신고 안내 ! (탭 = 본인 아니면 신고)
+                          if (player['insta_handle'] != null)
+                            GestureDetector(
+                              onTap: () => _reportInsta(player),
+                              child: Container(
+                                width: 16, height: 16,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.18),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                                ),
+                                child: const Center(child: Text('!',
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900,
+                                        color: Colors.white, height: 1))),
+                              ),
+                            ),
                         ]),
                     ],
                   ),
@@ -1380,7 +1396,15 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             ]),
           ),
         ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
+        // 길게누르기 안내
+        Row(children: [
+          Icon(Icons.touch_app_outlined, size: 11, color: sub),
+          const SizedBox(width: 3),
+          Text('숫자를 길게 누르면 리그 평균 비교 · 설명',
+              style: TextStyle(fontSize: 10, color: sub)),
+        ]),
+        const SizedBox(height: 10),
         GridView.count(
           crossAxisCount: 2, shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
