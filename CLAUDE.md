@@ -266,7 +266,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 클라: cached_network_image 전면, Shimmer, LocalCache SWR, _dedupGet(stampede 차단), maxConnectionsPerHost=20, _loadGen race 가드
 
 ### 성능 백로그 (2026-06-10 — 측정 먼저: TimingMiddleware+nginx $request_time 로그+DevTools 타임라인으로 병목 확정 후 착수)
-- 즉효(서버, ~10분씩): **orjson**(`ORJSONResponse` default_response_class — rankings/relay_all 직렬화 3-10x)·**uvicorn[standard]**(uvloop+httptools 스루풋 +20~40%)·nginx TLS1.3+ssl_session_cache+OCSP stapling(핸드셰이크 RTT 절감)
+- ✅즉효 3종(2026-06-10 적용): orjson(default_response_class — FastAPI 0.135가 deprecation 경고 1회 출력하나 동작·성능 정상, 향후 fastapi 업그레이드 시 반환타입 어노테이션 방식 검토)·uvicorn[standard](uvloop+httptools)·nginx TLS1.3/session_cache/stapling(06-09 기적용 확인)
 - 중간: **ETag/304**(30s 폴링이 매번 풀바디 재전송 중 — 해시 ETag+If-None-Match면 변화 없을 때 헤더만, 서버+클라 _dedupGet 양쪽 수정)·**서버측 캐시 SWR**(@cached 만료 시 stale 반환+백그라운드 갱신 — cold 시 Naver 5s 블로킹이 p99 원인, 날씨 워머 패턴 일반화)·**프로필 이미지 썸네일**(크롤 시 88px/리스트용 사전 리사이즈 — 목록 스크롤 대역폭/디코드)
 - 큰 체감(반나절+): **`/home/bootstrap` 집계 엔드포인트**(홈 진입 burst 20+요청→1요청 — RTT 왕복 절감, LTE서 최대 체감. rate limit 버스트 사고 원인도 제거)·대형 JSON `compute()` isolate 파싱(메인스레드 jank)·홈 위계 로딩(첫 프레임=오늘경기만, 나머지 후순위)
 - 장기: Cloudflare CDN(이미지 edge 캐시 — 도메인 계획과 묶음)·dio+http2_adapter(h2 멀티플렉싱 — bootstrap 도입 시 가치 하락하니 후순위)·uvicorn --workers(인메모리 캐시 워커별 중복 → Naver fetch 배수 트레이드오프, 부하 생기면 검토)
@@ -315,12 +315,10 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - [~] **SemColor.panelDark 감사**(2026-06-09): 80개 분류 — A(라이트잉크 `isDark?light:panelDark` ~40)·A2/A3·B(SnackBar/헤더그라디언트/온보딩 의도)는 **유지**. **Pattern-C 버그**(무조건 panelDark를 fg/fill/border에 → 다크 안 보임) ~22개. 수정완료 6: home OutlinedButton×2·login/register checkbox·phone icon → `SemColor.brand(context)`(다크0xFFE5E5E7/라이트panelDark). **C-fg 수정완료**: home버튼·auth체크박스·phone아이콘 + game_detail TabBar label/indicator(×2)·OutlinedButton → `brand(context)`(analyze clean). **C-fg defer**: player_stats(65·314)·player_compare(285) = 위젯이 다크 미대응(context 파라미터 없음 + grey200/black87 혼재) → 단독 swap 불가, AppErrorView/홀리스틱 다크패스와 묶을 것. player_compare 203 = 다크 헤더 의도(B 재분류). **C-bg 결정**(다크 surface=기존 `AppColors.surfaceDark 0xFF18181C/surface2Dark` 재사용, 새 토큰 불요): player_screen 선수/구단 토글(818·836 bg + 825·843 텍스트반전)=✅`brand(context)`+invert. **gd C-bg defer→홀리스틱 다크패스**(헤더3301·avatar3364/3770·TableRow3863/3889): StatelessWidget 헬퍼는 context 없음 + 테이블 border(`0xFFE0E0E4`)·셀 비테마라 단독 fix 불일치. **홀리스틱 착수**: player_compare 테이블/검색카드 테마화 ✅(2026-06-09, State라 `context` 가용·AppColors.surfaceDark/surface2Dark 사용, 헤더는 의도 다크밴드 유지). player_stats ✅(2026-06-09 헤딩/섹션라벨 color 제거→테마 텍스트색 상속, 토글 brand+반전, _buildContent에 context 스레딩). game_detail ✅(2026-06-09 통계테이블 border/헤더row + 로스터헤더(3301) + 타순배지(3364·3770) → 인라인 다크 hex 0xFF1F1F24/26262C, `_tableCell` 데이터셀은 color:null이라 이미 테마구동). **홀리스틱 다크패스 3화면(player_compare·player_stats·game_detail) 완료**. ⚠️**전체 육안검증 미완**(헤드리스 컴파일만) → `flutter run` 다크모드 점검 필수. ⚠️무차별 치환 금지(A/B 다수). / **Radii**: magic `circular(999)`→`Radii.pill` 33곳 ✅(2026-06-09, 5파일). 수치 스케일(4/8/12/16/20)은 off-scale 값(10/13/14 등) 多 혼재 → 부분 토큰화=일관성↓라 점진 보류
 - [~] ~~Golden test(다크+라이트)~~(✅ 2026-06-09 인프라 구축: `app/test/golden/` built-in `matchesGoldenFile`, AppErrorView 라이트/다크 PNG 기준 커밋. 갱신=`flutter test --update-goldens test/golden`, 확장=테마인식 위젯 동일 패턴 추가. ※폰트 미로드로 텍스트=tofu box지만 색/레이아웃 회귀엔 충분. 잔여=주요화면 골든 확대) / ~~pre-commit grep hook~~(✅ 2026-06-09 `.githooks/pre-commit`: 음수 letterSpacing WARN + `baseUrl http://` BLOCK. 클론마다 활성화 `git config core.hooksPath .githooks`) / ~~nginx 보안헤더~~(✅ 2026-06-09 HSTS+CSP+Permissions-Policy 등 7종 적용·검증)
 - [x] 이닝중계 진행이닝 TTL 30→10s 검토 → **유지 결정**(클라 폴링 30s 고정이라 하향=Naver 부하 3배·UX 이득 0)
-### 보안 점검 잔여 (2026-06-10 서버 감사 — 기본기 양호: ufw deny-default·fail2ban(nginx jail 포함)·SSH 키온리·unattended-upgrades·pip-audit 주간·bcrypt·refresh rotation+서버측 revoke 확인됨)
-- [ ] **업로드 EXIF 제거** ⭐: 프로필/게시글 이미지 GPS 메타 그대로 저장 중 → 직관샷=집/위치 유출. Pillow 재인코딩(이미지 새로 save하면 EXIF 탈락)으로 magic-byte 검증부에 추가
-- [ ] postgres `listen_addresses='*'`(0.0.0.0:5432 바인딩) → `'localhost'`로 (ufw가 막고 있으나 심층방어 — ufw 실수 한 번이면 노출). 변경=restart 필요(수초 다운) → 새벽/배포 타이밍에
-- [ ] rpcbind(111) 불필요 서비스 외부 바인딩 → `systemctl disable --now rpcbind`
-- [ ] 백업 오프사이트 부재 — 서버 사망=백업 동반 소실. 주 1회 로컬 PC scp pull 또는 Oracle Object Storage
-- [ ] 이메일 인증코드 verify 시도횟수 제한 없음(재발송 1분+만료 5분만) — 5회 실패 시 코드 무효화 권장 (rate limit이 완화 중이라 우선순위 낮음)
+### 보안 점검 — ✅ 2026-06-10 전부 완료 (감사: ufw deny-default·fail2ban·SSH 키온리·unattended-upgrades·pip-audit 주간·bcrypt·refresh rotation 확인)
+- [x] **업로드 EXIF 제거**: `api/image_utils.py` strip_metadata(Pillow 재인코딩, exif_transpose 선적용=회전보존) — 프로필+게시글 적용
+- [x] postgres listen_addresses → localhost (`ALTER SYSTEM` — 범인은 auto.conf의 과거 ALTER SYSTEM '*') / rpcbind disable / 이메일 인증 5회 실패 시 코드 무효화(`phone_verifications.attempts`)
+- [x] 백업 오프사이트: `backup_pull.ps1` + schtasks PlayballBackupPull(매일 12:00 트리거, 6일 스로틀=주1 pull, `~/playball_backups/` 4개 보관, 1MB 미만=실패 간주)
 
 ### 장기 / 출시 외부작업 (네 권한·비용 — **물어보면 안내**)
 - [ ] **도메인 + Cloudflare**: 웹사이트 Free 플랜 + Tunnel(IP은닉, duckdns/certbot 제거). ⚠️ Bot Fight Mode OFF(앱 API 차단), 동적 JSON 캐시 bypass
