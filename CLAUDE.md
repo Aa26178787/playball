@@ -153,7 +153,8 @@ stadiums 1=서울 2=고척 3=수원 4=인천 5=대전 6=광주 7=대구 8=창원
 ### players
 `id, name, team_id, player_type, number, profile_image, naver_player_id, position, throws, bats, height, weight, birth_date, insta_handle`
 - ⚠️ pitching_style 컬럼 없음 (game_rosters.pitching_style 또는 throws 사용)
-- insta_handle: 339명 등록 (나무위키 크롤+검수). 미수집은 수동 UPDATE
+- insta_handle: 358명 등록 (활성 기준, 미등록 140 중 외국인 ~31). **검증·도구·워크플로 = `backend/crawler/INSTA_VERIFY.md`** (⭐imginn 본인검증=gold, 가족계정·동명이인 색출, ⚠️Google AI개요 핸들 환각 절대금지). 신고 = `insta_handle_reports` + `POST /players/{id}/report-insta`
+- ⚠️ 양현종·이태양 = KIA·키움 양쪽 중복(team_id 오배정 의심, 미해결)
 
 ### games
 `id, naver_game_id, game_date, status(예정/진행/종료/취소), home/away_team_id, stadium_id, 스코어/이닝/안타/실책, start_time`
@@ -297,6 +298,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 ## 변경 이력 (기능 상세 = git log / 재발방지 규칙 = 주의사항)
 - **~06-08 누적**: 필드뷰 CustomPainter(ABS)·알림체계(notification_log dedup/마일스톤/game_summary)·이닝중계 개편(textRelays 지연 → 직전이닝 재fetch)·Option A 전면이식(헤더5탭/마이페이지/팀상세/선수/캘린더/커뮤니티)·인앱크롭(PhotoCropScreen)·다중사진(image_urls)·피칭디자인&존히트맵·인스타339명·플로팅탭 슬라이드
 - **06-08b 출시준비(보안·안정화)**: 시크릿 env화·admin X-Admin-Key·rate limit 강화(X-Real-IP)·업로드 magic-byte·회원탈퇴 FK CASCADE·유저차단(user_blocks)·DB백업 가드·watchdog·Crashlytics·보안감사(auth/IDOR 견고)·auth 버튼 다크 가시성
+- **06-10 선수상세 개편**: 핵심스탯 커스텀피커(선수별 슬롯)+리그순위/규정미달/방향인식 비교말풍선(길게누르기,단어줄바꿈 word-joiner)·스탯 ⓘ용어설명·세부그리드=전체−핵심·팀상세 SNS링크(YT/IG/굿즈)·최근본선수칩·인스타 신고버튼. **인스타 다중검증(상세=INSTA_VERIFY.md): 339→358, imginn으로 가족계정9·동명이인 박멸**. 선발투수 게임카드 조기표시(`_update_probable_starters` 오늘+내일). 홀드 GREATEST고정버그(올러294)→자가치유
 
 ## 해야할 것
 ### 즉시 (코드측)
