@@ -2084,9 +2084,10 @@ def _update_probable_starters():
     if not conn:
         return
     cur = conn.cursor()
+    # 오늘+내일 (naver는 보통 전날 저녁 선발 발표 → 발표 즉시 카드 반영)
     cur.execute("""
         SELECT id, naver_game_id FROM games
-        WHERE game_date = CURRENT_DATE
+        WHERE game_date BETWEEN CURRENT_DATE AND CURRENT_DATE + 1
         AND status = '예정'
         AND naver_game_id IS NOT NULL
         AND NOT EXISTS (
