@@ -180,7 +180,7 @@ pitcher: era,whip,fip,k_per_9,bb_per_9,babip,war,qs,blown_saves,avg_against …
 - **인게임 승률 모델** (`api/prediction/ingame_model.py`): PA 컨텍스트+승패 라벨 로지스틱, **계수 JSON**(`ingame_coef.json` — pickle 불요, 추론 순수 파이썬). v1 = 8,488타석 AUC .853/Brier .154. 재학습 = 서버서 `python3 -m api.prediction.ingame_model` → coef scp 회수 커밋. 소비: relay home_win_prob·win-prob-series·(예정)결정적순간 푸시/WPA. matchup도 PA 기반 교체 완료(/players/matchup — 직접대결 정밀, 필드뷰 좌하단 캡션)
 
 ### 알림/투표/기타
-- user_notifications: type = game_start/score_change/comeback/game_end/extra_innings/cancelled/rank_change/winning·losing_streak/roster_change/new_comment
+- user_notifications: type = game_start/score_change/comeback/game_end/extra_innings/cancelled/rank_change/winning·losing_streak/roster_change/new_comment/daily_briefing/**clutch_moment**(승률 ±20%p 급변·5회+·평균 0.81건/경기 — notify_score_change 설정 준용)
 - notification_log: UNIQUE(game_id,type,sub_id) — scheduler 영속 dedup. **새 알림 추가 시 동일 패턴 필수**
 - player_milestone_alerts: 마일스톤 dedup (UNIQUE player,type,value,season,month)
 - player/team_popularity_votes, stadium_food_places/votes, user_calendar_events(color 6종 + start_time/end_time TIME nullable), player_daily_stats, player_roster_changes
@@ -313,7 +313,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - **~06-08 누적**: 필드뷰 CustomPainter(ABS)·알림체계(notification_log dedup/마일스톤/game_summary)·이닝중계 개편(textRelays 지연 → 직전이닝 재fetch)·Option A 전면이식(헤더5탭/마이페이지/팀상세/선수/캘린더/커뮤니티)·인앱크롭(PhotoCropScreen)·다중사진(image_urls)·피칭디자인&존히트맵·인스타339명·플로팅탭 슬라이드
 - **06-08b 출시준비(보안·안정화)**: 시크릿 env화·admin X-Admin-Key·rate limit 강화(X-Real-IP)·업로드 magic-byte·회원탈퇴 FK CASCADE·유저차단(user_blocks)·DB백업 가드·watchdog·Crashlytics·보안감사(auth/IDOR 견고)·auth 버튼 다크 가시성
 - **06-11 즉시묶음**: 보안5(EXIF Pillow 재인코딩·pg listen localhost·rpcbind off·백업 오프사이트 pull·인증 5회 제한) + 성능(orjson·uvicorn[standard]) + **app-config 풀스택**(서버 `/app-config`+`app_config` 테이블 / 클라 `AppConfig` 강제업데이트 다이얼로그·홈 서버배너·`enabled()` 킬스위치 API — 위젯 적용 점진) + **아침 브리핑**(KST 09:00 팀별 1통, 라이브 검증 완료) + UI소품(햅틱·이닝칩 자동스크롤·댓글 이탈경고). 잔여: 다크 육안검증
-- **06-11b 메가A 착수**: 플랫폼 코어(game_event_stream 8종 발행 + plate_appearances 24,584타석 백필 — 분포 리그 정합 검증) → **matchup 직접대결**(서버+선수상세+필드뷰 좌하단 라이브 캡션) → **인게임 승률 모델 v1**(AUC .853)+win-prob-series+relay home_win_prob → **승률 그래프 UI**(중계탭 상단 `_WinProbChart` — 타석별 라인·50%점선·이닝라벨·터치툴팁·라이브30s). 잔여: 결정적순간 푸시·per-PA 모델·불펜 피로도. ⚠️5/9~ Naver win_rate 미수신 건 라이브 시간대 확인 대기
+- **06-11b 메가A 착수**: 플랫폼 코어(game_event_stream 8종 발행 + plate_appearances 24,584타석 백필 — 분포 리그 정합 검증) → **matchup 직접대결**(서버+선수상세+필드뷰 좌하단 라이브 캡션) → **인게임 승률 모델 v1**(AUC .853)+win-prob-series+relay home_win_prob → **승률 그래프 UI**(중계탭 상단 `_WinProbChart` — 타석별 라인·50%점선·이닝라벨·터치툴팁·라이브30s) → **결정적순간 푸시**(`_check_clutch_moment` — game_pitches 최신행→모델, ±20%p·5회+, 시뮬 평균 0.81건/경기). 잔여: per-PA 모델·불펜 피로도. ⚠️5/9~ Naver win_rate 미수신 건 라이브 시간대 확인 대기
 - **06-10 선수상세 개편**: 핵심스탯 커스텀피커(선수별 슬롯)+리그순위/규정미달/방향인식 비교말풍선(길게누르기,단어줄바꿈 word-joiner)·스탯 ⓘ용어설명·세부그리드=전체−핵심·팀상세 SNS링크(YT/IG/굿즈)·최근본선수칩·인스타 신고버튼. **인스타 다중검증(상세=INSTA_VERIFY.md): 339→358, imginn으로 가족계정9·동명이인 박멸**. 선발투수 게임카드 조기표시(`_update_probable_starters` 오늘+내일). 홀드 GREATEST고정버그(올러294)→자가치유
 
 ## 해야할 것
