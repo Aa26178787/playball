@@ -76,6 +76,40 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   final ScrollController _inningChipCtrl = ScrollController();
   int? _lastAutoScrolledInning; // 칩 자동 스크롤 dedup (이닝 바뀔 때만 이동)
 
+  // 불펜 피로도 (팀별 최근 7일 등판 신호등) — 로스터 카드 첫 빌드 시 lazy 로드
+  final Map<int, Map<String, String>> _bullpenStatus = {}; // teamId -> {투수명: status}
+  bool _bullpenLoading = false;
+
+  void _loadBullpenStatus() {
+    if (_bullpenLoading || _bullpenStatus.isNotEmpty) return;
+    final hid = _gameData?['game']?['home_team_id'] as int?;
+    final aid = _gameData?['game']?['away_team_id'] as int?;
+    if (hid == null || aid == null) return;
+    _bullpenLoading = true;
+    () async {
+      try {
+        final res = await Future.wait(
+            [ApiService.getBullpenStatus(hid), ApiService.getBullpenStatus(aid)]);
+        if (!mounted) return;
+        setState(() {
+          for (var i = 0; i < 2; i++) {
+            final d = res[i];
+            if (d == null) continue;
+            final m = <String, String>{};
+            for (final p in (d['pitchers'] as List? ?? [])) {
+              m[p['name'] as String? ?? ''] = p['status'] as String? ?? 'green';
+            }
+            _bullpenStatus[i == 0 ? hid : aid] = m;
+          }
+        });
+      } catch (e) {
+        debugPrint('game_detail bullpen: $e');
+      } finally {
+        _bullpenLoading = false;
+      }
+    }();
+  }
+
   // 승리확률 시계열 (인게임 모델) — 중계 탭 첫 빌드 시 lazy 로드, 라이브 30s 갱신
   Map<String, dynamic>? _winProbData;
   bool _winProbLoading = false;
@@ -3156,6 +3190,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       for (final p in bullpen) {
         bpGroups.putIfAbsent(bpClass(p), () => []).add(p['name'] as String? ?? '');
       }
+      if (bullpen.isNotEmpty) _loadBullpenStatus(); // 피로도 lazy 로드 (1회)
 
       Widget secLabel(String t) => Padding(
         padding: const EdgeInsets.only(top: 10, bottom: 6),
@@ -3227,16 +3262,54 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             Text(bench.map((b) => b['name']).join(', '),
                 style: TextStyle(fontSize: 11.5, height: 1.5, fontWeight: FontWeight.w500, color: ink3)),
           ],
-          // 불펜 (좌완/우완/언더·사이드)
+          // 불펜 (좌완/우완/언더·사이드 — 피로도 신호등: 빨강=연투·과부하/주황=어제 등판)
           if (bpGroups.isNotEmpty) ...[
             secLabel('불펜'),
-            for (final k in ['좌완', '우완', '언더·사이드', '기타'])
-              if (bpGroups[k]?.isNotEmpty ?? false)
-                Padding(
+            Builder(builder: (_) {
+              final teamId = _gameData?['game']?['${side}_team_id'] as int?;
+              final fatigue = teamId != null ? _bullpenStatus[teamId] : null;
+              final yellowC = isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706);
+              const redC = Color(0xFFE53935);
+              bool anyMark = false;
+              final groupWidgets = <Widget>[];
+              for (final k in ['좌완', '우완', '언더·사이드', '기타']) {
+                final names = bpGroups[k];
+                if (names == null || names.isEmpty) continue;
+                final spans = <TextSpan>[TextSpan(text: '$k) ')];
+                for (var i = 0; i < names.length; i++) {
+                  final st = fatigue?[names[i]];
+                  final marked = st == 'red' || st == 'yellow';
+                  if (marked) anyMark = true;
+                  spans.add(TextSpan(
+                      text: names[i],
+                      style: TextStyle(
+                          color: st == 'red' ? redC : (st == 'yellow' ? yellowC : ink3),
+                          fontWeight: marked ? FontWeight.w700 : FontWeight.w500)));
+                  if (i < names.length - 1) spans.add(const TextSpan(text: ', '));
+                }
+                groupWidgets.add(Padding(
                   padding: const EdgeInsets.only(bottom: 4),
-                  child: Text('$k) ${bpGroups[k]!.join(', ')}',
-                      style: TextStyle(fontSize: 11.5, height: 1.5, fontWeight: FontWeight.w500, color: ink3)),
-                ),
+                  child: Text.rich(TextSpan(
+                      style: TextStyle(fontSize: 11.5, height: 1.5, fontWeight: FontWeight.w500, color: ink3),
+                      children: spans)),
+                ));
+              }
+              if (anyMark) {
+                groupWidgets.add(Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text.rich(TextSpan(
+                    style: TextStyle(fontSize: 9, color: sub),
+                    children: [
+                      const TextSpan(text: '●', style: TextStyle(color: redC)),
+                      const TextSpan(text: ' 연투·과부하   '),
+                      TextSpan(text: '●', style: TextStyle(color: yellowC)),
+                      const TextSpan(text: ' 어제 등판'),
+                    ],
+                  )),
+                ));
+              }
+              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: groupWidgets);
+            }),
           ],
         ],
       );

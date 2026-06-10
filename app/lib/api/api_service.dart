@@ -298,6 +298,17 @@ class ApiService {
         data: {'code': code}, options: Options(headers: headers));
   }
 
+  // ===== 불펜 피로도 (최근 7일 등판 신호등) =====
+  static Future<Map<String, dynamic>?> getBullpenStatus(int teamId) async {
+    try {
+      final res = await _dio.get('/teams/$teamId/bullpen-status');
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('api_service bullpen: $e');
+      return null;
+    }
+  }
+
   // ===== 승리확률 시계열 (인게임 모델) =====
   static Future<Map<String, dynamic>?> getWinProbSeries(int gameId) async {
     try {

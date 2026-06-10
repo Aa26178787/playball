@@ -1068,3 +1068,79 @@ def vote_team(team_id: int, current_user: dict = Depends(get_current_user)):
     count = cur.fetchone()[0]
     cur.close(); conn.close()
     return {"voted": voted, "vote_count": count}
+
+
+@router.get("/{team_id}/bullpen-status")
+@cached(1800)
+def get_bullpen_status(team_id: int):
+    """불펜 피로도 — 최근 7일 불펜 등판(선발 제외) 기준 신호등
+
+    red: 2연투+ / 최근3일 45구+ / 어제 35구+
+    yellow: 어제 등판 / 최근3일 25구+ / 최근3일 2회 등판
+    응답엔 최근 7일 등판자만 — 미포함 투수 = 충분한 휴식(green 취급)
+    """
+    from datetime import timedelta
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT (NOW() AT TIME ZONE 'Asia/Seoul')::date")
+        today = cur.fetchone()[0]
+        cur.execute("""
+            SELECT p.id, p.name, COALESCE(p.throws,''), g.game_date, COALESCE(gp.pitch_count, 0)
+            FROM game_pitchers gp
+            JOIN games g ON g.id = gp.game_id
+            JOIN players p ON p.id = gp.player_id
+            WHERE p.team_id = %s AND gp.pitching_order > 0
+              AND g.status = '종료'
+              AND g.game_date >= %s
+            ORDER BY p.id, g.game_date
+        """, (team_id, today - timedelta(days=7)))
+        rows = cur.fetchall()
+        cur.close()
+    finally:
+        conn.close()
+
+    by_pitcher: dict = {}
+    for pid, name, throws, gdate, pc in rows:
+        d = by_pitcher.setdefault(pid, {"name": name, "throws": throws, "dates": {}})
+        d["dates"][gdate] = d["dates"].get(gdate, 0) + (pc or 0)
+
+    yesterday = today - timedelta(days=1)
+    result = []
+    for pid, d in by_pitcher.items():
+        dates = d["dates"]
+        last = max(dates.keys())
+        # 연투: 어제부터 거꾸로 연속 등판일
+        consec = 0
+        day = yesterday
+        while day in dates:
+            consec += 1
+            day = day - timedelta(days=1)
+        pitches_3d = sum(pc for dt, pc in dates.items() if dt >= today - timedelta(days=3))
+        apps_3d = sum(1 for dt in dates if dt >= today - timedelta(days=3))
+        pitches_yday = dates.get(yesterday, 0)
+
+        if consec >= 2 or pitches_3d >= 45 or pitches_yday >= 35:
+            status = 'red'
+        elif consec == 1 or pitches_3d >= 25 or apps_3d >= 2:
+            status = 'yellow'
+        else:
+            status = 'green'
+        result.append({
+            "player_id": pid,
+            "name": d["name"],
+            "throws": d["throws"],
+            "status": status,
+            "last_app": str(last),
+            "days_rest": max(0, (today - last).days - 1),
+            "consec_days": consec,
+            "apps_3d": apps_3d,
+            "pitches_3d": pitches_3d,
+            "pitches_yesterday": pitches_yday,
+        })
+
+    sev = {'red': 0, 'yellow': 1, 'green': 2}
+    result.sort(key=lambda r: (sev[r['status']], -r['pitches_3d']))
+    return {"team_id": team_id, "as_of": str(today), "pitchers": result}
