@@ -1,9 +1,13 @@
 // visit_record_screen.dart — 직관 기록 추가 (Option A 디자인 시스템)
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:in_app_review/in_app_review.dart';
 import '../../utils/design_tokens.dart';
 import '../../utils/team_theme.dart';
+import '../../utils/share_card.dart';
+import '../../widgets/share_cards.dart';
 import '../../api/api_service.dart';
 
 const _kResults = [
@@ -63,6 +67,29 @@ class _VisitRecordScreenState extends State<VisitRecordScreen> {
         memo: memo.isEmpty ? null : memo,
         imageUrl: imageUrl,
       );
+      // 메가C: 저장 직후 공유 카드 제안 → 닫힌 뒤 승리면 인앱 리뷰 (OS가 빈도 제어)
+      if (mounted) {
+        await showShareCardDialog(
+          context,
+          filename: 'playball_visit',
+          card: VisitShareCard(
+            homeCode: widget.game['home_team_code'] as String? ?? '',
+            awayCode: widget.game['away_team_code'] as String? ?? '',
+            homeName: widget.game['home_team'] as String? ?? '',
+            awayName: widget.game['away_team'] as String? ?? '',
+            result: _result,
+            dateStr: _dateStr,
+            stadium: widget.game['stadium'] as String? ?? '',
+            memo: memo,
+          ),
+        );
+      }
+      if (_result == 'win' && !kIsWeb) {
+        try {
+          final review = InAppReview.instance;
+          if (await review.isAvailable()) review.requestReview();
+        } catch (e) { debugPrint('visit_record review: $e'); }
+      }
       if (mounted) {
         Navigator.pop(context, {
           'id': res['id'],

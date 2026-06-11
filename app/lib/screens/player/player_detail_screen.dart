@@ -10,6 +10,8 @@ import 'player_compare_screen.dart';
 import '../../utils/team_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/share_cards.dart';
+import '../../utils/share_card.dart';
 
 class PlayerDetailScreen extends StatefulWidget {
   final int playerId;
@@ -1198,10 +1200,51 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PlayerCompareScreen()))),
               tile(Icons.query_stats, '상대전적 조회', '상대 선수와의 맞대결 기록',
                   () => _showMatchupSheet(player)),
+              tile(Icons.ios_share_rounded, '선수 카드 공유', '프로필+핵심 스탯 이미지로 공유',
+                  () => _sharePlayerCard(player)),
             ]),
           ),
         );
       },
+    );
+  }
+
+  // 선수 카드 공유 (메가C) — 보고 있는 시즌 스탯 4개 + 프로필
+  void _sharePlayerCard(Map<String, dynamic> player) {
+    final stats = _viewSeasonStats(player) ?? {};
+    final isPitcher = (player['player_type'] as String?) == '투수';
+    String fmt(dynamic v, {int dp = 3, bool rate = false}) {
+      final n = v as num?;
+      if (n == null) return '–';
+      return rate ? n.toStringAsFixed(dp) : (n is int || n == n.roundToDouble())
+          ? n.toInt().toString() : n.toStringAsFixed(dp);
+    }
+    final cardStats = isPitcher
+        ? <(String, String)>[
+            ('ERA', fmt(stats['era'], dp: 2, rate: true)),
+            ('승', fmt(stats['wins'])),
+            ('탈삼진', fmt(stats['strikeouts'])),
+            ('WHIP', fmt(stats['whip'], dp: 2, rate: true)),
+          ]
+        : <(String, String)>[
+            ('타율', fmt(stats['avg'], rate: true)),
+            ('홈런', fmt(stats['home_runs'])),
+            ('타점', fmt(stats['rbi'])),
+            ('OPS', fmt(stats['ops'], rate: true)),
+          ];
+    showShareCardDialog(
+      context,
+      filename: 'playball_player',
+      shareText: '${player['name']} — PlayBall에서 보기\n${ApiService.baseUrl}/s/p/${player['id']}',
+      card: PlayerShareCard(
+        name: player['name'] as String? ?? '',
+        teamCode: player['team_code'] as String? ?? '',
+        teamName: player['team_name'] as String? ?? '',
+        profileImage: player['profile_image'] as String?,
+        position: player['position'] as String? ?? '',
+        number: (player['number']?.toString()) ?? '',
+        stats: cardStats,
+      ),
     );
   }
 

@@ -138,6 +138,8 @@ app.include_router(news.router)
 app.include_router(prediction.router)
 from api.routers import allstar
 app.include_router(allstar.router, prefix="/allstar", tags=["올스타"])
+from api.routers import share
+app.include_router(share.router, tags=["공유 랜딩"])
 app.mount("/static", StaticFiles(directory="/home/ubuntu/playball/backend/static"), name="static")
 
 
