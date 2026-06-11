@@ -72,6 +72,16 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   final bool _fieldPinned = true;
   // 다른 경기 스트립 접기/펴기 (영구 기억)
   bool _stripExpanded = true;
+
+  // 짧은 뷰포트(아이폰 웹 사파리 등) 필드 패널 비례 축소 — 290px 필드가 화면을
+  // 잠식해 하단 콘텐츠가 안 보이는 문제. 일반 폰(>=760)은 기존 크기 불변.
+  double get _fieldShrink {
+    final h = MediaQuery.of(context).size.height;
+    if (h >= 760) return 1.0;
+    return (h / 760).clamp(0.60, 1.0);
+  }
+
+  double _panelH(double base) => base - 290 * (1 - _fieldShrink);
   // 이닝별 중계 — 선택 이닝 (null = 자동: 라이브 현재 이닝 / 종료 1회)
   int? _selectedRelayInning;
   final ScrollController _inningChipCtrl = ScrollController();
@@ -725,7 +735,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.easeOutCubic,
-                      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 498 : 428) : 408,
+                      height: _panelH(_sameDayGames.isNotEmpty ? (_stripExpanded ? 498 : 428) : 408),
                     ),
                     Expanded(
                       // gameHeader skip — 핀 시 panel 바로 아래 TabBarView (득점요약/이닝중계)만 표시
@@ -1233,7 +1243,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 35, 16, 20),
                           // C안: 좌표 자체 bilinear quad mapping (Matrix4 제거)
-                          child: SizedBox(height: 290, width: double.infinity, child: fieldWidget),
+                          child: SizedBox(height: 290 * _fieldShrink, width: double.infinity, child: fieldWidget),
                         ),
                         // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
                         Positioned(
@@ -1609,7 +1619,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
       // 스트립 토글: 펼침 498 / 접힘 428 (실기 11px overflow 보정 +12). 스트립 없으면 408
-      height: _sameDayGames.isNotEmpty ? (_stripExpanded ? 498 : 428) : 408,
+      // 짧은 뷰포트는 _panelH가 필드 축소분만큼 감산
+      height: _panelH(_sameDayGames.isNotEmpty ? (_stripExpanded ? 498 : 428) : 408),
       decoration: BoxDecoration(
         color: paper,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
@@ -1667,7 +1678,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     const Positioned.fill(child: CustomPaint(painter: _GrassExtensionPainter())),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 35, 16, 20),
-                      child: SizedBox(height: 290, width: double.infinity, child: fieldWidget),
+                      child: SizedBox(height: 290 * _fieldShrink, width: double.infinity, child: fieldWidget),
                     ),
                     // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
                     Positioned(
