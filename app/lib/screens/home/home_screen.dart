@@ -889,86 +889,166 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     ApiService.myTeamData.value = chips;
   }
 
+  // 연·월 통합 컨트롤: < 2026.06 > — 탭하면 연도+월 픽커 시트 (구 연도행+월스트립 대체)
   Widget _buildMonthStrip() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final tk = _Tok.of(isDark);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 연도 선택 행 — 월 스트립 위 (24·25 과거 시즌 아카이브)
-        SizedBox(
-          height: 26,
-          child: Row(children: [
-            const SizedBox(width: 3),
-            PopupMenuButton<int>(
-              tooltip: '시즌 선택',
-              padding: EdgeInsets.zero,
-              onSelected: (y) => _scrollToMonthStart(
-                  y == DateTime.now().year ? DateTime.now().month.clamp(3, 10) : 3,
-                  year: y),
-              itemBuilder: (_) => [
-                for (final y in _seasonYears.reversed)
-                  PopupMenuItem(value: y, height: 38, child: Text('$y 시즌',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
-              ],
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: tk.paper,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 4, offset: const Offset(0, 1))],
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text('${_selectedDate.year} 시즌',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: tk.ink2)),
-                  Icon(Icons.arrow_drop_down, size: 14, color: tk.ink2),
-                ]),
+    final y = _selectedDate.year;
+    final m = _selectedDate.month;
+    final minMonth = DateTime(_seasonStart.year, _seasonStart.month);
+    final maxMonth = DateTime(_seasonEnd.year, _seasonEnd.month);
+
+    bool inRange(DateTime t) => !t.isBefore(minMonth) && !t.isAfter(maxMonth);
+
+    void shift(int dir) {
+      var ny = y, nm = m + dir;
+      if (nm < 1) { nm = 12; ny--; } else if (nm > 12) { nm = 1; ny++; }
+      if (!inRange(DateTime(ny, nm))) return;
+      _scrollToMonthStart(nm, year: ny);
+    }
+
+    final canPrev = inRange(DateTime(m == 1 ? y - 1 : y, m == 1 ? 12 : m - 1));
+    final canNext = inRange(DateTime(m == 12 ? y + 1 : y, m == 12 ? 1 : m + 1));
+
+    Widget chev(IconData icon, bool enabled, VoidCallback onTap) => GestureDetector(
+          onTap: enabled ? onTap : null,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Icon(icon, size: 20,
+                color: enabled ? tk.ink2 : tk.ink3.withValues(alpha: 0.35)),
+          ),
+        );
+
+    return SizedBox(
+      height: 38,
+      child: Row(
+        children: [
+          const SizedBox(width: 4),
+          chev(Icons.chevron_left, canPrev, () => shift(-1)),
+          GestureDetector(
+            onTap: _openYearMonthPicker,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: tk.paper,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 4, offset: const Offset(0, 1))],
               ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text('$y.${m.toString().padLeft(2, '0')}',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
+                        color: tk.ink, letterSpacing: 0.2,
+                        fontFeatures: const [FontFeature.tabularFigures()])),
+                const SizedBox(width: 2),
+                Icon(Icons.arrow_drop_down, size: 18, color: tk.ink2),
+              ]),
             ),
-            const Spacer(),
-          ]),
-        ),
-        SizedBox(
-          height: 32,
-          child: Row(
-            children: List.generate(8, (i) {
-          final month = i + 3;
-          final isActive = _selectedDate.month == month;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => _scrollToMonthStart(month),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
-                decoration: BoxDecoration(
-                  // 비활성: paper bg + 약한 그림자 (외곽선 대체)
-                  color: isActive ? tk.ink : tk.paper,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: isActive ? null : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
+          ),
+          chev(Icons.chevron_right, canNext, () => shift(1)),
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+
+  void _openYearMonthPicker() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tk = _Tok.of(isDark);
+    final minMonth = DateTime(_seasonStart.year, _seasonStart.month);
+    final maxMonth = DateTime(_seasonEnd.year, _seasonEnd.month);
+    int py = _selectedDate.year;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: tk.paper,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) {
+        bool ok(int yy, int mm) {
+          final t = DateTime(yy, mm);
+          return !t.isBefore(minMonth) && !t.isAfter(maxMonth);
+        }
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 36, height: 4,
+                  decoration: BoxDecoration(color: tk.line,
+                      borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 14),
+              // 연도 칩
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (final yy in _seasonYears) ...[
+                    GestureDetector(
+                      onTap: () => setSheet(() => py = yy),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        margin: const EdgeInsets.symmetric(horizontal: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: py == yy ? tk.ink : tk.paper2,
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text('$yy',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
+                                color: py == yy
+                                    ? (isDark ? Colors.black : Colors.white)
+                                    : tk.ink2)),
+                      ),
                     ),
                   ],
-                ),
-                child: Center(
-                  child: Text(
-                    '$month월',
-                    style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0,
-                      color: isActive ? (isDark ? Colors.black : Colors.white) : tk.ink2,
-                    ),
-                  ),
-                ),
+                ],
               ),
-            ),
-          );
-            }),
+              const SizedBox(height: 16),
+              // 월 그리드 (범위 밖 = 비활성)
+              GridView.count(
+                shrinkWrap: true,
+                crossAxisCount: 4,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 2.1,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  for (int mm = 1; mm <= 12; mm++)
+                    Builder(builder: (_) {
+                      final enabled = ok(py, mm);
+                      final sel = py == _selectedDate.year && mm == _selectedDate.month;
+                      return GestureDetector(
+                        onTap: enabled
+                            ? () {
+                                Navigator.pop(ctx);
+                                _scrollToMonthStart(mm, year: py);
+                              }
+                            : null,
+                        child: Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: sel ? tk.ink : tk.paper2,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text('$mm월',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: sel
+                                      ? (isDark ? Colors.black : Colors.white)
+                                      : enabled
+                                          ? tk.ink2
+                                          : tk.ink3.withValues(alpha: 0.3))),
+                        ),
+                      );
+                    }),
+                ],
+              ),
+            ]),
           ),
-        ),
-      ],
+        );
+      }),
     );
   }
 
