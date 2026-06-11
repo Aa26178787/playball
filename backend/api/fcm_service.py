@@ -280,6 +280,8 @@ def _send(targets: list[tuple[int, str]], title: str, body: str,
             'registration-token-not-registered',
             'Requested entity was not found',
             'invalid-registration-token',
+            'not a valid FCM registration token',  # 형식 불량 (InvalidArgumentError)
+            'SenderId mismatch',                   # 타 프로젝트 토큰
         )
         failed = [
             tokens[i] for i, r in enumerate(resp.responses)
