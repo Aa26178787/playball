@@ -79,17 +79,19 @@ Widget netImage(
   final u = webSafeImageUrl(url);
   if (u.isEmpty) return error?.call() ?? const SizedBox.shrink();
   if (kIsWeb) {
-    // <img> 엘리먼트 렌더 — CanvasKit 엔진 디코드를 피해 iOS GPU 메모리 누수
-    // 크래시(flutter#152709) + 이미지 미표시 동시 회피. 크래시 진범은 <img>가
-    // 아니라 provider(아바타) 경로의 잔존 엔진 디코드였음 → netCircleAvatar로 함께 제거.
+    // ⚠️ webHtmlElementStrategy.prefer(<img> 플랫폼뷰) 최종 금지 — A/B 5회 결론:
+    // iOS Safari 26에서 플랫폼뷰 포함 빌드 = Safari 탭/standalone 불문 크래시,
+    // CanvasKit-only = 유일 안정. iOS 이미지 미표시는 별도 추적(디코드 실패 의심
+    // — errorBuilder가 조용히 삼킴. 프록시 재인코딩/CPU렌더/wasm 실험 예정).
     return Image.network(
       u,
       width: width,
       height: height,
       fit: fit,
       filterQuality: filterQuality,
-      webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
       errorBuilder: (_, __, ___) => error?.call() ?? const SizedBox.shrink(),
+      loadingBuilder: (ctx, child, prog) =>
+          prog == null ? child : (placeholder?.call() ?? child),
     );
   }
   return CachedNetworkImage(
