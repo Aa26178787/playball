@@ -17,10 +17,24 @@ def arm_or_wdm_chrome(options):
     from selenium.webdriver.chrome.service import Service
 
     if platform.machine() in ('aarch64', 'arm64'):
+        import glob
+        import tempfile
+        import time
+
         driver_path = (shutil.which('chromium.chromedriver')
                        or '/snap/bin/chromium.chromedriver')
-        profile = os.path.expanduser(f'~/snap/chromium/common/selenium-{os.getpid()}')
-        os.makedirs(profile, exist_ok=True)
+        base = os.path.expanduser('~/snap/chromium/common')
+        os.makedirs(base, exist_ok=True)
+        # 프로필 = 드라이버 인스턴스별 고유 (PID 기준이면 같은 프로세스의 연속/병렬
+        # 생성이 "user data dir already in use"로 즉사). 1시간 지난 잔존물 청소.
+        now = time.time()
+        for d in glob.glob(os.path.join(base, 'selenium-*')):
+            try:
+                if now - os.path.getmtime(d) > 3600:
+                    shutil.rmtree(d, ignore_errors=True)
+            except OSError:
+                pass
+        profile = tempfile.mkdtemp(prefix='selenium-', dir=base)
         options.add_argument(f'--user-data-dir={profile}')
         return webdriver.Chrome(service=Service(driver_path), options=options)
 
