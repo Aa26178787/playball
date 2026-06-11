@@ -20,7 +20,11 @@ def main():
         print('DB 연결 실패')
         return
     cur = conn.cursor()
-    cur.execute("ALTER TABLE pitcher_stats ADD COLUMN IF NOT EXISTS wpa NUMERIC(6,2)")
+    try:  # 컬럼 보장 — owner=postgres라 일반 유저는 권한 없음 (최초 1회 수동 생성됨)
+        cur.execute("ALTER TABLE pitcher_stats ADD COLUMN IF NOT EXISTS wpa NUMERIC(6,2)")
+        conn.commit()
+    except Exception:
+        conn.rollback()
     cur.execute("""
         UPDATE pitcher_stats ps
         SET wpa = sub.wpa
