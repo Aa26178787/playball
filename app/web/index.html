@@ -43,6 +43,13 @@
        플러그인이 시작 시 자동 등록되며 window.flutter_inappwebview.nativeCommunication에
        써서 undefined 에러→흰화면. 빈 객체 선주입으로 무해화 (web 전용) -->
   <script>
+    // Safari 26이 새로 노출한 ImageDecoder(WebCodecs)가 PNG에 "EncodingError:
+    // Loading error."를 던져 Flutter 엔진 이미지 디코드가 전멸 (imgtest로 확정:
+    // createImageBitmap 경로는 정상). API를 숨겨 엔진을 검증된 폴백으로 강제.
+    if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
+      try { delete window.ImageDecoder; } catch (e) {}
+      try { if (window.ImageDecoder) window.ImageDecoder = undefined; } catch (e) {}
+    }
     window.flutter_inappwebview = window.flutter_inappwebview || {};
     // 기존(깨진) 서비스워커 등록 해제 — 베타 중 캐시 누적 방지
     if ('serviceWorker' in navigator) {
