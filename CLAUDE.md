@@ -7,6 +7,7 @@ KBO 야구 앱 | Flutter + FastAPI + PostgreSQL
 - 구 x86 박스 168.107.61.147 = 롤백 대기 (서비스 disabled, DB는 컷오버 시점 스냅샷 — 안정 확인 후 인스턴스 종료 가능)
 - SSH 키: `C:\Users\qq772\Downloads\ssh-key-2026-03-28 (2).key`
 - DB: localhost:5432(서버)/5433(터널), db=playball, user=playball_user, pw=<env DB_PASSWORD> (회전 2026-06-09, 평문 보관 금지)
+  - pg 튜닝(2026-06-11, 24G 박스): ALTER SYSTEM(auto.conf) — shared_buffers 4G·effective_cache_size 12G·work_mem 32M·maintenance 1G·max_wal 2G·random_page_cost 1.1·parallel 4/2. DB 재구축 시 auto.conf 보존/재적용
 - 레포: https://github.com/Aa26178787/playball
 - HTTPS: nginx + Let's Encrypt 리버스프록시 (Android 9+ HTTP 평문 차단 → 앱은 반드시 HTTPS)
 - 서비스 2개: `playball`(API uvicorn) + `playball-scheduler`(크롤러/알림 — 별도 프로세스)
