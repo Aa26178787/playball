@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/game.dart';
 import '../../utils/local_cache.dart';
 import '../../utils/app_config.dart';
+import '../../utils/web_update/web_update_checker.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
 import '../../utils/app_theme.dart';
@@ -487,6 +488,17 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     _loadRankings();
     _loadCompactMode();
     _startAutoRefresh();
+    // 웹 한정: 켜둔 세션에서 새 배포 감지 → 스낵바 (cold start는 no-cache가 보장)
+    WebUpdateChecker.start(ApiService.baseUrl, () {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text('새 버전이 배포되었습니다'),
+        duration: const Duration(days: 1),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+            label: '새로고침', onPressed: WebUpdateChecker.applyUpdate),
+      ));
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToSelected();
       _authProvider = Provider.of<AuthProvider>(context, listen: false);
