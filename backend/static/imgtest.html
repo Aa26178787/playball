@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>이미지 진단</title>
+<style>
+  body { font: 15px/1.6 -apple-system, sans-serif; background:#111; color:#eee; padding:16px; }
+  .t { margin:14px 0; padding:12px; border:1px solid #333; border-radius:10px; }
+  .ok { color:#4ade80; font-weight:700; } .fail { color:#f43f5e; font-weight:700; }
+  img, canvas { width:92px; height:88px; background:#222; display:block; margin-top:6px; border-radius:8px; }
+  h1 { font-size:18px; } small { color:#888; word-break:break-all; }
+</style>
+</head>
+<body>
+<h1>⚾ 이미지 렌더 진단 (스크린샷 부탁)</h1>
+<small id="ua"></small>
+
+<div class="t"><b>1. &lt;img&gt; 직접</b> <span id="r1">…</span><img id="i1"></div>
+<div class="t"><b>2. fetch → blob</b> <span id="r2">…</span><small id="d2"></small></div>
+<div class="t"><b>3. createImageBitmap</b> <span id="r3">…</span><small id="d3"></small></div>
+<div class="t"><b>4. 2D 캔버스 드로</b> <span id="r4">…</span><canvas id="c4" width="92" height="88"></canvas></div>
+<div class="t"><b>5. WebGL2 텍스처 드로</b> <span id="r5">…</span><canvas id="c5" width="92" height="88"></canvas><small id="d5"></small></div>
+
+<script>
+const URLIMG = '/ni/sports-phinf.pstatic.net/team/kbo/default/LG.png?type=f92_88&_cb=3';
+const S = (id, ok, msg) => { const e = document.getElementById(id);
+  e.textContent = ok ? 'PASS' : 'FAIL'; e.className = ok ? 'ok' : 'fail';
+  if (msg) { const d = document.getElementById('d' + id.slice(1)); if (d) d.textContent = msg; } };
+document.getElementById('ua').textContent = navigator.userAgent;
+
+// 1. <img>
+const i1 = document.getElementById('i1');
+i1.onload = () => S('r1', true);
+i1.onerror = e => S('r1', false, '' + e);
+i1.src = URLIMG;
+
+(async () => {
+  // 2. fetch
+  let blob;
+  try {
+    const res = await fetch(URLIMG);
+    blob = await res.blob();
+    S('r2', res.ok && blob.size > 0, `status=${res.status} type=${blob.type} size=${blob.size}`);
+  } catch (e) { S('r2', false, '' + e); return; }
+
+  // 3. createImageBitmap
+  let bmp;
+  try {
+    bmp = await createImageBitmap(blob);
+    S('r3', true, `${bmp.width}x${bmp.height}`);
+  } catch (e) { S('r3', false, '' + e); }
+
+  // 4. 2D draw
+  try {
+    const ctx = document.getElementById('c4').getContext('2d');
+    if (bmp) { ctx.drawImage(bmp, 0, 0); }
+    else {
+      const img = new Image(); img.src = URL.createObjectURL(blob);
+      await img.decode(); ctx.drawImage(img, 0, 0, 92, 88);
+    }
+    S('r4', true);
+  } catch (e) { S('r4', false, '' + e); }
+
+  // 5. WebGL2 textured quad
+  try {
+    const gl = document.getElementById('c5').getContext('webgl2');
+    if (!gl) { S('r5', false, 'webgl2 컨텍스트 없음'); return; }
+    const vs = `#version 300 es
+      in vec2 p; out vec2 uv;
+      void main(){ uv=(p+1.0)/2.0; uv.y=1.0-uv.y; gl_Position=vec4(p,0,1); }`;
+    const fs = `#version 300 es
+      precision mediump float; in vec2 uv; out vec4 o; uniform sampler2D t;
+      void main(){ o=texture(t,uv); }`;
+    const mk = (ty, src) => { const s = gl.createShader(ty); gl.shaderSource(s, src);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw gl.getShaderInfoLog(s);
+      return s; };
+    const pr = gl.createProgram();
+    gl.attachShader(pr, mk(gl.VERTEX_SHADER, vs));
+    gl.attachShader(pr, mk(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(pr); gl.useProgram(pr);
+    const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER,
+      new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(pr, 'p');
+    gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    const src = bmp || i1;
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    const err = gl.getError();
+    S('r5', err === 0, err === 0 ? 'glError=0' : 'glError=' + err);
+  } catch (e) { S('r5', false, '' + e); }
+})();
+</script>
+</body>
+</html>
