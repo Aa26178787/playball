@@ -114,16 +114,16 @@ class _PlayerScreenState extends State<PlayerScreen>
   Widget _buildRecentStrip(Color ink, Color sub) {
     if (_recent.isEmpty) return const SizedBox.shrink();
     return Container(
-      height: 38,
-      margin: const EdgeInsets.only(bottom: 6),
+      height: 26,
+      margin: const EdgeInsets.only(bottom: 4),
       child: Row(children: [
         const SizedBox(width: 14),
-        Icon(Icons.history, size: 14, color: sub),
-        const SizedBox(width: 6),
+        Icon(Icons.history, size: 12, color: sub),
+        const SizedBox(width: 5),
         Expanded(child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: _recent.length,
-          separatorBuilder: (c, i) => const SizedBox(width: 6),
+          separatorBuilder: (c, i) => const SizedBox(width: 5),
           itemBuilder: (_, i) {
             final p = _recent[i] as Map;
             final code = p['team_code'] as String? ?? '';
@@ -134,16 +134,16 @@ class _PlayerScreenState extends State<PlayerScreen>
                 initialData: {'name': p['name'], 'team_code': code, 'team': teamDisplayName(code)},
               ))).then((_) { if (mounted) _loadRecent(); }),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: tc.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(color: tc.withValues(alpha: 0.30)),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Container(width: 6, height: 6, decoration: BoxDecoration(color: tc, shape: BoxShape.circle)),
-                  const SizedBox(width: 6),
-                  Text(p['name'] ?? '', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: ink)),
+                  Container(width: 5, height: 5, decoration: BoxDecoration(color: tc, shape: BoxShape.circle)),
+                  const SizedBox(width: 4),
+                  Text(p['name'] ?? '', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ink)),
                 ]),
               ),
             );
