@@ -232,3 +232,68 @@ def resolve_insta_report(rid: int, request: Request, x_admin_key: str | None = H
     cur.close()
     conn.close()
     return {"resolved": rid}
+
+
+# ── 기능 킬스위치 토글 (app_config.kill_switches) ────────────────────────────
+
+# 토글 가능한 기능 목록 (UI 라벨용) — 클라 AppConfig.enabled(키)와 1:1
+FEATURES = {
+    "points": "포인트/승부예측 (게임카드 팬투표·마이페이지 포인트·출석)",
+    "prediction": "AI 승리 예측 바",
+    "community": "커뮤니티",
+}
+
+
+@router.get("/feature-flags")
+def get_feature_flags(request: Request, x_admin_key: str | None = Header(default=None)):
+    _check(request, x_admin_key, "GET /admin/feature-flags")
+    conn = _conn()
+    cur = conn.cursor()
+    cur.execute("SELECT value FROM app_config WHERE key = 'kill_switches'")
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    ks = row[0] if row and isinstance(row[0], dict) else {}
+    return {"features": [
+        {"key": k, "label": label, "enabled": ks.get(k) is not False}
+        for k, label in FEATURES.items()
+    ]}
+
+
+@router.post("/feature-flags")
+def set_feature_flag(body: dict, request: Request,
+                     x_admin_key: str | None = Header(default=None)):
+    """{feature, enabled} — kill_switches JSONB 갱신. 클라 전파 = /app-config 캐시 60초 내."""
+    _check(request, x_admin_key, "POST /admin/feature-flags")
+    feature = (body or {}).get("feature")
+    enabled = (body or {}).get("enabled")
+    if feature not in FEATURES or not isinstance(enabled, bool):
+        raise HTTPException(status_code=400, detail="feature/enabled 확인")
+    import json
+    conn = _conn()
+    cur = conn.cursor()
+    cur.execute("SELECT value FROM app_config WHERE key = 'kill_switches'")
+    row = cur.fetchone()
+    ks = row[0] if row and isinstance(row[0], dict) else {}
+    if enabled:
+        ks.pop(feature, None)  # 명시 false만 비활성 — 켜면 키 제거
+    else:
+        ks[feature] = False
+    if row:
+        cur.execute("UPDATE app_config SET value = %s WHERE key = 'kill_switches'",
+                    (json.dumps(ks),))
+    else:
+        cur.execute("INSERT INTO app_config (key, value) VALUES ('kill_switches', %s)",
+                    (json.dumps(ks),))
+    conn.commit()
+    cur.close()
+    conn.close()
+    # /app-config 캐시 즉시 무효화 (60초 대기 제거) — 키 = "{module}.{fn}:{args}:..."
+    try:
+        from api.cache import cache_delete_prefix
+        cache_delete_prefix('api.routers.app_config.get_app_config')
+    except Exception:
+        pass
+    log_admin_access(_client_ip(request), "POST /admin/feature-flags",
+                     f"{feature}={enabled}", "OK")
+    return {"feature": feature, "enabled": enabled, "kill_switches": ks}

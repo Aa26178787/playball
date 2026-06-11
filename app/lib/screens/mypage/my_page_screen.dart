@@ -17,6 +17,7 @@ import '../community/post_detail_screen.dart';
 import 'phone_verify_screen.dart';
 import 'blocked_users_screen.dart';
 import 'points_screen.dart';
+import '../../utils/app_config.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/web_image.dart';
 
@@ -396,64 +397,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       if (_favoriteTeams.isNotEmpty) _buildMyTeam(cs),
                       _buildFavPlayers(cs),
                       _buildVisitRecord(cs, myColor),
-                      _buildMyPosts(cs),
-                      if (_myLikes.isNotEmpty) _buildMyLikes(cs),
-                      if (_myComments.isNotEmpty) _buildMyComments(cs),
+                      _buildCommunityHub(cs),
                       if (_settingsLoaded) _buildNotifSettings(cs, myColor),
                       _buildDarkMode(cs, myColor),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
-                        child: GestureDetector(
-                          onTap: () => Navigator.push(context, MaterialPageRoute(
-                              builder: (_) => const PointsScreen())),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: _cardDeco(cs),
-                            child: Row(children: [
-                              const Icon(Icons.stars_rounded, size: 18, color: Color(0xFFD97706)),
-                              const SizedBox(width: 12),
-                              Expanded(child: Text('내 포인트 · 랭킹',
-                                  style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.ink))),
-                              Icon(Icons.chevron_right, size: 18, color: cs.sub),
-                            ]),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
-                        child: GestureDetector(
-                          onTap: () => Navigator.push(context, MaterialPageRoute(
-                              builder: (_) => const BlockedUsersScreen())),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: _cardDeco(cs),
-                            child: Row(children: [
-                              Icon(Icons.block, size: 18, color: cs.sub),
-                              const SizedBox(width: 12),
-                              Expanded(child: Text('차단한 사용자',
-                                  style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.ink))),
-                              Icon(Icons.chevron_right, size: 18, color: cs.sub),
-                            ]),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
-                        child: GestureDetector(
-                          onTap: _resetSettings,
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: _cardDeco(cs),
-                            child: Row(children: [
-                              Icon(Icons.restart_alt, size: 18, color: cs.sub),
-                              const SizedBox(width: 12),
-                              Expanded(child: Text('설정 초기화',
-                                  style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.ink))),
-                              Icon(Icons.chevron_right, size: 18, color: cs.sub),
-                            ]),
-                          ),
-                        ),
-                      ),
+                      _buildUtilCard(cs),
                       const SizedBox(height: 8),
                       Center(child: TextButton(
                         onPressed: _deleteAccount,
@@ -762,90 +709,157 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
   }
 
-  // ── 내 게시글 / 좋아요 / 댓글 ──
-  Widget _buildMyPosts(_C cs) {
+  // ── 커뮤니티 활동 허브 (06-12 정리) — 글/좋아요/댓글 인라인 펼침 → 진입 행 3개 + 바텀시트
+  Widget _buildCommunityHub(_C cs) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _sectionLabel(cs, '내 게시글'),
+      _sectionLabel(cs, '커뮤니티 활동'),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18),
         child: Container(
           decoration: _cardDeco(cs),
-          child: _myPosts.isEmpty
-              ? Padding(padding: const EdgeInsets.all(20),
-                  child: Center(child: Text('작성한 게시글이 없습니다', style: TextStyle(fontSize: 12, color: cs.sub))))
-              : Column(children: _myPosts.take(5).toList().asMap().entries.map((e) {
-                  final p = e.value as Map;
-                  final last = e.key == _myPosts.take(5).length - 1;
-                  return _postRow(cs,
-                    title: p['title'] ?? '',
-                    chip: p['category'] as String?,
-                    likes: p['likes'] ?? 0,
-                    comments: p['comment_count'] ?? 0,
-                    date: _shortDate(p['created_at']),
-                    last: last,
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PostDetailScreen(postId: p['id']))),
-                  );
-                }).toList()),
+          child: Column(children: [
+            _hubRow(cs, Icons.edit_note, '내 게시글', _myPosts.length,
+                onTap: () => _showActivitySheet(cs, 'posts'), first: true),
+            _hubRow(cs, Icons.favorite_border, '좋아요한 글', _myLikes.length,
+                onTap: () => _showActivitySheet(cs, 'likes')),
+            _hubRow(cs, Icons.chat_bubble_outline, '내 댓글', _myComments.length,
+                onTap: () => _showActivitySheet(cs, 'comments'), last: true),
+          ]),
         ),
       ),
     ]);
   }
 
-  Widget _buildMyLikes(_C cs) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _sectionLabel(cs, '좋아요한 게시글'),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        child: Container(
-          decoration: _cardDeco(cs),
-          child: Column(children: _myLikes.take(5).toList().asMap().entries.map((e) {
-            final p = e.value as Map;
-            final last = e.key == _myLikes.take(5).length - 1;
-            return _postRow(cs,
-              title: p['title'] ?? '',
-              chip: p['author'] as String?,
-              likes: p['likes'] ?? 0,
-              comments: p['comment_count'] ?? 0,
-              date: _shortDate(p['created_at']),
-              last: last,
-              leadingHeart: true,
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PostDetailScreen(postId: p['id']))),
-            );
-          }).toList()),
-        ),
+  Widget _hubRow(_C cs, IconData icon, String label, int? count,
+      {required VoidCallback onTap, bool first = false, bool last = false,
+      Color? iconColor}) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(
+            border: last ? null : Border(bottom: BorderSide(color: cs.line))),
+        child: Row(children: [
+          Icon(icon, size: 18, color: iconColor ?? cs.sub),
+          const SizedBox(width: 12),
+          Expanded(child: Text(label,
+              style: TextStyle(fontSize: 13.5, fontWeight: Typo.bold, color: cs.ink))),
+          if (count != null && count > 0)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Text('$count', style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink3)),
+            ),
+          Icon(Icons.chevron_right, size: 17, color: cs.sub),
+        ]),
       ),
-    ]);
+    );
   }
 
-  Widget _buildMyComments(_C cs) {
+  void _showActivitySheet(_C cs, String type) {
+    final (title, items) = switch (type) {
+      'posts' => ('내 게시글', _myPosts),
+      'likes' => ('좋아요한 글', _myLikes),
+      _ => ('내 댓글', _myComments),
+    };
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: cs.paper,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        minChildSize: 0.35,
+        builder: (ctx, scrollCtrl) => Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+            child: Row(children: [
+              Text(title, style: TextStyle(fontSize: 15, fontWeight: Typo.extra, color: cs.ink)),
+              const SizedBox(width: 6),
+              Text('${items.length}', style: TextStyle(fontSize: 13, color: cs.sub)),
+            ]),
+          ),
+          Divider(height: 1, color: cs.line),
+          Expanded(
+            child: items.isEmpty
+                ? Center(child: Text('아직 없습니다', style: TextStyle(fontSize: 13, color: cs.sub)))
+                : ListView.builder(
+                    controller: scrollCtrl,
+                    itemCount: items.length,
+                    itemBuilder: (_, i) {
+                      final last = i == items.length - 1;
+                      if (type == 'comments') {
+                        final c = items[i] as Map;
+                        return _commentRow(cs, c, last);
+                      }
+                      final p = items[i] as Map;
+                      return _postRow(cs,
+                        title: p['title'] ?? '',
+                        chip: type == 'likes' ? p['author'] as String? : p['category'] as String?,
+                        likes: p['likes'] ?? 0,
+                        comments: p['comment_count'] ?? 0,
+                        date: _shortDate(p['created_at']),
+                        last: last,
+                        leadingHeart: type == 'likes',
+                        onTap: () => Navigator.push(context, MaterialPageRoute(
+                            builder: (_) => PostDetailScreen(postId: p['id']))),
+                      );
+                    },
+                  ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _commentRow(_C cs, Map c, bool last) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(
+          builder: (_) => PostDetailScreen(postId: c['post_id']))),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(c['content'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12, color: cs.ink, height: 1.45)),
+          const SizedBox(height: 6),
+          Row(children: [
+            Expanded(child: Text(c['post_title'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 10, color: cs.sub))),
+            const SizedBox(width: 8),
+            Text(_shortDate(c['created_at']), style: TextStyle(fontSize: 10, color: cs.sub)),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  // ── 기타 (포인트/차단/초기화 단독 카드 3개 → 통합 카드)
+  Widget _buildUtilCard(_C cs) {
+    final showPoints = AppConfig.enabled('points');
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _sectionLabel(cs, '내 댓글'),
+      _sectionLabel(cs, '기타'),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18),
         child: Container(
           decoration: _cardDeco(cs),
-          child: Column(children: _myComments.take(5).toList().asMap().entries.map((e) {
-            final c = e.value as Map;
-            final last = e.key == _myComments.take(5).length - 1;
-            return GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PostDetailScreen(postId: c['post_id']))),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(c['content'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: cs.ink, height: 1.45)),
-                  const SizedBox(height: 6),
-                  Row(children: [
-                    Expanded(child: Text(c['post_title'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 10, color: cs.sub))),
-                    const SizedBox(width: 8),
-                    Text(_shortDate(c['created_at']), style: TextStyle(fontSize: 10, color: cs.sub)),
-                  ]),
-                ]),
-              ),
-            );
-          }).toList()),
+          child: Column(children: [
+            if (showPoints)
+              _hubRow(cs, Icons.stars_rounded, '내 포인트 · 랭킹', null,
+                  iconColor: const Color(0xFFD97706),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => const PointsScreen())),
+                  first: true),
+            _hubRow(cs, Icons.block, '차단한 사용자', null,
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => const BlockedUsersScreen())),
+                first: !showPoints),
+            _hubRow(cs, Icons.restart_alt, '설정 초기화', null,
+                onTap: _resetSettings, last: true),
+          ]),
         ),
       ),
     ]);
@@ -926,16 +940,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
          'on': (bool v) { _notifyPlayerDaily = v; }},
         {'label': '선수 뉴스', 'desc': '트레이드·방출·은퇴·FA·부상·시상', 'value': _notifyPlayerNews,
          'on': (bool v) { _notifyPlayerNews = v; }},
-      ]},
-      {'icon': '⭐', 'label': '올스타 팬투표', 'items': [
-        {'label': '투표 기간 알림', 'desc': '투표 시작·마감 D-3·D-1 + 상위권 진입', 'value': _notifyAllstarVote,
+        {'label': '올스타 팬투표', 'desc': '투표 시작·마감 임박 + 즐겨찾기 선수 상위권', 'value': _notifyAllstarVote,
          'on': (bool v) { _notifyAllstarVote = v; }},
       ]},
-      {'icon': '💬', 'label': '커뮤니티', 'items': [
+      {'icon': '⚙️', 'label': '일반', 'items': [
         {'label': '댓글', 'desc': '내 글에 댓글이 달릴 때', 'value': _notifyComment,
          'on': (bool v) { _notifyComment = v; }},
-      ]},
-      {'icon': '🌙', 'label': '방해금지', 'items': [
         {'label': '심야 푸시 끄기', 'desc': '23:30~07:30 푸시 중단 (알림함엔 저장)', 'value': _notifyQuiet,
          'on': (bool v) { _notifyQuiet = v; }},
       ]},
@@ -965,6 +975,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     const SizedBox(width: 10),
                     Text(cat['label'] as String, style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink)),
                     const Spacer(),
+                    // 접힌 상태에서도 켜짐 현황 보이게 (중구난방 정리 06-12)
+                    Builder(builder: (_) {
+                      final onCnt = items.where((it) => it['value'] == true).length;
+                      return Text('$onCnt/${items.length}',
+                          style: TextStyle(fontSize: 11, fontWeight: Typo.bold,
+                              color: onCnt == 0 ? cs.sub : myColor));
+                    }),
+                    const SizedBox(width: 6),
                     AnimatedRotation(
                       turns: expanded ? 0.25 : 0,
                       duration: const Duration(milliseconds: 200),

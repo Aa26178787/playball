@@ -58,6 +58,7 @@
   <button data-tab="posts" onclick="show('posts')">게시글</button>
   <button data-tab="reports" onclick="show('reports')">신고</button>
   <button data-tab="food" onclick="show('food')">맛집 승인</button>
+  <button data-tab="features" onclick="show('features')">기능 토글</button>
 </nav>
 <main id="main">키 입력 후 탭을 선택하세요.</main>
 <div id="toast"></div>
@@ -69,8 +70,13 @@ keyEl.value = localStorage.getItem('pb_admin_key') || '';
 function saveKey() { localStorage.setItem('pb_admin_key', keyEl.value.trim()); toast('키 저장됨'); }
 function toast(m) { const t = $('#toast'); t.textContent = m; t.style.display = 'block';
                     setTimeout(() => t.style.display = 'none', 2200); }
-async function api(method, path) {
-  const res = await fetch(path, { method, headers: { 'X-Admin-Key': keyEl.value.trim() } });
+async function api(method, path, body) {
+  const opts = { method, headers: { 'X-Admin-Key': keyEl.value.trim() } };
+  if (body !== undefined) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(path, opts);
   if (res.status === 403) { toast('키가 틀렸습니다'); throw new Error('403'); }
   if (!res.ok) { toast('오류 ' + res.status); throw new Error('' + res.status); }
   return res.json();
@@ -82,7 +88,27 @@ function show(tab) {
   cur = tab;
   document.querySelectorAll('nav button').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === tab));
-  ({overview, users, posts, reports, food})[tab]();
+  ({overview, users, posts, reports, food, features})[tab]();
+}
+
+// 기능 킬스위치 — OFF = 앱/웹에서 해당 UI 숨김 (전파 즉시~60초)
+async function features() {
+  const d = await api('GET', '/admin/feature-flags');
+  $('#main').innerHTML = `
+    <p class="muted">OFF = 앱/웹에서 해당 기능 숨김. 저장 즉시 서버 반영, 클라이언트는 앱 재시작/새로고침 시 적용.</p>
+    <table><tr><th>기능</th><th>상태</th><th></th></tr>` +
+    d.features.map(f => `<tr>
+      <td>${esc(f.label)}<div class="muted" style="font-size:11px">key: ${f.key}</div></td>
+      <td style="font-weight:700;color:${f.enabled ? '#16a34a' : '#dc2626'}">${f.enabled ? 'ON' : 'OFF'}</td>
+      <td><button class="${f.enabled ? 'danger' : ''}"
+            onclick="toggleFeature('${f.key}', ${!f.enabled})">${f.enabled ? '끄기' : '켜기'}</button></td>
+    </tr>`).join('') + `</table>`;
+}
+async function toggleFeature(key, enabled) {
+  if (!enabled && !confirm(key + ' 기능을 끌까요? 앱/웹에서 즉시 숨겨집니다.')) return;
+  await api('POST', '/admin/feature-flags', { feature: key, enabled });
+  toast(key + (enabled ? ' 켜짐' : ' 꺼짐'));
+  features();
 }
 
 async function overview() {

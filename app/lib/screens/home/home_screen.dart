@@ -507,8 +507,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       // 핵심 로드 후 비우선 작업 지연
       Future.delayed(const Duration(seconds: 2), () {
         if (!mounted) return;
-        // 일일 출석 적립 (+5, 사일런트 — 서버 dedup이라 중복 무해)
-        if (_authProvider?.isLoggedIn == true) ApiService.checkAttendance();
+        // 일일 출석 적립 (+5, 사일런트 — 서버 dedup이라 중복 무해. points 킬스위치 연동)
+        if (_authProvider?.isLoggedIn == true && AppConfig.enabled('points')) {
+          ApiService.checkAttendance();
+        }
         _loadTodayRosterChanges();
         _loadUnreadCount();
         _loadTomorrowGames();
@@ -997,8 +999,8 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     return SizedBox(
       height: 38,
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(width: 4),
           chev(Icons.chevron_left, canPrev, () => shift(-1)),
           GestureDetector(
             onTap: _openYearMonthPicker,
@@ -1021,7 +1023,6 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             ),
           ),
           chev(Icons.chevron_right, canNext, () => shift(1)),
-          const Spacer(),
         ],
       ),
     );
@@ -2684,6 +2685,7 @@ class _PredictionBarState extends State<_PredictionBar> {
   }
 
   Future<void> _loadFan() async {
+    if (!AppConfig.enabled('points')) return;
     try {
       final d = await ApiService.getFanPredictions(widget.gameId);
       if (mounted) {
@@ -2828,44 +2830,56 @@ class _PredictionBarState extends State<_PredictionBar> {
           Text('$_homeStarter vs $_awayStarter',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
         ],
-        const SizedBox(height: 10),
-        _buildFanSection(t, homeColor, awayColor),
+        if (AppConfig.enabled('points')) ...[
+          const SizedBox(height: 10),
+          _buildFanSection(t, homeColor, awayColor),
+        ],
       ],
     );
   }
 
+  // 팬 승부예측 (리디자인 06-12) — ML 바와 위계 차등: 라벨 행 + 얇은 바/고스트 버튼.
+  // 풀 컬러 블록·테두리 pill 제거 → 카드 비대/충돌 해소.
   Widget _buildFanSection(_Tok t, Color homeColor, Color awayColor) {
+    // points 킬스위치 (관리자 콘솔 '기능 토글') — OFF면 팬투표 섹션 자체 미노출
+    if (!AppConfig.enabled('points')) return const SizedBox.shrink();
     if (!_fanLoaded) return const SizedBox(height: 24);
     final total = _fanHome + _fanAway;
 
     Widget header = Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 7),
       child: Row(children: [
         Text('팬 승부예측',
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: t.ink3, letterSpacing: 0.2)),
-        const SizedBox(width: 5),
-        if (total > 0)
-          Text('$total명 참여', style: TextStyle(fontSize: 10.5, color: t.sub)),
         const Spacer(),
-        Text('적중 +50P', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: const Color(0xFFD97706))),
+        Text(
+          total > 0 ? '$total명 참여 · 적중 +50P' : '적중 +50P',
+          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: t.sub),
+        ),
       ]),
     );
 
-    // 미투표: 양 팀 픽 버튼
+    // 미투표: 고스트 버튼 2개 (paper2 배경, 보더리스 — 탭 시 팀컬러 픽)
     if (_myPick == null) {
       Widget pickBtn(String code, Color c, String pick) => Expanded(
             child: GestureDetector(
               onTap: _voting ? null : () => _vote(pick),
               child: Container(
-                height: 30,
+                height: 34,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: c.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(Radii.pill),
-                  border: Border.all(color: c.withValues(alpha: 0.45)),
+                  color: t.track,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text('${teamDisplayName(code)} 승',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: c)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                    width: 7, height: 7,
+                    decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 6),
+                  Text('${teamDisplayName(code)} 승',
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: t.ink2)),
+                ]),
               ),
             ),
           );
@@ -2879,39 +2893,42 @@ class _PredictionBarState extends State<_PredictionBar> {
       ]);
     }
 
-    // 투표 완료: 분포 바 + 내 픽 표시
+    // 투표 완료: 라벨 행(팀명 %·내 픽 ✓) + 얇은 분포 바 8px
     final homeR = total > 0 ? _fanHome / total : 0.5;
+    final homePct = (homeR * 100).round();
+    TextStyle lbl(bool mine, Color c) => TextStyle(
+        fontSize: 11.5,
+        fontWeight: mine ? FontWeight.w900 : FontWeight.w600,
+        color: mine ? c : t.sub);
     return Column(mainAxisSize: MainAxisSize.min, children: [
       header,
+      Row(children: [
+        Text(
+          '${teamDisplayName(widget.homeCode)} $homePct%${isMyPickHome ? ' ✓' : ''}',
+          style: lbl(isMyPickHome, homeColor),
+        ),
+        const Spacer(),
+        Text(
+          '${100 - homePct}% ${teamDisplayName(widget.awayCode)}${!isMyPickHome ? ' ✓' : ''}',
+          style: lbl(!isMyPickHome, awayColor),
+        ),
+      ]),
+      const SizedBox(height: 5),
       ClipRRect(
         borderRadius: BorderRadius.circular(Radii.pill),
         child: SizedBox(
-          height: 20,
+          height: 8,
           child: Row(children: [
             Flexible(
-              flex: (homeR * 1000).round().clamp(60, 940),
+              flex: (homeR * 1000).round().clamp(40, 960),
               child: Container(
-                color: homeColor.withValues(alpha: isMyPickHome ? 0.85 : 0.30),
-                alignment: Alignment.center,
-                child: Text(
-                  '${teamDisplayName(widget.homeCode)} ${(homeR * 100).round()}%${isMyPickHome ? ' ✓' : ''}',
-                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Colors.white),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+                  color: homeColor.withValues(alpha: isMyPickHome ? 0.95 : 0.35)),
             ),
-            Container(width: 1, color: t.paper),
+            Container(width: 2, color: t.paper),
             Flexible(
-              flex: ((1 - homeR) * 1000).round().clamp(60, 940),
+              flex: ((1 - homeR) * 1000).round().clamp(40, 960),
               child: Container(
-                color: awayColor.withValues(alpha: !isMyPickHome ? 0.85 : 0.30),
-                alignment: Alignment.center,
-                child: Text(
-                  '${teamDisplayName(widget.awayCode)} ${(100 - (homeR * 100).round())}%${!isMyPickHome ? ' ✓' : ''}',
-                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Colors.white),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+                  color: awayColor.withValues(alpha: !isMyPickHome ? 0.95 : 0.35)),
             ),
           ]),
         ),
