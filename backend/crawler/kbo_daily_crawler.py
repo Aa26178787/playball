@@ -28,10 +28,10 @@ def _get_driver():
     import shutil
     if platform.machine() in ('aarch64', 'arm64'):
         # ARM: 공식 chromedriver 미배포 — snap chromium 동봉 드라이버 사용.
-        # snap 격리 chromium은 호스트 /tmp 접근 불가 → 프로필을 snap 가시 경로에 강제
-        # (기본 /tmp 프로필이면 "Chrome instance exited"로 즉사)
+        # ⚠️ binary_location 지정 금지 (snap 내부에서 짝 브라우저 자동 인지 —
+        # 호스트 래퍼 경로 주입 시 "Chrome instance exited" 즉사).
+        # 프로필도 snap 가시 경로 필수 (호스트 /tmp 접근 불가).
         import os as _os
-        options.binary_location = shutil.which('chromium') or '/snap/bin/chromium'
         driver_path = shutil.which('chromium.chromedriver') or '/snap/bin/chromium.chromedriver'
         profile = _os.path.expanduser(f'~/snap/chromium/common/selenium-{_os.getpid()}')
         _os.makedirs(profile, exist_ok=True)
