@@ -1,0 +1,23 @@
+# wasm 빌드용 스텁 — 원본(1.2.1)이 dart:html이라 dart2wasm 컴파일 불가.
+# 웹은 _SafeStore가 SharedPreferences를 쓰므로 secure_storage 웹 구현 미사용 (무해).
+name: flutter_secure_storage_web
+description: wasm-safe stub of flutter_secure_storage_web (web uses _SafeStore/SharedPreferences).
+version: 1.2.1
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      web:
+        pluginClass: FlutterSecureStorageWeb
+        fileName: flutter_secure_storage_web.dart

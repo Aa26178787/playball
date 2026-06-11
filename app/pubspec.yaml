@@ -29,6 +29,14 @@ environment:
 # versions available, run `flutter pub outdated`.
 
 
+# wasm 빌드 호환: dart:html 쓰는 웹 구현 2종을 무해 스텁으로 대체
+# (secure_storage 웹=_SafeStore/SharedPreferences 사용, inappwebview=웹 카카오맵 미지원)
+dependency_overrides:
+  flutter_secure_storage_web:
+    path: local_packages/flutter_secure_storage_web_stub
+  flutter_inappwebview_web:
+    path: local_packages/flutter_inappwebview_web_stub
+
 dependencies:
   flutter:
     sdk: flutter

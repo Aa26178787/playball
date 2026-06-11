@@ -3,8 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+// js_interop 조건: dart2js와 dart2wasm 양쪽에서 web 구현 사용 (html 조건이면 wasm서 스텁)
 import 'web_update/web_bitmap_stub.dart'
-    if (dart.library.html) 'web_update/web_bitmap_web.dart';
+    if (dart.library.js_interop) 'web_update/web_bitmap_web.dart';
 
 /// Flutter web CanvasKit는 CORS 헤더 없는 외부 이미지를 canvas에 렌더 못 함.
 /// 네이버(pstatic) 이미지를 같은 도메인 nginx 프록시(`/ni/<host>/<path>`)로 우회.

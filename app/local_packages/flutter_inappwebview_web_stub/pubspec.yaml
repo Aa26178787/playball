@@ -1,0 +1,25 @@
+# wasm 빌드용 스텁 — 원본(1.0.8)이 dart:html이라 dart2wasm 컴파일 불가.
+# 카카오맵(inappwebview)은 웹 미지원 기능이라 무해 (기존에도 JS shim으로 무력화).
+name: flutter_inappwebview_web
+description: wasm-safe stub of flutter_inappwebview_web (kakao map is not supported on web).
+version: 1.0.8
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      web:
+        pluginClass: InAppWebViewFlutterPlugin
+        fileName: web/main.dart
+  assets:
+    - assets/web/web_support.js
