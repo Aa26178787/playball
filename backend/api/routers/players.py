@@ -362,64 +362,151 @@ def get_player_rankings(season: int = 2026):
     }
 
 
+def _daily_from_pa(cur, player_id: int, season: int) -> list[dict]:
+    """daily 크롤 부재 시즌(24·25)을 plate_appearances로 합성.
+    타자 = 정밀 (rbi/득점/도루는 PA에 없어 None). 투수 = so/bb/피안타/피홈런 정밀,
+    이닝 = 아웃수/3 근사(병살 추가아웃 등 미반영), 자책 판정 불가 → era/er None."""
+    cur.execute("SELECT name, player_type FROM players WHERE id = %s", (player_id,))
+    row = cur.fetchone()
+    if not row:
+        return []
+    name, ptype = row
+    season_sql = " AND EXTRACT(YEAR FROM g.game_date) = %s" if season else ""
+    sp = [season] if season else []
+    out: list[dict] = []
+    base = {k: None for k in (
+        'avg', 'pa', 'ab', 'runs', 'hits', 'doubles', 'triples', 'home_runs',
+        'rbi', 'sb', 'cs', 'walks', 'hbp', 'strikeouts', 'gdp',
+        'era', 'ip', 'h', 'hr', 'bb', 'so', 'r', 'er')}
+    if ptype == '타자':
+        cur.execute(f"""
+            SELECT g.game_date, ht.name, at.name, g.home_score, g.away_score,
+                   mode() WITHIN GROUP (ORDER BY pa.inning_half) AS half,
+                   count(*),
+                   count(*) FILTER (WHERE pa.result_class NOT IN
+                       ('bb','ibb','hbp','sac_bunt','sac_fly','interference')),
+                   COALESCE(sum(pa.is_hit::int), 0),
+                   count(*) FILTER (WHERE pa.result_class = 'double'),
+                   count(*) FILTER (WHERE pa.result_class = 'triple'),
+                   count(*) FILTER (WHERE pa.result_class = 'hr'),
+                   count(*) FILTER (WHERE pa.result_class IN ('bb','ibb')),
+                   count(*) FILTER (WHERE pa.result_class = 'hbp'),
+                   count(*) FILTER (WHERE pa.result_class = 'so')
+            FROM plate_appearances pa
+            JOIN games g ON g.id = pa.game_id
+            JOIN teams ht ON ht.id = g.home_team_id
+            JOIN teams at ON at.id = g.away_team_id
+            WHERE pa.batter_name = %s AND g.status = '종료'{season_sql}
+            GROUP BY g.id, g.game_date, ht.name, at.name, g.home_score, g.away_score
+            ORDER BY g.game_date, g.id
+        """, [name] + sp)
+        cum_h = cum_ab = 0
+        for (gdate, hname, aname, hs, a_s, half, cpa, ab, hits, d2, d3,
+             hr, bb, hbp, so) in cur.fetchall():
+            is_away = str(half) == '0'  # 초 공격 = 원정 타자
+            my, opp = (a_s, hs) if is_away else (hs, a_s)
+            cum_h += hits
+            cum_ab += ab
+            out.append({**base,
+                'game_date': str(gdate),
+                'opponent': hname if is_away else aname,
+                'result': '승' if (my or 0) > (opp or 0) else ('패' if (my or 0) < (opp or 0) else '무'),
+                'stat_type': 'hitter',
+                'avg': round(cum_h / cum_ab, 3) if cum_ab else None,
+                'pa': cpa, 'ab': ab, 'hits': hits, 'doubles': d2, 'triples': d3,
+                'home_runs': hr, 'walks': bb, 'hbp': hbp, 'strikeouts': so})
+    else:
+        cur.execute(f"""
+            SELECT g.game_date, ht.name, at.name, g.home_score, g.away_score,
+                   mode() WITHIN GROUP (ORDER BY pa.inning_half) AS half,
+                   count(*) FILTER (WHERE pa.result_class IN
+                       ('out','so','fc','sac_bunt','sac_fly')),
+                   COALESCE(sum(pa.is_hit::int), 0),
+                   count(*) FILTER (WHERE pa.result_class = 'hr'),
+                   count(*) FILTER (WHERE pa.result_class IN ('bb','ibb')),
+                   count(*) FILTER (WHERE pa.result_class = 'so')
+            FROM plate_appearances pa
+            JOIN games g ON g.id = pa.game_id
+            JOIN teams ht ON ht.id = g.home_team_id
+            JOIN teams at ON at.id = g.away_team_id
+            WHERE pa.pitcher_name = %s AND g.status = '종료'{season_sql}
+            GROUP BY g.id, g.game_date, ht.name, at.name, g.home_score, g.away_score
+            ORDER BY g.game_date, g.id
+        """, [name] + sp)
+        for (gdate, hname, aname, hs, a_s, half, outs, h, hr, bb, so) in cur.fetchall():
+            is_home = str(half) == '0'  # 초 = 원정 공격 = 홈 투수 수비
+            my, opp = (hs, a_s) if is_home else (a_s, hs)
+            ip = (outs or 0) // 3 + ((outs or 0) % 3) * 0.1  # .1/.2 = ⅓⅔ 표기
+            out.append({**base,
+                'game_date': str(gdate),
+                'opponent': aname if is_home else hname,
+                'result': '승' if (my or 0) > (opp or 0) else ('패' if (my or 0) < (opp or 0) else '무'),
+                'stat_type': 'pitcher',
+                'ip': round(ip, 1), 'h': h, 'hr': hr, 'bb': bb, 'so': so})
+    return out
+
+
 @router.get("/{player_id}/daily")
 @cached(300)
 def get_player_daily(player_id: int, season: int = 2026):
-    """선수 일자별 기록"""
+    """선수 일자별 기록 (season=0 = 전 시즌). daily 부재 시즌은 PA 합성 fallback."""
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
     cur = conn.cursor()
-    cur.execute("""
+    season_sql = " AND EXTRACT(YEAR FROM game_date) = %s" if season else ""
+    cur.execute(f"""
         SELECT game_date, opponent, result, stat_type,
             avg, pa, ab, runs, hits, doubles, triples,
             home_runs, rbi, sb, cs, walks, hbp, strikeouts, gdp,
             era, ip, h, hr, bb, so, r, er
         FROM player_daily_stats
-        WHERE player_id = %s
-        AND EXTRACT(YEAR FROM game_date) = %s
+        WHERE player_id = %s{season_sql}
         ORDER BY game_date ASC
-    """, (player_id, season))
+    """, [player_id] + ([season] if season else []))
     rows = cur.fetchall()
+    daily = [
+        {
+            "game_date":  str(r[0]),
+            "opponent":   r[1],
+            "result":     r[2],
+            "stat_type":  r[3],
+            "avg":        float(r[4]) if r[4] else None,
+            "pa":         r[5],
+            "ab":         r[6],
+            "runs":       r[7],
+            "hits":       r[8],
+            "doubles":    r[9],
+            "triples":    r[10],
+            "home_runs":  r[11],
+            "rbi":        r[12],
+            "sb":         r[13],
+            "cs":         r[14],
+            "walks":      r[15],
+            "hbp":        r[16],
+            "strikeouts": r[17],
+            "gdp":        r[18],
+            "era":        float(r[19]) if r[19] else None,
+            "ip":         float(r[20]) if r[20] else None,
+            "h":          r[21],
+            "hr":         r[22],
+            "bb":         r[23],
+            "so":         r[24],
+            "r":          r[25],
+            "er":         r[26],
+        }
+        for r in rows
+    ]
+    if not daily:
+        daily = _daily_from_pa(cur, player_id, season)
     cur.close()
     conn.close()
 
     return {
         "player_id": player_id,
         "season": season,
-        "count": len(rows),
-        "daily": [
-            {
-                "game_date":  str(r[0]),
-                "opponent":   r[1],
-                "result":     r[2],
-                "stat_type":  r[3],
-                "avg":        float(r[4]) if r[4] else None,
-                "pa":         r[5],
-                "ab":         r[6],
-                "runs":       r[7],
-                "hits":       r[8],
-                "doubles":    r[9],
-                "triples":    r[10],
-                "home_runs":  r[11],
-                "rbi":        r[12],
-                "sb":         r[13],
-                "cs":         r[14],
-                "walks":      r[15],
-                "hbp":        r[16],
-                "strikeouts": r[17],
-                "gdp":        r[18],
-                "era":        float(r[19]) if r[19] else None,
-                "ip":         float(r[20]) if r[20] else None,
-                "h":          r[21],
-                "hr":         r[22],
-                "bb":         r[23],
-                "so":         r[24],
-                "r":          r[25],
-                "er":         r[26],
-            }
-            for r in rows
-        ]
+        "count": len(daily),
+        "daily": daily,
     }
 
 
@@ -437,16 +524,16 @@ def get_player_pitch_stats(player_id: int, season: int = 2026):
         cur.close(); conn.close()
         raise HTTPException(status_code=404, detail="선수 없음")
     name = row[0]
-    cur.execute("""
+    season_sql = " AND EXTRACT(YEAR FROM g.game_date) = %s" if season else ""  # 0 = 통산
+    cur.execute(f"""
         SELECT pitch_type, COUNT(*) as cnt
         FROM game_pitch_locations gpl
         JOIN games g ON gpl.game_id = g.id
-        WHERE gpl.pitcher_name = %s
-          AND EXTRACT(YEAR FROM g.game_date) = %s
+        WHERE gpl.pitcher_name = %s{season_sql}
           AND gpl.pitch_type IS NOT NULL AND gpl.pitch_type != ''
         GROUP BY pitch_type
         ORDER BY cnt DESC
-    """, (name, season))
+    """, [name] + ([season] if season else []))
     rows = cur.fetchall()
     cur.close(); conn.close()
     total = sum(r[1] for r in rows)

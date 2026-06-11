@@ -711,7 +711,11 @@ def get_today_games():
             wp.name AS win_pitcher, wp.profile_image AS win_pitcher_image,
             lp.name AS lose_pitcher, lp.profile_image AS lose_pitcher_image,
             home_sp.name AS home_starter, away_sp.name AS away_starter,
-            g.weather AS db_weather
+            g.weather AS db_weather,
+            EXISTS (
+                SELECT 1 FROM game_rosters gr3
+                WHERE gr3.game_id = g.id AND gr3.is_starter = FALSE
+            ) AS has_roster
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
@@ -810,6 +814,7 @@ def get_today_games():
             "lose_pitcher_image": r[19],
             "home_starter":     r[20],
             "away_starter":     r[21],
+            "has_roster":       r[23] if len(r) > 23 else False,
             "is_draw":          r[2] == '종료' and r[3] == r[4],
         })
 
@@ -1074,7 +1079,11 @@ def get_games_by_date(date_str: str):
             home_sp.name AS home_starter,
             away_sp.name AS away_starter,
             wp.profile_image AS win_pitcher_image,
-            lp.profile_image AS lose_pitcher_image
+            lp.profile_image AS lose_pitcher_image,
+            EXISTS (
+                SELECT 1 FROM game_rosters gr3
+                WHERE gr3.game_id = g.id AND gr3.is_starter = FALSE
+            ) AS has_roster
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
@@ -1233,6 +1242,7 @@ def get_games_by_date(date_str: str):
             "is_draw":             r[2] == '종료' and r[3] == r[4],
             "home_starter":        r[17],
             "away_starter":        r[18],
+            "has_roster":          r[21] if len(r) > 21 else False,
             "weather":             weather,
             "home_team_id":        home_team_id_map.get(r[0]),
             "away_team_id":        away_team_id_map.get(r[0]),

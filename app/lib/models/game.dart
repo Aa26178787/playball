@@ -19,6 +19,7 @@ class Game {
   final bool? isDraw;
   final String? homeStarter;
   final String? awayStarter;
+  final bool hasRoster; // preview 풀 로스터(후보/불펜) 적재 여부 — '로스터 확정' 단계
   final Map<String, dynamic>? weather;
   final List<String> homeRecent5;
   final List<String> awayRecent5;
@@ -47,6 +48,7 @@ class Game {
     this.isDraw,
     this.homeStarter,
     this.awayStarter,
+    this.hasRoster = false,
     this.weather,
     this.homeRecent5 = const [],
     this.awayRecent5 = const [],
@@ -77,6 +79,7 @@ class Game {
       isDraw:           json['is_draw'] == true,
       homeStarter:   json['home_starter'],
       awayStarter:   json['away_starter'],
+      hasRoster:     json['has_roster'] == true,
       weather:       json['weather'] != null
                        ? Map<String, dynamic>.from(json['weather'])
                        : null,

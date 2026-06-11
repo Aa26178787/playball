@@ -1919,9 +1919,12 @@ class GameCard extends StatelessWidget {
       // 예정: status 라벨 (시간은 1층 스코어 자리). 양 팀 선발 발표 시 '선발 확정'/'라인업 확정'
       final bothStarters = (game.homeStarter?.isNotEmpty ?? false) &&
           (game.awayStarter?.isNotEmpty ?? false);
+      // 단계: 선발투수만 = 선발 확정 → 후보/불펜 적재 = 로스터 확정 → 타순 발표 = 라인업 확정
       final label = game.status == '라인업'
           ? '라인업 확정'
-          : (bothStarters ? '선발 확정' : (game.status.isEmpty ? '예정' : game.status));
+          : game.hasRoster
+              ? '로스터 확정'
+              : (bothStarters ? '선발 확정' : (game.status.isEmpty ? '예정' : game.status));
       final amber = label.endsWith('확정');
       return Text(label,
           style: TextStyle(fontSize: 11,
@@ -2128,8 +2131,12 @@ class GameCard extends StatelessWidget {
         );
       }
       if (game.status == '라인업' || autoLineup) {
-        // 라인업(타순) 발표 = '라인업 확정' / 선발투수만 발표(경기 ~2h 전) = '선발 확정'
-        final label = game.status == '라인업' ? '라인업 확정' : '선발 확정';
+        // 타순 발표 = '라인업 확정' / 후보·불펜 적재 = '로스터 확정' / 선발투수만 = '선발 확정'
+        final label = game.status == '라인업'
+            ? '라인업 확정'
+            : game.hasRoster
+                ? '로스터 확정'
+                : '선발 확정';
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(

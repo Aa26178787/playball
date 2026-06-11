@@ -73,15 +73,28 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
   Future<void> _loadDaily() async {
     try {
-      final dailyData = await ApiService.getPlayerDaily(widget.playerId, season: 2026);
-      LocalCache.set(_dailyCacheKey, dailyData).catchError((_) {});
-      if (mounted) setState(() => _dailyStats = dailyData['daily'] ?? []);
+      final dailyData =
+          await ApiService.getPlayerDaily(widget.playerId, season: _zoneSeason);
+      // 로컬캐시는 기본(현재 시즌) 뷰만 — 과거 시즌으로 오염 방지
+      if (_zoneSeason == DateTime.now().year) {
+        LocalCache.set(_dailyCacheKey, dailyData).catchError((_) {});
+      }
+      if (mounted) {
+        setState(() {
+          _dailyStats = dailyData['daily'] ?? [];
+          // 과거 시즌 합성 daily는 자책(er) 없음 → ERA 트렌드 불가, 탈삼진으로 전환
+          final hasEra = _dailyStats
+              .any((d) => d['stat_type'] == 'pitcher' && d['er'] != null);
+          if (!hasEra && _pitcherTrendStat == 'era') _pitcherTrendStat = 'so';
+        });
+      }
     } catch (e) { debugPrint('player_detail: $e'); }
   }
 
   Future<void> _loadPitchStats() async {
     try {
-      final ps = await ApiService.getPlayerPitchStats(widget.playerId);
+      final ps = await ApiService.getPlayerPitchStats(widget.playerId,
+          season: _zoneSeason);
       if (mounted) setState(() => _pitchStats = ps);
     } catch (e) { debugPrint('player_detail: $e'); }
   }
@@ -943,10 +956,12 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             _selectedSeason = value;
             _pdType = null; // 시즌 바뀌면 선택 구종 리셋 (해당 시즌에 없을 수 있음)
           });
-          // 존/구종 카드도 시즌 추종 재조회
+          // 존/구종/트렌드 카드도 시즌 추종 재조회
           _loadPitchDesign();
           _loadBatterZones();
           _loadPitcherZones();
+          _loadPitchStats();
+          _loadDaily();
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
@@ -2153,6 +2168,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     double? getValue(Map d) {
       if (trendStat == 'avg') return (d['avg'] as num?)?.toDouble();
       if (trendStat == 'era') {
+        if (d['er'] == null) return null; // 합성 daily(과거 시즌) — 자책 미상, 0으로 그리면 왜곡
         final ip = (d['ip'] as num?)?.toDouble() ?? 0;
         final er = (d['er'] as num?)?.toDouble() ?? 0;
         final realIp = _ipToDecimal(ip);
