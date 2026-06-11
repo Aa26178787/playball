@@ -4,7 +4,9 @@
 안타 판정 = 존히트맵(players.py)과 동일 규칙: '1루타/2루타/3루타/홈런/내야안타'
 ('안타' 단독 표기는 Naver가 쓰지 않음).
 
-game_pitches type 코드: 0=이닝 시작, 1=투구, 8=타자 등장, 13=타석 결과, 14=주자 플레이.
+game_pitches type 코드: 0=이닝 시작, 1=투구, 8=타자 등장, 13=타석 결과, 14=주자 플레이,
+23=주요플레이 하이라이트. ⚠️ 과거 시즌(24·25) 아카이브는 홈런·희생플라이 등 주요 플레이가
+type 13 없이 23으로만 발행 → 23도 결과로 흡수 (타자명 일치 가드, 13 중복은 자연 무시).
 각 행의 strike/ball/out/base1~3/score/home_win_rate = 해당 시점 스냅샷
 → 타자 등장(8) 행 = 타석 시작 컨텍스트, 결과(13) 행 = 타석 종료 승률(WPA 재료).
 win_rate_before/after는 홈팀 기준 Naver 승률(0~100).
@@ -17,6 +19,7 @@ from database.connection import get_connection
 logger = logging.getLogger(__name__)
 
 _T_PITCH, _T_BATTER, _T_RESULT = 1, 8, 13
+_T_EVENT = 23  # 주요플레이 — 과거 시즌 아카이브에선 홈런/희생플라이의 유일한 결과 행
 
 
 def classify_result(text: str) -> tuple[str, bool]:
@@ -76,6 +79,19 @@ def parse_game_pas(rows) -> list[dict]:
     counters: dict[tuple, int] = {}
     open_pa: dict | None = None
     last_wr = None  # 직전 non-null 홈 승률 (행 누락 가드)
+
+    def _close_pa(txt: str, seqno_, hwr_, pitcher_):
+        nonlocal open_pa
+        cls, is_hit = classify_result(txt)
+        open_pa['result_text'] = txt[:200]
+        open_pa['result_class'] = cls
+        open_pa['is_hit'] = is_hit
+        open_pa['win_rate_after'] = hwr_ if hwr_ is not None else last_wr
+        if pitcher_ and pitcher_.strip() and not open_pa['pitcher_name']:
+            open_pa['pitcher_name'] = pitcher_.strip()
+        open_pa['seq_end'] = seqno_
+        pas.append(open_pa)
+        open_pa = None
     # 직전 투구행 스냅샷 — 타자 등장(8) 행은 out/base/score가 비어 있어(전부 0)
     # 같은 이닝half의 마지막 투구행 상태를 타석 시작 컨텍스트로 사용
     ctx_key = None
@@ -134,16 +150,15 @@ def parse_game_pas(rows) -> list[dict]:
                 if hwr is not None:
                     last_wr = hwr
                 continue
-            cls, is_hit = classify_result(txt)
-            open_pa['result_text'] = txt[:200]
-            open_pa['result_class'] = cls
-            open_pa['is_hit'] = is_hit
-            open_pa['win_rate_after'] = hwr if hwr is not None else last_wr
-            if pitcher and pitcher.strip() and not open_pa['pitcher_name']:
-                open_pa['pitcher_name'] = pitcher.strip()
-            open_pa['seq_end'] = seqno
-            pas.append(open_pa)
-            open_pa = None
+            _close_pa(txt, seqno, hwr, pitcher)
+        elif rtype == _T_EVENT and open_pa is not None:
+            # 과거 시즌 아카이브: 홈런·희생플라이가 13 없이 23으로만 옴 → 결과로 인정.
+            # 가드 = 타자명 일치 + 분류 가능 텍스트 (13이 먼저 닫은 타석의 23 중복은
+            # open_pa=None이라 자연 무시, 늦은 하이라이트는 타자명 불일치로 차단)
+            txt = (title or '').strip()
+            if ((batter or '').strip() == open_pa['batter_name']
+                    and classify_result(txt)[0] != 'etc'):
+                _close_pa(txt, seqno, hwr, pitcher)
         if hwr is not None:
             last_wr = hwr
     return pas
