@@ -367,8 +367,12 @@ def recompute_batter_derived(cur, season=2026):
     """, (season,))
 
 
-def save_players_and_stats(players, player_type):
-    """선수 정보 + 통계 DB 저장"""
+def save_players_and_stats(players, player_type, update_players=True):
+    """선수 정보 + 통계 DB 저장.
+
+    update_players=False (과거 시즌 백필용): 기존 선수 매칭(naver_id→name+team)만 하고
+    players 신규 생성/프로필 갱신 안 함 — 은퇴선수 오염 + 현역 team_id가 과거 팀으로
+    덮이는 사고 방지. 스탯 upsert만 수행."""
     
     deduped = {}
     for p in players:
@@ -411,18 +415,22 @@ def save_players_and_stats(players, player_type):
                     player_db_id = existing[0]
 
             if player_db_id:
-                cur.execute("""
-                    UPDATE players SET
-                        number = %s, profile_image = %s, position = %s,
-                        height = %s, weight = %s, team_id = %s,
-                        player_type = %s, naver_player_id = %s
-                    WHERE id = %s
-                """, (
-                    p["number"], p.get("profile_image"), p.get("position"),
-                    p.get("height"), p.get("weight"), team[0],
-                    "타자" if player_type == "HITTER" else "투수",
-                    naver_id, player_db_id
-                ))
+                if update_players:
+                    cur.execute("""
+                        UPDATE players SET
+                            number = %s, profile_image = %s, position = %s,
+                            height = %s, weight = %s, team_id = %s,
+                            player_type = %s, naver_player_id = %s
+                        WHERE id = %s
+                    """, (
+                        p["number"], p.get("profile_image"), p.get("position"),
+                        p.get("height"), p.get("weight"), team[0],
+                        "타자" if player_type == "HITTER" else "투수",
+                        naver_id, player_db_id
+                    ))
+            elif not update_players:
+                cur.execute("RELEASE SAVEPOINT sp_player")
+                continue
             else:
                 cur.execute("""
                     INSERT INTO players (name, team_id, player_type, number, profile_image, position, height, weight, naver_player_id)
@@ -522,7 +530,7 @@ def save_players_and_stats(players, player_type):
     # 파생 스탯 재계산 (statiz 미제공 — raw 갱신분 반영, stale 방지)
     if player_type == "PITCHER" and players:
         recompute_pitcher_derived(cur, players[0].get("season", 2026))
-    elif player_type == "BATTER" and players:
+    elif player_type == "HITTER" and players:  # (구 'BATTER' 오타 — 타자 파생 미실행 버그)
         recompute_batter_derived(cur, players[0].get("season", 2026))
     conn.commit()
     cur.close()
