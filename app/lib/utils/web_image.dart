@@ -92,15 +92,27 @@ Widget netImage(
       height: height,
       fit: fit,
       filterQuality: filterQuality,
-      // 임시 진단(웹): 미표시 원인 추적 — 엔진 에러 원문을 화면에 노출.
+      // 임시 진단(웹): 에러 전문 노출 — 탭하면 다이얼로그로 전체 메시지+스택.
       // 원인 확정 후 SizedBox.shrink()로 되돌릴 것.
-      errorBuilder: (_, err, __) => Container(
-        width: width,
-        height: height,
-        color: const Color(0x33FF0000),
-        alignment: Alignment.center,
-        child: Text('$err', maxLines: 4,
-            style: const TextStyle(fontSize: 7, color: Color(0xFFFF5252))),
+      errorBuilder: (ctx, err, stack) => GestureDetector(
+        onTap: () => showDialog(
+          context: ctx,
+          builder: (_) => AlertDialog(
+            title: const Text('이미지 에러 전문', style: TextStyle(fontSize: 14)),
+            content: SingleChildScrollView(
+              child: Text('URL: $u\n\n$err\n\n$stack',
+                  style: const TextStyle(fontSize: 11)),
+            ),
+          ),
+        ),
+        child: Container(
+          width: width,
+          height: height,
+          color: const Color(0x33FF0000),
+          alignment: Alignment.center,
+          child: Text('$err', maxLines: 10,
+              style: const TextStyle(fontSize: 8, color: Color(0xFFFF5252))),
+        ),
       ),
       loadingBuilder: (ctx, child, prog) =>
           prog == null ? child : (placeholder?.call() ?? child),
