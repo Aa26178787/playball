@@ -21,6 +21,7 @@ KBO 야구 앱 | Flutter + FastAPI + PostgreSQL
 ssh -i "C:\Users\qq772\Downloads\ssh-key-2026-03-28 (2).key" ubuntu@168.107.36.158
 # ⚠️ scheduler는 별도 서비스 — 백엔드 배포 시 반드시 둘 다 재시작 (미재시작 → 패치 미적용 사고 이력)
 cd ~/playball && git pull origin main --rebase && sudo systemctl restart playball && sudo systemctl restart playball-scheduler
+bash ~/playball/scripts/smoke.sh   # 배포 후 스모크 (ALL PASS 확인 — scheduler 미재시작/미pull 감지)
 sudo journalctl -u playball -f          # API 로그
 sudo journalctl -u playball-scheduler -f # 크롤러/알림 로그
 sudo -u postgres psql -d playball
@@ -330,11 +331,13 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - **06-11c A1이전+3시즌화**: A1.Flex 마이그레이션(상단 인프라) → **PA type23 파서버그 발견·수정**(홈런/SF 타석 증발 — 전체 재구축 132,949→145,689 PA, 김도영 2024 HR 38 정합 확인) → 모델 재학습(ingame AUC .8541@14.5만 / **per-PA .5226 — 0.497서 개선됐지만 표면노출 계속 보류**, matchup 통산은 3시즌 자동 수혜) → **24·25 시즌스탯 적재**(네이버 통계 match-only + KBO 보강 + statiz 타자파생 미실행 오타픽스) → **선수상세 시즌칩**(2026/2025/2024/통산 — 통산=클라 집계(카운팅 합·비율 재계산·불가시 표본가중), 리그비교/규정뱃지는 최신시즌 뷰만) → **홈 날짜스트립 2024-03~ 확장**(연도 픽커 추가, 월칩 = 보는 연도 기준, 오프시즌 날짜 = 경기없음 비활성). 존히트맵/피칭디자인은 자연히 3시즌 합산됨(표본↑, 의도)
 - **06-10 선수상세 개편**: 핵심스탯 커스텀피커(선수별 슬롯)+리그순위/규정미달/방향인식 비교말풍선(길게누르기,단어줄바꿈 word-joiner)·스탯 ⓘ용어설명·세부그리드=전체−핵심·팀상세 SNS링크(YT/IG/굿즈)·최근본선수칩·인스타 신고버튼. **인스타 다중검증(상세=INSTA_VERIFY.md): 339→358, imginn으로 가족계정9·동명이인 박멸**. 선발투수 게임카드 조기표시(`_update_probable_starters` 오늘+내일). 홀드 GREATEST고정버그(올러294)→자가치유
 - **06-12 메가B 1차 (포인트 원장)**: point_ledger+game_predictions 테이블 → `api/points.py award()`(UNIQUE 멱등) → 예측 API(POST predict/GET fan-predictions) → scheduler 종료 정산(적중50/참여10) → 출석(+5 일1회)/직관(+20) 훅 → 리더보드 TOP50 → 게임카드 `_PredictionBar` 팬투표 섹션(픽 버튼→분포바+✓내픽, 'AI 승리 예측' 바 아래)+홈 출석 사일런트+마이페이지 points_screen(내 포인트/랭킹/적립내역). **mojibake 사고 복구**: api_service.dart·games.py 워킹카피 전체 오염(과거 PS append) → HEAD 복원+Edit 재적용, predictGame류 authHeaders 누락도 교정
+- **06-12c 메가D (출시 게이트 코드측)**: `scripts/smoke.sh`(서비스 활성+scheduler 30분 심장박동(새벽 무로그 정상이라 3분 기준은 오탐)+git 동기화+엔드포인트 9종+HTTPS 2종 — 배포 후 `bash ~/playball/scripts/smoke.sh` 1커맨드, ALL PASS 검증 완료) + **GitHub Actions CI**(`.github/workflows/ci.yml` — flutter analyze+test(@Tags(golden) 제외: 골든 PNG=Windows 렌더라 Linux 러너 불일치)+backend compileall) + **골든 확대**(VisitShareCard/PlayerShareCard — cached_network_image의 path_provider mock 채널 필수 패턴). 잔여 메가D = 외부작업(Play 내부테스트·keystore)
 - **06-12b 메가B 완결+메가C**: **푸시GW**(fcm_service._send = 단일 게이트웨이 — KST 23:30~07:30 quiet hours 억제(user_settings.notify_quiet 기본 ON, 인앱 알림함은 전원 저장) + ntype→Android 채널 3종 라우팅(playball_live/myteam/community — main.dart 생성, 설정 '방해금지' 토글)) → **뱃지**(api/badges.py 11종 + user_badges 테이블, GET /user/badges lazy 평가) → **주간미션**(GET /user/missions — 예측3/출석5/직관1, KST 월요일 주차, 완료 시 자동 보상 reason=mission_weekly) → points_screen에 미션 진척바+뱃지 그리드 → **온보딩 모드**(홈 첫실행 프로/캐주얼 픽커 — 캐주얼=compact+notify_my_team_only) → **push_tokens 다수 검증**(가짜 토큰 시뮬: 멀티발송/quiet 억제·opt-out/채널/무효토큰 자동삭제 전부 라이브 통과 — InvalidArgumentError 매칭 보강이 픽스). **메가C**: showShareCardDialog(RepaintBoundary→png→share_plus, 웹=버튼 숨김)+VisitShareCard/PlayerShareCard → 직관 저장 직후 공유 제안+승리 시 인앱리뷰(in_app_review ^2.0.9) → 선수상세 FAB 시트 '카드 공유'(랜딩 링크 동봉) → **공유 랜딩** `/s/p/{id}`·`/s/g/{id}`(api/routers/share.py — og 메타+웹앱 유도 버튼). 딥링크 스킴 = 출시 시 App Links로 (메가D)
 
 ## 해야할 것
 ### 즉시 (코드측)
-- [ ] **다크모드 육안검증** ⚠️: 2026-06-09 세션 다크 ~15커밋이 헤드리스 컴파일만 검증됨 → `flutter run` 다크 점검(경기상세 통계테이블·라인업 타순배지·로스터헤더 / 선수비교 / 선수상세 통계 / 인기투표 토글 / 각 화면 에러상태 AppErrorView) 후 발견분 수정. 골든이 향후 회귀는 방어
+- [ ] **다크모드 육안검증** (⏸️ 사용자 지시로 보류 — 직접 요청 전까지 패스, 2026-06-12): 다크 ~15커밋+메가B/C 신규 UI 헤드리스만 검증된 상태. 골든이 회귀는 방어
+- 메가B/C/D 코드측 = ✅ 전부 완료 (06-12 변경이력). 잔여 = 외부작업(아래)과 메가D Play 내부테스트
 - [x] **키 회전** (2026-06-09 완료): Gmail·Kakao(JS/네이티브/REST)·DB pw 회전+라이브검증, 옛 Gmail 폐기 확인 (출시 APK는 새 키 재빌드)
 ### 중기 (코드 품질) — ✅ 2026-06-09 전부 완료 (상세 기록 보존)
 - [x] ~~empty catch debugPrint~~(✅ 2026-06-09 빈 `catch(_){}` 52개 → `catch(e){debugPrint('<file>: $e')}` 17파일, game_detail:435 finally형만 제외) / ~~non-null `!` audit~~(✅ 2026-06-09 검토결과 안전·수정불요: `['key']!` 23개=로컬 const map·초기화보장·null체크 storage / `x!.` 94개=`_gameData!` 등 가드 후 idiomatic. crash 버그 없음) / ~~AppErrorView 전면~~(✅ 2026-06-09 6화면 ad-hoc 에러UI→`AppErrorView`(테마인식): team×2·notifications·search·player_stats·pitch_chart·post_detail. 잔여=home(레이아웃 얽힘,brand 적용됨)·team_detail 인라인 retry) / ~~서버 print→logging~~(✅ 2026-06-09 런타임서비스 fcm/weather/email/sms → `api/log_setup.py` 중앙설정+모듈 logger. prediction CLI·scheduler 운영 print는 유지)
