@@ -6,9 +6,10 @@ KEY="C:\\Users\\qq772\\Downloads\\ssh-key-2026-03-28 (2).key"
 SRV="ubuntu@168.107.36.158"
 cd "$(dirname "$0")/app"
 
-echo "== flutter build web =="
+echo "== flutter build web (wasm) =="
+# --wasm: skwasm 본판(06-12 승격) — 미지원 브라우저는 자동 JS 폴백
 # --pwa-strategy=none: 서비스워커 비활성 (베타 중 캐시된 깨진 빌드 문제 근절, 매 로드 최신)
-MSYS_NO_PATHCONV=1 flutter build web --release --base-href "/app/" --no-web-resources-cdn --pwa-strategy=none
+MSYS_NO_PATHCONV=1 flutter build web --wasm --release --base-href "/app/" --no-web-resources-cdn --pwa-strategy=none
 
 echo "== 압축/전송 =="
 cd build
