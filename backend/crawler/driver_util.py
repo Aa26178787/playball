@@ -36,7 +36,13 @@ def arm_or_wdm_chrome(options):
                 pass
         profile = tempfile.mkdtemp(prefix='selenium-', dir=base)
         options.add_argument(f'--user-data-dir={profile}')
-        return webdriver.Chrome(service=Service(driver_path), options=options)
+        # 진단용: env SELENIUM_DRIVER_LOG 지정 시 chromedriver verbose 로그 채집
+        service_kwargs = {}
+        log_path = os.environ.get('SELENIUM_DRIVER_LOG')
+        if log_path:
+            service_kwargs = {'service_args': ['--verbose'], 'log_output': log_path}
+        return webdriver.Chrome(
+            service=Service(driver_path, **service_kwargs), options=options)
 
     from webdriver_manager.chrome import ChromeDriverManager
     return webdriver.Chrome(
