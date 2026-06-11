@@ -3329,8 +3329,13 @@ def run_scheduler():
     print("- 매주 월요일 UTC 03:00: 시즌 일정 업데이트")
     print("- 매시간: 좀비 크롬 정리")
 
+    _last_hb = time.time()
     while True:
         schedule.run_pending()
+        # 30분 하트비트 — 무경기 시간대 무로그로 스모크가 멈춤 오인하는 것 방지
+        if time.time() - _last_hb >= 1800:
+            print(f"[{datetime.now()}] heartbeat — 루프 정상")
+            _last_hb = time.time()
         time.sleep(10)
 
 
