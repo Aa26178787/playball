@@ -19,6 +19,8 @@ import 'utils/app_theme.dart';
 import 'utils/app_config.dart';
 import 'utils/web_update/web_back_stub.dart'
     if (dart.library.html) 'utils/web_update/web_back_web.dart';
+import 'utils/web_update/web_theme_stub.dart'
+    if (dart.library.html) 'utils/web_update/web_theme_web.dart';
 
 final FlutterLocalNotificationsPlugin _localNotif = FlutterLocalNotificationsPlugin();
 
@@ -131,7 +133,13 @@ class PlayBallApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, _) => MaterialApp(
+        builder: (context, themeProvider, _) {
+          // 웹 브라우저 툴바(작업표시줄) 색을 테마와 동기화 (meta theme-color)
+          final mq = MediaQuery.maybePlatformBrightnessOf(context);
+          final dark = themeProvider.themeMode == ThemeMode.dark ||
+              (themeProvider.themeMode == ThemeMode.system && mq == Brightness.dark);
+          setWebThemeColor(dark ? '#111113' : '#FAFAFB');
+          return MaterialApp(
           title: 'PlayBall',
           navigatorKey: appNavigatorKey,
           debugShowCheckedModeBanner: false,
@@ -154,7 +162,8 @@ class PlayBallApp extends StatelessWidget {
             child: child ?? const SizedBox.shrink(),
           ),
           home: const AppEntryPoint(),
-        ),
+        );
+        },
       ),
     );
   }

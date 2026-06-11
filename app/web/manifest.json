@@ -2,7 +2,7 @@
     "name": "PlayBall",
     "short_name": "PlayBall",
     "start_url": ".",
-    "display": "standalone",
+    "display": "browser",
     "background_color": "#111113",
     "theme_color": "#111113",
     "description": "KBO 야구 앱",
