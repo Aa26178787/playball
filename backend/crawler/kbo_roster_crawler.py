@@ -27,15 +27,15 @@ _TEAM_NAME_MAP = {
 
 
 def _get_driver():
-    from selenium import webdriver
     from selenium.webdriver.chrome.options import Options
+    from crawler.driver_util import arm_or_wdm_chrome
     opts = Options()
     opts.add_argument('--headless')
     opts.add_argument('--no-sandbox')
     opts.add_argument('--disable-dev-shm-usage')
     opts.add_argument('--disable-gpu')
     opts.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
-    return webdriver.Chrome(options=opts)
+    return arm_or_wdm_chrome(opts)
 
 
 def _get_team_id_map() -> dict:
