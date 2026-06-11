@@ -290,7 +290,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - **baseUrl HTTPS 고정** / git push --force / 커밋·배포·로그·APK는 묻지 않고 실행
 - **배포 시 playball + playball-scheduler 둘 다 재시작**
 - **한글 파일 PowerShell -replace 금지** (인코딩 깨짐 → crash loop). Edit 도구 사용
-- **ARM(A1) selenium = snap chromium**: `_get_driver`가 aarch64 감지 시 `/snap/bin/chromium.chromedriver` 사용. ⚠️ **binary_location 지정 금지**(즉사) + **user-data-dir = `~/snap/chromium/common/` 하위 필수**(snap이 호스트 /tmp 접근 불가). webdriver_manager는 ARM용 chromedriver 미제공
+- **ARM(A1) selenium = snap chromium — 반드시 `crawler/driver_util.arm_or_wdm_chrome` 경유** (직접 webdriver.Chrome 생성 금지 — 신규 크롤러 포함). 규칙: ① binary_location 지정 금지(즉사) ② 프로필 = `~/snap/chromium/common/` 하위 **mkdtemp 인스턴스별 고유**(PID 기반이면 PID 재활용 × 크래시 잔존 SingletonLock → "Chrome instance exited" 간헐 즉사 — 1h 잔존물 자동청소 내장) ③ webdriver_manager는 ARM chromedriver 미제공 ④ scheduler 유닛 MemoryMax=2G(chromium 자식 — 512M이면 OOM 위험, drop-in memory.conf) ⑤ 진단 = env `SELENIUM_DRIVER_LOG=경로`로 verbose 채집
 - PS5.1: here-string 안 큰따옴표 → git -m 인자 깨짐 / Invoke-RestMethod 한글 mojibake(수동 UTF-8 디코드) / `$h`·`$H` 대소문자 동일 변수
 - ABS 존 상수 plateHalfW=8.5/12, absHalfW=9.95/12, ballR=1.45/12 — 변경 금지
 - TeamLogo 파라미터 `teamCode` / TeamDetailScreen `team`(Map) / NetworkImage 금지 → CachedNetworkImage
