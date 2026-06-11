@@ -72,6 +72,7 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
+        centerTitle: false, // iOS 기본 가운데 정렬 차단 — 전 플랫폼 좌측 통일
         backgroundColor:
             isDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
         foregroundColor:
@@ -84,14 +85,24 @@ class AppTheme {
           color: isDark ? AppColors.primaryDark : AppColors.primary,
           letterSpacing: 0,
         ),
+        // statusBarBrightness = iOS(배경 밝기 기준) / IconBrightness = Android
+        // systemNavigationBar* = Android 하단 시스템바를 scaffold 색에 동기화
         systemOverlayStyle: isDark
             ? const SystemUiOverlayStyle(
                 statusBarColor: Colors.transparent,
                 statusBarIconBrightness: Brightness.light,
+                statusBarBrightness: Brightness.dark,
+                systemNavigationBarColor: AppColors.scaffoldDark,
+                systemNavigationBarIconBrightness: Brightness.light,
+                systemNavigationBarDividerColor: AppColors.scaffoldDark,
               )
             : const SystemUiOverlayStyle(
                 statusBarColor: Colors.transparent,
                 statusBarIconBrightness: Brightness.dark,
+                statusBarBrightness: Brightness.light,
+                systemNavigationBarColor: AppColors.scaffoldLight,
+                systemNavigationBarIconBrightness: Brightness.dark,
+                systemNavigationBarDividerColor: AppColors.scaffoldLight,
               ),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(

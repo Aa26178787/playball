@@ -3,6 +3,7 @@ import '../../utils/design_tokens.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../api/api_service.dart';
+import 'register_done_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -121,7 +122,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _pwCtrl.text,
       _nicknameCtrl.text.trim(),
     );
-    if (!success && mounted) {
+    if (!mounted) return;
+    if (success) {
+      // 가입 = 자동 로그인 완료 → 완료 화면 (back으로 폼 복귀 차단)
+      Navigator.of(context).pushReplacement(MaterialPageRoute(
+          builder: (_) =>
+              RegisterDoneScreen(nickname: _nicknameCtrl.text.trim())));
+    } else {
       setState(() => _error = auth.errorMessage ?? '회원가입에 실패했습니다');
     }
   }

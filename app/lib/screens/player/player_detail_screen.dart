@@ -899,8 +899,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       for (final k in [
         'games', 'wins', 'losses', 'saves', 'holds', 'strikeouts', 'qs',
         'blown_saves', 'walks', 'hits_allowed', 'runs_allowed',
-        'earned_runs', 'home_runs_allowed', 'war', 'gs', 'gf', 'svo', 'wp',
-        'bk', 'sac', 'sf', 'ibb', 'hbp',
+        'earned_runs', 'home_runs_allowed', 'war', 'wpa', 'gs', 'gf', 'svo',
+        'wp', 'bk', 'sac', 'sf', 'ibb', 'hbp',
       ]) {
         out[k] = sum(k);
       }
@@ -1076,6 +1076,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     'blown_saves': '리드를 지켜야 할 상황에서 동점·역전을 허용한 횟수. 적을수록 좋아요.',
     'innings_pitched': '던진 총 이닝 수.',
     'war': '평범한 대체 선수 대비 팀 승리에 기여한 정도. 높을수록 좋아요.',
+    'wpa': '매 타석의 팀 승리확률 변화를 누적한 값. 박빙 상황에서 잘 던질수록 크게 올라요(승리확률 기여도).',
     'avg': '안타 ÷ 타수. 타격의 가장 기본 지표예요.',
     'obp': '안타·볼넷 등으로 베이스에 나간 비율. 높을수록 좋아요.',
     'slg': '한 타수당 때려낸 루타 수. 장타력을 봐요.',
@@ -1390,7 +1391,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     'era': 'ERA', 'whip': 'WHIP', 'k_per_9': 'K/9', 'bb_per_9': 'BB/9', 'fip': 'FIP',
     'avg_against': '피안타율', 'k_pct': 'K%', 'bb_pct': 'BB%', 'k_bb_pct': 'K-BB%',
     'wins': '승', 'losses': '패', 'saves': '세이브', 'holds': '홀드', 'qs': 'QS',
-    'blown_saves': '블론', 'innings_pitched': '이닝',
+    'blown_saves': '블론', 'innings_pitched': '이닝', 'wpa': 'WPA',
   };
   // 핵심 기록 = 어떤 스탯이든 선택 가능 (rate 스탯은 규정 충족 시 순위, 미달 시 값만)
   static const List<String> _batterMenu = [
@@ -1632,7 +1633,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   static const List<String> _gPitcherDetail = [
     'era', 'whip', 'wins', 'losses', 'saves', 'holds', 'qs', 'innings_pitched', 'strikeouts', 'avg_against', 'blown_saves',
   ];
-  static const List<String> _gPitcherAdv = ['fip', 'k_per_9', 'bb_per_9', 'war', 'babip', 'k_pct', 'bb_pct', 'k_bb_pct'];
+  static const List<String> _gPitcherAdv = ['fip', 'k_per_9', 'bb_per_9', 'war', 'wpa', 'babip', 'k_pct', 'bb_pct', 'k_bb_pct'];
 
   Widget _buildDetailStatsGrids(Map<String, dynamic> player) {
     final cur = _viewSeasonStats(player);

@@ -1048,7 +1048,7 @@ def get_player_detail(player_id: int):
                 blown_saves, fip, k_per_9, bb_per_9, babip,
                 cg, sho, wpct, tbf, np, doubles_allowed, triples_allowed,
                 sac, sf, ibb, hbp, wp, bk, qs, avg_against,
-                gs, gf, svo, k_bb, k_pct, bb_pct, k_bb_pct
+                gs, gf, svo, k_bb, k_pct, bb_pct, k_bb_pct, wpa
             FROM pitcher_stats
             WHERE player_id = %s
             ORDER BY season DESC
@@ -1083,6 +1083,7 @@ def get_player_detail(player_id: int):
                 "k_pct":    float(r[40]) if r[40] else 0,
                 "bb_pct":   float(r[41]) if r[41] else 0,
                 "k_bb_pct": float(r[42]) if r[42] else 0,
+                "wpa":      float(r[43]) if r[43] is not None else None,
             }
             for r in stats
         ]

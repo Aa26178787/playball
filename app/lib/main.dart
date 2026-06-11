@@ -17,6 +17,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'api/api_service.dart';
 import 'utils/app_theme.dart';
 import 'utils/app_config.dart';
+import 'utils/web_update/web_back_stub.dart'
+    if (dart.library.html) 'utils/web_update/web_back_web.dart';
 
 final FlutterLocalNotificationsPlugin _localNotif = FlutterLocalNotificationsPlugin();
 
@@ -97,12 +99,21 @@ Future<void> _initFirebase() async {
   }
 }
 
+// 웹 back-trap에서 라우트 pop용 (브라우저 뒤로가기 → 앱 내 뒤로가기)
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
   ));
+  // 웹: 브라우저 back/스와이프백 → Navigator.pop (SPA 이탈 → 흰화면 방지)
+  installWebBackHandler(() {
+    final nav = appNavigatorKey.currentState;
+    if (nav != null && nav.canPop()) nav.pop();
+    return true;
+  });
   await _initFirebase();
   runApp(const PlayBallApp());
 }
@@ -122,6 +133,7 @@ class PlayBallApp extends StatelessWidget {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) => MaterialApp(
           title: 'PlayBall',
+          navigatorKey: appNavigatorKey,
           debugShowCheckedModeBanner: false,
           restorationScopeId: 'playball_root',
           localizationsDelegates: const [

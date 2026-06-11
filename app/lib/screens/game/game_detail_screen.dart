@@ -1948,6 +1948,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           // mockup divider (헤더와 ScoringSummary 사이)
           Container(height: 1, color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0)),
           const SizedBox(height: 16),
+          if (innings.isNotEmpty) ...[
+            _buildLineScore(innings, awayTeam, homeTeam),
+            const SizedBox(height: 14),
+          ],
           if (innings.isNotEmpty && _relayAllData != null) ...[
             _buildScoringSection(innings, awayTeam, homeTeam),
             const SizedBox(height: 16),
@@ -2267,7 +2271,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 ),
             ],
           ),
-          // 2행: 결과 chip (풀 텍스트 — 잘림 없음)
+          // 2행: 결과 chip — 긴 문장은 자동 스크롤 회전 (가장자리 잘림 방지)
           if (result.isNotEmpty) ...[
             const SizedBox(height: 6),
             Align(
@@ -2275,8 +2279,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(color: resultBg, borderRadius: BorderRadius.circular(Radii.pill)),
-                child: Text(result,
-                    style: TextStyle(fontSize: 11, color: resultFg, fontWeight: FontWeight.w700)),
+                child: _MarqueeText(
+                  text: result,
+                  style: TextStyle(fontSize: 11, color: resultFg, fontWeight: FontWeight.w700),
+                ),
               ),
             ),
           ],
@@ -2306,9 +2312,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               child: Row(children: [
                 Text('↔ ', style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w700)),
                 Expanded(
-                  child: Text(title,
-                      style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
-                      overflow: TextOverflow.ellipsis),
+                  child: _MarqueeText(
+                    text: title,
+                    style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ]),
             );
@@ -2361,8 +2368,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 ),
                 const SizedBox(width: 8),
                 SizedBox(
-                  width: 50,
+                  // 62: '스트라이크'(5자)가 한 줄에 들어가는 폭 — 50이면 '스트라이/크' 중간개행
+                  width: 62,
                   child: Text(pitchResultText,
+                      maxLines: 1, overflow: TextOverflow.visible, softWrap: false,
                       style: TextStyle(fontSize: 11, color: ink3, fontWeight: FontWeight.w600)),
                 ),
                 if (stuff != null)
@@ -2379,6 +2388,107 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           }),
         ],
       ),
+    );
+  }
+
+  // ── 전통 라인스코어 스코어보드 (이닝별 + R/H/E, 가로 스크롤) ──
+  Widget _buildLineScore(List innings, String awayTeam, String homeTeam) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final g = (_gameData?['game'] as Map?) ?? const {};
+
+    final byInning = <int, Map>{};
+    var lastInn = 0;
+    for (final inn in innings) {
+      final n = (inn['inning'] as num?)?.toInt() ?? 0;
+      byInning[n] = inn as Map;
+      if (n > lastInn) lastInn = n;
+    }
+    final nCols = lastInn > 9 ? lastInn : 9;
+    final status = g['status'] as String? ?? '';
+    final isLive = status == '진행';
+    final curInning = (g['current_inning'] as num?)?.toInt() ?? 0;
+    final curHalf = g['inning_half']?.toString();
+
+    String cell(int inn, bool home) {
+      final d = byInning[inn];
+      if (d == null) return '-';
+      final v = (home ? d['home_runs'] : d['away_runs']) as num?;
+      if (v == null) return '-';
+      // 라이브 현재 이닝: 아직 공격 전인 말(홈)은 '-'
+      if (isLive && inn == curInning && home && curHalf == '0') return '-';
+      return '${v.toInt()}';
+    }
+
+    Widget col(String top, String mid, String bot,
+        {double w = 26, bool bold = false, bool hot = false}) {
+      final st = TextStyle(
+          fontSize: 12,
+          fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+          color: hot ? const Color(0xFFE53935) : ink,
+          fontFeatures: const [FontFeature.tabularFigures()]);
+      return SizedBox(
+        width: w,
+        child: Column(children: [
+          Text(top,
+              style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: hot ? const Color(0xFFE53935) : sub)),
+          const SizedBox(height: 7),
+          Text(mid, style: st),
+          const SizedBox(height: 6),
+          Text(bot, style: st),
+        ]),
+      );
+    }
+
+    String n(dynamic v) => v == null ? '-' : '${(v as num).toInt()}';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: paper,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: line, width: 1),
+      ),
+      child: Row(children: [
+        // 팀명 열 (고정)
+        SizedBox(
+          width: 52,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('팀', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sub)),
+            const SizedBox(height: 7),
+            Text(awayTeam, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: ink)),
+            const SizedBox(height: 6),
+            Text(homeTeam, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: ink)),
+          ]),
+        ),
+        // 이닝 칸 (스크롤)
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              for (int i = 1; i <= nCols; i++)
+                col('$i', cell(i, false), cell(i, true),
+                    hot: isLive && i == curInning),
+            ]),
+          ),
+        ),
+        // R/H/E (고정)
+        Container(width: 1, height: 44, color: line,
+            margin: const EdgeInsets.symmetric(horizontal: 6)),
+        col('R', n(_liveScore(g.cast<String, dynamic>(), 'away_score')),
+            n(_liveScore(g.cast<String, dynamic>(), 'home_score')), bold: true),
+        col('H', n(g['away_hits']), n(g['home_hits'])),
+        col('E', n(g['away_errors']), n(g['home_errors'])),
+      ]),
     );
   }
 
@@ -4696,6 +4806,81 @@ class _GameShareSheetState extends State<_GameShareSheet> {
   }
 }
 
+// ─── 자동 스크롤 텍스트 (한 줄 초과 시 좌로 무한 회전 — 중계 긴 문장용) ────────
+class _MarqueeText extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+  const _MarqueeText({required this.text, required this.style});
+
+  @override
+  State<_MarqueeText> createState() => _MarqueeTextState();
+}
+
+class _MarqueeTextState extends State<_MarqueeText>
+    with SingleTickerProviderStateMixin {
+  AnimationController? _ctrl;
+
+  @override
+  void dispose() {
+    _ctrl?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (ctx, c) {
+      final painter = TextPainter(
+        text: TextSpan(text: widget.text, style: widget.style),
+        maxLines: 1,
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final textW = painter.width;
+      if (!c.hasBoundedWidth || textW <= c.maxWidth) {
+        _ctrl?.stop();
+        return Text(widget.text,
+            maxLines: 1, softWrap: false, overflow: TextOverflow.clip,
+            style: widget.style);
+      }
+      const gap = 42.0;
+      final span = textW + gap;
+      // 속도 ~28px/s — 길이 비례 주기
+      final dur = Duration(milliseconds: (span / 28 * 1000).round());
+      _ctrl ??= AnimationController(vsync: this);
+      if (_ctrl!.duration != dur) {
+        _ctrl!
+          ..duration = dur
+          ..repeat();
+      } else if (!_ctrl!.isAnimating) {
+        _ctrl!.repeat();
+      }
+      return ClipRect(
+        child: SizedBox(
+          width: c.maxWidth,
+          height: painter.height,
+          child: AnimatedBuilder(
+            animation: _ctrl!,
+            builder: (_, __) => Transform.translate(
+              offset: Offset(-span * _ctrl!.value, 0),
+              child: OverflowBox(
+                alignment: Alignment.centerLeft,
+                maxWidth: double.infinity,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(widget.text,
+                      maxLines: 1, softWrap: false, style: widget.style),
+                  const SizedBox(width: gap),
+                  Text(widget.text,
+                      maxLines: 1, softWrap: false, style: widget.style),
+                  const SizedBox(width: gap),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+  }
+}
+
 // ─── Full field view widget ───────────────────────────────────────────────────
 
 class _FullFieldView extends StatelessWidget {
@@ -4933,10 +5118,10 @@ class _FullFieldView extends StatelessWidget {
               ),
               68, 40,
             ),
-          // ── 맞대결 통산 오버레이 (좌하단 — 다음타석과 대칭) ──
+          // ── 맞대결 통산 오버레이 (좌상단 — 좌하단은 지명타자(DH 벤치 30,280) 자리라 가림) ──
           if (matchupLine != null && batter != null && pitcher != null)
             Positioned(
-              left: 4, bottom: 4,
+              left: 4, top: 4,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
@@ -5490,7 +5675,7 @@ class _WinProbChart extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           SizedBox(
-            height: 130,
+            height: 104, // 승률그래프 — 130서 하향 (정보밀도 대비 과점유 피드백)
             child: LineChart(
               LineChartData(
                 minY: 0, maxY: 100,

@@ -1554,7 +1554,7 @@ def get_pitch_types(game_id: int):
 
 
 @router.get("/{game_id}/pitch-locations")
-@cached(60)
+@cached(15)  # 60→15: 이닝중계(10~30s) 대비 투구위치 지연 체감 해소 (종료경기 DB 재조회 부담 미미)
 def get_pitch_locations(game_id: int):
     import math as _math
     conn = get_connection()
