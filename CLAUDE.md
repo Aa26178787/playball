@@ -292,7 +292,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - **한글 파일 PowerShell -replace 금지** (인코딩 깨짐 → crash loop). Edit 도구 사용
 - **ARM(A1) selenium = snap chromium — 반드시 `crawler/driver_util.arm_or_wdm_chrome` 경유** (직접 webdriver.Chrome 생성 금지 — 신규 크롤러 포함). 규칙: ① binary_location 지정 금지(즉사) ② 프로필 = `~/snap/chromium/common/` 하위 **mkdtemp 인스턴스별 고유**(PID 기반이면 PID 재활용 × 크래시 잔존 SingletonLock → "Chrome instance exited" 간헐 즉사 — 1h 잔존물 자동청소 내장) ③ webdriver_manager는 ARM chromedriver 미제공 ④ scheduler 유닛 MemoryMax=2G(chromium 자식 — 512M이면 OOM 위험, drop-in memory.conf) ⑤ 진단 = env `SELENIUM_DRIVER_LOG=경로`로 verbose 채집
 - PS5.1: here-string 안 큰따옴표 → git -m 인자 깨짐 (**커밋 메시지에 `"` 절대 금지** — pathspec 에러로 커밋 자체 실패, 2회 사고) / Invoke-RestMethod 한글 mojibake(수동 UTF-8 디코드) / `$h`·`$H` 대소문자 동일 변수
-- **웹 이미지 `webHtmlElementStrategy.prefer` 금지** — 목록 수백 장이 전부 플랫폼뷰화 → iOS Safari 렌더러 메모리 크래시 루프("문제 반복 발생"). web 이미지는 CanvasKit 경로(netImage 기본) 유지 / **웹 back-trap pushState는 반드시 `history.state` 보존 재푸시** (null로 덮으면 Flutter 엔진 serialCount 깨짐)
+- **웹 이미지 = 전부 `<img>` 전략 필수** (netImage=webHtmlElementStrategy.prefer + 아바타=netCircleAvatar) — 진범은 CanvasKit의 iOS GPU 메모리 누수(flutter#152709 미해결: 네트워크 이미지 디코드 후 미해제 → 5-10회 내비 후 "문제 반복 발생" 크래시). **웹 도달 위젯에 netImageProvider/CircleAvatar.backgroundImage/DecorationImage 신규 사용 금지** (엔진 디코드 = 누수). native는 영향 없음 / **웹 back-trap pushState는 반드시 `history.state` 보존 재푸시** (null로 덮으면 Flutter 엔진 serialCount 깨짐)
 - ABS 존 상수 plateHalfW=8.5/12, absHalfW=9.95/12, ballR=1.45/12 — 변경 금지
 - TeamLogo 파라미터 `teamCode` / TeamDetailScreen `team`(Map) / NetworkImage 금지 → CachedNetworkImage
 - share_plus ^10.0.0 고정 (10.1.4 = firebase 충돌) / 소셜 로그인 안 함(결정) / 동명이인 team_id 기준
