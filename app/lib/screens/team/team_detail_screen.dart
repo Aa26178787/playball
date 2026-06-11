@@ -1374,9 +1374,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                     child: Text('$order', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white))),
                   const SizedBox(width: 6),
                   Expanded(flex: 4, child: Row(children: [
-                    CircleAvatar(radius: 11, backgroundColor: tc.withValues(alpha: 0.15),
-                      backgroundImage: (topImg != null && topImg.isNotEmpty) ? netImageProvider(topImg) : null,
-                      child: (topImg == null || topImg.isEmpty) ? Icon(Icons.person, size: 13, color: tc) : null),
+                    netCircleAvatar(radius: 11, backgroundColor: tc.withValues(alpha: 0.15),
+                      url: topImg,
+                      child: Icon(Icons.person, size: 13, color: tc)),
                     const SizedBox(width: 5),
                     Expanded(child: Text(topName, maxLines: 1, overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 11, fontWeight: Typo.medium, color: cs.ink))),

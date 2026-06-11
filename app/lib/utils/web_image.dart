@@ -21,9 +21,44 @@ String webSafeImageUrl(String? url) {
 
 /// 플랫폼 안전 ImageProvider (CircleAvatar.backgroundImage 등):
 /// web=NetworkImage / native=CachedNetworkImageProvider. URL 자동 프록시 변환.
+/// ⚠️ web에서 provider 경로 = CanvasKit 엔진 디코드 = iOS Safari GPU 메모리 누수
+/// (flutter#152709, 5-10회 내비 후 크래시) → 웹 도달 위젯은 netCircleAvatar/netImage 사용.
 ImageProvider netImageProvider(String url) {
   final u = webSafeImageUrl(url);
   return kIsWeb ? NetworkImage(u) : CachedNetworkImageProvider(u);
+}
+
+/// CircleAvatar 대체 — web은 ClipOval+netImage(<img> 엘리먼트)로 그려
+/// CanvasKit 디코드(iOS 누수 크래시)를 회피. native는 기존 CircleAvatar 동작.
+Widget netCircleAvatar({
+  required double radius,
+  String? url,
+  Color? backgroundColor,
+  Widget? child,
+}) {
+  final has = url != null && url.isNotEmpty;
+  if (!kIsWeb) {
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: backgroundColor,
+      backgroundImage: has ? netImageProvider(url) : null,
+      child: has ? null : child,
+    );
+  }
+  return SizedBox(
+    width: radius * 2,
+    height: radius * 2,
+    child: ClipOval(
+      child: Container(
+        color: backgroundColor,
+        alignment: Alignment.center,
+        child: has
+            ? netImage(url, width: radius * 2, height: radius * 2,
+                fit: BoxFit.cover, error: () => child ?? const SizedBox.shrink())
+            : child,
+      ),
+    ),
+  );
 }
 
 /// 플랫폼 안전 네트워크 이미지 위젯:
@@ -44,17 +79,17 @@ Widget netImage(
   final u = webSafeImageUrl(url);
   if (u.isEmpty) return error?.call() ?? const SizedBox.shrink();
   if (kIsWeb) {
-    // ⚠️ webHtmlElementStrategy.prefer 금지 확정 (A/B 2회) — iOS standalone PWA
-    // 렌더러 크래시 루프. iOS서 CanvasKit 이미지 미표시는 별도 원인 조사 중.
+    // <img> 엘리먼트 렌더 — CanvasKit 엔진 디코드를 피해 iOS GPU 메모리 누수
+    // 크래시(flutter#152709) + 이미지 미표시 동시 회피. 크래시 진범은 <img>가
+    // 아니라 provider(아바타) 경로의 잔존 엔진 디코드였음 → netCircleAvatar로 함께 제거.
     return Image.network(
       u,
       width: width,
       height: height,
       fit: fit,
       filterQuality: filterQuality,
+      webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
       errorBuilder: (_, __, ___) => error?.call() ?? const SizedBox.shrink(),
-      loadingBuilder: (ctx, child, prog) =>
-          prog == null ? child : (placeholder?.call() ?? child),
     );
   }
   return CachedNetworkImage(

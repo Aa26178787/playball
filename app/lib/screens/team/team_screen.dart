@@ -2148,13 +2148,11 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
               clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
-                CircleAvatar(
+                netCircleAvatar(
                   radius: rank == 1 ? 32 : 24,
-                  backgroundImage: (img != null && img.isNotEmpty) ? netImageProvider(img) : null,
+                  url: img,
                   backgroundColor: medalColor.withValues(alpha: 0.15),
-                  child: (img == null || img.isEmpty)
-                      ? Icon(Icons.person, size: rank == 1 ? 28 : 20, color: medalColor)
-                      : null,
+                  child: Icon(Icons.person, size: rank == 1 ? 28 : 20, color: medalColor),
                 ),
                 Positioned(
                   bottom: -6, right: -6,
@@ -2383,16 +2381,13 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                       )),
                 ),
                 const SizedBox(width: 12),
-                CircleAvatar(
+                netCircleAvatar(
                   radius: 18,
                   backgroundColor: tc.withValues(alpha: isDark ? 0.35 : 0.18),
-                  backgroundImage: (profileImage != null && profileImage.isNotEmpty)
-                      ? netImageProvider(profileImage) : null,
-                  child: (profileImage == null || profileImage.isEmpty)
-                      ? Text(teamDisplayName(teamCode).substring(0,
-                              teamDisplayName(teamCode).length.clamp(0, 2)),
-                          style: TextStyle(color: tc, fontSize: 11, fontWeight: FontWeight.w800))
-                      : null,
+                  url: profileImage,
+                  child: Text(teamDisplayName(teamCode).substring(0,
+                          teamDisplayName(teamCode).length.clamp(0, 2)),
+                      style: TextStyle(color: tc, fontSize: 11, fontWeight: FontWeight.w800)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

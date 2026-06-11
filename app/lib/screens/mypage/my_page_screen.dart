@@ -485,11 +485,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle, color: cs.paper2,
                   border: Border.all(color: cs.line2, width: 2),
-                  image: (img != null && img.isNotEmpty)
-                      ? DecorationImage(image: netImageProvider(img), fit: BoxFit.cover)
-                      : null,
                 ),
-                child: (img == null || img.isEmpty) ? Icon(Icons.person_outline, size: 28, color: cs.sub) : null,
+                clipBehavior: Clip.antiAlias,
+                child: (img != null && img.isNotEmpty)
+                    ? netImage(img, width: 64, height: 64, fit: BoxFit.cover,
+                        error: () => Icon(Icons.person_outline, size: 28, color: cs.sub))
+                    : Icon(Icons.person_outline, size: 28, color: cs.sub),
               ),
               if (_uploadingImage)
                 Positioned.fill(child: Container(
@@ -638,11 +639,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
                               color: c.withValues(alpha: cs.dark ? 0.18 : 0.1),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: c.withValues(alpha: 0.25)),
-                              image: (img != null && img.isNotEmpty)
-                                  ? DecorationImage(image: netImageProvider(img), fit: BoxFit.cover)
-                                  : null,
                             ),
-                            child: (img == null || img.isEmpty) ? Center(child: Icon(Icons.person, size: 22, color: c)) : null,
+                            clipBehavior: Clip.antiAlias,
+                            child: (img != null && img.isNotEmpty)
+                                ? netImage(img, width: 44, height: 44, fit: BoxFit.cover,
+                                    error: () => Center(child: Icon(Icons.person, size: 22, color: c)))
+                                : Center(child: Icon(Icons.person, size: 22, color: c)),
                           ),
                           const SizedBox(height: 6),
                           Text(p['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,

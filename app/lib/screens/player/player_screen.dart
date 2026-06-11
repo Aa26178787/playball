@@ -1000,16 +1000,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                       leading: Stack(
                         alignment: Alignment.bottomRight,
                         children: [
-                          CircleAvatar(
+                          netCircleAvatar(
                             radius: 20,
                             backgroundColor: teamColor(code).withValues(alpha: 0.15),
-                            backgroundImage: (img != null && img.isNotEmpty)
-                                ? netImageProvider(img)
-                                : null,
-                            child: (img == null || img.isEmpty)
-                                ? Text(teamDisplayName(code).characters.take(2).string,
-                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: teamColor(code)))
-                                : null,
+                            url: img,
+                            child: Text(teamDisplayName(code).characters.take(2).string,
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: teamColor(code))),
                           ),
                           if (i < 3)
                             Container(

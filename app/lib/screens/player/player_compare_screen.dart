@@ -152,14 +152,10 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
                 final p = results[i];
                 return ListTile(
                   dense: true,
-                  leading: CircleAvatar(
+                  leading: netCircleAvatar(
                     radius: 14,
-                    backgroundImage: p['profile_image'] != null
-                        ? netImageProvider(p['profile_image'])
-                        : null,
-                    child: p['profile_image'] == null
-                        ? const Icon(Icons.person, size: 14)
-                        : null,
+                    url: p['profile_image'] as String?,
+                    child: const Icon(Icons.person, size: 14),
                   ),
                   title: Text('${p['name']}',
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -249,15 +245,11 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
           MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: p['id']))),
       child: Column(
         children: [
-          CircleAvatar(
+          netCircleAvatar(
             radius: 30,
-            backgroundImage: p['profile_image'] != null
-                ? netImageProvider(p['profile_image'])
-                : null,
+            url: p['profile_image'] as String?,
             backgroundColor: Colors.white24,
-            child: p['profile_image'] == null
-                ? const Icon(Icons.person, color: Colors.white, size: 28)
-                : null,
+            child: const Icon(Icons.person, color: Colors.white, size: 28),
           ),
           const SizedBox(height: 6),
           Text('${p['name']}',

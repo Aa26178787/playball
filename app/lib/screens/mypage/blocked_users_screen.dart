@@ -61,11 +61,10 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
                     final b = _blocks[i];
                     final img = b['profile_image'] as String?;
                     return ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: (img != null && img.isNotEmpty)
-                            ? netImageProvider(img) : null,
-                        child: (img == null || img.isEmpty)
-                            ? const Icon(Icons.person) : null,
+                      leading: netCircleAvatar(
+                        radius: 20,
+                        url: img,
+                        child: const Icon(Icons.person),
                       ),
                       title: Text(b['nickname'] as String? ?? '알 수 없음'),
                       trailing: OutlinedButton(

@@ -191,13 +191,11 @@ class _SearchScreenState extends State<SearchScreen> {
             child: Text('선수', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
           ),
           ..._players.map((p) => ListTile(
-            leading: CircleAvatar(
+            leading: netCircleAvatar(
               radius: 20,
-              backgroundImage: p['profile_image'] != null
-                  ? netImageProvider(p['profile_image']) : null,
+              url: p['profile_image'] as String?,
               backgroundColor: Colors.grey[200],
-              child: p['profile_image'] == null
-                  ? const Icon(Icons.person, size: 20) : null,
+              child: const Icon(Icons.person, size: 20),
             ),
             title: Text(p['name'] ?? ''),
             subtitle: Text('${p['team'] ?? ''} | ${p['position'] ?? ''} | ${p['player_type'] ?? ''}',

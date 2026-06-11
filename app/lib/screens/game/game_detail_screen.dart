@@ -3530,14 +3530,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               leading: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircleAvatar(
+                  netCircleAvatar(
                     radius: 18,
-                    backgroundImage: starterPitcher['profile_image'] != null
-                        ? netImageProvider(starterPitcher['profile_image'])
-                        : null,
-                    child: starterPitcher['profile_image'] == null
-                        ? const Icon(Icons.person, size: 18)
-                        : null,
+                    url: starterPitcher['profile_image'] as String?,
+                    child: const Icon(Icons.person, size: 18),
                   ),
                   const SizedBox(width: 6),
                   Container(
@@ -3660,14 +3656,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircleAvatar(
+          netCircleAvatar(
             radius: 18,
-            backgroundImage: b['profile_image'] != null
-                ? netImageProvider(b['profile_image'])
-                : null,
-            child: b['profile_image'] == null
-                ? const Icon(Icons.person, size: 18)
-                : null,
+            url: b['profile_image'] as String?,
+            child: const Icon(Icons.person, size: 18),
           ),
           const SizedBox(width: 6),
           CircleAvatar(
@@ -3702,10 +3694,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: ListTile(
       dense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      leading: CircleAvatar(
+      leading: netCircleAvatar(
         radius: 18,
-        backgroundImage: profileImage != null ? netImageProvider(profileImage) : null,
-        child: profileImage == null ? const Icon(Icons.person, size: 18) : null,
+        url: profileImage,
+        child: const Icon(Icons.person, size: 18),
       ),
       title: Row(
         children: [
@@ -3827,10 +3819,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: ListTile(
         dense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        leading: CircleAvatar(
+        leading: netCircleAvatar(
           radius: 20,
-          backgroundImage: profileImage != null ? netImageProvider(profileImage) : null,
-          child: profileImage == null ? const Icon(Icons.person, size: 20) : null,
+          url: profileImage,
+          child: const Icon(Icons.person, size: 20),
         ),
         title: Row(
           children: [
@@ -4066,13 +4058,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               leading: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircleAvatar(
+                  netCircleAvatar(
                     radius: 18,
-                    backgroundImage:
-                        profileImage != null ? netImageProvider(profileImage) : null,
-                    child: profileImage == null
-                        ? const Icon(Icons.person, size: 18)
-                        : null,
+                    url: profileImage,
+                    child: const Icon(Icons.person, size: 18),
                   ),
                   const SizedBox(width: 6),
                   isFirst
@@ -4792,11 +4781,11 @@ class _GameShareSheetState extends State<_GameShareSheet> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircleAvatar(
+          netCircleAvatar(
             radius: 10,
             backgroundColor: color.withValues(alpha: 0.2),
-            backgroundImage: imageUrl != null ? netImageProvider(imageUrl) : null,
-            child: imageUrl == null ? Icon(Icons.person, size: 11, color: color) : null,
+            url: imageUrl,
+            child: Icon(Icons.person, size: 11, color: color),
           ),
           const SizedBox(width: 5),
           Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
