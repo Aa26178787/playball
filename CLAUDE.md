@@ -100,6 +100,7 @@ GET /games/{id}/preview @300 | /record_detail @60 | /weather @300
 GET /games/{id}/pitch-types @60 | /pitch-locations @60 (x=횡ft, z=높이ft, 병렬 4)
 GET /games/{id}/highlights @1800 (DB 우선, 없으면 RSS)
 GET /games/{id}/predict | /predictions — ML 승리확률 + 팬 투표
+POST /games/{id}/predict [Bearer] {pick:home|away} — 팬 승부예측 (예정/라인업만, upsert) | GET /games/{id}/fan-predictions — 분포+my_pick (비캐시)
 GET /games/{id}/win-prob-series @30 — 타석별 홈 승률 시계열 (시즌초=naver 승률, 5/9~=인게임 모델 즉석계산, 저장 없음)
 ※ relay의 field_view: batter(bats 포함)/next_batter(타순+1)/runners/defense + current_state.home_win_prob(인게임 모델)
 ```
@@ -134,6 +135,7 @@ GET/POST/DELETE /user/calendar-events + PUT /{id} (수정) — start_time/end_ti
 GET /user/notifications?limit= | POST read-all | PATCH {id}/read
 DELETE /user/notifications/read (read보다 {id} 라우트 뒤!) | DELETE /user/notifications/{id} | DELETE /user/notifications
 GET /user/stadium-ranking (5회 이상, 비로그인 가능) | /user/stadium-stats
+POST /user/points/attendance (KST 일1회 +5) | GET /user/points (total+rank+내역20) | GET /user/points/leaderboard TOP50 (공개, 수동캐시 300s)
 ```
 
 ### 커뮤니티 / 검색 / 구장 / 기타
@@ -158,13 +160,14 @@ stadiums 1=서울 2=고척 3=수원 4=인천 5=대전 6=광주 7=대구 8=창원
 `id, name, team_id, player_type, number, profile_image, naver_player_id, position, throws, bats, height, weight, birth_date, insta_handle`
 - ⚠️ pitching_style 컬럼 없음 (game_rosters.pitching_style 또는 throws 사용)
 - insta_handle: 358명 등록 (활성 기준, 미등록 140 중 외국인 ~31). **검증·도구·워크플로 = `backend/crawler/INSTA_VERIFY.md`** (⭐imginn 본인검증=gold, 가족계정·동명이인 색출, ⚠️Google AI개요 핸들 환각 절대금지). 신고 = `insta_handle_reports` + `POST /players/{id}/report-insta`
-- ⚠️ 양현종·이태양 = KIA·키움 양쪽 중복(team_id 오배정 의심, 미해결)
+- 양현종·이태양 = **실존 동명이인 확정**(2026-06-12 조사 — 오배정 아님): 양현종 KIA투수#343/키움 내야수#91, 이태양 KIA투수#325/키움 투수#8336 — naver_id 상이·양쪽 실데이터. ⚠️ 잔여 리스크 = **이름 조인**(plate_appearances·존히트맵)서 이태양 투수 2명 데이터 혼합(WPA는 HAVING count=1 스킵 가드 有). 근본해결 = PA에 naver_id 컬럼(보류)
 
 ### games
 `id, naver_game_id, game_date, status(예정/진행/종료/취소), home/away_team_id, stadium_id, 스코어/이닝/안타/실책, start_time`
 
 ### game_* 테이블
-- game_innings / game_pitches(seqno, type, title — 투구+이벤트) / game_pitchers(result=승/패/세이브/홀드) / game_batters / game_rosters(roster_type, batting_order, position, pitching_style, is_starter) / game_highlights / game_relay_archive(payload JSONB) / game_predictions(UNIQUE user,game)
+- game_innings / game_pitches(seqno, type, title — 투구+이벤트) / game_pitchers(result=승/패/세이브/홀드) / game_batters / game_rosters(roster_type, batting_order, position, pitching_style, is_starter) / game_highlights / game_relay_archive(payload JSONB) / game_predictions(user_id·game_id FK CASCADE, pick CHECK home|away, UNIQUE(user,game) — 팬 승부예측, 메가B)
+- **point_ledger** (메가B 2026-06-12): user_id FK CASCADE, points, reason, ref_key, UNIQUE(user_id,reason,ref_key)=멱등 dedup. 적립 = `api/points.py award()` 경유만 (적중50/참여·무승부10/출석5/직관20). 정산 = scheduler 종료 후처리 (ref `pred:{gid}`). 잔여 메가B: 뱃지·주간미션·푸시GW·quiet hours·온보딩 모드
 - game_pitch_locations: `game_id, inning, inning_half, pitcher_name, batter_name, x, z, result(ball/strike/swing/foul/hit), top_sz, bot_sz, pitch_type, stance(R/L)` — 106k+ 행, 피칭디자인/타자존 소스
   - ※ result='hit'은 인플레이 (안타 아님). 안타 판정 = game_pitches 타석 결과 텍스트 ('1루타/2루타/3루타/홈런/내야안타' — '안타' 단독 표기 안 씀)
 
@@ -289,7 +292,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 ## 주의사항
 - **baseUrl HTTPS 고정** / git push --force / 커밋·배포·로그·APK는 묻지 않고 실행
 - **배포 시 playball + playball-scheduler 둘 다 재시작**
-- **한글 파일 PowerShell -replace 금지** (인코딩 깨짐 → crash loop). Edit 도구 사용
+- **한글 파일 PowerShell -replace/Add-Content/Set-Content 전부 금지** (인코딩 깨짐 → crash loop). Edit/Write 도구만. 06-12 사고: api_service.dart·games.py 전체 mojibake → HEAD 복원+Edit 재적용으로 복구. 의심 시 `git diff`에 무관 한글줄 대량 변경 = 오염 신호
 - **ARM(A1) selenium = snap chromium — 반드시 `crawler/driver_util.arm_or_wdm_chrome` 경유** (직접 webdriver.Chrome 생성 금지 — 신규 크롤러 포함). 규칙: ① binary_location 지정 금지(즉사) ② 프로필 = `~/snap/chromium/common/` 하위 **mkdtemp 인스턴스별 고유**(PID 기반이면 PID 재활용 × 크래시 잔존 SingletonLock → "Chrome instance exited" 간헐 즉사 — 1h 잔존물 자동청소 내장) ③ webdriver_manager는 ARM chromedriver 미제공 ④ scheduler 유닛 MemoryMax=2G(chromium 자식 — 512M이면 OOM 위험, drop-in memory.conf) ⑤ 진단 = env `SELENIUM_DRIVER_LOG=경로`로 verbose 채집
 - PS5.1: here-string 안 큰따옴표 → git -m 인자 깨짐 (**커밋 메시지에 `"` 절대 금지** — pathspec 에러로 커밋 자체 실패, 2회 사고) / Invoke-RestMethod 한글 mojibake(수동 UTF-8 디코드) / `$h`·`$H` 대소문자 동일 변수
 - **웹 이미지 3대 규칙 (06-11~12 크래시·미표시 전쟁 최종결론 — 변경 금지)**: ① **CanvasKit-only** — `webHtmlElementStrategy.prefer`(<img> 플랫폼뷰) 절대 금지 (iOS Safari 26 탭/standalone 불문 "문제 반복 발생" 크래시, A/B 5회) ② **네트워크 이미지 = `web_image.dart`의 `_FetchImage`(fetch 바이트→`createImageBitmap`→`ui_web.createImageFromImageBitmap` 주입) 필수** — Safari 26은 `<img>` 네트워크 로더가 200 응답에도 error 이벤트를 내고(WebKit 버그), 엔진 바이트 디코더도 내부 blob+img라 동일 실패. 실기기 단계별 진단(`/static/imgtest.html` — 보존됨)으로 PASS 조각만 조립한 파이프라인. OneFrame이라 GIF 애니는 미지원(업로드는 jpg/png만이라 무관) ③ **netImageProvider/CircleAvatar.backgroundImage/DecorationImage를 웹 도달 위젯에 신규 사용 금지** → netCircleAvatar/netImage 사용. 부가: standalone PWA 비활성(홈 아이콘=Safari로 열림), index.html에 ImageDecoder 숨김+detached decode 심 = 방어층으로 유지, **back-trap pushState는 `history.state` 보존 재푸시**(null이면 엔진 serialCount 깨짐), 캐시 오염 시 처방=`webSafeImageUrl` `_cb` 범프
@@ -325,6 +328,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - **06-11b 메가A 착수**: 플랫폼 코어(game_event_stream 8종 발행 + plate_appearances 24,584타석 백필 — 분포 리그 정합 검증) → **matchup 직접대결**(서버+선수상세+필드뷰 좌하단 라이브 캡션) → **인게임 승률 모델 v1**(AUC .853)+win-prob-series+relay home_win_prob → **승률 그래프 UI**(중계탭 상단 `_WinProbChart` — 타석별 라인·50%점선·이닝라벨·터치툴팁·라이브30s) → **결정적순간 푸시**(`_check_clutch_moment` — game_pitches 최신행→모델, ±20%p·5회+, 시뮬 평균 0.81건/경기). **per-PA 안타확률 = 검증 후 보류**(AUC 0.50 — 1시즌 표본으론 타자 간 분산이 타석 노이즈에 묻힘, 출루 라벨도 동일. `pa_hit_model.py` 보존, 2시즌+ 재평가. 데일리픽 등 의존 기능 동반 보류) → **불펜 피로도**(bullpen-status + 경기상세 로스터 불펜 색상뱃지·범례 — 라이브 검증: 조동욱 red 2연투 정합). **메가A 전체 완료** (per-PA만 데이터 사유 보류). ⚠️**서버 pull 충돌 주의 확장: 학습 coef json도 untracked 충돌원** (ingame_coef.json 사고 — pull 실패로 직전 배포 누락됐었음. 산출물 커밋 전 서버 측 rm) ⚠️5/9~ Naver win_rate 미수신 건 라이브 시간대 확인 대기
 - **06-11c A1이전+3시즌화**: A1.Flex 마이그레이션(상단 인프라) → **PA type23 파서버그 발견·수정**(홈런/SF 타석 증발 — 전체 재구축 132,949→145,689 PA, 김도영 2024 HR 38 정합 확인) → 모델 재학습(ingame AUC .8541@14.5만 / **per-PA .5226 — 0.497서 개선됐지만 표면노출 계속 보류**, matchup 통산은 3시즌 자동 수혜) → **24·25 시즌스탯 적재**(네이버 통계 match-only + KBO 보강 + statiz 타자파생 미실행 오타픽스) → **선수상세 시즌칩**(2026/2025/2024/통산 — 통산=클라 집계(카운팅 합·비율 재계산·불가시 표본가중), 리그비교/규정뱃지는 최신시즌 뷰만) → **홈 날짜스트립 2024-03~ 확장**(연도 픽커 추가, 월칩 = 보는 연도 기준, 오프시즌 날짜 = 경기없음 비활성). 존히트맵/피칭디자인은 자연히 3시즌 합산됨(표본↑, 의도)
 - **06-10 선수상세 개편**: 핵심스탯 커스텀피커(선수별 슬롯)+리그순위/규정미달/방향인식 비교말풍선(길게누르기,단어줄바꿈 word-joiner)·스탯 ⓘ용어설명·세부그리드=전체−핵심·팀상세 SNS링크(YT/IG/굿즈)·최근본선수칩·인스타 신고버튼. **인스타 다중검증(상세=INSTA_VERIFY.md): 339→358, imginn으로 가족계정9·동명이인 박멸**. 선발투수 게임카드 조기표시(`_update_probable_starters` 오늘+내일). 홀드 GREATEST고정버그(올러294)→자가치유
+- **06-12 메가B 1차 (포인트 원장)**: point_ledger+game_predictions 테이블 → `api/points.py award()`(UNIQUE 멱등) → 예측 API(POST predict/GET fan-predictions) → scheduler 종료 정산(적중50/참여10) → 출석(+5 일1회)/직관(+20) 훅 → 리더보드 TOP50 → 게임카드 `_PredictionBar` 팬투표 섹션(픽 버튼→분포바+✓내픽, 'AI 승리 예측' 바 아래)+홈 출석 사일런트+마이페이지 points_screen(내 포인트/랭킹/적립내역). **mojibake 사고 복구**: api_service.dart·games.py 워킹카피 전체 오염(과거 PS append) → HEAD 복원+Edit 재적용, predictGame류 authHeaders 누락도 교정
 
 ## 해야할 것
 ### 즉시 (코드측)
