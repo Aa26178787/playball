@@ -3,7 +3,8 @@
 KBO 야구 앱 | Flutter + FastAPI + PostgreSQL
 
 ## 인프라
-- 서버: Oracle Cloud Ubuntu 22.04 | 168.107.61.147:8000 (내부), HTTPS: playball.duckdns.org
+- 서버: Oracle Cloud **A1.Flex (ARM aarch64, 4 OCPU/24GB)** Ubuntu 22.04 | 168.107.36.158:8000 (내부), HTTPS: playball.duckdns.org (2026-06-11 마이그레이션 — duckdns 자동갱신 cron 서버 등록)
+- 구 x86 박스 168.107.61.147 = 롤백 대기 (서비스 disabled, DB는 컷오버 시점 스냅샷 — 안정 확인 후 인스턴스 종료 가능)
 - SSH 키: `C:\Users\qq772\Downloads\ssh-key-2026-03-28 (2).key`
 - DB: localhost:5432(서버)/5433(터널), db=playball, user=playball_user, pw=<env DB_PASSWORD> (회전 2026-06-09, 평문 보관 금지)
 - 레포: https://github.com/Aa26178787/playball
@@ -16,7 +17,7 @@ KBO 야구 앱 | Flutter + FastAPI + PostgreSQL
 
 ## 주요 명령어
 ```bash
-ssh -i "C:\Users\qq772\Downloads\ssh-key-2026-03-28 (2).key" ubuntu@168.107.61.147
+ssh -i "C:\Users\qq772\Downloads\ssh-key-2026-03-28 (2).key" ubuntu@168.107.36.158
 # ⚠️ scheduler는 별도 서비스 — 백엔드 배포 시 반드시 둘 다 재시작 (미재시작 → 패치 미적용 사고 이력)
 cd ~/playball && git pull origin main --rebase && sudo systemctl restart playball && sudo systemctl restart playball-scheduler
 sudo journalctl -u playball -f          # API 로그

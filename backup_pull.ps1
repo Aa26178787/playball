@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 $dir = "$env:USERPROFILE\playball_backups"
 $marker = Join-Path $dir '.last_pull'
 $key = 'C:\Users\qq772\Downloads\ssh-key-2026-03-28 (2).key'
-$srv = 'ubuntu@168.107.61.147'
+$srv = 'ubuntu@168.107.36.158'
 $ssh = "$env:SystemRoot\System32\OpenSSH\ssh.exe"
 $scp = "$env:SystemRoot\System32\OpenSSH\scp.exe"
 
