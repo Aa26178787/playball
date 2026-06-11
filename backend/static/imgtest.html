@@ -22,6 +22,9 @@
 <div class="t"><b>3. createImageBitmap</b> <span id="r3">…</span><small id="d3"></small></div>
 <div class="t"><b>4. 2D 캔버스 드로</b> <span id="r4">…</span><canvas id="c4" width="92" height="88"></canvas></div>
 <div class="t"><b>5. WebGL2 텍스처 드로</b> <span id="r5">…</span><canvas id="c5" width="92" height="88"></canvas><small id="d5"></small></div>
+<div class="t"><b>6. 엔진방식(/ni/): crossOrigin+decode()</b> <span id="r6">…</span><img id="i6"><small id="d6"></small></div>
+<div class="t"><b>7. 엔진방식(pstatic 직접): crossOrigin+decode()</b> <span id="r7">…</span><img id="i7"><small id="d7"></small></div>
+<div class="t"><b>8. pstatic 직접 fetch(cors)</b> <span id="r8">…</span><small id="d8"></small></div>
 
 <script>
 const URLIMG = '/ni/sports-phinf.pstatic.net/team/kbo/default/LG.png?type=f92_88&_cb=3';
@@ -35,6 +38,24 @@ const i1 = document.getElementById('i1');
 i1.onload = () => S('r1', true);
 i1.onerror = e => S('r1', false, '' + e);
 i1.src = URLIMG;
+
+// 6/7. Flutter 엔진 폴백 완전복제: img.crossOrigin=anonymous + decoding=async + decode()
+const DIRECT = 'https://sports-phinf.pstatic.net/team/kbo/default/LG.png?type=f92_88';
+function engineWay(rid, iid, src) {
+  const img = document.getElementById(iid);
+  img.crossOrigin = 'anonymous';
+  img.decoding = 'async';
+  img.src = src;
+  img.decode().then(() => S(rid, true))
+    .catch(e => S(rid, false, e.name + ': ' + e.message));
+}
+engineWay('r6', 'i6', URLIMG + '&eng=1');
+engineWay('r7', 'i7', DIRECT);
+
+// 8. pstatic 직접 fetch (cors 모드 — Origin 헤더 포함)
+fetch(DIRECT, { mode: 'cors' })
+  .then(r => r.blob().then(b => S('r8', r.ok, `status=${r.status} size=${b.size}`)))
+  .catch(e => S('r8', false, '' + e));
 
 (async () => {
   // 2. fetch
