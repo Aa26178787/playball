@@ -4,7 +4,7 @@ KBO 야구 앱 | Flutter + FastAPI + PostgreSQL
 
 ## 인프라
 - 서버: Oracle Cloud **A1.Flex (ARM aarch64, 4 OCPU/24GB)** Ubuntu 22.04 | 168.107.36.158:8000 (내부), HTTPS: playball.duckdns.org (2026-06-11 마이그레이션 — duckdns 자동갱신 cron 서버 등록)
-- 구 x86 박스 168.107.61.147 = 롤백 대기 (서비스 disabled, DB는 컷오버 시점 스냅샷 — 안정 확인 후 인스턴스 종료 가능)
+- 구 x86 박스 168.107.61.147 = **DNS 릴레이 중** (nginx가 신 서버로 전체 프록시 — 폰/통신사 DNS 캐시가 구 IP 물고 502나던 사고 해결. 원본 conf 백업 = 구박스 /tmp/playball.nginx.pre-relay.bak). API/scheduler disabled, DB = 컷오버 스냅샷. **종료는 DNS 캐시 정리 후(1주+) — 끄면 캐시 잔존 유저 전원 접속 불가**
 - SSH 키: `C:\Users\qq772\Downloads\ssh-key-2026-03-28 (2).key`
 - DB: localhost:5432(서버)/5433(터널), db=playball, user=playball_user, pw=<env DB_PASSWORD> (회전 2026-06-09, 평문 보관 금지)
   - pg 튜닝(2026-06-11, 24G 박스): ALTER SYSTEM(auto.conf) — shared_buffers 4G·effective_cache_size 12G·work_mem 32M·maintenance 1G·max_wal 2G·random_page_cost 1.1·parallel 4/2. DB 재구축 시 auto.conf 보존/재적용
