@@ -89,7 +89,16 @@ Widget netImage(
       height: height,
       fit: fit,
       filterQuality: filterQuality,
-      errorBuilder: (_, __, ___) => error?.call() ?? const SizedBox.shrink(),
+      // 임시 진단(웹): 미표시 원인 추적 — 엔진 에러 원문을 화면에 노출.
+      // 원인 확정 후 SizedBox.shrink()로 되돌릴 것.
+      errorBuilder: (_, err, __) => Container(
+        width: width,
+        height: height,
+        color: const Color(0x33FF0000),
+        alignment: Alignment.center,
+        child: Text('$err', maxLines: 4,
+            style: const TextStyle(fontSize: 7, color: Color(0xFFFF5252))),
+      ),
       loadingBuilder: (ctx, child, prog) =>
           prog == null ? child : (placeholder?.call() ?? child),
     );
