@@ -25,6 +25,7 @@
 <div class="t"><b>6. 엔진방식(/ni/): crossOrigin+decode()</b> <span id="r6">…</span><img id="i6"><small id="d6"></small></div>
 <div class="t"><b>7. 엔진방식(pstatic 직접): crossOrigin+decode()</b> <span id="r7">…</span><img id="i7"><small id="d7"></small></div>
 <div class="t"><b>8. pstatic 직접 fetch(cors)</b> <span id="r8">…</span><small id="d8"></small></div>
+<div class="t"><b>9. 엔진방식(detached — DOM 미부착)</b> <span id="r9">…</span><small id="d9"></small></div>
 
 <script>
 const URLIMG = '/ni/sports-phinf.pstatic.net/team/kbo/default/LG.png?type=f92_88&_cb=3';
@@ -56,6 +57,16 @@ engineWay('r7', 'i7', DIRECT);
 fetch(DIRECT, { mode: 'cors' })
   .then(r => r.blob().then(b => S('r8', r.ok, `status=${r.status} size=${b.size}`)))
   .catch(e => S('r8', false, '' + e));
+
+// 9. 엔진 완전복제 핵심: createElement만 하고 DOM에 안 붙인 채 decode()
+(function () {
+  const img = document.createElement('img');
+  img.crossOrigin = 'anonymous';
+  img.decoding = 'async';
+  img.src = URLIMG + '&det=1';
+  img.decode().then(() => S('r9', true, 'detached decode OK'))
+    .catch(e => S('r9', false, e.name + ': ' + e.message));
+})();
 
 (async () => {
   // 2. fetch

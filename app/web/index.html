@@ -49,6 +49,30 @@
     if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
       try { delete window.ImageDecoder; } catch (e) {}
       try { if (window.ImageDecoder) window.ImageDecoder = undefined; } catch (e) {}
+      // Safari 26: DOM에 미부착(detached) <img>의 decode()가 EncodingError
+      // "Loading error."로 거부됨 — Flutter 엔진이 정확히 detached img+decode()를
+      // 사용해 전 이미지 미표시. detached일 때만 load 이벤트 기반으로 대체.
+      try {
+        const origDecode = HTMLImageElement.prototype.decode;
+        HTMLImageElement.prototype.decode = function () {
+          if (this.isConnected) return origDecode.call(this);
+          const img = this;
+          return new Promise(function (resolve, reject) {
+            if (img.complete && img.naturalWidth > 0) return resolve();
+            if (img.complete) return reject(new DOMException('Loading error.', 'EncodingError'));
+            const cleanup = function () {
+              img.removeEventListener('load', onLoad);
+              img.removeEventListener('error', onError);
+            };
+            const onLoad = function () { cleanup(); resolve(); };
+            const onError = function () {
+              cleanup(); reject(new DOMException('Loading error.', 'EncodingError'));
+            };
+            img.addEventListener('load', onLoad);
+            img.addEventListener('error', onError);
+          });
+        };
+      } catch (e) {}
     }
     window.flutter_inappwebview = window.flutter_inappwebview || {};
     // 기존(깨진) 서비스워커 등록 해제 — 베타 중 캐시 누적 방지
