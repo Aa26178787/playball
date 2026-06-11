@@ -1,9 +1,10 @@
-import 'dart:ui' as ui;
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+
+import 'web_update/web_bitmap_stub.dart'
+    if (dart.library.html) 'web_update/web_bitmap_web.dart';
 
 /// Flutter web CanvasKit는 CORS 헤더 없는 외부 이미지를 canvas에 렌더 못 함.
 /// 네이버(pstatic) 이미지를 같은 도메인 nginx 프록시(`/ni/<host>/<path>`)로 우회.
@@ -47,24 +48,21 @@ class _FetchImage extends ImageProvider<_FetchImage> {
 
   @override
   ImageStreamCompleter loadImage(_FetchImage key, ImageDecoderCallback decode) {
-    return MultiFrameImageStreamCompleter(
-      codec: _load(key, decode),
-      scale: 1.0,
-      debugLabel: key.url,
-    );
+    return OneFrameImageStreamCompleter(_loadInfo(key));
   }
 
   static final Dio _dio = Dio();
 
-  Future<ui.Codec> _load(_FetchImage key, ImageDecoderCallback decode) async {
+  Future<ImageInfo> _loadInfo(_FetchImage key) async {
     final res = await _dio.get<List<int>>(key.url,
         options: Options(responseType: ResponseType.bytes));
     final bytes = Uint8List.fromList(res.data ?? const []);
     if (bytes.isEmpty) {
       throw Exception('빈 이미지 응답: ${key.url}');
     }
-    final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
-    return decode(buffer);
+    // fetch(PASS) → createImageBitmap(PASS) → 엔진 주입 — <img> 경로 0%
+    final image = await bytesToUiImage(bytes);
+    return ImageInfo(image: image);
   }
 
   @override
