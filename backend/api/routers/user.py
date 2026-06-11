@@ -749,6 +749,12 @@ def add_stadium_visit(body: StadiumVisitCreate, current_user: dict = Depends(get
             RETURNING id
         """, (current_user['user_id'], body.game_id, body.result, body.memo, body.image_url))
         visit_id = cur.fetchone()[0]
+        # 직관 기록 포인트 (+20, 경기당 1회 — 원장 UNIQUE dedup)
+        try:
+            from api.points import award
+            award(cur, current_user['user_id'], 'visit_record', f'visit:{body.game_id}')
+        except Exception:
+            pass
         conn.commit()
     except Exception as e:
         conn.rollback()
@@ -869,3 +875,84 @@ def get_stadium_ranking(limit: int = 30):
             "win_rate": win_rate,
         })
     return {"ranking": result}
+
+
+# ─── 포인트 (메가B 리텐션) ──────────────────────────────────────────────────────
+
+@router.post('/points/attendance')
+def points_attendance(current_user: dict = Depends(get_current_user)):
+    """일일 출석 적립 (+5, KST 기준 하루 1회 — 원장 UNIQUE dedup)"""
+    from datetime import datetime, timedelta, timezone
+    from api.points import award, total_points
+    kst_today = (datetime.now(timezone.utc) + timedelta(hours=9)).strftime('%Y-%m-%d')
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    try:
+        awarded = award(cur, current_user['user_id'], 'attendance', f'att:{kst_today}')
+        conn.commit()
+        total = total_points(cur, current_user['user_id'])
+    finally:
+        cur.close(); conn.close()
+    return {"awarded": bool(awarded), "total": total}
+
+
+@router.get('/points')
+def my_points(current_user: dict = Depends(get_current_user)):
+    """내 포인트 합계 + 최근 내역 20건"""
+    from api.points import total_points
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    total = total_points(cur, current_user['user_id'])
+    cur.execute("""
+        SELECT points, reason, ref_key, created_at
+        FROM point_ledger WHERE user_id = %s
+        ORDER BY id DESC LIMIT 20
+    """, (current_user['user_id'],))
+    history = [
+        {"points": r[0], "reason": r[1], "ref": r[2], "at": str(r[3])[:19]}
+        for r in cur.fetchall()
+    ]
+    cur.execute("""
+        SELECT count(*) + 1 FROM (
+            SELECT user_id, SUM(points) s FROM point_ledger GROUP BY user_id
+        ) t WHERE t.s > %s
+    """, (total,))
+    rank = cur.fetchone()[0] if total > 0 else None
+    cur.close(); conn.close()
+    return {"total": total, "rank": rank, "history": history}
+
+
+@router.get('/points/leaderboard')
+def points_leaderboard():
+    """포인트 랭킹 TOP 50 (공개)"""
+    from api.cache import cache_get, cache_set
+    _ck = 'points_leaderboard'
+    hit, val = cache_get(_ck)
+    if hit:
+        return val
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT u.nickname, COALESCE(u.profile_image, ''), SUM(l.points) AS total,
+               COUNT(*) FILTER (WHERE l.reason = 'prediction_win') AS wins
+        FROM point_ledger l
+        JOIN users u ON u.id = l.user_id
+        GROUP BY u.id, u.nickname, u.profile_image
+        ORDER BY total DESC, wins DESC
+        LIMIT 50
+    """)
+    rows = [
+        {"rank": i + 1, "nickname": r[0], "profile_image": r[1] or None,
+         "total": int(r[2]), "wins": int(r[3])}
+        for i, r in enumerate(cur.fetchall())
+    ]
+    cur.close(); conn.close()
+    result = {"leaderboard": rows}
+    cache_set(_ck, result, 300)
+    return result

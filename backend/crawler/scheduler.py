@@ -1565,6 +1565,40 @@ def smart_update():
                         print(f"[{datetime.now()}] PA 적재: game_id={gid} {n_pa}타석")
                     except Exception as pa_err:
                         print(f"[{datetime.now()}] PA 적재 오류 game={gid}: {pa_err}")
+                    # 승부예측 포인트 정산 — 원장 UNIQUE(user,reason,ref)가 재실행 dedup
+                    try:
+                        from api.points import award
+                        _hs = curr.get('home_score')
+                        _as = curr.get('away_score')
+                        if _hs is not None and _as is not None:
+                            _winner = ('home' if _hs > _as else
+                                       'away' if _as > _hs else None)
+                            conn_pt = get_connection()
+                            if conn_pt:
+                                try:
+                                    cur_pt = conn_pt.cursor()
+                                    cur_pt.execute(
+                                        "SELECT user_id, pick FROM game_predictions WHERE game_id = %s",
+                                        (gid,))
+                                    _n_win = _n_part = 0
+                                    for _uid, _pick in cur_pt.fetchall():
+                                        if _winner is None:
+                                            award(cur_pt, _uid, 'prediction_draw', f'pred:{gid}')
+                                            _n_part += 1
+                                        elif _pick == _winner:
+                                            award(cur_pt, _uid, 'prediction_win', f'pred:{gid}')
+                                            _n_win += 1
+                                        else:
+                                            award(cur_pt, _uid, 'prediction_lose', f'pred:{gid}')
+                                            _n_part += 1
+                                    conn_pt.commit()
+                                    cur_pt.close()
+                                    if _n_win or _n_part:
+                                        print(f"[{datetime.now()}] 예측 정산 game={gid}: 적중 {_n_win} / 참여 {_n_part}")
+                                finally:
+                                    conn_pt.close()
+                    except Exception as pt_err:
+                        print(f"[{datetime.now()}] 예측 정산 오류 game={gid}: {pt_err}")
                     # 동명이인 자동 정정 (game_pitchers + game_batters)
                     # 1) 합쳐진 케이스: raw stats 재INSERT
                     try:

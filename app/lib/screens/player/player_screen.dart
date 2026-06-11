@@ -816,6 +816,11 @@ class _PlayerScreenState extends State<PlayerScreen>
       return ListView.builder(
         padding: EdgeInsets.only(bottom: navBottom),
         itemCount: players.length,
+        // 500행 리스트 스크롤 비용 절감 — 행 높이를 1회 측정으로 고정
+        prototypeItem: players.isEmpty
+            ? null
+            : _buildRankRow(1, players.first as Map,
+                statOf(players.first as Map), label),
         itemBuilder: (_, i) {
           final p = players[i] as Map;
           return _buildRankRow(i + 1, p, statOf(p), label);

@@ -16,6 +16,7 @@ import '../team/team_detail_screen.dart';
 import '../community/post_detail_screen.dart';
 import 'phone_verify_screen.dart';
 import 'blocked_users_screen.dart';
+import 'points_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/web_image.dart';
 
@@ -397,6 +398,24 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       if (_myComments.isNotEmpty) _buildMyComments(cs),
                       if (_settingsLoaded) _buildNotifSettings(cs, myColor),
                       _buildDarkMode(cs, myColor),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+                        child: GestureDetector(
+                          onTap: () => Navigator.push(context, MaterialPageRoute(
+                              builder: (_) => const PointsScreen())),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: _cardDeco(cs),
+                            child: Row(children: [
+                              const Icon(Icons.stars_rounded, size: 18, color: Color(0xFFD97706)),
+                              const SizedBox(width: 12),
+                              Expanded(child: Text('내 포인트 · 랭킹',
+                                  style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.ink))),
+                              Icon(Icons.chevron_right, size: 18, color: cs.sub),
+                            ]),
+                          ),
+                        ),
+                      ),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
                         child: GestureDetector(

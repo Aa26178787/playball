@@ -1050,4 +1050,39 @@ class ApiService {
         options: Options(headers: headers));
     return res.data['profile_image'] as String;
   }
+
+  // ===== 포인트/승부예측 (메가B) =====
+  static Future<Map<String, dynamic>> predictGame(int gameId, String pick) async {
+    final headers = await authHeaders();
+    final res = await _dio.post('/games/$gameId/predict',
+        data: {'pick': pick}, options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  /// 팬 예측 분포 — 로그인 시 my_pick 포함 (비로그인 호출 가능)
+  static Future<Map<String, dynamic>> getFanPredictions(int gameId) async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/games/$gameId/fan-predictions',
+        options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  /// 일일 출석 적립 — 홈 진입 시 사일런트 호출 (실패 무시)
+  static Future<void> checkAttendance() async {
+    try {
+      final headers = await authHeaders();
+      await _dio.post('/user/points/attendance', options: Options(headers: headers));
+    } catch (_) {}
+  }
+
+  static Future<Map<String, dynamic>> getMyPoints() async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/user/points', options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<Map<String, dynamic>> getPointsLeaderboard() async {
+    final res = await _dio.get('/user/points/leaderboard');
+    return Map<String, dynamic>.from(res.data);
+  }
 }

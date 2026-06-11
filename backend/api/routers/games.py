@@ -1931,3 +1931,65 @@ def get_win_prob_series(game_id: int):
         "series": series,
         "final_prob": final_prob,
     }
+
+
+# ─── 팬 승부예측 (메가B — 포인트 원장 연동) ─────────────────────────────────────
+
+@router.post("/{game_id}/predict")
+def predict_game(game_id: int, body: dict, user=Depends(get_current_user)):
+    """승부 픽 등록/변경 — 경기 시작 전(예정/라인업)만. pick = home|away"""
+    pick = (body or {}).get("pick")
+    if pick not in ("home", "away"):
+        raise HTTPException(status_code=400, detail="pick은 home 또는 away")
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("SELECT status FROM games WHERE id = %s", (game_id,))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        raise HTTPException(status_code=404, detail="경기 없음")
+    if row[0] not in ("예정", "라인업"):
+        cur.close(); conn.close()
+        raise HTTPException(status_code=409, detail="경기 시작 전에만 예측할 수 있습니다")
+    cur.execute(
+        """
+        INSERT INTO game_predictions (user_id, game_id, pick)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (user_id, game_id) DO UPDATE SET pick = EXCLUDED.pick
+        """,
+        (user["user_id"], game_id, pick),
+    )
+    conn.commit()
+    cur.close(); conn.close()
+    return {"game_id": game_id, "pick": pick}
+
+
+@router.get("/{game_id}/fan-predictions")
+def get_fan_predictions(game_id: int, user=Depends(get_optional_user)):
+    """예측 분포 + (로그인 시) 내 픽. 비캐시 — 픽 직후 개인화 반영"""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT
+          COUNT(*) FILTER (WHERE pick = 'home'),
+          COUNT(*) FILTER (WHERE pick = 'away')
+        FROM game_predictions WHERE game_id = %s
+        """,
+        (game_id,),
+    )
+    home_cnt, away_cnt = cur.fetchone()
+    my_pick = None
+    if user:
+        cur.execute(
+            "SELECT pick FROM game_predictions WHERE game_id = %s AND user_id = %s",
+            (game_id, user["user_id"]),
+        )
+        r = cur.fetchone()
+        my_pick = r[0] if r else None
+    cur.close(); conn.close()
+    return {"game_id": game_id, "home": home_cnt, "away": away_cnt, "my_pick": my_pick}

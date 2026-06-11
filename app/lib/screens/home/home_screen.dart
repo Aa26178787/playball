@@ -507,6 +507,8 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       // 핵심 로드 후 비우선 작업 지연
       Future.delayed(const Duration(seconds: 2), () {
         if (!mounted) return;
+        // 일일 출석 적립 (+5, 사일런트 — 서버 dedup이라 중복 무해)
+        if (_authProvider?.isLoggedIn == true) ApiService.checkAttendance();
         _loadTodayRosterChanges();
         _loadUnreadCount();
         _loadTomorrowGames();
@@ -2584,11 +2586,18 @@ class _PredictionBarState extends State<_PredictionBar> {
   String _awayStarter = '';
   bool _loading = true;
 
+  // 팬 승부예측 (포인트 연동)
+  int _fanHome = 0, _fanAway = 0;
+  String? _myPick;
+  bool _fanLoaded = false;
+  bool _voting = false;
+
   @override
   void initState() {
     super.initState();
     _applyCache();
     if (_loading) _load();
+    _loadFan();
   }
 
   @override
@@ -2597,6 +2606,54 @@ class _PredictionBarState extends State<_PredictionBar> {
     if (old.gameId != widget.gameId) {
       _applyCache();
       if (_loading) _load();
+      _fanLoaded = false;
+      _loadFan();
+    }
+  }
+
+  Future<void> _loadFan() async {
+    try {
+      final d = await ApiService.getFanPredictions(widget.gameId);
+      if (mounted) {
+        setState(() {
+          _fanHome = (d['home'] as num?)?.toInt() ?? 0;
+          _fanAway = (d['away'] as num?)?.toInt() ?? 0;
+          _myPick = d['my_pick'] as String?;
+          _fanLoaded = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _fanLoaded = true);
+    }
+  }
+
+  Future<void> _vote(String pick) async {
+    if (_voting) return;
+    setState(() => _voting = true);
+    try {
+      await ApiService.predictGame(widget.gameId, pick);
+      HapticFeedback.lightImpact();
+      await _loadFan();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('예측 등록! 적중하면 +50P'),
+          duration: Duration(milliseconds: 1600),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        final msg = '$e'.contains('409')
+            ? '경기 시작 후에는 예측할 수 없어요'
+            : '로그인 후 예측할 수 있어요';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(msg),
+          duration: const Duration(milliseconds: 1600),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _voting = false);
     }
   }
 
@@ -2699,7 +2756,96 @@ class _PredictionBarState extends State<_PredictionBar> {
           Text('$_homeStarter vs $_awayStarter',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
         ],
+        const SizedBox(height: 10),
+        _buildFanSection(t, homeColor, awayColor),
       ],
     );
   }
+
+  Widget _buildFanSection(_Tok t, Color homeColor, Color awayColor) {
+    if (!_fanLoaded) return const SizedBox(height: 24);
+    final total = _fanHome + _fanAway;
+
+    Widget header = Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(children: [
+        Text('팬 승부예측',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: t.ink3, letterSpacing: 0.2)),
+        const SizedBox(width: 5),
+        if (total > 0)
+          Text('$total명 참여', style: TextStyle(fontSize: 10.5, color: t.sub)),
+        const Spacer(),
+        Text('적중 +50P', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: const Color(0xFFD97706))),
+      ]),
+    );
+
+    // 미투표: 양 팀 픽 버튼
+    if (_myPick == null) {
+      Widget pickBtn(String code, Color c, String pick) => Expanded(
+            child: GestureDetector(
+              onTap: _voting ? null : () => _vote(pick),
+              child: Container(
+                height: 30,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: c.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(Radii.pill),
+                  border: Border.all(color: c.withValues(alpha: 0.45)),
+                ),
+                child: Text('${teamDisplayName(code)} 승',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: c)),
+              ),
+            ),
+          );
+      return Column(mainAxisSize: MainAxisSize.min, children: [
+        header,
+        Row(children: [
+          pickBtn(widget.homeCode, homeColor, 'home'),
+          const SizedBox(width: 8),
+          pickBtn(widget.awayCode, awayColor, 'away'),
+        ]),
+      ]);
+    }
+
+    // 투표 완료: 분포 바 + 내 픽 표시
+    final homeR = total > 0 ? _fanHome / total : 0.5;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      header,
+      ClipRRect(
+        borderRadius: BorderRadius.circular(Radii.pill),
+        child: SizedBox(
+          height: 20,
+          child: Row(children: [
+            Flexible(
+              flex: (homeR * 1000).round().clamp(60, 940),
+              child: Container(
+                color: homeColor.withValues(alpha: isMyPickHome ? 0.85 : 0.30),
+                alignment: Alignment.center,
+                child: Text(
+                  '${teamDisplayName(widget.homeCode)} ${(homeR * 100).round()}%${isMyPickHome ? ' ✓' : ''}',
+                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Colors.white),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            Container(width: 1, color: t.paper),
+            Flexible(
+              flex: ((1 - homeR) * 1000).round().clamp(60, 940),
+              child: Container(
+                color: awayColor.withValues(alpha: !isMyPickHome ? 0.85 : 0.30),
+                alignment: Alignment.center,
+                child: Text(
+                  '${teamDisplayName(widget.awayCode)} ${(100 - (homeR * 100).round())}%${!isMyPickHome ? ' ✓' : ''}',
+                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Colors.white),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    ]);
+  }
+
+  bool get isMyPickHome => _myPick == 'home';
 }
