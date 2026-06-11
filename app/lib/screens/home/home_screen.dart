@@ -892,40 +892,47 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   Widget _buildMonthStrip() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final tk = _Tok.of(isDark);
-    return SizedBox(
-      height: 32,
-      child: Row(
-        children: [
-        // 연도 선택 (24·25 과거 시즌 아카이브)
-        PopupMenuButton<int>(
-          tooltip: '시즌 선택',
-          padding: EdgeInsets.zero,
-          onSelected: (y) => _scrollToMonthStart(
-              y == DateTime.now().year ? DateTime.now().month.clamp(3, 10) : 3,
-              year: y),
-          itemBuilder: (_) => [
-            for (final y in _seasonYears.reversed)
-              PopupMenuItem(value: y, height: 38, child: Text('$y 시즌',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
-          ],
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 9),
-            decoration: BoxDecoration(
-              color: tk.paper,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 4, offset: const Offset(0, 1))],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 연도 선택 행 — 월 스트립 위 (24·25 과거 시즌 아카이브)
+        SizedBox(
+          height: 26,
+          child: Row(children: [
+            const SizedBox(width: 3),
+            PopupMenuButton<int>(
+              tooltip: '시즌 선택',
+              padding: EdgeInsets.zero,
+              onSelected: (y) => _scrollToMonthStart(
+                  y == DateTime.now().year ? DateTime.now().month.clamp(3, 10) : 3,
+                  year: y),
+              itemBuilder: (_) => [
+                for (final y in _seasonYears.reversed)
+                  PopupMenuItem(value: y, height: 38, child: Text('$y 시즌',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+              ],
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: tk.paper,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 4, offset: const Offset(0, 1))],
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text('${_selectedDate.year} 시즌',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: tk.ink2)),
+                  Icon(Icons.arrow_drop_down, size: 14, color: tk.ink2),
+                ]),
+              ),
             ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Text('${_selectedDate.year}',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: tk.ink2)),
-              Icon(Icons.arrow_drop_down, size: 14, color: tk.ink2),
-            ]),
-          ),
+            const Spacer(),
+          ]),
         ),
-        ...List.generate(8, (i) {
+        SizedBox(
+          height: 32,
+          child: Row(
+            children: List.generate(8, (i) {
           final month = i + 3;
           final isActive = _selectedDate.month == month;
           return Expanded(
@@ -958,9 +965,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
               ),
             ),
           );
-        }),
-        ],
-      ),
+            }),
+          ),
+        ),
+      ],
     );
   }
 

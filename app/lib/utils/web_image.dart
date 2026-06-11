@@ -44,17 +44,17 @@ Widget netImage(
   final u = webSafeImageUrl(url);
   if (u.isEmpty) return error?.call() ?? const SizedBox.shrink();
   if (kIsWeb) {
-    // ⚠️ webHtmlElementStrategy.prefer(<img> 전략) 금지 — 목록 수백 장이
-    // 전부 플랫폼뷰가 되며 iOS Safari 렌더러 크래시 루프("문제 반복 발생").
+    // <img> 엘리먼트 렌더 — iOS Safari CanvasKit이 이미지를 못 그리는 문제 우회.
+    // (06-11 크래시 루프의 진범은 back-trap의 history null-state 덮어쓰기로 판명/수정 —
+    //  재발 시 이 전략 재검토. loadingBuilder는 HTML 전략과 비호환이라 미사용)
     return Image.network(
       u,
       width: width,
       height: height,
       fit: fit,
       filterQuality: filterQuality,
+      webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
       errorBuilder: (_, __, ___) => error?.call() ?? const SizedBox.shrink(),
-      loadingBuilder: (ctx, child, prog) =>
-          prog == null ? child : (placeholder?.call() ?? child),
     );
   }
   return CachedNetworkImage(
