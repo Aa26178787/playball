@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>PlayBall Admin</title>
+<style>
+  :root { --bg:#111113; --paper:#18181C; --paper2:#1F1F24; --line:#26262C;
+          --ink:#F4F4F5; --sub:#9A9AA3; --red:#F43F5E; --green:#4ADE80; --amber:#FBBF24; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--ink);
+         font:14px/1.5 'Pretendard','Apple SD Gothic Neo',sans-serif; }
+  header { display:flex; align-items:center; gap:12px; padding:14px 20px;
+           border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); }
+  header h1 { font-size:16px; }
+  header .key { margin-left:auto; display:flex; gap:6px; }
+  input, select { background:var(--paper2); border:1px solid var(--line); color:var(--ink);
+          border-radius:8px; padding:7px 10px; font-size:13px; }
+  button { background:var(--paper2); border:1px solid var(--line); color:var(--ink);
+           border-radius:8px; padding:7px 12px; font-size:13px; cursor:pointer; }
+  button:hover { border-color:var(--sub); }
+  button.danger { color:var(--red); }
+  button.ok { color:var(--green); }
+  nav { display:flex; gap:6px; padding:10px 20px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  nav button.active { background:var(--ink); color:#111; font-weight:700; }
+  main { padding:16px 20px 60px; max-width:1100px; margin:0 auto; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); font-size:13px; }
+  th { color:var(--sub); font-weight:600; font-size:12px; }
+  td.num { font-variant-numeric:tabular-nums; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:14px; }
+  .card { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .card .v { font-size:24px; font-weight:800; margin-top:4px; }
+  .card .k { font-size:12px; color:var(--sub); }
+  .bar { display:flex; gap:8px; margin-top:12px; align-items:center; flex-wrap:wrap; }
+  .muted { color:var(--sub); font-size:12px; }
+  .pill { padding:2px 8px; border-radius:99px; font-size:11px; font-weight:700; }
+  .pill.r { background:rgba(244,63,94,.15); color:var(--red); }
+  .pill.g { background:rgba(74,222,128,.15); color:var(--green); }
+  .pill.a { background:rgba(251,191,36,.15); color:var(--amber); }
+  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+           background:var(--paper2); border:1px solid var(--line); padding:10px 18px;
+           border-radius:10px; display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚾ PlayBall Admin</h1>
+  <div class="key">
+    <input id="adminKey" type="password" placeholder="Admin Key" style="width:180px">
+    <button onclick="saveKey()">저장</button>
+  </div>
+</header>
+<nav>
+  <button data-tab="overview" class="active" onclick="show('overview')">개요</button>
+  <button data-tab="users" onclick="show('users')">회원</button>
+  <button data-tab="posts" onclick="show('posts')">게시글</button>
+  <button data-tab="reports" onclick="show('reports')">신고</button>
+  <button data-tab="food" onclick="show('food')">맛집 승인</button>
+</nav>
+<main id="main">키 입력 후 탭을 선택하세요.</main>
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const keyEl = $('#adminKey');
+keyEl.value = localStorage.getItem('pb_admin_key') || '';
+function saveKey() { localStorage.setItem('pb_admin_key', keyEl.value.trim()); toast('키 저장됨'); }
+function toast(m) { const t = $('#toast'); t.textContent = m; t.style.display = 'block';
+                    setTimeout(() => t.style.display = 'none', 2200); }
+async function api(method, path) {
+  const res = await fetch(path, { method, headers: { 'X-Admin-Key': keyEl.value.trim() } });
+  if (res.status === 403) { toast('키가 틀렸습니다'); throw new Error('403'); }
+  if (!res.ok) { toast('오류 ' + res.status); throw new Error('' + res.status); }
+  return res.json();
+}
+function esc(s) { return ('' + (s ?? '')).replace(/[&<>"]/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+let cur = 'overview';
+function show(tab) {
+  cur = tab;
+  document.querySelectorAll('nav button').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab));
+  ({overview, users, posts, reports, food})[tab]();
+}
+
+async function overview() {
+  const d = await api('GET', '/admin/overview');
+  $('#main').innerHTML = `<div class="cards">` + [
+    ['회원', d.users], ['오늘 가입', d.users_today], ['게시글', d.posts],
+    ['댓글', d.comments], ['게시글 신고', d.post_reports],
+    ['인스타 신고', d.insta_reports], ['맛집 대기', d.food_pending],
+    ['푸시 토큰', d.push_tokens],
+  ].map(([k, v]) => `<div class="card"><div class="k">${k}</div><div class="v">${v ?? '-'}</div></div>`).join('') + `</div>`;
+}
+
+async function users(q = '') {
+  const d = await api('GET', '/admin/users?q=' + encodeURIComponent(q));
+  $('#main').innerHTML = `
+    <div class="bar"><input id="uq" placeholder="이메일/닉네임 검색" value="${esc(q)}" style="width:240px">
+    <button onclick="users($('#uq').value)">검색</button>
+    <span class="muted">${d.users.length}명</span></div>
+    <table><tr><th>ID</th><th>이메일</th><th>닉네임</th><th>가입일</th><th>인증</th><th>글/댓글</th><th></th></tr>` +
+    d.users.map(u => `<tr><td class="num">${u.id}</td><td>${esc(u.email)}</td><td>${esc(u.nickname)}</td>
+      <td class="muted">${u.created_at}</td>
+      <td>${u.verified ? '<span class="pill g">인증</span>' : '<span class="pill r">미인증</span>'}</td>
+      <td class="num">${u.posts}/${u.comments}</td>
+      <td><button class="danger" onclick="delUser(${u.id}, '${esc(u.nickname)}')">탈퇴</button></td></tr>`).join('') + '</table>';
+}
+async function delUser(id, nick) {
+  if (!confirm(`회원 #${id} ${nick} 를 탈퇴(영구삭제) 처리합니까?\n게시글·댓글·기록이 함께 삭제/익명화됩니다.`)) return;
+  await api('DELETE', '/admin/users/' + id); toast('삭제됨'); users($('#uq')?.value || '');
+}
+
+async function posts(q = '') {
+  const d = await api('GET', '/admin/posts?q=' + encodeURIComponent(q));
+  $('#main').innerHTML = `
+    <div class="bar"><input id="pq" placeholder="제목/내용 검색" value="${esc(q)}" style="width:240px">
+    <button onclick="posts($('#pq').value)">검색</button>
+    <span class="muted">${d.posts.length}건</span></div>
+    <table><tr><th>ID</th><th>제목</th><th>분류</th><th>작성자</th><th>작성일</th><th>조회/좋아요/댓글</th><th>신고</th><th></th></tr>` +
+    d.posts.map(p => `<tr><td class="num">${p.id}</td><td>${esc(p.title)}</td><td>${esc(p.category)}</td>
+      <td>${esc(p.nickname)}</td><td class="muted">${p.created_at}</td>
+      <td class="num">${p.views}/${p.likes}/${p.comments}</td>
+      <td>${p.reports ? `<span class="pill r">${p.reports}</span>` : '-'}</td>
+      <td><button onclick="comments(${p.id})">댓글</button>
+          <button class="danger" onclick="delPost(${p.id})">삭제</button></td></tr>`).join('') + '</table>';
+}
+async function delPost(id) {
+  if (!confirm(`게시글 #${id} 삭제? (댓글·신고 포함)`)) return;
+  await api('DELETE', '/admin/posts/' + id); toast('삭제됨'); posts($('#pq')?.value || '');
+}
+async function comments(pid) {
+  const d = await api('GET', `/admin/posts/${pid}/comments`);
+  $('#main').innerHTML = `<div class="bar"><button onclick="posts()">← 게시글 목록</button>
+    <span class="muted">게시글 #${pid} 댓글 ${d.comments.length}개</span></div>
+    <table><tr><th>ID</th><th>작성자</th><th>내용</th><th>작성일</th><th></th></tr>` +
+    d.comments.map(c => `<tr><td class="num">${c.id}</td><td>${esc(c.nickname)}</td>
+      <td>${esc(c.content)}</td><td class="muted">${c.created_at}</td>
+      <td><button class="danger" onclick="delComment(${c.id}, ${pid})">삭제</button></td></tr>`).join('') + '</table>';
+}
+async function delComment(id, pid) {
+  if (!confirm(`댓글 #${id} 삭제?`)) return;
+  await api('DELETE', '/admin/comments/' + id); toast('삭제됨'); comments(pid);
+}
+
+async function reports() {
+  const d = await api('GET', '/admin/reports');
+  $('#main').innerHTML = `
+    <h3 style="margin-top:6px">게시글 신고 <span class="muted">${d.post_reports.length}</span></h3>
+    <table><tr><th>ID</th><th>게시글</th><th>사유</th><th>신고자</th><th>일시</th><th></th></tr>` +
+    d.post_reports.map(r => `<tr><td class="num">${r.id}</td>
+      <td>#${r.post_id} ${esc(r.post_title)}</td><td>${esc(r.reason)}</td>
+      <td>${esc(r.reporter)}</td><td class="muted">${r.created_at}</td>
+      <td><button class="danger" onclick="delPost(${r.post_id})">글 삭제</button>
+          <button class="ok" onclick="resolveR('post', ${r.id})">신고만 처리</button></td></tr>`).join('') +
+    `</table>
+    <h3 style="margin-top:22px">인스타 핸들 신고 <span class="muted">${d.insta_reports.length}</span></h3>
+    <table><tr><th>ID</th><th>선수</th><th>신고된 핸들</th><th>일시</th><th></th></tr>` +
+    d.insta_reports.map(r => `<tr><td class="num">${r.id}</td>
+      <td>#${r.player_id} ${esc(r.player)}</td><td>@${esc(r.handle)}</td>
+      <td class="muted">${r.created_at}</td>
+      <td><button class="ok" onclick="resolveR('insta', ${r.id})">처리 완료</button></td></tr>`).join('') + '</table>';
+}
+async function resolveR(kind, id) {
+  await api('DELETE', `/admin/reports/${kind}/${id}`); toast('처리됨'); reports();
+}
+
+async function food() {
+  const d = await api('GET', '/stadiums/food-places/pending');
+  const rows = d.places || [];
+  $('#main').innerHTML = `<div class="bar"><span class="muted">승인 대기 ${rows.length}건</span></div>
+    <table><tr><th>ID</th><th>구장</th><th>이름</th><th>분류</th><th>메모</th><th>추천수</th><th>제안자</th><th>상태</th><th></th></tr>` +
+    rows.map(f => `<tr><td class="num">${f.id}</td><td>${esc(f.stadium)}</td>
+      <td>${esc(f.name)}</td><td>${esc(f.category ?? '')}</td><td>${esc(f.memo ?? '')}</td>
+      <td class="num">${f.upvotes ?? 0}</td><td>${esc(f.submitted_by ?? '')}</td>
+      <td><span class="pill a">${esc(f.status)}</span></td>
+      <td><button class="ok" onclick="foodAct(${f.id}, 'approve')">승인</button>
+          <button class="danger" onclick="foodAct(${f.id}, 'reject')">거절</button></td></tr>`).join('') + '</table>';
+}
+async function foodAct(id, action) {
+  const res = await fetch(`/stadiums/food-places/${id}/admin?action=${action}`, {
+    method: 'PUT', headers: { 'X-Admin-Key': keyEl.value.trim() } });
+  if (!res.ok) { toast('오류 ' + res.status); return; }
+  toast(action === 'approve' ? '승인됨' : '거절됨'); food();
+}
+
+if (keyEl.value) show('overview');
+</script>
+</body>
+</html>

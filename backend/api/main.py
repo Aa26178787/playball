@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, ORJSONResponse
-from api.routers import games, players, teams, auth, user, stadiums, widget, community, calendar, phone, email_verify, password_reset, search, news, prediction, app_config
+from api.routers import games, players, teams, auth, user, stadiums, widget, community, calendar, phone, email_verify, password_reset, search, news, prediction, app_config, admin
 from fastapi.staticfiles import StaticFiles
 import time
 import threading
@@ -133,6 +133,7 @@ app.include_router(email_verify.router, prefix="/user/email", tags=["이메일�
 app.include_router(password_reset.router, prefix="/auth/password", tags=["비밀번호재설정"])
 app.include_router(search.router, prefix="/search", tags=["검색"])
 app.include_router(app_config.router, tags=["설정"])
+app.include_router(admin.router, tags=["관리자"])  # 콘솔 UI = /static/admin/index.html
 app.include_router(news.router)
 app.include_router(prediction.router)
 from api.routers import allstar
