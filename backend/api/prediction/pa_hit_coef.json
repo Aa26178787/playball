@@ -1,0 +1,23 @@
+{
+ "features": [
+  "b_rate",
+  "b_recent",
+  "p_rate",
+  "m_rate",
+  "platoon",
+  "b_volume"
+ ],
+ "coef": [
+  2.496438,
+  0.412213,
+  1.971723,
+  0.508746,
+  0.023012,
+  0.059323
+ ],
+ "intercept": -2.490855,
+ "n_samples": 145689,
+ "auc_holdout": 0.5226,
+ "brier_holdout": 0.1769,
+ "league_hit": 0.214
+}
