@@ -17,11 +17,12 @@ for svc in playball playball-scheduler; do
     else bad "systemd $svc NOT active"; fi
 done
 
-# 2) scheduler 심장박동 — 최근 3분 내 저널 로그 (30초 사이클이라 3분 무로그 = 멈춤)
-if sudo journalctl -u playball-scheduler --since "3 min ago" -q | grep -q .; then
-    ok "scheduler 최근 3분 로그 있음"
+# 2) scheduler 심장박동 — 최근 30분 내 저널 로그
+# (경기 없는 새벽엔 30초 사이클이 무로그 정상 — 3분 기준은 오탐, 06-12 확인)
+if sudo journalctl -u playball-scheduler --since "30 min ago" -q | grep -q .; then
+    ok "scheduler 최근 30분 로그 있음"
 else
-    bad "scheduler 3분간 로그 없음 (멈춤/크래시 의심)"
+    bad "scheduler 30분간 로그 없음 (멈춤/크래시 의심)"
 fi
 
 # 3) git 동기화 — 서버 HEAD == origin/main
