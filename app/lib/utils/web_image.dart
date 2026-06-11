@@ -12,9 +12,12 @@ String webSafeImageUrl(String? url) {
   final m = RegExp(r'^https?://((?:sports-phinf|phinf|ssl)\.pstatic\.net)/(.*)$')
       .firstMatch(url);
   if (m != null) {
-    // _cb: 프록시 Origin-403 수정 전 캐싱된 실패응답 우회용 캐시버스터 (값 바뀌면 강제 재요청)
+    // _cb: Safari 캐시 오염 우회용 캐시버스터 (값 바뀌면 강제 재요청).
+    // _cb=3 (2026-06-11): 과거 no-cors 빌드가 박은 immutable 캐시 엔트리를 엔진의
+    // CORS 모드(crossOrigin=anonymous) 요청이 받아 "EncodingError: Loading error."
+    // — imgtest 6(신규URL)=PASS/앱(캐시URL)=FAIL로 확정. 범프로 전 URL 신규화.
     final sep = m.group(2)!.contains('?') ? '&' : '?';
-    return 'https://playball.duckdns.org/ni/${m.group(1)}/${m.group(2)}${sep}_cb=2';
+    return 'https://playball.duckdns.org/ni/${m.group(1)}/${m.group(2)}${sep}_cb=3';
   }
   return url;
 }
