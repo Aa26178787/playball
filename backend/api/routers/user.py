@@ -35,6 +35,7 @@ class NotificationSettings(BaseModel):
     notify_player_news: bool = True
     notify_team_milestone: bool = True
     notify_allstar_vote: bool = True
+    notify_quiet: bool = True  # quiet hours(KST 23:30~07:30) 푸시 억제 — FALSE = 심야에도 수신
 
 
 class PushToken(BaseModel):
@@ -281,7 +282,7 @@ def get_settings(current_user: dict = Depends(get_current_user)):
                notify_pennant_race, notify_fav_hr, notify_walkoff, notify_starter_ko,
                notify_before_minutes, notify_milestone, notify_fav_lineup,
                notify_player_daily, notify_player_news, notify_team_milestone,
-               notify_allstar_vote
+               notify_allstar_vote, notify_quiet
         FROM user_settings
         WHERE user_id = %s
     """, (current_user["user_id"],))
@@ -314,6 +315,7 @@ def get_settings(current_user: dict = Depends(get_current_user)):
             "notify_player_news":     row[16] if row[16] is not None else True,
             "notify_team_milestone":  row[17] if row[17] is not None else True,
             "notify_allstar_vote":    row[18] if row[18] is not None else True,
+            "notify_quiet":           row[19] if row[19] is not None else True,
         }
     }
 
@@ -348,6 +350,7 @@ def update_settings(body: NotificationSettings, current_user: dict = Depends(get
             notify_player_news = %s,
             notify_team_milestone = %s,
             notify_allstar_vote = %s,
+            notify_quiet = %s,
             updated_at = NOW()
         WHERE user_id = %s
     """, (
@@ -370,6 +373,7 @@ def update_settings(body: NotificationSettings, current_user: dict = Depends(get
         body.notify_player_news,
         body.notify_team_milestone,
         body.notify_allstar_vote,
+        body.notify_quiet,
         current_user["user_id"]
     ))
 
@@ -956,3 +960,71 @@ def points_leaderboard():
     result = {"leaderboard": rows}
     cache_set(_ck, result, 300)
     return result
+
+
+@router.get('/badges')
+def my_badges(current_user: dict = Depends(get_current_user)):
+    """뱃지 목록 — lazy 평가 (호출 시 신규 충족분 자동 획득)"""
+    from api.badges import evaluate_badges
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    try:
+        badges = evaluate_badges(cur, current_user['user_id'])
+        conn.commit()
+    finally:
+        cur.close(); conn.close()
+    return {"badges": badges}
+
+
+# ─── 주간미션 (메가B) ──────────────────────────────────────────────────────────
+
+# (id, 이름, 설명, 목표, 보상P, 진척 reason 필터)
+_WEEKLY_MISSIONS = [
+    ('pred_3',   '승부예측 3회',  '이번 주 경기 예측 3회 참여', 3,
+     ('prediction_win', 'prediction_lose', 'prediction_draw'), 30),
+    ('attend_5', '출석 5일',      '이번 주 5일 출석',           5,
+     ('attendance',), 20),
+    ('visit_1',  '직관 1회',      '이번 주 직관 기록 남기기',    1,
+     ('visit_record',), 30),
+]
+
+
+@router.get('/missions')
+def weekly_missions(current_user: dict = Depends(get_current_user)):
+    """주간미션 진척 + 완료 시 자동 보상 (KST 월요일 시작 주차)"""
+    from datetime import datetime, timedelta, timezone
+    from api.points import award
+    now_kst = datetime.now(timezone.utc) + timedelta(hours=9)
+    monday = (now_kst - timedelta(days=now_kst.weekday())).strftime('%Y-%m-%d')
+    week_key = monday  # ref dedup 키
+
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    try:
+        out = []
+        for mid, name, desc, goal, reasons, reward in _WEEKLY_MISSIONS:
+            # KST 기준 주 시작 이후 적립 행 카운트 (created_at은 UTC 저장 → +9h 보정)
+            cur.execute("""
+                SELECT COUNT(*) FROM point_ledger
+                WHERE user_id = %s AND reason = ANY(%s)
+                  AND (created_at + INTERVAL '9 hours')::date >= %s::date
+            """, (current_user['user_id'], list(reasons), monday))
+            progress = int(cur.fetchone()[0])
+            done = progress >= goal
+            rewarded = False
+            if done:
+                rewarded = bool(award(cur, current_user['user_id'], 'mission_weekly',
+                                      f'{week_key}:{mid}', points=reward)) or True
+            out.append({
+                'id': mid, 'name': name, 'desc': desc,
+                'progress': min(progress, goal), 'goal': goal,
+                'done': done, 'reward': reward,
+            })
+        conn.commit()
+    finally:
+        cur.close(); conn.close()
+    return {"week_start": monday, "missions": out}

@@ -1085,4 +1085,18 @@ class ApiService {
     final res = await _dio.get('/user/points/leaderboard');
     return Map<String, dynamic>.from(res.data);
   }
+
+  /// 뱃지 — 호출 시 서버 lazy 평가 (신규 충족분 자동 획득)
+  static Future<Map<String, dynamic>> getBadges() async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/user/badges', options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  /// 주간미션 — 완료분 자동 보상 적립
+  static Future<Map<String, dynamic>> getWeeklyMissions() async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/user/missions', options: Options(headers: headers));
+    return Map<String, dynamic>.from(res.data);
+  }
 }

@@ -14,6 +14,8 @@ class PointsScreen extends StatefulWidget {
 class _PointsScreenState extends State<PointsScreen> {
   Map<String, dynamic>? _mine;
   List<dynamic> _leaders = [];
+  List<dynamic> _badges = [];
+  List<dynamic> _missions = [];
   bool _loading = true;
   String? _error;
 
@@ -23,6 +25,7 @@ class _PointsScreenState extends State<PointsScreen> {
     'prediction_draw': '승부예측 (무승부)',
     'attendance': '출석',
     'visit_record': '직관 기록',
+    'mission_weekly': '주간미션 보상',
   };
 
   @override
@@ -33,15 +36,19 @@ class _PointsScreenState extends State<PointsScreen> {
 
   Future<void> _load() async {
     try {
+      final empty = <String, dynamic>{};
       final results = await Future.wait([
         ApiService.getMyPoints(),
         ApiService.getPointsLeaderboard(),
+        ApiService.getBadges().catchError((_) => empty),
+        ApiService.getWeeklyMissions().catchError((_) => empty),
       ]);
       if (!mounted) return;
       setState(() {
-        _mine = results[0] as Map<String, dynamic>?;
-        _leaders =
-            ((results[1] as Map<String, dynamic>?)?['leaderboard'] as List?) ?? [];
+        _mine = results[0];
+        _leaders = (results[1]['leaderboard'] as List?) ?? [];
+        _badges = (results[2]['badges'] as List?) ?? [];
+        _missions = (results[3]['missions'] as List?) ?? [];
         _loading = false;
       });
     } catch (e) {
@@ -76,6 +83,18 @@ class _PointsScreenState extends State<PointsScreen> {
                     padding: const EdgeInsets.fromLTRB(18, 12, 18, 32),
                     children: [
                       _buildMyCard(cardColor, line, sub),
+                      if (_missions.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        _buildSection('주간미션 (월요일 초기화)', sub),
+                        const SizedBox(height: 8),
+                        ..._missions.map((m) => _missionTile(m as Map, cardColor, line, sub)),
+                      ],
+                      if (_badges.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        _buildSection('뱃지', sub),
+                        const SizedBox(height: 8),
+                        _badgeGrid(cardColor, line, sub),
+                      ],
                       const SizedBox(height: 20),
                       _buildSection('포인트 랭킹 TOP 50', sub),
                       const SizedBox(height: 8),
@@ -228,6 +247,94 @@ class _PointsScreenState extends State<PointsScreen> {
         ]),
       );
     }).toList();
+  }
+
+  Widget _missionTile(Map m, Color cardColor, Color line, Color sub) {
+    final done = m['done'] == true;
+    final progress = (m['progress'] as num?)?.toInt() ?? 0;
+    final goal = (m['goal'] as num?)?.toInt() ?? 1;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+            color: done ? const Color(0xFF16A34A).withValues(alpha: 0.45) : line),
+      ),
+      child: Row(children: [
+        Icon(done ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+            size: 20, color: done ? const Color(0xFF16A34A) : sub),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(m['name'] as String? ?? '',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(Radii.pill),
+              child: LinearProgressIndicator(
+                value: goal > 0 ? progress / goal : 0,
+                minHeight: 5,
+                backgroundColor: line,
+                color: done ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+              ),
+            ),
+          ]),
+        ),
+        const SizedBox(width: 10),
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text('$progress/$goal',
+              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: sub)),
+          Text('+${m['reward']}P',
+              style: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFFD97706))),
+        ]),
+      ]),
+    );
+  }
+
+  Widget _badgeGrid(Color cardColor, Color line, Color sub) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4, mainAxisSpacing: 8, crossAxisSpacing: 8, childAspectRatio: 0.74),
+      itemCount: _badges.length,
+      itemBuilder: (_, i) {
+        final b = _badges[i] as Map;
+        final earned = b['earned'] == true;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: earned ? const Color(0xFFD97706).withValues(alpha: 0.5) : line),
+          ),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Opacity(
+              opacity: earned ? 1 : 0.3,
+              child: Text(b['emoji'] as String? ?? '🏅',
+                  style: const TextStyle(fontSize: 22)),
+            ),
+            const SizedBox(height: 4),
+            Text(b['name'] as String? ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w700,
+                    color: earned ? null : sub)),
+            const SizedBox(height: 2),
+            Text(earned ? '획득!' : '${b['progress']}/${b['goal']}',
+                style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
+                    color: earned ? const Color(0xFFD97706) : sub)),
+          ]),
+        );
+      },
+    );
   }
 
   String _comma(int n) =>

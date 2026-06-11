@@ -513,16 +513,88 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         _loadUnreadCount();
         _loadTomorrowGames();
         _backgroundPrefetch();
-        // #2 온보딩 — 첫 로그인 후 마이팀 미설정 시 hint
-        if (_authProvider?.isLoggedIn == true) {
-          OnboardingHelper.maybeShowFirstTimeHint(
-            context,
-            onSettingsTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const MyPageScreen())),
-          );
-        }
+        // 온보딩 모드 픽커 (프로/캐주얼 — 1회) → 끝나면 기존 힌트로
+        _maybeShowModePicker().then((_) {
+          if (!mounted) return;
+          // #2 온보딩 — 첫 로그인 후 마이팀 미설정 시 hint
+          if (_authProvider?.isLoggedIn == true) {
+            OnboardingHelper.maybeShowFirstTimeHint(
+              context,
+              onSettingsTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const MyPageScreen())),
+            );
+          }
+        });
       });
     });
+  }
+
+  /// 온보딩 프로/캐주얼 모드 (메가B) — 첫 실행 1회.
+  /// 캐주얼 = compact 카드 + 알림 마이팀만 / 프로 = 풀카드 + 전체 알림(기본값)
+  Future<void> _maybeShowModePicker() async {
+    if (await LocalCache.hasFlag('app_mode_chosen')) return;
+    await LocalCache.setFlag('app_mode_chosen');
+    if (!mounted) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mode = await showDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('야구, 얼마나 보세요?',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          _modeOption(ctx, isDark, 'casual', '⚾ 가볍게 즐겨요',
+              '간단한 카드 · 마이팀 알림만'),
+          const SizedBox(height: 8),
+          _modeOption(ctx, isDark, 'pro', '📊 기록까지 챙겨요',
+              '풀 카드 · 모든 경기 알림'),
+          const SizedBox(height: 6),
+          Text('마이페이지에서 언제든 바꿀 수 있어요',
+              style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF9A9AA0) : const Color(0xFF8E8E96))),
+        ]),
+      ),
+    );
+    if (mode == null) return;
+    await LocalCache.set('app_mode', mode);
+    if (mode == 'casual') {
+      await LocalCache.setFlag('compact_mode');
+      if (mounted) setState(() => _compactMode = true);
+      // 알림 프리셋: 마이팀 경기만 (로그인 시에만 — 전체 설정 GET 후 해당 키만 변경)
+      if (_authProvider?.isLoggedIn == true) {
+        try {
+          final res = await ApiService.getSettings();
+          final s = Map<String, dynamic>.from(res['settings'] as Map? ?? {});
+          if (s.isNotEmpty) {
+            s['notify_my_team_only'] = true;
+            await ApiService.updateSettings(s);
+          }
+        } catch (e) {
+          debugPrint('home_screen modePicker: $e');
+        }
+      }
+    }
+  }
+
+  Widget _modeOption(BuildContext ctx, bool isDark, String value, String title, String desc) {
+    return InkWell(
+      onTap: () => Navigator.pop(ctx, value),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF26262C) : const Color(0xFFF4F4F6),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 3),
+          Text(desc,
+              style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF9A9AA0) : const Color(0xFF707078))),
+        ]),
+      ),
+    );
   }
 
   void _backgroundPrefetch() {

@@ -31,6 +31,28 @@ const AndroidNotificationChannel _channel = AndroidNotificationChannel(
   importance: Importance.high,
 );
 
+// 푸시GW 채널 분리 (메가B) — 서버 _channel_for와 id 일치. OS 설정에서 종류별 on/off 가능
+const List<AndroidNotificationChannel> _channels = [
+  AndroidNotificationChannel(
+    'playball_live',
+    '라이브 경기',
+    description: '득점, 결정적 순간, 경기 시작/종료',
+    importance: Importance.high,
+  ),
+  AndroidNotificationChannel(
+    'playball_myteam',
+    '마이팀·선수 소식',
+    description: '순위 변동, 등록말소, 마일스톤, 아침 브리핑',
+    importance: Importance.high,
+  ),
+  AndroidNotificationChannel(
+    'playball_community',
+    '커뮤니티',
+    description: '내 글 댓글 알림',
+    importance: Importance.defaultImportance,
+  ),
+];
+
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // 백그라운드 알림 수신 — OS가 자동 표시
@@ -53,9 +75,12 @@ Future<void> _initFirebase() async {
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       ),
     );
-    await _localNotif
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(_channel);
+    final androidNotif = _localNotif
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await androidNotif?.createNotificationChannel(_channel);
+    for (final ch in _channels) {
+      await androidNotif?.createNotificationChannel(ch);
+    }
 
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 

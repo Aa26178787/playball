@@ -146,7 +146,56 @@ def _get_user_targets(user_id: int) -> list[tuple[int, str]]:
         conn.close()
 
 
-# ── 공통 발송 ─────────────────────────────────────────────────────────────────
+# ── 공통 발송 (푸시 게이트웨이 — 메가B) ──────────────────────────────────────
+# 모든 notify_* → _send 단일 경유. quiet hours / Android 채널 라우팅 여기서 일괄.
+
+# ntype → Android 알림 채널 (클라 main.dart에서 동일 id 3종 생성)
+_CHANNEL_LIVE = 'playball_live'        # 경기 진행 (스코어/결정적순간/끝내기 등)
+_CHANNEL_MYTEAM = 'playball_myteam'    # 마이팀/선수 소식 (순위/등록말소/마일스톤/브리핑)
+_CHANNEL_COMMUNITY = 'playball_community'
+
+_LIVE_TYPES = {
+    'game_start', 'score_change', 'comeback', 'game_end', 'extra_innings',
+    'cancelled', 'walkoff', 'clutch_moment', 'pitcher_change', 'starter_announced',
+}
+_COMMUNITY_TYPES = {'new_comment'}
+
+
+def _channel_for(ntype: str) -> str:
+    if ntype in _LIVE_TYPES:
+        return _CHANNEL_LIVE
+    if ntype in _COMMUNITY_TYPES:
+        return _CHANNEL_COMMUNITY
+    return _CHANNEL_MYTEAM
+
+
+def _is_quiet_now() -> bool:
+    """KST 23:30~07:30 = quiet hours (연장전도 23:30 전 대부분 종료)"""
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc) + timedelta(hours=9)
+    hm = now.hour * 60 + now.minute
+    return hm >= 23 * 60 + 30 or hm < 7 * 60 + 30
+
+
+def _filter_quiet_optout(user_ids: list[int]) -> set[int]:
+    """quiet hours 중에도 푸시 받겠다고 한(notify_quiet=FALSE) 유저 집합"""
+    if not user_ids:
+        return set()
+    conn = get_connection()
+    if not conn:
+        return set()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT user_id FROM user_settings
+            WHERE user_id = ANY(%s) AND COALESCE(notify_quiet, TRUE) = FALSE
+        """, (user_ids,))
+        return {r[0] for r in cur.fetchall()}
+    except Exception:
+        return set()
+    finally:
+        conn.close()
+
 
 def _save_notifications(user_ids: list[int], title: str, body: str,
                         ntype: str, game_id: int | None):
@@ -191,8 +240,16 @@ def _send(targets: list[tuple[int, str]], title: str, body: str,
     if not targets:
         return
     user_ids = list(dict.fromkeys(t[0] for t in targets))
-    tokens   = [t[1] for t in targets]
+    # 인앱 알림함은 quiet hours 무관 전원 저장
     _save_notifications(user_ids, title, body, ntype, game_id)
+    # quiet hours: opt-out(받겠다) 유저만 푸시 (기본 = 억제)
+    if _is_quiet_now():
+        allow = _filter_quiet_optout(user_ids)
+        targets = [(uid, tok) for uid, tok in targets if uid in allow]
+        if not targets:
+            logger.info(f"[FCM] quiet hours 억제: {title}")
+            return
+    tokens = [t[1] for t in targets]
     if _get_app() is None:
         return
     try:
@@ -204,7 +261,7 @@ def _send(targets: list[tuple[int, str]], title: str, body: str,
             android=messaging.AndroidConfig(
                 priority='high',
                 notification=messaging.AndroidNotification(
-                    channel_id='playball_default',
+                    channel_id=_channel_for(ntype),
                     sound='default',
                     default_vibrate_timings=True,
                 ),

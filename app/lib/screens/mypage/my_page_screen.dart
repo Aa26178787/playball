@@ -58,6 +58,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   bool _notifyPlayerNews    = true;
   bool _notifyTeamMilestone = true;
   bool _notifyAllstarVote   = true;
+  bool _notifyQuiet         = true;
   bool _settingsLoaded      = false;
   final Set<int> _expandedCats = {0}; // 알림 카테고리 펼침 (기본 경기 알림)
 
@@ -104,6 +105,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     _notifyPlayerNews    = settings['notify_player_news']    as bool? ?? true;
     _notifyTeamMilestone = settings['notify_team_milestone'] as bool? ?? true;
     _notifyAllstarVote   = settings['notify_allstar_vote']   as bool? ?? true;
+    _notifyQuiet         = settings['notify_quiet']          as bool? ?? true;
   }
 
   Future<void> _loadFromCache() async {
@@ -206,6 +208,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         'notify_player_news':     _notifyPlayerNews,
         'notify_team_milestone':  _notifyTeamMilestone,
         'notify_allstar_vote':    _notifyAllstarVote,
+        'notify_quiet':           _notifyQuiet,
       });
     } catch (e) { debugPrint('my_page: $e'); }
   }
@@ -931,6 +934,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
       {'icon': '💬', 'label': '커뮤니티', 'items': [
         {'label': '댓글', 'desc': '내 글에 댓글이 달릴 때', 'value': _notifyComment,
          'on': (bool v) { _notifyComment = v; }},
+      ]},
+      {'icon': '🌙', 'label': '방해금지', 'items': [
+        {'label': '심야 푸시 끄기', 'desc': '23:30~07:30 푸시 중단 (알림함엔 저장)', 'value': _notifyQuiet,
+         'on': (bool v) { _notifyQuiet = v; }},
       ]},
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
