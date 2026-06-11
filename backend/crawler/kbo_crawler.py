@@ -495,10 +495,8 @@ def get_driver():
         'profile.managed_default_content_settings.images': 2,
         'profile.managed_default_content_settings.stylesheets': 2,
     })
-    return webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()),
-        options=options
-    )
+    from crawler.driver_util import arm_or_wdm_chrome
+    return arm_or_wdm_chrome(options)
 
 
 def parse_hitter_stats(text, season=2026):

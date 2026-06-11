@@ -860,9 +860,8 @@ def crawl_naver_lineup(naver_game_id):
     options.add_experimental_option('prefs', {
         'profile.managed_default_content_settings.images': 2,
     })
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
+    from crawler.driver_util import arm_or_wdm_chrome
+    driver = arm_or_wdm_chrome(options)
 
     try:
         driver.get(f'https://m.sports.naver.com/game/{naver_game_id}/lineup')

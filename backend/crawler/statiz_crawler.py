@@ -38,9 +38,8 @@ def crawl_kbo_register():
         'profile.managed_default_content_settings.images': 2,
     })
 
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
+    from crawler.driver_util import arm_or_wdm_chrome
+    driver = arm_or_wdm_chrome(options)
 
     conn = get_connection()
     if not conn:
@@ -564,10 +563,8 @@ def crawl_player_info_selenium():
         'profile.managed_default_content_settings.stylesheets': 2,
     })
 
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()),
-        options=options
-    )
+    from crawler.driver_util import arm_or_wdm_chrome
+    driver = arm_or_wdm_chrome(options)
 
     conn = get_connection()
     if not conn:
@@ -680,9 +677,8 @@ def crawl_missing_player_ids():
         'profile.managed_default_content_settings.images': 2,
     })
 
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
+    from crawler.driver_util import arm_or_wdm_chrome
+    driver = arm_or_wdm_chrome(options)
 
     conn = get_connection()
     if not conn:
@@ -795,9 +791,8 @@ def crawl_all_kbo_players():
         'profile.managed_default_content_settings.images': 2,
     })
 
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
+    from crawler.driver_util import arm_or_wdm_chrome
+    driver = arm_or_wdm_chrome(options)
 
     conn = get_connection()
     if not conn:
