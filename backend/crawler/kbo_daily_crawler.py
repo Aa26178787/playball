@@ -402,14 +402,20 @@ def _get_kbo_season_pages(driver, url, season=None):
 
         print(f"[KBO season] 페이지 {page_num}: {page_rows}행 (누적 {len(all_rows)})")
 
-        # 다음 페이지
+        # 다음 페이지 — 숫자 링크 우선 ('다음'은 페이지가 아니라 5단위 블록 점프라
+        # 그것만 쓰면 1·6페이지만 수집되는 undercrawl)
         try:
-            next_btn = driver.find_element('xpath', '//a[normalize-space(.)="다음"]')
-            next_btn.click()
+            nxt = driver.find_element('xpath', f'//a[normalize-space(.)="{page_num + 1}"]')
+            nxt.click()
             time.sleep(2)
         except Exception:
-            print(f"[KBO season] 페이지 {page_num}: 다음 버튼 없음 → 종료")
-            break
+            try:
+                next_btn = driver.find_element('xpath', '//a[normalize-space(.)="다음"]')
+                next_btn.click()
+                time.sleep(2)
+            except Exception:
+                print(f"[KBO season] 페이지 {page_num}: 다음 버튼 없음 → 종료")
+                break
 
     return headers, all_rows
 
