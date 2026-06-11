@@ -13,8 +13,11 @@ import 'web_update/web_bitmap_stub.dart'
 String webSafeImageUrl(String? url) {
   if (url == null || url.isEmpty) return url ?? '';
   if (!kIsWeb) return url;
-  // https://<host>/<path> → /ni/<host>/<path> (pstatic 계열만)
-  final m = RegExp(r'^https?://((?:sports-phinf|phinf|ssl)\.pstatic\.net)/(.*)$')
+  // https://<host>/<path> → /ni/<host>/<path> (pstatic 계열 + 위키 로고)
+  // 위키: 승팀 워터마크(kTeamOverlayLogoUrls) — _FetchImage(fetch)는 CSP
+  // connect-src 적용이라 외부 직접 fetch 불가 → 프록시 필수
+  final m = RegExp(
+          r'^https?://((?:sports-phinf|phinf|ssl)\.pstatic\.net|upload\.wikimedia\.org)/(.*)$')
       .firstMatch(url);
   if (m != null) {
     // _cb: Safari 캐시 오염 우회용 캐시버스터 (값 바뀌면 강제 재요청).
