@@ -27,6 +27,11 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   List<dynamic> _dailyStats = [];
   Map<String, dynamic>? _pitchStats;
   OverlayEntry? _compareBubble; // 숫자 길게누르기 비교 말풍선
+
+  // 존/구종 카드용 시즌 (시즌칩 연동) — 미선택=올해, 통산=0(서버: 연도필터 해제)
+  int get _zoneSeason =>
+      !_seasonPicked ? DateTime.now().year : (_selectedSeason ?? 0);
+
   // 피칭 디자인 (구종별 5x5 존 분포)
   Map<String, dynamic>? _pitchDesign;
   String _pdStance = ''; // '' 전체 / 'R' vs우타 / 'L' vs좌타
@@ -34,7 +39,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
   Future<void> _loadPitchDesign() async {
     try {
-      final d = await ApiService.getPitchDesign(widget.playerId, stance: _pdStance);
+      final d = await ApiService.getPitchDesign(widget.playerId,
+          season: _zoneSeason, stance: _pdStance);
       if (mounted) setState(() => _pitchDesign = d);
     } catch (e) { debugPrint('player_detail: $e'); }
   }
@@ -46,7 +52,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
   Future<void> _loadBatterZones() async {
     try {
-      final d = await ApiService.getBatterZones(widget.playerId, throws: _bzThrows);
+      final d = await ApiService.getBatterZones(widget.playerId,
+          season: _zoneSeason, throws: _bzThrows);
       if (mounted) setState(() => _batterZones = d);
     } catch (e) { debugPrint('player_detail: $e'); }
   }
@@ -58,7 +65,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
   Future<void> _loadPitcherZones() async {
     try {
-      final d = await ApiService.getPitcherZones(widget.playerId, stance: _pzStance);
+      final d = await ApiService.getPitcherZones(widget.playerId,
+          season: _zoneSeason, stance: _pzStance);
       if (mounted) setState(() => _pitcherZones = d);
     } catch (e) { debugPrint('player_detail: $e'); }
   }
@@ -929,10 +937,17 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     Widget chip(String label, int? value) {
       final sel = selected == value;
       return GestureDetector(
-        onTap: () => setState(() {
-          _seasonPicked = true;
-          _selectedSeason = value;
-        }),
+        onTap: () {
+          setState(() {
+            _seasonPicked = true;
+            _selectedSeason = value;
+            _pdType = null; // 시즌 바뀌면 선택 구종 리셋 (해당 시즌에 없을 수 있음)
+          });
+          // 존/구종 카드도 시즌 추종 재조회
+          _loadPitchDesign();
+          _loadBatterZones();
+          _loadPitcherZones();
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),

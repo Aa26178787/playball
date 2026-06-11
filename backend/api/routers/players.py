@@ -574,7 +574,11 @@ def get_pitch_design(player_id: int, season: int = 2026, stance: str = ''):
         raise HTTPException(status_code=404, detail="선수를 찾을 수 없습니다")
     name = row[0]
 
-    params = [name, season]
+    params = [name]
+    season_sql = ""
+    if season:  # 0 = 통산 (전 시즌)
+        season_sql = " AND EXTRACT(YEAR FROM g.game_date) = %s"
+        params.append(season)
     stance_sql = ""
     if stance in ('R', 'L'):
         stance_sql = " AND gpl.stance = %s"
@@ -583,8 +587,7 @@ def get_pitch_design(player_id: int, season: int = 2026, stance: str = ''):
         SELECT gpl.pitch_type, gpl.x, gpl.z, gpl.top_sz, gpl.bot_sz, gpl.stance
         FROM game_pitch_locations gpl
         JOIN games g ON g.id = gpl.game_id
-        WHERE gpl.pitcher_name = %s
-          AND EXTRACT(YEAR FROM g.game_date) = %s
+        WHERE gpl.pitcher_name = %s{season_sql}
           AND gpl.x IS NOT NULL AND gpl.z IS NOT NULL{stance_sql}
     """, params)
     rows = cur.fetchall()
@@ -655,8 +658,13 @@ def get_batter_zones(player_id: int, season: int = 2026, throws: str = ''):
         raise HTTPException(status_code=404, detail="선수를 찾을 수 없습니다")
     name = row[0]
 
+    season_sql = ""
+    season_params = []
+    if season:  # 0 = 통산 (전 시즌)
+        season_sql = " AND EXTRACT(YEAR FROM g.game_date) = %s"
+        season_params = [season]
     throws_sql = ""
-    params = [name, season]
+    params = [name] + season_params
     if throws == 'R':
         throws_sql = " AND pp.throws LIKE '우%%'"
     elif throws == 'L':
@@ -668,23 +676,21 @@ def get_batter_zones(player_id: int, season: int = 2026, throws: str = ''):
         FROM game_pitch_locations gpl
         JOIN games g ON g.id = gpl.game_id
         LEFT JOIN players pp ON pp.name = gpl.pitcher_name
-        WHERE gpl.batter_name = %s
-          AND EXTRACT(YEAR FROM g.game_date) = %s
+        WHERE gpl.batter_name = %s{season_sql}
           AND gpl.x IS NOT NULL AND gpl.z IS NOT NULL{throws_sql}
         ORDER BY gpl.game_id, gpl.inning, gpl.inning_half, gpl.id
     """, params)
     pitches = cur.fetchall()
 
     # 타석 결과 (안타 판정용) — half 단위로 발생 순서 보존
-    cur.execute("""
+    cur.execute(f"""
         SELECT gp.game_id, gp.inning, gp.inning_half, gp.title
         FROM game_pitches gp
         JOIN games g ON g.id = gp.game_id
-        WHERE gp.batter_name = %s
-          AND EXTRACT(YEAR FROM g.game_date) = %s
+        WHERE gp.batter_name = %s{season_sql}
           AND gp.type IN (13, 23)
         ORDER BY gp.game_id, gp.inning, gp.inning_half, gp.seqno NULLS LAST, gp.id
-    """, (name, season))
+    """, [name] + season_params)
     results_rows = cur.fetchall()
     cur.close(); conn.close()
 
@@ -775,8 +781,13 @@ def get_pitcher_zones(player_id: int, season: int = 2026, stance: str = ''):
         raise HTTPException(status_code=404, detail="선수를 찾을 수 없습니다")
     name = row[0]
 
+    season_sql = ""
+    season_params = []
+    if season:  # 0 = 통산 (전 시즌)
+        season_sql = " AND EXTRACT(YEAR FROM g.game_date) = %s"
+        season_params = [season]
     stance_sql = ""
-    params = [name, season]
+    params = [name] + season_params
     if stance in ('R', 'L'):
         stance_sql = " AND gpl.stance = %s"
         params.append(stance)
@@ -785,22 +796,20 @@ def get_pitcher_zones(player_id: int, season: int = 2026, stance: str = ''):
                gpl.x, gpl.z, gpl.top_sz, gpl.bot_sz, gpl.result
         FROM game_pitch_locations gpl
         JOIN games g ON g.id = gpl.game_id
-        WHERE gpl.pitcher_name = %s
-          AND EXTRACT(YEAR FROM g.game_date) = %s
+        WHERE gpl.pitcher_name = %s{season_sql}
           AND gpl.x IS NOT NULL AND gpl.z IS NOT NULL{stance_sql}
         ORDER BY gpl.game_id, gpl.inning, gpl.inning_half, gpl.id
     """, params)
     pitches = cur.fetchall()
 
-    cur.execute("""
+    cur.execute(f"""
         SELECT gp.game_id, gp.inning, gp.inning_half, gp.batter_name, gp.title
         FROM game_pitches gp
         JOIN games g ON g.id = gp.game_id
-        WHERE gp.pitcher_name = %s
-          AND EXTRACT(YEAR FROM g.game_date) = %s
+        WHERE gp.pitcher_name = %s{season_sql}
           AND gp.type IN (13, 23)
         ORDER BY gp.game_id, gp.inning, gp.inning_half, gp.seqno NULLS LAST, gp.id
-    """, (name, season))
+    """, [name] + season_params)
     results_rows = cur.fetchall()
     cur.close(); conn.close()
 
