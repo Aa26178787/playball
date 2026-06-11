@@ -44,17 +44,17 @@ Widget netImage(
   final u = webSafeImageUrl(url);
   if (u.isEmpty) return error?.call() ?? const SizedBox.shrink();
   if (kIsWeb) {
-    // webHtmlElementStrategy.prefer: <img> 엘리먼트 렌더 — CanvasKit의
-    // 디코드/WebGL 텍스처 단계를 우회 (iOS Safari서 200 수신에도 미표시되는
-    // 디코드 실패 면역). loadingBuilder는 HTML 전략과 비호환이라 미사용.
+    // ⚠️ webHtmlElementStrategy.prefer(<img> 전략) 금지 — 목록 수백 장이
+    // 전부 플랫폼뷰가 되며 iOS Safari 렌더러 크래시 루프("문제 반복 발생").
     return Image.network(
       u,
       width: width,
       height: height,
       fit: fit,
       filterQuality: filterQuality,
-      webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
       errorBuilder: (_, __, ___) => error?.call() ?? const SizedBox.shrink(),
+      loadingBuilder: (ctx, child, prog) =>
+          prog == null ? child : (placeholder?.call() ?? child),
     );
   }
   return CachedNetworkImage(
