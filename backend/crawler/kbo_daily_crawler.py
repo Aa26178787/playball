@@ -24,6 +24,13 @@ def _get_driver():
         'profile.managed_default_content_settings.images': 2,
         'profile.managed_default_content_settings.stylesheets': 2,
     })
+    import platform
+    import shutil
+    if platform.machine() in ('aarch64', 'arm64'):
+        # ARM: 공식 chromedriver 미배포 — snap chromium 동봉 드라이버 사용
+        options.binary_location = shutil.which('chromium') or '/snap/bin/chromium'
+        driver_path = shutil.which('chromium.chromedriver') or '/snap/bin/chromium.chromedriver'
+        return webdriver.Chrome(service=Service(driver_path), options=options)
     return webdriver.Chrome(
         service=Service(ChromeDriverManager().install()),
         options=options
@@ -35,6 +42,24 @@ def _safe_int(val):
         return int(val)
     except Exception:
         return None
+
+
+def _find_player_id(cur, name, team_id, ptype=None, season=None):
+    """players 매칭. 기본 = name+team_id (동명이인 = team_id 기준 원칙).
+    과거 시즌(season < 올해)은 이적 선수가 당시 팀으로 표기돼 매칭 실패하므로
+    동명이인이 없는 이름에 한해 name 단독 fallback."""
+    type_sql = " AND player_type = %s" if ptype else ""
+    params = [name, team_id] + ([ptype] if ptype else [])
+    cur.execute(f"SELECT id FROM players WHERE name = %s AND team_id = %s{type_sql} LIMIT 1", params)
+    row = cur.fetchone()
+    if row:
+        return row[0]
+    from datetime import datetime
+    if season is None or int(season) >= datetime.now().year:
+        return None
+    cur.execute(f"SELECT id FROM players WHERE name = %s{type_sql}", [name] + ([ptype] if ptype else []))
+    rows = cur.fetchall()
+    return rows[0][0] if len(rows) == 1 else None
 
 
 def _safe_float(val):
@@ -322,11 +347,19 @@ _KBO_TEAM_ID = {
 }
 
 
-def _get_kbo_season_pages(driver, url):
-    """KBO 사이트 페이지 전체 순회하며 tbody tr 수집"""
+def _get_kbo_season_pages(driver, url, season=None):
+    """KBO 사이트 페이지 전체 순회하며 tbody tr 수집. season 지정 시 드롭다운 선택(과거 시즌)."""
     from bs4 import BeautifulSoup
     driver.get(url)
     time.sleep(3)
+    if season:
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support.ui import Select
+        # 실패 시 그대로 raise — 현재 시즌 데이터가 과거 시즌으로 오라벨되는 것 방지
+        sel = driver.find_element(By.CSS_SELECTOR, "select[id*='ddlSeason']")
+        if sel.get_attribute('value') != str(season):
+            Select(sel).select_by_value(str(season))
+            time.sleep(3)
 
     all_rows = []
     headers = []
@@ -380,7 +413,7 @@ def crawl_kbo_hitter_season_stats(season=2026):
     url = f"https://www.koreabaseball.com/Record/Player/HitterBasic/Basic1.aspx"
     driver = _get_driver()
     try:
-        headers, rows = _get_kbo_season_pages(driver, url)
+        headers, rows = _get_kbo_season_pages(driver, url, season)
     finally:
         driver.quit()
 
@@ -432,15 +465,9 @@ def crawl_kbo_hitter_season_stats(season=2026):
             if not team_id:
                 continue
 
-            cur.execute("""
-                SELECT id FROM players
-                WHERE name = %s AND team_id = %s AND player_type = '타자'
-                LIMIT 1
-            """, (name, team_id))
-            row = cur.fetchone()
-            if not row:
+            player_id = _find_player_id(cur, name, team_id, '타자', season)
+            if not player_id:
                 continue
-            player_id = row[0]
 
             def _col_int(i):
                 return _safe_int(cols[i]) if i is not None and i < len(cols) else None
@@ -499,7 +526,7 @@ def crawl_kbo_pitcher_season_stats(season=2026):
     url = "https://www.koreabaseball.com/Record/Player/PitcherBasic/Basic1.aspx"
     driver = _get_driver()
     try:
-        headers, rows = _get_kbo_season_pages(driver, url)
+        headers, rows = _get_kbo_season_pages(driver, url, season)
     finally:
         driver.quit()
 
@@ -550,15 +577,9 @@ def crawl_kbo_pitcher_season_stats(season=2026):
             if not team_id:
                 continue
 
-            cur.execute("""
-                SELECT id FROM players
-                WHERE name = %s AND team_id = %s AND player_type = '투수'
-                LIMIT 1
-            """, (name, team_id))
-            row = cur.fetchone()
-            if not row:
+            player_id = _find_player_id(cur, name, team_id, '투수', season)
+            if not player_id:
                 continue
-            player_id = row[0]
 
             def _ci(i):
                 return _safe_int(cols[i]) if i is not None and i < len(cols) else None
@@ -631,7 +652,7 @@ def crawl_kbo_hitter_season_stats_2(season=2026):
     url = "https://www.koreabaseball.com/Record/Player/HitterBasic/Basic2.aspx"
     driver = _get_driver()
     try:
-        headers, rows = _get_kbo_season_pages(driver, url)
+        headers, rows = _get_kbo_season_pages(driver, url, season)
     finally:
         driver.quit()
 
@@ -673,11 +694,9 @@ def crawl_kbo_hitter_season_stats_2(season=2026):
             team_id = _KBO_TEAM_ID.get(cols[i_team])
             if not team_id:
                 continue
-            cur.execute("SELECT id FROM players WHERE name=%s AND team_id=%s AND player_type='타자' LIMIT 1", (name, team_id))
-            row = cur.fetchone()
-            if not row:
+            player_id = _find_player_id(cur, name, team_id, '타자', season)
+            if not player_id:
                 continue
-            player_id = row[0]
 
             def _ci(i): return _safe_int(cols[i])   if i is not None and i < len(cols) else None
             def _cf(i): return _safe_float(cols[i]) if i is not None and i < len(cols) else None
@@ -714,7 +733,7 @@ def crawl_kbo_pitcher_season_stats_2(season=2026):
     url = "https://www.koreabaseball.com/Record/Player/PitcherBasic/Basic2.aspx"
     driver = _get_driver()
     try:
-        headers, rows = _get_kbo_season_pages(driver, url)
+        headers, rows = _get_kbo_season_pages(driver, url, season)
     finally:
         driver.quit()
 
@@ -759,11 +778,9 @@ def crawl_kbo_pitcher_season_stats_2(season=2026):
             team_id = _KBO_TEAM_ID.get(cols[i_team])
             if not team_id:
                 continue
-            cur.execute("SELECT id FROM players WHERE name=%s AND team_id=%s AND player_type='투수' LIMIT 1", (name, team_id))
-            row = cur.fetchone()
-            if not row:
+            player_id = _find_player_id(cur, name, team_id, '투수', season)
+            if not player_id:
                 continue
-            player_id = row[0]
 
             def _ci(i): return _safe_int(cols[i])   if i is not None and i < len(cols) else None
             def _cf(i): return _safe_float(cols[i]) if i is not None and i < len(cols) else None
@@ -804,7 +821,7 @@ def crawl_kbo_runner_stats(season=2026):
     url = "https://www.koreabaseball.com/Record/Player/Runner/Basic.aspx"
     driver = _get_driver()
     try:
-        headers, rows = _get_kbo_season_pages(driver, url)
+        headers, rows = _get_kbo_season_pages(driver, url, season)
     finally:
         driver.quit()
 
@@ -841,11 +858,9 @@ def crawl_kbo_runner_stats(season=2026):
             team_id = _KBO_TEAM_ID.get(cols[i_team])
             if not team_id:
                 continue
-            cur.execute("SELECT id FROM players WHERE name=%s AND team_id=%s AND player_type='타자' LIMIT 1", (name, team_id))
-            row = cur.fetchone()
-            if not row:
+            player_id = _find_player_id(cur, name, team_id, '타자', season)
+            if not player_id:
                 continue
-            player_id = row[0]
 
             def _ci(i): return _safe_int(cols[i])   if i is not None and i < len(cols) else None
             def _cf(i): return _safe_float(cols[i]) if i is not None and i < len(cols) else None
@@ -878,7 +893,7 @@ def crawl_kbo_defense_stats(season=2026):
     url = "https://www.koreabaseball.com/Record/Player/Defense/Basic.aspx"
     driver = _get_driver()
     try:
-        headers, rows = _get_kbo_season_pages(driver, url)
+        headers, rows = _get_kbo_season_pages(driver, url, season)
     finally:
         driver.quit()
 
@@ -929,11 +944,9 @@ def crawl_kbo_defense_stats(season=2026):
             team_id = _KBO_TEAM_ID.get(cols[i_team])
             if not team_id:
                 continue
-            cur.execute("SELECT id FROM players WHERE name=%s AND team_id=%s LIMIT 1", (name, team_id))
-            row = cur.fetchone()
-            if not row:
+            player_id = _find_player_id(cur, name, team_id, None, season)
+            if not player_id:
                 continue
-            player_id = row[0]
 
             def _ci(i): return _safe_int(cols[i])   if i is not None and i < len(cols) else 0
             def _cf(i): return _safe_float(cols[i]) if i is not None and i < len(cols) else None
@@ -1003,7 +1016,7 @@ def crawl_kbo_hitter_detail1(season=2026):
     url = "https://www.koreabaseball.com/Record/Player/HitterBasic/Detail1.aspx"
     driver = _get_driver()
     try:
-        headers, rows = _get_kbo_season_pages(driver, url)
+        headers, rows = _get_kbo_season_pages(driver, url, season)
     finally:
         driver.quit()
 
@@ -1038,11 +1051,9 @@ def crawl_kbo_hitter_detail1(season=2026):
             team_id = _KBO_TEAM_ID.get(cols[i_team])
             if not team_id:
                 continue
-            cur.execute("SELECT id FROM players WHERE name=%s AND team_id=%s AND player_type='타자' LIMIT 1", (name, team_id))
-            row = cur.fetchone()
-            if not row:
+            player_id = _find_player_id(cur, name, team_id, '타자', season)
+            if not player_id:
                 continue
-            player_id = row[0]
 
             def _ci(i): return _safe_int(cols[i])   if i is not None and i < len(cols) else None
             def _cf(i): return _safe_float(cols[i]) if i is not None and i < len(cols) else None
@@ -1070,7 +1081,7 @@ def crawl_kbo_pitcher_detail1(season=2026):
     url = "https://www.koreabaseball.com/Record/Player/PitcherBasic/Detail1.aspx"
     driver = _get_driver()
     try:
-        headers, rows = _get_kbo_season_pages(driver, url)
+        headers, rows = _get_kbo_season_pages(driver, url, season)
     finally:
         driver.quit()
 
@@ -1110,11 +1121,9 @@ def crawl_kbo_pitcher_detail1(season=2026):
             team_id = _KBO_TEAM_ID.get(cols[i_team])
             if not team_id:
                 continue
-            cur.execute("SELECT id FROM players WHERE name=%s AND team_id=%s AND player_type='투수' LIMIT 1", (name, team_id))
-            row = cur.fetchone()
-            if not row:
+            player_id = _find_player_id(cur, name, team_id, '투수', season)
+            if not player_id:
                 continue
-            player_id = row[0]
 
             def _ci(i): return _safe_int(cols[i]) if i is not None and i < len(cols) else None
 
