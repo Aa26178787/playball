@@ -433,8 +433,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
 
   final ScrollController _dateScrollController = ScrollController();
   final ScrollController _gameScrollController = ScrollController();
-  static final _seasonStart = DateTime(2026, 3, 1);
+  // 24·25 과거 시즌 아카이브 열람 가능 — 스트립은 연속(오프시즌 날짜는 경기없음 비활성)
+  static final _seasonStart = DateTime(2024, 3, 1);
   static final _seasonEnd   = DateTime(2026, 10, 31);
+  static const _seasonYears = [2024, 2025, 2026];
   static const _itemW = 50.0;
 
   bool get _hasLiveGames => _games.any((g) => g['status'] == '진행');
@@ -461,8 +463,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     );
   }
 
-  void _scrollToMonthStart(int month) {
-    final target = DateTime(2026, month, 1);
+  void _scrollToMonthStart(int month, {int? year}) {
+    var target = DateTime(year ?? _selectedDate.year, month, 1);
+    if (target.isBefore(_seasonStart)) target = _seasonStart;
+    if (target.isAfter(_seasonEnd)) target = DateTime(_seasonEnd.year, month, 1);
     setState(() { _selectedDate = target; _isLoading = true; _games = []; _loadGen++; });
     _loadGames();
     _loadTomorrowGames();
@@ -879,7 +883,37 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     return SizedBox(
       height: 32,
       child: Row(
-        children: List.generate(8, (i) {
+        children: [
+        // 연도 선택 (24·25 과거 시즌 아카이브)
+        PopupMenuButton<int>(
+          tooltip: '시즌 선택',
+          padding: EdgeInsets.zero,
+          onSelected: (y) => _scrollToMonthStart(
+              y == DateTime.now().year ? DateTime.now().month.clamp(3, 10) : 3,
+              year: y),
+          itemBuilder: (_) => [
+            for (final y in _seasonYears.reversed)
+              PopupMenuItem(value: y, height: 38, child: Text('$y 시즌',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+          ],
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 9),
+            decoration: BoxDecoration(
+              color: tk.paper,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 4, offset: const Offset(0, 1))],
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Text('${_selectedDate.year}',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: tk.ink2)),
+              Icon(Icons.arrow_drop_down, size: 14, color: tk.ink2),
+            ]),
+          ),
+        ),
+        ...List.generate(8, (i) {
           final month = i + 3;
           final isActive = _selectedDate.month == month;
           return Expanded(
@@ -913,6 +947,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             ),
           );
         }),
+        ],
       ),
     );
   }

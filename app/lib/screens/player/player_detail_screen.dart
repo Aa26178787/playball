@@ -339,8 +339,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           : SingleChildScrollView(
               child: Column(
                 children: [
-                  // 배치: 헤더 → 핵심 2x2 → 최근5 → 세부/고급 → 트렌드 → 구종 → 시즌별 (빈도순)
+                  // 배치: 헤더 → 시즌칩 → 핵심 2x2 → 최근5 → 세부/고급 → 트렌드 → 구종 → 시즌별 (빈도순)
                   _buildHeader(player),
+                  _buildSeasonSelector(player),
                   _buildCoreStatsGrid(player),
                   if (_dailyStats.isNotEmpty) _buildRecent5Games(player),
                   _buildDetailStatsGrids(player),
@@ -784,14 +785,181 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 
   // ── 시즌 스탯 그리드 공용 (mockup 카드 스타일) ──
-  Map? _latestSeason(Map<String, dynamic> player) {
+  // 시즌 선택: 기본 = 최신 시즌, 칩으로 통산(null)/과거 시즌 전환
+  int? _selectedSeason;
+  bool _seasonPicked = false;
+
+  List<Map> _seasonRows(Map<String, dynamic> player) {
     final stats = (player['stats'] as List?) ?? [];
-    if (stats.isEmpty) return null;
-    Map cur = stats.first as Map;
-    for (final s in stats) {
-      if (((s as Map)['season'] as num? ?? 0) > (cur['season'] as num? ?? 0)) cur = s;
+    final rows = [for (final s in stats) s as Map];
+    rows.sort((a, b) =>
+        ((b['season'] as num?) ?? 0).compareTo((a['season'] as num?) ?? 0));
+    return rows;
+  }
+
+  Map? _viewSeasonStats(Map<String, dynamic> player) {
+    final rows = _seasonRows(player);
+    if (rows.isEmpty) return null;
+    if (!_seasonPicked) return rows.first; // 기본 = 최신 시즌
+    if (_selectedSeason == null) return _careerStats(rows, player);
+    return rows.firstWhere(
+        (r) => (r['season'] as num?)?.toInt() == _selectedSeason,
+        orElse: () => rows.first);
+  }
+
+  bool _viewingLatest(Map<String, dynamic> player) {
+    final rows = _seasonRows(player);
+    if (rows.isEmpty) return true;
+    return !_seasonPicked ||
+        _selectedSeason == (rows.first['season'] as num?)?.toInt();
+  }
+
+  static double _ipToReal(num? ip) {
+    if (ip == null) return 0;
+    final whole = ip.floor();
+    return whole + ((ip - whole) * 10).round() / 3.0;
+  }
+
+  // 통산(보유 시즌 합산) — 카운팅 = 합, 비율 = 원자료 재계산, 불가하면 표본 가중평균
+  Map _careerStats(List<Map> rows, Map<String, dynamic> player) {
+    final isPitcher = (player['player_type'] as String? ?? '') == '투수';
+    num? sum(String k) {
+      num? t;
+      for (final r in rows) {
+        final v = r[k] as num?;
+        if (v != null) t = (t ?? 0) + v;
+      }
+      return t;
     }
-    return cur;
+    double? wavg(String k, String wk) {
+      double n = 0, d = 0;
+      for (final r in rows) {
+        final v = (r[k] as num?)?.toDouble();
+        final w = (r[wk] as num?)?.toDouble() ?? 0;
+        if (v != null && w > 0) {
+          n += v * w;
+          d += w;
+        }
+      }
+      return d > 0 ? n / d : null;
+    }
+    double? div(num? a, num? b) =>
+        (a != null && b != null && b != 0) ? a / b : null;
+
+    final out = <String, dynamic>{'season': null};
+    if (!isPitcher) {
+      for (final k in [
+        'games', 'pa', 'at_bats', 'runs', 'hits', 'doubles', 'triples',
+        'home_runs', 'rbis', 'stolen_bases', 'cs', 'walks', 'hbp',
+        'strikeouts', 'gdp', 'tb', 'xbh', 'errors', 'po', 'assists', 'dp',
+        'pb', 'war',
+      ]) {
+        out[k] = sum(k);
+      }
+      final ab = sum('at_bats');
+      final pa = sum('pa');
+      out['avg'] = div(sum('hits'), ab);
+      out['slg'] = div(sum('tb'), ab) ?? wavg('slg', 'at_bats');
+      out['obp'] = wavg('obp', 'pa');
+      final obp = out['obp'] as double?;
+      final slg = out['slg'] as double?;
+      out['ops'] = (obp != null && slg != null) ? obp + slg : null;
+      final avg = out['avg'] as double?;
+      out['iso'] = (slg != null && avg != null) ? slg - avg : null;
+      final bbp = div(sum('walks'), pa);
+      final kp = div(sum('strikeouts'), pa);
+      out['bb_pct'] = bbp == null ? null : bbp * 100;
+      out['k_pct'] = kp == null ? null : kp * 100;
+      out['bb_k'] = div(sum('walks'), sum('strikeouts'));
+      for (final k in ['woba', 'wrc_plus', 'babip', 'risp', 'gpa', 'fpct']) {
+        out[k] = wavg(k, 'pa');
+      }
+    } else {
+      for (final k in [
+        'games', 'wins', 'losses', 'saves', 'holds', 'strikeouts', 'qs',
+        'blown_saves', 'walks', 'hits_allowed', 'runs_allowed',
+        'earned_runs', 'home_runs_allowed', 'war', 'gs', 'gf', 'svo', 'wp',
+        'bk', 'sac', 'sf', 'ibb', 'hbp',
+      ]) {
+        out[k] = sum(k);
+      }
+      double ip = 0;
+      for (final r in rows) {
+        ip += _ipToReal(r['innings_pitched'] as num?);
+      }
+      final whole = ip.floor();
+      final thirds = ((ip - whole) * 3).round();
+      out['innings_pitched'] =
+          double.parse((whole + thirds * 0.1).toStringAsFixed(1));
+      double? per9(num? x) => (x != null && ip > 0) ? x * 9.0 / ip : null;
+      out['era'] = per9(sum('earned_runs'));
+      final bb = sum('walks');
+      final ha = sum('hits_allowed');
+      out['whip'] = (ip > 0 && bb != null && ha != null) ? (bb + ha) / ip : null;
+      out['k_per_9'] = per9(sum('strikeouts'));
+      out['bb_per_9'] = per9(bb);
+      out['h_per_9'] = per9(ha);
+      out['hr_per_9'] = per9(sum('home_runs_allowed'));
+      out['k_bb'] = div(sum('strikeouts'), bb);
+      final wl = ((sum('wins') ?? 0) + (sum('losses') ?? 0)).toDouble();
+      out['wpct'] = wl > 0 ? (sum('wins') ?? 0) / wl : null;
+      for (final k in [
+        'fip', 'babip', 'avg_against', 'k_pct', 'bb_pct', 'k_bb_pct'
+      ]) {
+        out[k] = wavg(k, 'innings_pitched'); // ip 가중(근사 — .1/.2 표기 오차 미미)
+      }
+    }
+    return out;
+  }
+
+  // 시즌 칩 (통산 / 2026 / 2025 / 2024) — 보유 시즌 2개 이상일 때만
+  Widget _buildSeasonSelector(Map<String, dynamic> player) {
+    final rows = _seasonRows(player);
+    if (rows.length < 2) return const SizedBox.shrink();
+    final seasons = [
+      for (final r in rows) (r['season'] as num?)?.toInt()
+    ].whereType<int>().toList();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final sub = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF52525B);
+    final selected = !_seasonPicked ? seasons.first : _selectedSeason;
+
+    Widget chip(String label, int? value) {
+      final sel = selected == value;
+      return GestureDetector(
+        onTap: () => setState(() {
+          _seasonPicked = true;
+          _selectedSeason = value;
+        }),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+          decoration: BoxDecoration(
+            color: sel ? ink : paper,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: sel ? ink : line),
+          ),
+          child: Text(label,
+              style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: sel ? paper : sub)),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: [
+          for (final s in seasons) ...[chip('$s', s), const SizedBox(width: 7)],
+          chip('통산', null),
+        ]),
+      ),
+    );
   }
 
 
@@ -1305,14 +1473,16 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
   // 핵심 2x2 — 리그 평균 대비 + 순위 바 (스탯 커스텀)
   Widget _buildCoreStatsGrid(Map<String, dynamic> player) {
-    final cur = _latestSeason(player);
+    final cur = _viewSeasonStats(player);
     if (cur == null) return const SizedBox.shrink();
     final isPitcher = (player['player_type'] as String? ?? '') == '투수';
     final rawTc = teamColor(player['team_code'] as String? ?? '');
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final tc = isDark ? Color.lerp(rawTc, Colors.white, 0.25)! : rawTc;
-    final cmp = (player['core_compare'] as Map?) ?? const {};
-    final qualified = player['qualified'] as bool? ?? true;
+    // 리그 비교/규정 뱃지는 서버가 최신 시즌 기준으로 계산 → 과거/통산 뷰에선 숨김
+    final isLatestView = _viewingLatest(player);
+    final cmp = isLatestView ? ((player['core_compare'] as Map?) ?? const {}) : const {};
+    final qualified = !isLatestView || (player['qualified'] as bool? ?? true);
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     final labelCol = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF52525B); // 기록명 — sub보다 선명
@@ -1391,7 +1561,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Expanded(child: Text('${cur['season'] ?? ''} 시즌 핵심 기록',
+          Expanded(child: Text(
+              cur['season'] == null ? '통산 핵심 기록 (24시즌~)' : '${cur['season']} 시즌 핵심 기록',
               style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5))),
           GestureDetector(
             onTap: () => _openCorePicker(isPitcher),
@@ -1434,7 +1605,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   static const List<String> _gPitcherAdv = ['fip', 'k_per_9', 'bb_per_9', 'war', 'babip', 'k_pct', 'bb_pct', 'k_bb_pct'];
 
   Widget _buildDetailStatsGrids(Map<String, dynamic> player) {
-    final cur = _latestSeason(player);
+    final cur = _viewSeasonStats(player);
     if (cur == null) return const SizedBox.shrink();
     final isPitcher = (player['player_type'] as String? ?? '') == '투수';
     final core = (isPitcher ? _corePitcherKeys : _coreBatterKeys).toSet();

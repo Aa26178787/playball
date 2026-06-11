@@ -170,6 +170,8 @@ stadiums 1=서울 2=고척 3=수원 4=인천 5=대전 6=광주 7=대구 8=창원
 
 ### batter_stats / pitcher_stats
 (시즌 누적 — 컬럼 광범위. sb_pct는 이미 % 단위 ×100 금지)
+- **24·25 과거 시즌 적재 완료** (2026-06-11): batter 293/343, pitcher 206/240행. 소스 = 네이버 통계 API(`statiz_crawler get_*_stats(season)` + `save_players_and_stats(update_players=False)` — **현존 선수 naver_id 매칭만, 신규생성/프로필갱신 금지**: 은퇴선수 오염+현역 team_id 과거팀 덮어쓰기 방지) + KBO 공식 보강(규정충족자만 노출됨) + SQL 파생. 재실행 = `crawler/backfill_season_stats.py 2024 2025`. war/woba/wrc+ 포함, 은퇴/이탈 선수 행 없음(의도)
+- ⚠️ **KBO 기록 페이지 페이저**: '다음' 링크 = 페이지 아님, **5단위 블록 점프** — 숫자 링크 우선 클릭 (한때 1·6페이지만 수집 undercrawl)
 ⚠️ **statiz 미제공 파생지표 = crawler `recompute_pitcher_derived`/`recompute_batter_derived`(statiz_crawler.py)가 raw서 계산** — statiz INSERT/ON CONFLICT엔 없어 안 채우면 0. 투수: fip·k_per_9·bb_per_9·babip·k_bb·h_per_9·hr_per_9·wpct·k_pct·bb_pct·k_bb_pct / 타자: tb·xbh·bb_k·gpa·bb_pct·k_pct. 이닝 .1/.2=⅓⅔ 변환, FIP 리그상수(시즌집계), BABIP tbf>0 가드, K%/BB%는 % 단위(×100 저장). tbf(상대타자수)도 statiz 일부만 제공 → recompute가 추정(3*IP+피안타+볼넷+사구)으로 채움(K%/BB%/BABIP 분모). save_players_and_stats 끝서 호출. **신규 파생 추가 시 recompute에 넣을 것**. go/ao류는 statiz 미제공=계산불가
 - ⚠️ **`idx_game_rosters_player_id`(game_rosters(player_id)) 인덱스 필수** — /hitters·get_player_detail의 상대포지션 `mode()` correlated subquery가 인덱스 없으면 seq scan(27k)×선수수=2.5~5s → 앱 8s receiveTimeout 초과 → 타자 리스트 빈화면 사고(06-09). +`get_hitters @cached(300)`. **DB 재구축 시 인덱스 재생성**
 batter: avg,obp,slg,ops,woba,wrc_plus,babip,iso,war,risp,fpct,po,assists,dp,pb …
@@ -177,7 +179,8 @@ pitcher: era,whip,fip,k_per_9,bb_per_9,babip,war,qs,blown_saves,avg_against …
 
 ### 플랫폼 코어 (2026-06-11 — 메가A/B 토대)
 - **game_event_stream**: 도메인 이벤트 (scheduler 8종 발행: game_start/score_change/game_end/cancelled/extra_innings/pitcher_change/walkoff/starter_announced). `api/event_stream.emit_event`, UNIQUE(game_id,type,dedup_key) dedup. ⚠️ 기존 `game_events`(naver_crawler 텍스트 적재)와 별개 테이블. 소비자(예정): 타임라인·WPA·리플레이·브리핑
-- **plate_appearances**: PA 정규화 (`api/pa_parser.py` — game_pitches type 8/1/13 파싱). 컬럼: 타자/투수/result_class(single~hr/bb/hbp/so/sac/error/fc/reach_other/out)/is_hit/n_pitches/outs_before/주자/스코어/**win_rate_before·after(홈 기준 — WPA 재료)**/seq범위. 종료 후처리서 자동 적재 + `crawler/backfill_pa.py`(재실행 안전 upsert)
+- **plate_appearances**: PA 정규화 (`api/pa_parser.py` — game_pitches type 8/1/13 + **23(주요플레이) 파싱**). 컬럼: 타자/투수/result_class(single~hr/bb/hbp/so/sac/error/fc/reach_other/out)/is_hit/n_pitches/outs_before/주자/스코어/**win_rate_before·after(홈 기준 — WPA 재료)**/seq범위. 종료 후처리서 자동 적재 + `crawler/backfill_pa.py`(재실행 안전 upsert. 단 **pa_seq 시프트형 파서변경 시 DELETE 후 재실행**)
+  - ⚠️ **type 23 필수** (2026-06-11 발견): 홈런·희생플라이 등 주요플레이는 type 13 없이 **23으로만** 발행되는 경기 다수 (24·25 아카이브 전체 + 2026 일부) — 23 무시하면 해당 타석이 다음 타자 대타로 오인돼 통째 증발 (2024 hr=0 사고). 가드 = 타자명 일치 + classify≠etc. 현재 **145,689 PA (24~26 3시즌, win_rate 98.7% 커버)**
 - ~~데이터 기간 결손~~ → **win_rate 버그 해결**(2026-06-11): 원인 = metricOption이 textRelays **항목 레벨**인데 textOptions 내부서 조회(naver_crawler 레벨 착오). 수정+`backfill_winrate.py`로 5/9~ 재크롤 → 전 기간 WPA 가능. 잔여 결손 = 3/12~5/8 카운트/주자 스냅샷만(컨텍스트 NULL 유지). ※Naver metricOption에 **wpaByPlate**(타석 WPA 직접 제공)도 있음 — 필요 시 활용
 - **과거 시즌(24·25) 수집 = GO 판정**(2025-06-11 파일럿): 일정·relay API 과거 시즌 완전 보존(구조 동일). 비용 0(대역 2-4GB·저장 ~70MB), 시즌당 야간 배치 8-9시간(1.5s 간격). 선행 = 과거 games 행 INSERT(일정 크롤). 이득 = matchup 진짜 통산 + per-PA 재평가(AUC 천장 ~0.55) + 2시즌 아카이브
 - 안타판정: result_class 분기 순서 의존 ('땅볼로 출루'=reach_other, '삼진 아웃'=so). 대타 교체=동일 pa_seq 슬롯 대체, 무결과 타석(3아웃 주자사)=미적재
@@ -287,6 +290,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - **baseUrl HTTPS 고정** / git push --force / 커밋·배포·로그·APK는 묻지 않고 실행
 - **배포 시 playball + playball-scheduler 둘 다 재시작**
 - **한글 파일 PowerShell -replace 금지** (인코딩 깨짐 → crash loop). Edit 도구 사용
+- **ARM(A1) selenium = snap chromium**: `_get_driver`가 aarch64 감지 시 `/snap/bin/chromium.chromedriver` 사용. ⚠️ **binary_location 지정 금지**(즉사) + **user-data-dir = `~/snap/chromium/common/` 하위 필수**(snap이 호스트 /tmp 접근 불가). webdriver_manager는 ARM용 chromedriver 미제공
 - PS5.1: here-string 안 큰따옴표 → git -m 인자 깨짐 / Invoke-RestMethod 한글 mojibake(수동 UTF-8 디코드) / `$h`·`$H` 대소문자 동일 변수
 - ABS 존 상수 plateHalfW=8.5/12, absHalfW=9.95/12, ballR=1.45/12 — 변경 금지
 - TeamLogo 파라미터 `teamCode` / TeamDetailScreen `team`(Map) / NetworkImage 금지 → CachedNetworkImage
@@ -318,6 +322,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - **06-08b 출시준비(보안·안정화)**: 시크릿 env화·admin X-Admin-Key·rate limit 강화(X-Real-IP)·업로드 magic-byte·회원탈퇴 FK CASCADE·유저차단(user_blocks)·DB백업 가드·watchdog·Crashlytics·보안감사(auth/IDOR 견고)·auth 버튼 다크 가시성
 - **06-11 즉시묶음**: 보안5(EXIF Pillow 재인코딩·pg listen localhost·rpcbind off·백업 오프사이트 pull·인증 5회 제한) + 성능(orjson·uvicorn[standard]) + **app-config 풀스택**(서버 `/app-config`+`app_config` 테이블 / 클라 `AppConfig` 강제업데이트 다이얼로그·홈 서버배너·`enabled()` 킬스위치 API — 위젯 적용 점진) + **아침 브리핑**(KST 09:00 팀별 1통, 라이브 검증 완료) + UI소품(햅틱·이닝칩 자동스크롤·댓글 이탈경고). 잔여: 다크 육안검증
 - **06-11b 메가A 착수**: 플랫폼 코어(game_event_stream 8종 발행 + plate_appearances 24,584타석 백필 — 분포 리그 정합 검증) → **matchup 직접대결**(서버+선수상세+필드뷰 좌하단 라이브 캡션) → **인게임 승률 모델 v1**(AUC .853)+win-prob-series+relay home_win_prob → **승률 그래프 UI**(중계탭 상단 `_WinProbChart` — 타석별 라인·50%점선·이닝라벨·터치툴팁·라이브30s) → **결정적순간 푸시**(`_check_clutch_moment` — game_pitches 최신행→모델, ±20%p·5회+, 시뮬 평균 0.81건/경기). **per-PA 안타확률 = 검증 후 보류**(AUC 0.50 — 1시즌 표본으론 타자 간 분산이 타석 노이즈에 묻힘, 출루 라벨도 동일. `pa_hit_model.py` 보존, 2시즌+ 재평가. 데일리픽 등 의존 기능 동반 보류) → **불펜 피로도**(bullpen-status + 경기상세 로스터 불펜 색상뱃지·범례 — 라이브 검증: 조동욱 red 2연투 정합). **메가A 전체 완료** (per-PA만 데이터 사유 보류). ⚠️**서버 pull 충돌 주의 확장: 학습 coef json도 untracked 충돌원** (ingame_coef.json 사고 — pull 실패로 직전 배포 누락됐었음. 산출물 커밋 전 서버 측 rm) ⚠️5/9~ Naver win_rate 미수신 건 라이브 시간대 확인 대기
+- **06-11c A1이전+3시즌화**: A1.Flex 마이그레이션(상단 인프라) → **PA type23 파서버그 발견·수정**(홈런/SF 타석 증발 — 전체 재구축 132,949→145,689 PA, 김도영 2024 HR 38 정합 확인) → 모델 재학습(ingame AUC .8541@14.5만 / **per-PA .5226 — 0.497서 개선됐지만 표면노출 계속 보류**, matchup 통산은 3시즌 자동 수혜) → **24·25 시즌스탯 적재**(네이버 통계 match-only + KBO 보강 + statiz 타자파생 미실행 오타픽스) → **선수상세 시즌칩**(2026/2025/2024/통산 — 통산=클라 집계(카운팅 합·비율 재계산·불가시 표본가중), 리그비교/규정뱃지는 최신시즌 뷰만) → **홈 날짜스트립 2024-03~ 확장**(연도 픽커 추가, 월칩 = 보는 연도 기준, 오프시즌 날짜 = 경기없음 비활성). 존히트맵/피칭디자인은 자연히 3시즌 합산됨(표본↑, 의도)
 - **06-10 선수상세 개편**: 핵심스탯 커스텀피커(선수별 슬롯)+리그순위/규정미달/방향인식 비교말풍선(길게누르기,단어줄바꿈 word-joiner)·스탯 ⓘ용어설명·세부그리드=전체−핵심·팀상세 SNS링크(YT/IG/굿즈)·최근본선수칩·인스타 신고버튼. **인스타 다중검증(상세=INSTA_VERIFY.md): 339→358, imginn으로 가족계정9·동명이인 박멸**. 선발투수 게임카드 조기표시(`_update_probable_starters` 오늘+내일). 홀드 GREATEST고정버그(올러294)→자가치유
 
 ## 해야할 것

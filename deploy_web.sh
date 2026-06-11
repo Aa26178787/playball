@@ -3,7 +3,7 @@
 # 사용: bash deploy_web.sh   (Git Bash)
 set -e
 KEY="C:\\Users\\qq772\\Downloads\\ssh-key-2026-03-28 (2).key"
-SRV="ubuntu@168.107.61.147"
+SRV="ubuntu@168.107.36.158"
 cd "$(dirname "$0")/app"
 
 echo "== flutter build web =="
