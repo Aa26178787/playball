@@ -1,3 +1,6 @@
+import 'dart:ui' as ui;
+
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -29,6 +32,46 @@ String webSafeImageUrl(String? url) {
 ImageProvider netImageProvider(String url) {
   final u = webSafeImageUrl(url);
   return kIsWeb ? NetworkImage(u) : CachedNetworkImageProvider(u);
+}
+
+/// 웹 전용 ImageProvider — Safari 26의 <img> 네트워크 로더가 200 응답에도
+/// error 이벤트를 내는 문제 우회: fetch(XHR)로 바이트를 직접 받아 엔진 디코더에
+/// 전달 (blob 경유라 네트워크 <img> 미사용). 실기기 진단: fetch=PASS 검증.
+class _FetchImage extends ImageProvider<_FetchImage> {
+  final String url;
+  const _FetchImage(this.url);
+
+  @override
+  Future<_FetchImage> obtainKey(ImageConfiguration configuration) =>
+      SynchronousFuture<_FetchImage>(this);
+
+  @override
+  ImageStreamCompleter loadImage(_FetchImage key, ImageDecoderCallback decode) {
+    return MultiFrameImageStreamCompleter(
+      codec: _load(key, decode),
+      scale: 1.0,
+      debugLabel: key.url,
+    );
+  }
+
+  static final Dio _dio = Dio();
+
+  Future<ui.Codec> _load(_FetchImage key, ImageDecoderCallback decode) async {
+    final res = await _dio.get<List<int>>(key.url,
+        options: Options(responseType: ResponseType.bytes));
+    final bytes = Uint8List.fromList(res.data ?? const []);
+    if (bytes.isEmpty) {
+      throw Exception('빈 이미지 응답: ${key.url}');
+    }
+    final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+    return decode(buffer);
+  }
+
+  @override
+  bool operator ==(Object other) => other is _FetchImage && other.url == url;
+
+  @override
+  int get hashCode => url.hashCode;
 }
 
 /// CircleAvatar 대체 — web은 ClipOval+netImage(<img> 엘리먼트)로 그려
@@ -83,11 +126,11 @@ Widget netImage(
   if (u.isEmpty) return error?.call() ?? const SizedBox.shrink();
   if (kIsWeb) {
     // ⚠️ webHtmlElementStrategy.prefer(<img> 플랫폼뷰) 최종 금지 — A/B 5회 결론:
-    // iOS Safari 26에서 플랫폼뷰 포함 빌드 = Safari 탭/standalone 불문 크래시,
-    // CanvasKit-only = 유일 안정. iOS 이미지 미표시는 별도 추적(디코드 실패 의심
-    // — errorBuilder가 조용히 삼킴. 프록시 재인코딩/CPU렌더/wasm 실험 예정).
-    return Image.network(
-      u,
+    // iOS Safari 26에서 플랫폼뷰 포함 빌드 = Safari 탭/standalone 불문 크래시.
+    // 네트워크 로드는 _FetchImage(fetch bytes)로 — Safari 26이 <img> 네트워크
+    // 로더에 error 이벤트를 내는 문제(200 수신에도) 우회. fetch 경로는 실기기 PASS.
+    return Image(
+      image: _FetchImage(u),
       width: width,
       height: height,
       fit: fit,
@@ -114,8 +157,6 @@ Widget netImage(
               style: const TextStyle(fontSize: 8, color: Color(0xFFFF5252))),
         ),
       ),
-      loadingBuilder: (ctx, child, prog) =>
-          prog == null ? child : (placeholder?.call() ?? child),
     );
   }
   return CachedNetworkImage(
