@@ -59,9 +59,11 @@ dependencies:
   flutter_inappwebview: ^6.0.0
   
   # FCM 푸시 알림
-  firebase_core: ^2.27.0
-  firebase_messaging: ^14.7.19
-  firebase_crashlytics: ^3.4.9
+  # 06-12 메이저 업: 구버전(core 2/messaging 14/crashlytics 3)이 Xcode 16과
+  # non-modular header 비호환 → iOS(Codemagic) 빌드 불가라 최신 메이저로
+  firebase_core: ^4.10.0
+  firebase_messaging: ^16.3.0
+  firebase_crashlytics: ^5.2.3
   flutter_local_notifications: ^17.2.3
   
   # 차트
@@ -73,8 +75,8 @@ dependencies:
   # 이미지 선택
   image_picker: ^1.1.2
 
-  # 이미지 크롭 (1:1 정사각 강제)
-  image_cropper: ^7.1.0
+  # (06-12 제거) image_cropper — lib/ 사용처 0 (PhotoCropScreen으로 대체된 폐기 패키지)
+  #  + web ^0.5 의존이 신 firebase와 충돌
 
   # 인앱 크롭(Flutter 위젯, status bar 겹침 회피) + 갤러리 그리드
   crop_your_image: ^2.0.0
@@ -89,8 +91,9 @@ dependencies:
   # 캘린더 일정 추가
   add_2_calendar: ^3.0.1
 
-  # 공유 기능
-  share_plus: 10.0.0
+  # 공유 기능 (06-12: 10.0.0 고정 해제 — 그 고정은 구 firebase 충돌 회피용이었고
+  # 신 firebase(core 4/messaging 16)는 반대로 web ^1.0 요구라 13.x로 동반 업)
+  share_plus: ^12.0.2
 
   # 인앱 리뷰 (직관 승리 기록 직후 — 메가C)
   in_app_review: ^2.0.9

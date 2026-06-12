@@ -8,8 +8,7 @@ workflows:
     instance_type: mac_mini_m2
     environment:
       flutter: 3.41.6
-      # firebase_messaging 14.x/crashlytics 3.x = Xcode 16과 non-modular header 비호환 → 15.4 고정
-      xcode: 15.4
+      xcode: latest
       cocoapods: default
     working_directory: app
     scripts:
