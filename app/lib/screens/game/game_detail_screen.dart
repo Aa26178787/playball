@@ -1987,12 +1987,27 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           // mockup divider (헤더와 ScoringSummary 사이)
           Container(height: 1, color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0)),
           const SizedBox(height: 16),
+          // 스코어보드 + 득점요약 = 통합 카드 (06-13 병합)
           if (innings.isNotEmpty) ...[
-            _buildLineScore(innings, awayTeam, homeTeam),
-            const SizedBox(height: 14),
-          ],
-          if (innings.isNotEmpty && _relayAllData != null) ...[
-            _buildScoringSection(innings, awayTeam, homeTeam),
+            Builder(builder: (ctx) {
+              final isDarkC = Theme.of(ctx).brightness == Brightness.dark;
+              return Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: isDarkC ? const Color(0xFF18181C) : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: isDarkC ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
+                      width: 1),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(children: [
+                  _buildLineScore(innings, awayTeam, homeTeam),
+                  if (_relayAllData != null)
+                    _buildScoringSection(innings, awayTeam, homeTeam),
+                ]),
+              );
+            }),
             const SizedBox(height: 16),
           ],
 
@@ -2435,7 +2450,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final g = (_gameData?['game'] as Map?) ?? const {};
 
@@ -2487,14 +2501,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     String n(dynamic v) => v == null ? '-' : '${(v as num).toInt()}';
 
-    return Container(
-      width: double.infinity,
+    // 카드 decoration은 호출부 통합 카드(스코어보드+득점요약 병합 06-13)가 담당
+    return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      decoration: BoxDecoration(
-        color: paper,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: line, width: 1),
-      ),
       child: Row(children: [
         // 팀명 열 (고정)
         SizedBox(
@@ -2752,34 +2761,40 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         );
         return Padding(
           padding: EdgeInsets.only(top: first ? 0 : 6),
-          child: Stack(
-            children: [
-              // 중앙 클러스터 — 양쪽 사이드 폭(84)만큼 패딩 후 center
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 84),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (first) logo else const SizedBox(width: 20),
-                    const SizedBox(width: 6),
-                    Text(p.batter, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: inkS)),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(p.desc, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink2S)),
-                    ),
-                  ],
+          // 높이 24 보장 — 중앙 텍스트(~17px)보다 타점 배지(~23px)가 커서
+          // Stack 기본 클립에 배지 하단이 잘리던 것 (06-13 웹 보고)
+          child: SizedBox(
+            height: 24,
+            child: Stack(
+              children: [
+                // 중앙 클러스터 — 양쪽 사이드 폭(84)만큼 패딩 후 center
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 84),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (first) logo else const SizedBox(width: 20),
+                      const SizedBox(width: 6),
+                      Text(p.batter, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: inkS)),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(p.desc, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ink2S)),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              // 사이드 클러스터 (홈=좌 / 어웨이=우)
-              Positioned(
-                left: isHome ? 0 : null,
-                right: isHome ? null : 0,
-                top: 0, bottom: 0,
-                child: Center(child: sideCluster),
-              ),
-            ],
+                // 사이드 클러스터 (홈=좌 / 어웨이=우)
+                Positioned(
+                  left: isHome ? 0 : null,
+                  right: isHome ? null : 0,
+                  top: 0, bottom: 0,
+                  child: Center(child: sideCluster),
+                ),
+              ],
+            ),
           ),
         );
       }
@@ -2820,21 +2835,21 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final isDarkS = Theme.of(context).brightness == Brightness.dark;
     final inkS  = isDarkS ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink3S = isDarkS ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final paperS = isDarkS ? const Color(0xFF18181C) : Colors.white;
     final lineS  = isDarkS ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
 
+    // 통합 카드 내부 콘텐츠 (06-13 병합) — 라인스코어 아래 구분선+토글행+득점 rows
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Container(height: 1, color: lineS),
         InkWell(
           onTap: () => setState(() => _scoringExpanded = !_scoringExpanded),
-          borderRadius: BorderRadius.circular(6),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(2, 4, 2, 12),
+            padding: const EdgeInsets.fromLTRB(14, 9, 12, 9),
             child: Row(
               children: [
                 Text('득점 요약',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: inkS, letterSpacing: 0)),
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: inkS, letterSpacing: 0)),
                 const Spacer(),
                 Icon(
                   _scoringExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
@@ -2844,16 +2859,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             ),
           ),
         ),
-        if (_scoringExpanded)
-          Container(
-            decoration: BoxDecoration(
-              color: paperS,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: lineS, width: 1),
-            ),
+        if (_scoringExpanded) ...[
+          Container(height: 1, color: lineS),
+          Padding(
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
             child: Column(children: halfCards),
           ),
+        ],
       ],
     );
   }
