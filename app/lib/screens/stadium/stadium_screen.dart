@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -206,7 +207,11 @@ function resetView() {
       ),
       body: Column(
         children: [
-          SizedBox(
+          // 웹: inappwebview = 스텁(카카오맵 미지원 영역) — 무한로딩 대신 외부 링크 카드
+          if (kIsWeb)
+            _buildWebMapFallback(context)
+          else
+            SizedBox(
             height: MediaQuery.of(context).size.height * 0.38,
             child: Stack(children: [
               InAppWebView(
@@ -268,6 +273,46 @@ function resetView() {
     final lat = s['lat'] as double;
     final lng = s['lng'] as double;
     await _webController?.evaluateJavascript(source: 'moveTo($lat, $lng)');
+  }
+
+  // 웹 폴백 — 선택 구장(또는 안내) + 카카오맵 새 탭 열기
+  Widget _buildWebMapFallback(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sel = _selected >= 0 ? _stadiums[_selected] : null;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF18181C) : const Color(0xFFF4F4F6),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(children: [
+        Icon(Icons.map_outlined, size: 30,
+            color: isDark ? const Color(0xFF9A9AA0) : const Color(0xFF707078)),
+        const SizedBox(height: 8),
+        Text(
+          sel != null ? (sel['name'] as String) : '구장을 선택하면 지도를 볼 수 있어요',
+          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 10),
+        ElevatedButton.icon(
+          onPressed: sel == null
+              ? null
+              : () {
+                  final name = Uri.encodeComponent(
+                      (sel['name'] as String).split(' (').first);
+                  launchUrl(
+                    Uri.parse('https://map.kakao.com/link/map/$name,${sel['lat']},${sel['lng']}'),
+                    mode: LaunchMode.externalApplication,
+                  );
+                },
+          icon: const Icon(Icons.open_in_new, size: 15),
+          label: const Text('카카오맵에서 보기', style: TextStyle(fontSize: 12.5)),
+        ),
+      ]),
+    );
   }
 
   void _openFoodSheet(int i) {
