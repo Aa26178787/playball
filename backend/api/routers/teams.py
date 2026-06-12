@@ -19,13 +19,17 @@ def _calc_period_record(team_id, cur, period):
     """period별 wins/losses/draws/win_rate 재계산.
     period: 'full' (None 반환=기본 사용), 'first_half', 'last_10'."""
     if period == 'first_half':
+        # ⚠️ 시즌 하한 필수 — 24·25 과거 시즌 적재(06-11c) 후 하한 없으면
+        # 3시즌 합산돼 '전반기 216승' 사고 (06-13)
+        season_start = f"{datetime.now().year}-01-01"
         cur.execute("""
             SELECT home_team_id, home_score, away_score
             FROM games
             WHERE (home_team_id = %s OR away_team_id = %s)
               AND status = '종료'
+              AND game_date >= %s
               AND game_date <= %s
-        """, (team_id, team_id, _first_half_cutoff()))
+        """, (team_id, team_id, season_start, _first_half_cutoff()))
     elif period == 'last_10':
         cur.execute("""
             SELECT home_team_id, home_score, away_score
@@ -139,13 +143,14 @@ def _calc_recent_10(team_id, cur):
 
 
 def _calc_one_run_pct(team_id, cur):
-    """1점차 경기 승률 (.xxx 형식 문자열) — 경기 5건 미만시 None."""
+    """1점차 경기 승률 (.xxx 형식 문자열) — 경기 5건 미만시 None. 당해 시즌 한정."""
     cur.execute("""
         SELECT home_team_id, home_score, away_score
         FROM games
         WHERE (home_team_id = %s OR away_team_id = %s)
           AND status = '종료'
           AND ABS(home_score - away_score) = 1
+          AND game_date >= date_trunc('year', CURRENT_DATE)
     """, (team_id, team_id))
     rows = cur.fetchall()
     if len(rows) < 5:
@@ -225,6 +230,7 @@ def _calc_pythagorean(team_id, cur) -> float | None:
             SUM(CASE WHEN home_team_id=%s THEN away_score ELSE home_score END)
         FROM games
         WHERE (home_team_id=%s OR away_team_id=%s) AND status='종료'
+          AND game_date >= date_trunc('year', CURRENT_DATE)
     """, (team_id, team_id, team_id, team_id))
     row = cur.fetchone()
     rs, ra = (row[0] or 0), (row[1] or 0)
@@ -245,6 +251,7 @@ def _calc_home_away(team_id, cur):
             SUM(CASE WHEN away_team_id=%s AND away_score=home_score THEN 1 ELSE 0 END)
         FROM games
         WHERE (home_team_id=%s OR away_team_id=%s) AND status='종료'
+          AND game_date >= date_trunc('year', CURRENT_DATE)
     """, (team_id,) * 8)
     row = cur.fetchone()
     return {

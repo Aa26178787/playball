@@ -1096,8 +1096,20 @@ class _TeamScreenState extends State<TeamScreen>
             legendDot('WC 원정', _cWc5),
           ]),
           const SizedBox(height: 14),
-          ..._teams.map((t) {
-            final team = t as Map;
+          // PS 확률 내림차순 자체 정렬 — 기간 필터(전반기/최근10) 순위를 따라가면
+          // 확률 뷰 정렬이 뒤죽박죽 (06-13 보고)
+          ...(() {
+            double psOf(Map t) {
+              final o = oddsById[t['id'] as int? ?? -1];
+              if (o == null) return -1;
+              double p(String k) => (o[k] as num? ?? 0).toDouble();
+              return p('ks_direct_prob') + p('po_direct_prob') +
+                  p('spo_direct_prob') + p('wc_seed4_prob') + p('wc_seed5_prob');
+            }
+            final sorted = _teams.map((t) => t as Map).toList()
+              ..sort((a, b) => psOf(b).compareTo(psOf(a)));
+            return sorted;
+          })().map((team) {
             final id = team['id'] as int? ?? -1;
             final code = team['short_name'] as String? ?? '';
             final odds = oddsById[id];

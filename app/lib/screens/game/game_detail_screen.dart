@@ -68,7 +68,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   int _loadAttempt = 0;
   bool _isLoadingInFlight = false;
   bool _isRelayRefreshing = false;
-  bool _scoringExpanded = true;
   // 필드뷰 항상 상단 고정 (토글 버튼 제거 — 2026-06-06)
   final bool _fieldPinned = true;
   // 다른 경기 스트립 접기/펴기 (영구 기억)
@@ -2827,39 +2826,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }).toList();
 
     final isDarkS = Theme.of(context).brightness == Brightness.dark;
-    final inkS  = isDarkS ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final ink3S = isDarkS ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final lineS  = isDarkS ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
 
-    // 통합 카드 내부 콘텐츠 (06-13 병합) — 라인스코어 아래 구분선+토글행+득점 rows
+    // 통합 카드 내부 콘텐츠 (06-13 병합) — 토글 헤더 제거(심미 보고), 구분선+rows 상시
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(height: 1, color: lineS),
-        InkWell(
-          onTap: () => setState(() => _scoringExpanded = !_scoringExpanded),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 9, 12, 9),
-            child: Row(
-              children: [
-                Text('득점 요약',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: inkS, letterSpacing: 0)),
-                const Spacer(),
-                Icon(
-                  _scoringExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                  size: 18, color: ink3S,
-                ),
-              ],
-            ),
-          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+          child: Column(children: halfCards),
         ),
-        if (_scoringExpanded) ...[
-          Container(height: 1, color: lineS),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
-            child: Column(children: halfCards),
-          ),
-        ],
       ],
     );
   }
