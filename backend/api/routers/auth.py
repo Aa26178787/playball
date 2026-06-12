@@ -202,7 +202,8 @@ def login(user: UserLogin, request: Request):
 
     cur = conn.cursor()
     cur.execute("""
-        SELECT id, email, password_hash, nickname
+        SELECT id, email, password_hash, nickname,
+               (suspended_until IS NOT NULL AND suspended_until > now()) AS suspended
         FROM users WHERE email = %s
     """, (user.email,))
     row = cur.fetchone()
@@ -213,11 +214,16 @@ def login(user: UserLogin, request: Request):
         log_login_fail(ip, user.email)
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 틀렸습니다")
 
-    user_id, email, password_hash, nickname = row
+    user_id, email, password_hash, nickname, suspended = row
 
     if not verify_password(user.password, password_hash):
         log_login_fail(ip, user.email)
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 틀렸습니다")
+
+    # 계정 정지 (관리자 콘솔 — 06-13). 비번 검증 후 안내해야 정지 사실 노출이 정확
+    if suspended:
+        log_login_fail(ip, user.email)
+        raise HTTPException(status_code=403, detail="이용이 정지된 계정입니다")
 
     log_login_ok(ip, user_id, email)
     access_token = create_access_token(user_id, email)

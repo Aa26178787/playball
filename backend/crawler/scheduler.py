@@ -3211,6 +3211,73 @@ def _send_pregame_notifications():
 
 
 
+def _write_db_heartbeat():
+    """scheduler 생존 신호 — app_config(key=scheduler_heartbeat)에 시각 upsert (콘솔 상태보드)"""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO app_config (key, value)
+            VALUES ('scheduler_heartbeat', to_jsonb(now()::text))
+            ON CONFLICT (key) DO UPDATE SET value = to_jsonb(now()::text)
+        """)
+        conn.commit()
+        cur.close()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
+def _consume_admin_commands():
+    """admin_commands 큐 소비 — 콘솔의 수동 작업 (06-13). status: pending→done/error"""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, command FROM admin_commands
+            WHERE status = 'pending' ORDER BY id LIMIT 3
+        """)
+        cmds = cur.fetchall()
+        cur.close()
+    except Exception:
+        conn.close()
+        return
+    conn.close()
+    for cmd_id, command in cmds:
+        result, status = '', 'done'
+        try:
+            print(f"[admin_cmd] 실행: {command} (#{cmd_id})")
+            if command == 'recrawl_roster':
+                _update_roster_changes()
+                result = '등록말소 재크롤 완료'
+            elif command == 'recrawl_rankings':
+                update_team_rankings()
+                result = '팀순위 재크롤 완료'
+            elif command == 'recrawl_today_games':
+                _update_today_games()
+                result = '오늘 경기 재크롤 완료'
+            else:
+                result, status = f'알 수 없는 명령: {command}', 'error'
+        except Exception as e:
+            result, status = str(e)[:300], 'error'
+        c2 = get_connection()
+        if c2:
+            try:
+                cur2 = c2.cursor()
+                cur2.execute(
+                    "UPDATE admin_commands SET status=%s, result=%s, done_at=now() WHERE id=%s",
+                    (status, result, cmd_id))
+                c2.commit()
+                cur2.close()
+            finally:
+                c2.close()
+
+
 def _recover_missed_daily_stats():
     """서버 재시작 후 최근 2일 내 누락된 daily stats 복구"""
     from datetime import date as _date_cls, timedelta
@@ -3351,12 +3418,22 @@ def run_scheduler():
     print("- 매시간: 좀비 크롬 정리")
 
     _last_hb = time.time()
+    _last_db_hb = 0.0
+    _last_cmd_poll = 0.0
     while True:
         schedule.run_pending()
         # 30분 하트비트 — 무경기 시간대 무로그로 스모크가 멈춤 오인하는 것 방지
         if time.time() - _last_hb >= 1800:
             print(f"[{datetime.now()}] heartbeat — 루프 정상")
             _last_hb = time.time()
+        # 2분 DB 하트비트 — 관리자 콘솔 상태보드용 (06-13)
+        if time.time() - _last_db_hb >= 120:
+            _last_db_hb = time.time()
+            _write_db_heartbeat()
+        # 30초 admin 명령 큐 폴링 — 콘솔의 수동 재크롤 등 (06-13)
+        if time.time() - _last_cmd_poll >= 30:
+            _last_cmd_poll = time.time()
+            _consume_admin_commands()
         time.sleep(10)
 
 

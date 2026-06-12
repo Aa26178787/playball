@@ -68,11 +68,15 @@
 </header>
 <nav>
   <button data-tab="overview" class="active" onclick="show('overview')">개요</button>
+  <button data-tab="stats" onclick="show('stats')">통계</button>
   <button data-tab="users" onclick="show('users')">회원</button>
   <button data-tab="posts" onclick="show('posts')">게시글</button>
+  <button data-tab="comments" onclick="show('comments')">댓글</button>
   <button data-tab="reports" onclick="show('reports')">신고</button>
   <button data-tab="food" onclick="show('food')">맛집 승인</button>
   <button data-tab="features" onclick="show('features')">기능 토글</button>
+  <button data-tab="config" onclick="show('config')">설정·공지</button>
+  <button data-tab="system" onclick="show('system')">시스템</button>
 </nav>
 <main id="main"></main>
 </div>
@@ -137,7 +141,147 @@ function show(tab) {
   cur = tab;
   document.querySelectorAll('nav button').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === tab));
-  ({overview, users, posts, reports, food, features})[tab]();
+  ({overview, users, posts, reports, food, features, stats, config, system, comments})[tab]();
+}
+
+// ── 통계: DAU/가입 추이 (CSS 바차트) ──
+async function stats() {
+  const d = await api('GET', '/admin/stats');
+  const bar = (rows, color) => {
+    if (!rows.length) return '<div class="muted">데이터 없음</div>';
+    const max = Math.max(...rows.map(r => r.count), 1);
+    return '<div style="display:flex; align-items:flex-end; gap:3px; height:90px;">' +
+      rows.map(r => `<div title="${r.date}: ${r.count}" style="flex:1; background:${color};
+        height:${Math.max(4, r.count / max * 100)}%; border-radius:2px 2px 0 0;"></div>`).join('') +
+      '</div><div class="muted" style="font-size:10px; display:flex; justify-content:space-between;">' +
+      `<span>${rows[0].date.slice(5)}</span><span>${rows[rows.length-1].date.slice(5)}</span></div>`;
+  };
+  $('#main').innerHTML = `
+    <div class="cards">
+      <div class="card"><div class="k">오늘 DAU</div><div class="v">${(d.dau.at(-1)||{}).count ?? 0}</div></div>
+      <div class="card"><div class="k">WAU (7일)</div><div class="v">${d.wau}</div></div>
+      <div class="card"><div class="k">MAU (30일)</div><div class="v">${d.mau}</div></div>
+      <div class="card"><div class="k">예측 참여</div><div class="v">${d.predictions ?? '-'}</div></div>
+      <div class="card"><div class="k">직관 기록</div><div class="v">${d.visits ?? '-'}</div></div>
+      <div class="card"><div class="k">게시글</div><div class="v">${d.posts ?? '-'}</div></div>
+    </div>
+    <h3 style="margin:18px 0 8px;">일별 활성 사용자 (30일)</h3>${bar(d.dau, '#4ade80')}
+    <h3 style="margin:18px 0 8px;">일별 가입 (30일)</h3>${bar(d.signups, '#60a5fa')}`;
+}
+
+// ── 설정·공지: 배너/버전/시즌 + 공지 푸시 ──
+async function config() {
+  const d = await api('GET', '/admin/config');
+  const c = d.config || {};
+  const banner = c.banner || {};
+  $('#main').innerHTML = `
+    <h3>공지 배너 (홈 상단)</h3>
+    <div class="bar" style="flex-wrap:wrap; gap:8px;">
+      <input id="bnMsg" placeholder="배너 문구 (비우고 저장=해제)" value="${esc(banner.message||'')}" style="width:320px">
+      <select id="bnLv"><option value="info" ${banner.level!=='warn'?'selected':''}>info</option>
+        <option value="warn" ${banner.level==='warn'?'selected':''}>warn</option></select>
+      <button onclick="saveBanner()">저장</button>
+    </div>
+    <h3 style="margin-top:20px;">앱 버전</h3>
+    <div class="bar" style="gap:8px;">
+      <label>최소(강제): <input id="cfgMin" value="${esc(c.min_version||'1.0.0')}" style="width:90px"></label>
+      <label>최신(권장): <input id="cfgLatest" value="${esc(c.latest_version||'1.0.0')}" style="width:90px"></label>
+      <button onclick="saveVersions()">저장</button>
+    </div>
+    <h3 style="margin-top:20px;">시즌 단계</h3>
+    <div class="bar" style="gap:8px;">
+      <select id="cfgPhase">${['preseason','regular','postseason','offseason'].map(p =>
+        `<option ${c.season_phase===p?'selected':''}>${p}</option>`).join('')}</select>
+      <button onclick="saveCfg('season_phase', $('#cfgPhase').value)">저장</button>
+    </div>
+    <h3 style="margin-top:24px;">📣 공지 푸시 (전체 발송)</h3>
+    <div style="display:flex; flex-direction:column; gap:8px; max-width:420px;">
+      <input id="bcTitle" placeholder="제목">
+      <textarea id="bcBody" placeholder="내용" rows="3" style="background:var(--paper2);
+        border:1px solid var(--line); color:var(--ink); border-radius:8px; padding:9px 12px;"></textarea>
+      <button class="danger" onclick="sendBroadcast()">전체 푸시 발송</button>
+    </div>`;
+}
+async function saveCfg(key, value) { await api('POST', '/admin/config', { key, value }); toast(key + ' 저장됨'); }
+async function saveBanner() {
+  const msg = $('#bnMsg').value.trim();
+  await api('POST', '/admin/config', { key: 'banner',
+    value: msg ? { message: msg, level: $('#bnLv').value } : null });
+  toast(msg ? '배너 설정됨' : '배너 해제됨');
+}
+async function saveVersions() {
+  await api('POST', '/admin/config', { key: 'min_version', value: $('#cfgMin').value.trim() });
+  await api('POST', '/admin/config', { key: 'latest_version', value: $('#cfgLatest').value.trim() });
+  toast('버전 저장됨');
+}
+async function sendBroadcast() {
+  const title = $('#bcTitle').value.trim(), body = $('#bcBody').value.trim();
+  if (!title || !body) return toast('제목/내용 입력');
+  if (!confirm('전체 사용자에게 푸시를 보냅니다.\n"' + title + '"\n계속할까요?')) return;
+  const r = await api('POST', '/admin/broadcast', { title, body });
+  toast(r.sent_users + '명에게 발송됨');
+}
+
+// ── 시스템: 상태보드/재크롤/알림내역/보안로그 ──
+async function system() {
+  const h = await api('GET', '/admin/health');
+  const hb = h.scheduler_heartbeat ? String(h.scheduler_heartbeat).slice(0, 19) : '없음';
+  const bk = h.backup_last ? `${h.backup_last.file} (${h.backup_last.size_mb}MB, ${h.backup_last.mtime})` : '없음';
+  $('#main').innerHTML = `
+    <div class="cards">
+      <div class="card"><div class="k">스케줄러 하트비트</div><div class="v" style="font-size:13px;">${hb}</div></div>
+      <div class="card"><div class="k">등록말소 최종 수집일</div><div class="v" style="font-size:15px;">${h.roster_crawl_last ?? '-'}</div></div>
+      <div class="card"><div class="k">오늘 알림 발송</div><div class="v">${h.notifications_today ?? '-'}</div></div>
+      <div class="card"><div class="k">오늘 DAU</div><div class="v">${h.dau_today ?? '-'}</div></div>
+    </div>
+    <p class="muted">최근 백업: ${esc(bk)}</p>
+    <h3 style="margin:16px 0 8px;">수동 작업 (scheduler가 30초 내 실행)</h3>
+    <div class="bar" style="gap:8px;">
+      <button onclick="runCmd('recrawl_roster')">등록말소 재크롤</button>
+      <button onclick="runCmd('recrawl_rankings')">팀순위 재크롤</button>
+      <button onclick="runCmd('recrawl_today_games')">오늘 경기 재크롤</button>
+    </div>
+    <table><tr><th>#</th><th>명령</th><th>상태</th><th>결과</th><th>시각</th></tr>` +
+    (h.commands||[]).map(c => `<tr><td>${c.id}</td><td>${c.command}</td>
+      <td>${c.status}</td><td>${esc(c.result)}</td><td>${c.at}</td></tr>`).join('') + `</table>
+    <h3 style="margin:18px 0 8px;">최근 알림 발송 <button onclick="loadNotifs()" style="font-size:11px;">불러오기</button></h3>
+    <div id="notifBox"></div>
+    <h3 style="margin:18px 0 8px;">보안 로그 <button onclick="loadSeclog()" style="font-size:11px;">불러오기</button></h3>
+    <pre id="seclogBox" style="font-size:11px; background:var(--paper2); padding:10px;
+      border-radius:8px; max-height:260px; overflow:auto;"></pre>`;
+}
+async function runCmd(command) {
+  await api('POST', '/admin/commands', { command });
+  toast(command + ' 큐 등록 — 30초 내 실행');
+  setTimeout(system, 4000);
+}
+async function loadNotifs() {
+  const d = await api('GET', '/admin/notifications?limit=40');
+  $('#notifBox').innerHTML = '<table><tr><th>#</th><th>유저</th><th>타입</th><th>제목</th><th>시각</th></tr>' +
+    d.notifications.map(n => `<tr><td>${n.id}</td><td>${n.user_id}</td><td>${n.type}</td>
+      <td>${esc(n.title)}</td><td>${n.created_at}</td></tr>`).join('') + '</table>';
+}
+async function loadSeclog() {
+  const d = await api('GET', '/admin/seclog?lines=80');
+  $('#seclogBox').textContent = d.lines.join('\n') || '(비어 있음)';
+}
+
+// ── 댓글 검색/삭제 ──
+async function comments(q = '') {
+  const d = await api('GET', '/admin/comments?q=' + encodeURIComponent(q));
+  $('#main').innerHTML = `
+    <div class="bar"><input id="cq" placeholder="댓글 내용 검색" value="${esc(q)}" style="width:240px">
+    <button onclick="comments($('#cq').value)">검색</button>
+    <span class="muted">${d.comments.length}건</span></div>
+    <table><tr><th>#</th><th>내용</th><th>작성자</th><th>글</th><th>시각</th><th></th></tr>` +
+    d.comments.map(c => `<tr><td>${c.id}</td><td>${esc(c.content)}</td><td>${esc(c.author)}</td>
+      <td>${c.post_id}</td><td>${c.created_at}</td>
+      <td><button class="danger" onclick="delComment(${c.id})">삭제</button></td></tr>`).join('') + '</table>';
+}
+async function delComment(cid) {
+  if (!confirm('#' + cid + ' 댓글을 삭제할까요?')) return;
+  await api('DELETE', '/admin/comments/' + cid);
+  toast('삭제됨'); comments($('#cq') ? $('#cq').value : '');
 }
 
 // 기능 킬스위치 — OFF = 앱/웹에서 해당 UI 숨김 (전파 즉시~60초)
@@ -181,11 +325,28 @@ async function users(q = '') {
       <td class="muted">${u.created_at}</td>
       <td>${u.verified ? '<span class="pill g">인증</span>' : '<span class="pill r">미인증</span>'}</td>
       <td class="num">${u.posts}/${u.comments}</td>
-      <td><button class="danger" onclick="delUser(${u.id}, '${esc(u.nickname)}')">탈퇴</button></td></tr>`).join('') + '</table>';
+      <td style="white-space:nowrap;">
+        <button onclick="suspendUser(${u.id}, '${esc(u.nickname)}')">정지</button>
+        <button onclick="grantPts(${u.id}, '${esc(u.nickname)}')">포인트</button>
+        <button class="danger" onclick="delUser(${u.id}, '${esc(u.nickname)}')">탈퇴</button>
+      </td></tr>`).join('') + '</table>';
 }
 async function delUser(id, nick) {
   if (!confirm(`회원 #${id} ${nick} 를 탈퇴(영구삭제) 처리합니까?\n게시글·댓글·기록이 함께 삭제/익명화됩니다.`)) return;
   await api('DELETE', '/admin/users/' + id); toast('삭제됨'); users($('#uq')?.value || '');
+}
+async function suspendUser(id, nick) {
+  const days = prompt(`#${id} ${nick} 정지 일수 (0 = 해제):`, '7');
+  if (days === null) return;
+  await api('POST', `/admin/users/${id}/suspend`, { days: parseInt(days, 10) || 0 });
+  toast(parseInt(days, 10) > 0 ? days + '일 정지됨' : '정지 해제됨');
+}
+async function grantPts(id, nick) {
+  const pts = prompt(`#${id} ${nick} 지급 포인트 (음수 = 회수):`, '100');
+  if (pts === null) return;
+  const memo = prompt('사유 메모:', '이벤트 보상') || '';
+  await api('POST', '/admin/points', { user_id: id, points: parseInt(pts, 10) || 0, memo });
+  toast(pts + 'P 처리됨');
 }
 
 async function posts(q = '') {

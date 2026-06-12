@@ -137,6 +137,17 @@ class _ETagMiddleware(BaseHTTPMiddleware):
         )
 
 
+# DAU 기록 — 인증 요청의 user_id 일별 적재 (관리자 통계, 06-13. 무음 실패)
+from api.dau import record_from_auth_header
+
+
+class _DauMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        record_from_auth_header(request.headers.get("authorization"))
+        return await call_next(request)
+
+
+app.add_middleware(_DauMiddleware)
 app.add_middleware(_ETagMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(

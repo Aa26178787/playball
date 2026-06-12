@@ -234,6 +234,341 @@ def resolve_insta_report(rid: int, request: Request, x_admin_key: str | None = H
     return {"resolved": rid}
 
 
+# ── 통계: DAU/가입 추이 (06-13) ──────────────────────────────────────────────
+
+@router.get("/stats")
+def admin_stats(request: Request, x_admin_key: str | None = Header(default=None)):
+    """일별 DAU(30일) + 주/월 활성 + 가입 추이(30일) + 기능 사용량"""
+    _check(request, x_admin_key, "GET /admin/stats")
+    conn = _conn()
+    cur = conn.cursor()
+    out = {}
+    try:
+        cur.execute("""
+            SELECT active_date, count(DISTINCT user_id)
+            FROM daily_active_users
+            WHERE active_date >= CURRENT_DATE - 29
+            GROUP BY active_date ORDER BY active_date
+        """)
+        out["dau"] = [{"date": str(r[0]), "count": r[1]} for r in cur.fetchall()]
+        cur.execute("""
+            SELECT count(DISTINCT user_id) FROM daily_active_users
+            WHERE active_date >= CURRENT_DATE - 6
+        """)
+        out["wau"] = cur.fetchone()[0]
+        cur.execute("""
+            SELECT count(DISTINCT user_id) FROM daily_active_users
+            WHERE active_date >= CURRENT_DATE - 29
+        """)
+        out["mau"] = cur.fetchone()[0]
+        cur.execute("""
+            SELECT created_at::date, count(*)
+            FROM users WHERE created_at >= CURRENT_DATE - 29
+            GROUP BY 1 ORDER BY 1
+        """)
+        out["signups"] = [{"date": str(r[0]), "count": r[1]} for r in cur.fetchall()]
+        # 기능 사용량 (전체 누적)
+        for key, sql in [
+            ("predictions", "SELECT count(*) FROM game_predictions"),
+            ("visits", "SELECT count(*) FROM user_stadium_visits"),
+            ("posts", "SELECT count(*) FROM posts"),
+            ("points_users", "SELECT count(DISTINCT user_id) FROM point_ledger"),
+        ]:
+            try:
+                cur.execute(sql)
+                out[key] = cur.fetchone()[0]
+            except Exception:
+                conn.rollback()
+                out[key] = None
+    finally:
+        cur.close()
+        conn.close()
+    return out
+
+
+# ── app_config 편집: 배너/버전/시즌 단계 (06-13) ─────────────────────────────
+
+_EDITABLE_CONFIG = ("banner", "min_version", "latest_version", "season_phase")
+
+
+@router.get("/config")
+def get_admin_config(request: Request, x_admin_key: str | None = Header(default=None)):
+    _check(request, x_admin_key, "GET /admin/config")
+    conn = _conn()
+    cur = conn.cursor()
+    cur.execute("SELECT key, value FROM app_config WHERE key = ANY(%s)", (list(_EDITABLE_CONFIG),))
+    cfg = {k: v for k, v in cur.fetchall()}
+    cur.close()
+    conn.close()
+    return {"config": cfg}
+
+
+@router.post("/config")
+def set_admin_config(body: dict, request: Request,
+                     x_admin_key: str | None = Header(default=None)):
+    """{key, value} — value=null이면 키 삭제(배너 해제). /app-config 캐시 즉시 무효화"""
+    _check(request, x_admin_key, "POST /admin/config")
+    key = (body or {}).get("key")
+    value = (body or {}).get("value")
+    if key not in _EDITABLE_CONFIG:
+        raise HTTPException(status_code=400, detail=f"key는 {_EDITABLE_CONFIG} 중 하나")
+    import json
+    conn = _conn()
+    cur = conn.cursor()
+    if value is None:
+        cur.execute("DELETE FROM app_config WHERE key = %s", (key,))
+    else:
+        cur.execute("""
+            INSERT INTO app_config (key, value) VALUES (%s, %s)
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+        """, (key, json.dumps(value)))
+    conn.commit()
+    cur.close()
+    conn.close()
+    try:
+        from api.cache import cache_delete_prefix
+        cache_delete_prefix('api.routers.app_config.get_app_config')
+        cache_delete_prefix('api.routers.bootstrap.home_bootstrap')
+    except Exception:
+        pass
+    log_admin_access(_client_ip(request), "POST /admin/config", f"{key}", "OK")
+    return {"key": key, "value": value}
+
+
+# ── 공지 푸시 발송 (06-13) ───────────────────────────────────────────────────
+
+@router.post("/broadcast")
+def broadcast_push(body: dict, request: Request,
+                   x_admin_key: str | None = Header(default=None)):
+    """{title, body} — 전체 push_tokens에 발송 + 인앱 알림함 저장"""
+    _check(request, x_admin_key, "POST /admin/broadcast")
+    title = ((body or {}).get("title") or "").strip()
+    content = ((body or {}).get("body") or "").strip()
+    if not title or not content:
+        raise HTTPException(status_code=400, detail="title/body 필수")
+    conn = _conn()
+    cur = conn.cursor()
+    cur.execute("SELECT DISTINCT user_id, token FROM push_tokens")
+    targets = cur.fetchall()
+    cur.close()
+    conn.close()
+    from api.fcm_service import _send
+    _send([tuple(t) for t in targets], f"📢 {title}", content,
+          {"type": "notice"}, "notice", None)
+    log_admin_access(_client_ip(request), "POST /admin/broadcast", title[:40], "OK")
+    return {"sent_users": len({t[0] for t in targets})}
+
+
+# ── 시스템 상태 보드 (06-13) ─────────────────────────────────────────────────
+
+@router.get("/health")
+def admin_health(request: Request, x_admin_key: str | None = Header(default=None)):
+    _check(request, x_admin_key, "GET /admin/health")
+    conn = _conn()
+    cur = conn.cursor()
+    out = {}
+    for key, sql in [
+        ("scheduler_heartbeat", "SELECT value FROM app_config WHERE key='scheduler_heartbeat'"),
+        ("roster_crawl_last", "SELECT max(change_date)::text FROM player_roster_changes"),
+        ("games_updated_last", "SELECT max(updated_at)::text FROM games"),
+        ("notifications_today",
+         "SELECT count(*) FROM user_notifications WHERE created_at::date = CURRENT_DATE"),
+        ("dau_today",
+         "SELECT count(*) FROM daily_active_users WHERE active_date = (CURRENT_DATE + INTERVAL '9 hours')::date"),
+    ]:
+        try:
+            cur.execute(sql)
+            row = cur.fetchone()
+            out[key] = row[0] if row else None
+        except Exception:
+            conn.rollback()
+            out[key] = None
+    # 최근 admin 명령
+    try:
+        cur.execute("""
+            SELECT id, command, status, COALESCE(result,''), created_at::text
+            FROM admin_commands ORDER BY id DESC LIMIT 5
+        """)
+        out["commands"] = [
+            {"id": r[0], "command": r[1], "status": r[2], "result": r[3], "at": r[4][:19]}
+            for r in cur.fetchall()]
+    except Exception:
+        conn.rollback()
+        out["commands"] = []
+    cur.close()
+    conn.close()
+    # 백업 최근 파일 (서버 로컬)
+    try:
+        import glob
+        backups = sorted(glob.glob('/home/ubuntu/backups/*.gz'), key=os.path.getmtime)
+        if backups:
+            latest = backups[-1]
+            out["backup_last"] = {
+                "file": os.path.basename(latest),
+                "mtime": __import__('datetime').datetime.fromtimestamp(
+                    os.path.getmtime(latest)).isoformat()[:19],
+                "size_mb": round(os.path.getsize(latest) / 1048576, 1),
+            }
+        else:
+            out["backup_last"] = None
+    except Exception:
+        out["backup_last"] = None
+    return out
+
+
+@router.post("/commands")
+def enqueue_command(body: dict, request: Request,
+                    x_admin_key: str | None = Header(default=None)):
+    """수동 작업 큐 등록 — scheduler가 30초 내 소비. command: recrawl_roster|recrawl_rankings|recrawl_today_games"""
+    _check(request, x_admin_key, "POST /admin/commands")
+    command = (body or {}).get("command")
+    if command not in ("recrawl_roster", "recrawl_rankings", "recrawl_today_games"):
+        raise HTTPException(status_code=400, detail="지원하지 않는 명령")
+    conn = _conn()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO admin_commands (command, status) VALUES (%s, 'pending') RETURNING id",
+                (command,))
+    cmd_id = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+    log_admin_access(_client_ip(request), "POST /admin/commands", command, "OK")
+    return {"id": cmd_id, "command": command}
+
+
+# ── 포인트 수동 지급 (06-13) ─────────────────────────────────────────────────
+
+@router.post("/points")
+def grant_points(body: dict, request: Request,
+                 x_admin_key: str | None = Header(default=None)):
+    """{user_id, points(±), memo} — 원장 reason='admin' (음수 = 회수)"""
+    _check(request, x_admin_key, "POST /admin/points")
+    user_id = (body or {}).get("user_id")
+    points = (body or {}).get("points")
+    memo = ((body or {}).get("memo") or "").strip()[:80]
+    if not isinstance(user_id, int) or not isinstance(points, int) or points == 0:
+        raise HTTPException(status_code=400, detail="user_id/points 확인")
+    import uuid
+    from api.points import award
+    conn = _conn()
+    cur = conn.cursor()
+    award(cur, user_id, 'admin', f"{uuid.uuid4().hex[:12]}:{memo}", points=points)
+    conn.commit()
+    cur.close()
+    conn.close()
+    log_admin_access(_client_ip(request), "POST /admin/points",
+                     f"user={user_id} pts={points}", "OK")
+    return {"user_id": user_id, "points": points}
+
+
+# ── 댓글 검색 (06-13 — 삭제는 기존 DELETE /comments/{cid}) ───────────────────
+
+@router.get("/comments")
+def list_comments(request: Request, q: str = "", limit: int = Query(50, le=200),
+                  x_admin_key: str | None = Header(default=None)):
+    _check(request, x_admin_key, "GET /admin/comments")
+    conn = _conn()
+    cur = conn.cursor()
+    like = f"%{q}%"
+    cur.execute("""
+        SELECT c.id, c.post_id, LEFT(c.content, 80), COALESCE(u.nickname, '(탈퇴)'),
+               c.created_at
+        FROM comments c LEFT JOIN users u ON u.id = c.user_id
+        WHERE (%s = '' OR c.content ILIKE %s)
+        ORDER BY c.id DESC LIMIT %s
+    """, (q, like, limit))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {"comments": [
+        {"id": r[0], "post_id": r[1], "content": r[2], "author": r[3],
+         "created_at": str(r[4])[:19]} for r in rows]}
+
+
+# ── 인스타 핸들 즉석 수정 (06-13) ────────────────────────────────────────────
+
+@router.put("/players/{pid}/insta")
+def set_insta_handle(pid: int, body: dict, request: Request,
+                     x_admin_key: str | None = Header(default=None)):
+    """{handle: 'xxx' | null} — null이면 핸들 제거"""
+    _check(request, x_admin_key, f"PUT /admin/players/{pid}/insta")
+    handle = (body or {}).get("handle")
+    if handle is not None:
+        handle = handle.strip().lstrip('@') or None
+    conn = _conn()
+    cur = conn.cursor()
+    cur.execute("UPDATE players SET insta_handle = %s WHERE id = %s RETURNING name", (handle, pid))
+    row = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="없는 선수")
+    log_admin_access(_client_ip(request), f"PUT /admin/players/{pid}/insta", str(handle), "OK")
+    return {"player_id": pid, "name": row[0], "handle": handle}
+
+
+# ── 계정 정지 (06-13 — 삭제 외 운영 수단) ────────────────────────────────────
+
+@router.post("/users/{uid}/suspend")
+def suspend_user(uid: int, body: dict, request: Request,
+                 x_admin_key: str | None = Header(default=None)):
+    """{days: N} — N일 정지. days=0 = 해제"""
+    _check(request, x_admin_key, f"POST /admin/users/{uid}/suspend")
+    days = (body or {}).get("days")
+    if not isinstance(days, int) or days < 0 or days > 3650:
+        raise HTTPException(status_code=400, detail="days 0~3650")
+    conn = _conn()
+    cur = conn.cursor()
+    if days == 0:
+        cur.execute("UPDATE users SET suspended_until = NULL WHERE id = %s RETURNING id", (uid,))
+    else:
+        cur.execute(
+            "UPDATE users SET suspended_until = now() + (%s * INTERVAL '1 day') WHERE id = %s RETURNING id",
+            (days, uid))
+    row = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="없는 유저")
+    log_admin_access(_client_ip(request), f"POST /admin/users/{uid}/suspend", f"days={days}", "OK")
+    return {"user_id": uid, "days": days}
+
+
+# ── 알림 발송 내역 / 보안 로그 (06-13) ───────────────────────────────────────
+
+@router.get("/notifications")
+def list_notifications(request: Request, limit: int = Query(50, le=200),
+                       x_admin_key: str | None = Header(default=None)):
+    _check(request, x_admin_key, "GET /admin/notifications")
+    conn = _conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, user_id, type, LEFT(title, 60), created_at
+        FROM user_notifications ORDER BY id DESC LIMIT %s
+    """, (limit,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {"notifications": [
+        {"id": r[0], "user_id": r[1], "type": r[2], "title": r[3],
+         "created_at": str(r[4])[:19]} for r in rows]}
+
+
+@router.get("/seclog")
+def security_log_tail(request: Request, lines: int = Query(60, le=300),
+                      x_admin_key: str | None = Header(default=None)):
+    _check(request, x_admin_key, "GET /admin/seclog")
+    path = os.path.join(os.environ.get("LOG_DIR", "/home/ubuntu/playball/logs"), "security.log")
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            tail = f.readlines()[-lines:]
+        return {"lines": [ln.rstrip() for ln in tail]}
+    except FileNotFoundError:
+        return {"lines": []}
+
+
 # ── 기능 킬스위치 토글 (app_config.kill_switches) ────────────────────────────
 
 # 토글 가능한 기능 목록 (UI 라벨용) — 클라 AppConfig.enabled(키)와 1:1
