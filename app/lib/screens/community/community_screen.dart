@@ -95,7 +95,8 @@ class _CommunityScreenState extends State<CommunityScreen>
             padding: EdgeInsets.only(top: MediaQuery.of(context).viewPadding.top),
             child: Column(children: [
               Padding(
-                padding: EdgeInsets.fromLTRB(18, headerTopGap(context), 18, 13),
+                // bottom 13→4: 탭바 위 여백 과다 (06-13)
+                padding: EdgeInsets.fromLTRB(18, headerTopGap(context), 18, 4),
                 child: Row(children: [
                   Text('커뮤니티', style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5)),
                   const Spacer(),

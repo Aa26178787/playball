@@ -125,7 +125,9 @@ class ApiService {
             err.type == DioExceptionType.connectionError ||
             err.type == DioExceptionType.unknown;
         final is5xx = (err.response?.statusCode ?? 0) >= 500;
-        if ((isNetworkError || is5xx) && err.requestOptions.extra['_retried'] != true) {
+        // GET만 재시도 — POST 재전송은 비멱등(댓글 중복 작성 사고 06-13)
+        final isGet = err.requestOptions.method.toUpperCase() == 'GET';
+        if (isGet && (isNetworkError || is5xx) && err.requestOptions.extra['_retried'] != true) {
           err.requestOptions.extra['_retried'] = true;
           await Future.delayed(const Duration(milliseconds: 300));
           try {

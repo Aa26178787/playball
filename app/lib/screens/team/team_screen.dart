@@ -155,7 +155,8 @@ class _TeamScreenState extends State<TeamScreen>
             padding: EdgeInsets.only(top: MediaQuery.of(context).viewPadding.top),
             child: Column(children: [
               Padding(
-                padding: EdgeInsets.fromLTRB(18, headerTopGap(context), 18, 12),
+                // bottom 12→4: 탭바 위 여백 과다 (06-13)
+                padding: EdgeInsets.fromLTRB(18, headerTopGap(context), 18, 4),
                 child: Row(children: [
                   Text('순위',
                       style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra,

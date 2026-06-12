@@ -81,6 +81,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   Future<void> _submit() async {
+    if (_isLoading) return; // 더블탭 중복 작성 가드 (06-13)
     if (_titleController.text.trim().isEmpty || _contentController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('제목과 내용을 입력해주세요')));
       return;
@@ -282,6 +283,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 controller: _contentController,
                 maxLines: null,
                 minLines: 8,
+                // 커서가 키보드/툴바에 가리지 않게 자동 스크롤 여유 (06-13)
+                scrollPadding: const EdgeInsets.only(bottom: 140),
                 style: TextStyle(fontSize: 14, color: cs.ink, height: 1.7),
                 cursorColor: accent,
                 decoration: InputDecoration(

@@ -1229,7 +1229,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         : <(String, String)>[
             ('타율', fmt(stats['avg'], rate: true)),
             ('홈런', fmt(stats['home_runs'])),
-            ('타점', fmt(stats['rbi'])),
+            ('타점', fmt(stats['rbis'])), // 시즌 Map 키 = rbis (rbi 아님 — 06-13 공유 누락)
             ('OPS', fmt(stats['ops'], rate: true)),
           ];
     showShareCardDialog(
@@ -2232,9 +2232,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         labels.add(dateStr.length >= 10 ? '${dateStr.substring(5, 7)}/${dateStr.substring(8, 10)}' : '');
       }
     }
-    if (spots.isEmpty) return const SizedBox.shrink();
-
-    final values = spots.map((s) => s.y).toList();
+    // spots 비어도 카드 유지 — era(자책 미적재 데이터) 선택 시 카드 통째 소멸하면
+    // 다른 스탯으로 되돌아갈 칩까지 사라짐 (06-13 유영찬 보고). 안내문으로 대체.
+    final hasData = spots.isNotEmpty;
+    final values = hasData ? spots.map((s) => s.y).toList() : <double>[0];
     final minVal = values.reduce((a, b) => a < b ? a : b);
     final maxVal = values.reduce((a, b) => a > b ? a : b);
     final isLowStat = trendStat == 'era';
@@ -2298,6 +2299,15 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 ),
               ),
               const SizedBox(height: 10),
+              if (!hasData)
+                SizedBox(
+                  height: 150,
+                  child: Center(
+                    child: Text('$statLabel은(는) 경기별 데이터가 없어요',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                  ),
+                )
+              else
               SizedBox(
                 height: 150,
                 child: LineChart(

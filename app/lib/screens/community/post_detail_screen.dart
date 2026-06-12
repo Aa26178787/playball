@@ -46,8 +46,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     }
   }
 
+  bool _submittingComment = false; // 더블탭 중복 작성 가드 (06-13 알림 2개 사고)
+
   Future<void> _submitComment() async {
-    if (_commentController.text.trim().isEmpty) return;
+    if (_commentController.text.trim().isEmpty || _submittingComment) return;
+    _submittingComment = true;
     try {
       await ApiService.createComment(
           widget.postId, _commentController.text.trim());
@@ -59,6 +62,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         const SnackBar(content: Text('댓글 작성 실패. 로그인이 필요합니다')),
       );
       }
+    } finally {
+      _submittingComment = false;
     }
   }
 
@@ -409,8 +414,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     decoration: const InputDecoration(
                       hintText: '댓글을 입력하세요',
                       border: OutlineInputBorder(),
+                      isDense: true,
+                      // 커서가 박스 상하단을 삐져나가던 것 — 수직 여유 (06-13)
                       contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     ),
                   ),
                 ),
