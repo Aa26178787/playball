@@ -74,14 +74,20 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   // 다른 경기 스트립 접기/펴기 (영구 기억)
   bool _stripExpanded = true;
 
-  // 필드뷰 자체 = 화면 높이의 일정 비율로 고정 (06-12 — 갤럭시 플립6 기준).
-  // 플립6: CSS 뷰포트 ~1006px에서 필드 290px ≈ 29% (패널 50%는 스트립 포함 착시).
-  // 모든 디바이스에서 필드(290px 원본)가 화면의 [_fieldRatio]가 되도록 축소.
-  static const _fieldRatio = 0.29; // 필드/화면 비율 (플립6 기준 — 여기만 조정)
+  // 필드 축소 기준 = "패널 아래 잔여 공간 [_minContentBelow]px 보장" (06-13).
+  // 비율 고정(29%)은 스트립 등 고정부(~208px) 때문에 작은 화면에서 패널 합산이
+  // 70%까지 차지 (아이폰 네이티브 보고). 잔여 절대량 보장이 체감 기준과 일치:
+  // 플립(1006px) = 원본 유지(사용자 만족 상태), 아이폰(~870)·사파리는 자동 축소.
+  static const _minContentBelow = 500.0; // 패널 아래 확보할 최소 px (여기만 조정)
   static const _minShrink = 0.35; // 필드 최소 축소 한계
 
-  double get _fieldShrink =>
-      (MediaQuery.of(context).size.height * _fieldRatio / 290).clamp(_minShrink, 1.0);
+  double get _fieldShrink {
+    final h = MediaQuery.of(context).size.height;
+    final base = _sameDayGames.isNotEmpty ? (_stripExpanded ? 498.0 : 428.0) : 408.0;
+    final panelMax = h - _minContentBelow;
+    if (base <= panelMax) return 1.0;
+    return ((panelMax - base + 290) / 290).clamp(_minShrink, 1.0);
+  }
 
   double _panelH(double base) => base - 290 * (1 - _fieldShrink);
 

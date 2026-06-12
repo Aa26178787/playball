@@ -1317,13 +1317,13 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           ),
         );
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: Column(
+      body: Column(
         children: [
           // ── 헤더 (탭 공통: 타이틀 + 32px 액션 버튼) ──
+          // 상태바 영역까지 paper로 — SafeArea로 비우면 iOS에서 헤더와 색 단차 (06-13)
           Container(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+            padding: EdgeInsets.fromLTRB(
+                18, 8 + MediaQuery.of(context).viewPadding.top, 18, 12),
             decoration: BoxDecoration(
               color: t.paper,
               border: Border(bottom: BorderSide(color: t.line)),
@@ -1481,7 +1481,6 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             ),
           ),
         ],
-        ),
       ),
     );
   }
