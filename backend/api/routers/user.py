@@ -36,6 +36,8 @@ class NotificationSettings(BaseModel):
     notify_team_milestone: bool = True
     notify_allstar_vote: bool = True
     notify_quiet: bool = True  # quiet hours(KST 23:30~07:30) 푸시 억제 — FALSE = 심야에도 수신
+    notify_clutch: bool = True    # 결정적 순간 (승률 급변) — 06-13 전용 토글
+    notify_briefing: bool = True  # 아침 브리핑 — 06-13 전용 토글
 
 
 class PushToken(BaseModel):
@@ -282,7 +284,7 @@ def get_settings(current_user: dict = Depends(get_current_user)):
                notify_pennant_race, notify_fav_hr, notify_walkoff, notify_starter_ko,
                notify_before_minutes, notify_milestone, notify_fav_lineup,
                notify_player_daily, notify_player_news, notify_team_milestone,
-               notify_allstar_vote, notify_quiet
+               notify_allstar_vote, notify_quiet, notify_clutch, notify_briefing
         FROM user_settings
         WHERE user_id = %s
     """, (current_user["user_id"],))
@@ -316,6 +318,8 @@ def get_settings(current_user: dict = Depends(get_current_user)):
             "notify_team_milestone":  row[17] if row[17] is not None else True,
             "notify_allstar_vote":    row[18] if row[18] is not None else True,
             "notify_quiet":           row[19] if row[19] is not None else True,
+            "notify_clutch":          row[20] if row[20] is not None else True,
+            "notify_briefing":        row[21] if row[21] is not None else True,
         }
     }
 
@@ -351,6 +355,8 @@ def update_settings(body: NotificationSettings, current_user: dict = Depends(get
             notify_team_milestone = %s,
             notify_allstar_vote = %s,
             notify_quiet = %s,
+            notify_clutch = %s,
+            notify_briefing = %s,
             updated_at = NOW()
         WHERE user_id = %s
     """, (
@@ -374,6 +380,8 @@ def update_settings(body: NotificationSettings, current_user: dict = Depends(get
         body.notify_team_milestone,
         body.notify_allstar_vote,
         body.notify_quiet,
+        body.notify_clutch,
+        body.notify_briefing,
         current_user["user_id"]
     ))
 

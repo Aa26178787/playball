@@ -60,6 +60,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
   bool _notifyTeamMilestone = true;
   bool _notifyAllstarVote   = true;
   bool _notifyQuiet         = true;
+  bool _notifyClutch        = true;
+  bool _notifyBriefing      = true;
   bool _settingsLoaded      = false;
   final Set<int> _expandedCats = {0}; // 알림 카테고리 펼침 (기본 경기 알림)
 
@@ -107,6 +109,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
     _notifyTeamMilestone = settings['notify_team_milestone'] as bool? ?? true;
     _notifyAllstarVote   = settings['notify_allstar_vote']   as bool? ?? true;
     _notifyQuiet         = settings['notify_quiet']          as bool? ?? true;
+    _notifyClutch        = settings['notify_clutch']         as bool? ?? true;
+    _notifyBriefing      = settings['notify_briefing']       as bool? ?? true;
   }
 
   Future<void> _loadFromCache() async {
@@ -210,6 +214,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
         'notify_team_milestone':  _notifyTeamMilestone,
         'notify_allstar_vote':    _notifyAllstarVote,
         'notify_quiet':           _notifyQuiet,
+        'notify_clutch':          _notifyClutch,
+        'notify_briefing':        _notifyBriefing,
       });
     } catch (e) { debugPrint('my_page: $e'); }
   }
@@ -919,6 +925,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
          'on': (bool v) { _notifyScoreChange = v; }},
         {'label': '경기 종료', 'desc': '경기 결과 요약 포함', 'value': _notifyGameEnd,
          'on': (bool v) { _notifyGameEnd = v; }},
+        {'label': '결정적 순간', 'desc': '승률 ±20%p 급변 시 (5회 이후)', 'value': _notifyClutch,
+         'on': (bool v) { _notifyClutch = v; }},
         {'label': '끝내기 승리', 'desc': '끝내기 득점으로 승리 시', 'value': _notifyWalkoff,
          'on': (bool v) { _notifyWalkoff = v; }},
         {'label': '투수 교체', 'desc': '선발 조기강판·투수 교체 시', 'value': _notifyStarterKo,
@@ -949,6 +957,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
          'on': (bool v) { _notifyAllstarVote = v; }},
       ]},
       {'icon': '⚙️', 'label': '일반', 'items': [
+        {'label': '아침 브리핑', 'desc': '매일 9시 어제 결과+오늘 경기 1통', 'value': _notifyBriefing,
+         'on': (bool v) { _notifyBriefing = v; }},
         {'label': '댓글', 'desc': '내 글에 댓글이 달릴 때', 'value': _notifyComment,
          'on': (bool v) { _notifyComment = v; }},
         {'label': '심야 푸시 끄기', 'desc': '23:30~07:30 푸시 중단 (알림함엔 저장)', 'value': _notifyQuiet,

@@ -41,7 +41,8 @@ def _get_targets(notify_type: str, team_ids: list[int]) -> list[tuple[int, str]]
     user_settings 미설정 → 기본값(전부 ON, my_team_only=OFF).
     """
     allowed = ('notify_game_start', 'notify_score_change', 'notify_game_end',
-               'notify_walkoff', 'notify_starter_ko')  # notify_starter_ko 컬럼 = 투수 교체 알림용으로 재사용
+               'notify_walkoff', 'notify_starter_ko',  # notify_starter_ko = 투수 교체 알림용 재사용
+               'notify_clutch', 'notify_briefing')  # 06-13 전용 토글 신설
     if notify_type not in allowed:
         return []
     conn = get_connection()
@@ -608,9 +609,9 @@ def notify_clutch_moment(game_id: int, home_team: str, away_team: str,
                          home_team_id: int, away_team_id: int,
                          situation: str, gainer: str,
                          prob_from: float, prob_to: float):
-    """인게임 승률 ±20%p 급변 — notify_score_change ON 양팀 팬에게.
+    """인게임 승률 ±20%p 급변 — notify_clutch ON 양팀 팬에게 (전용 토글 06-13).
     situation: '8회말 2사 1·3루' / gainer: 유리해진 팀명"""
-    targets = _get_targets('notify_score_change', [home_team_id, away_team_id])
+    targets = _get_targets('notify_clutch', [home_team_id, away_team_id])
     title = f"🔥 결정적 순간! {home_team} vs {away_team}"
     body = (f"{situation} — {gainer} 승률 "
             f"{prob_from:.0f}%→{prob_to:.0f}%")
@@ -621,8 +622,8 @@ def notify_clutch_moment(game_id: int, home_team: str, away_team: str,
 # ── 아침 브리핑 ───────────────────────────────────────────────────────────────
 
 def notify_daily_briefing(team_id: int, title: str, body: str):
-    """아침 브리핑 (어제 마이팀 결과 + 오늘 경기) — notify_game_start ON 팬에게 팀별 1통"""
-    targets = _get_targets('notify_game_start', [team_id])
+    """아침 브리핑 (어제 마이팀 결과 + 오늘 경기) — notify_briefing ON 팬에게 팀별 1통 (전용 토글 06-13)"""
+    targets = _get_targets('notify_briefing', [team_id])
     _send(targets, title, body,
           {"type": "daily_briefing"}, "daily_briefing", None)
 
