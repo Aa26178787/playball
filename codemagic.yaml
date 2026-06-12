@@ -23,4 +23,6 @@ workflows:
           cp -r Runner.app Payload/
           zip -qr playball-unsigned.ipa Payload
     artifacts:
-      - app/build/ios/iphoneos/playball-unsigned.ipa
+      # working_directory 기준/클론 루트 기준 — 어느 해석이든 잡히게 양쪽 패턴
+      - app/build/ios/iphoneos/*.ipa
+      - build/ios/iphoneos/*.ipa
