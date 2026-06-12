@@ -86,9 +86,51 @@ class ApiService {
   // D-B: 동시 in-flight 요청 카운터 + 타이밍 로그 (debug only)
   static int _inFlightCount = 0;
 
+  // ETag/304 — GET 응답의 ETag·바디를 메모리에 보관, 재요청 시 If-None-Match.
+  // 서버가 304면 보관 바디로 즉시 응답 (30s 폴링 대역 절감 — 06-13 성능 묶음).
+  // 키 = path+query 단위라 엔드포인트 수만큼만 성장 (bounded).
+  static final Map<String, String> _etagOf = {};
+  static final Map<String, dynamic> _etagBody = {};
+
   static void initInterceptor(Future<void> Function() onLogout) {
     if (_interceptorAdded) return;
     _interceptorAdded = true;
+
+    // ETag 인터셉터 — 다른 인터셉터(재시도/auth)보다 먼저 304를 소화해야 함
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (opts, handler) {
+        if (opts.method == 'GET') {
+          final tag = _etagOf[opts.uri.toString()];
+          if (tag != null) opts.headers['If-None-Match'] = tag;
+        }
+        return handler.next(opts);
+      },
+      onResponse: (res, handler) {
+        if (res.requestOptions.method == 'GET') {
+          final tag = res.headers.value('etag');
+          if (tag != null) {
+            final key = res.requestOptions.uri.toString();
+            _etagOf[key] = tag;
+            _etagBody[key] = res.data;
+          }
+        }
+        return handler.next(res);
+      },
+      onError: (err, handler) {
+        if (err.response?.statusCode == 304) {
+          final key = err.requestOptions.uri.toString();
+          final body = _etagBody[key];
+          if (body != null) {
+            return handler.resolve(Response(
+              requestOptions: err.requestOptions,
+              statusCode: 200,
+              data: body,
+            ));
+          }
+        }
+        return handler.next(err);
+      },
+    ));
 
     if (kDebugMode) {
       _dio.interceptors.add(InterceptorsWrapper(

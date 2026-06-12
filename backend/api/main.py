@@ -109,6 +109,35 @@ async def rate_limit(request: Request, call_next):
     return await call_next(request)
 
 
+# ETag/304 — GET 200 응답 바디 해시. 클라(30s 폴링)가 If-None-Match 보내면
+# 변화 없을 때 304 헤더만 반환 (풀바디 재전송 대역 절감 — 성능 백로그 06-13).
+# add 순서: GZip보다 먼저 add = 스택 안쪽 = 압축 전 원본 바디 기준 해시.
+import hashlib as _hashlib
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response as _StarletteResponse
+
+
+class _ETagMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        if request.method != "GET" or response.status_code != 200:
+            return response
+        body = b"".join([chunk async for chunk in response.body_iterator])
+        etag = f'W/"{_hashlib.md5(body).hexdigest()}"'
+        if request.headers.get("if-none-match") == etag:
+            return _StarletteResponse(status_code=304, headers={"ETag": etag})
+        headers = dict(response.headers)
+        headers["ETag"] = etag
+        headers.pop("content-length", None)  # 재계산 위임
+        return _StarletteResponse(
+            content=body,
+            status_code=response.status_code,
+            headers=headers,
+            media_type=response.media_type,
+        )
+
+
+app.add_middleware(_ETagMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
