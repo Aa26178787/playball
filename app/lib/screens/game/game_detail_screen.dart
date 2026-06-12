@@ -74,15 +74,29 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   // 다른 경기 스트립 접기/펴기 (영구 기억)
   bool _stripExpanded = true;
 
-  // 짧은 뷰포트(아이폰 웹 사파리 등) 필드 패널 비례 축소 — 290px 필드가 화면을
-  // 잠식해 하단 콘텐츠가 안 보이는 문제. 일반 폰(>=760)은 기존 크기 불변.
-  // 06-12 강화: 비례식(h/760, 최소 0.60)이 약해 사파리(~650-700px)서 여전히 잠식
-  // → 목표 기반: 패널 전체가 화면의 50%를 넘지 않도록 필드 축소량 역산 (최소 0.40)
+  // 필드(290px) 축소 비율 — 화면 높이 구간별 명시 테이블 (06-12 사용자 요청).
+  // 디바이스 체감 보고 숫자만 손대면 됨. 구간 경계 점프 방지로 사이값은 선형 보간.
+  //   [화면높이 하한, 필드 비율]
+  static const _fieldRatioTable = [
+    [760.0, 1.00], // 일반 폰 (앱/큰 화면) — 원본
+    [700.0, 0.78], // 아이폰 Pro Max 사파리쯤
+    [640.0, 0.62], // 아이폰 일반 사파리 (탭바 펼침)
+    [560.0, 0.50], // 작은 폰/툴바 큰 상태
+    [0.0,   0.42], // 그 이하
+  ];
+
   double get _fieldShrink {
     final h = MediaQuery.of(context).size.height;
-    if (h >= 760) return 1.0;
-    final base = _sameDayGames.isNotEmpty ? (_stripExpanded ? 498.0 : 428.0) : 408.0;
-    return ((h * 0.50 - base + 290) / 290).clamp(0.40, 1.0);
+    for (var i = 0; i < _fieldRatioTable.length; i++) {
+      final lo = _fieldRatioTable[i][0], r = _fieldRatioTable[i][1];
+      if (h >= lo) {
+        if (i == 0) return r;
+        // 위 구간과 선형 보간 (경계에서 갑자기 점프하지 않게)
+        final hi = _fieldRatioTable[i - 1][0], rHi = _fieldRatioTable[i - 1][1];
+        return r + (rHi - r) * ((h - lo) / (hi - lo));
+      }
+    }
+    return _fieldRatioTable.last[1];
   }
 
   double _panelH(double base) => base - 290 * (1 - _fieldShrink);
