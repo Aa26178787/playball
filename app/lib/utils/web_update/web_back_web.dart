@@ -1,35 +1,44 @@
-// 웹 뒤로가기(브라우저 back/스와이프백) → 앱 내 Navigator.pop 매핑.
-// Flutter 웹 SPA는 푸시 라우트가 브라우저 히스토리에 안 쌓여, back 하면
-// /app/ 문서 자체를 이탈 → 흰화면/앱 종료. 더미 히스토리 1칸을 유지하며
-// popstate를 가로채 앱 내 뒤로가기로 변환.
+// 웹 뒤로가기(브라우저 back·안드로이드 제스처·iOS 스와이프) → 앱 내 Navigator.pop.
 //
-// ⚠️ dart:js_interop 기반 — wasm(dart2wasm)은 dart:html 미지원이라
-// 구 dart:html 버전은 wasm 본판에서 통째로 스텁 처리돼 죽어 있었음 (06-12 발견).
-// 조건 import도 dart.library.js_interop 사용.
+// 이 앱은 Navigator 1.0(MaterialApp home + push)이라 엔진이 브라우저 히스토리에
+// 엔트리를 안 쌓음 → OS back = 즉시 문서 이탈(이전 사이트). didPopRoute도 호출
+// 기회가 없음. 더미 히스토리 1칸 유지 + popstate 가로채기가 유일한 방어선.
+//
+// ⚠️ js_interop 함정 2개 (06-12):
+//  ① dart.library.html 조건 import → wasm서 스텁 로드 (dart:js_interop으로 재작성)
+//  ② @JS('window.history.pushState') 직접 함수 바인딩 → this 바인딩 깨져
+//     "Illegal invocation" TypeError로 조용히 실패. extension type 멤버 호출 필수.
 import 'dart:js_interop';
 
-@JS('window.history.pushState')
-external void _pushState(JSAny? data, String unused, String url);
+@JS('history')
+external JSObject get _historyObj;
 
-@JS('window.history.state')
-external JSAny? get _historyState;
+@JS('location')
+external JSObject get _locationObj;
 
-@JS('window.location.href')
-external String get _href;
+@JS()
+external void addEventListener(String type, JSFunction callback);
 
-@JS('window.addEventListener')
-external void _addEventListener(String type, JSFunction callback);
+extension type _History._(JSObject _) implements JSObject {
+  external void pushState(JSAny? data, String unused, String url);
+  external JSAny? get state;
+}
+
+extension type _Location._(JSObject _) implements JSObject {
+  external String get href;
+}
 
 void installWebBackHandler(bool Function() onBack) {
-  // ⚠️ Flutter 엔진도 history.state(serialCount)를 사용 — null로 덮으면
-  // 엔진 popstate 처리가 깨질 수 있어 현재 state를 그대로 보존해 재푸시
-  _pushState(_historyState, '', _href);
-  _addEventListener(
+  final history = _History._(_historyObj);
+  final location = _Location._(_locationObj);
+  // ⚠️ Flutter 엔진도 history.state를 쓸 수 있어 현재 state 보존 재푸시
+  history.pushState(history.state, '', location.href);
+  addEventListener(
     'popstate',
     ((JSAny? event) {
       onBack();
-      // 루트여도 잔류 — PWA에서 문서 이탈 = 흰화면이라 '나가기'가 의미 없음
-      _pushState(_historyState, '', _href);
+      // 루트여도 잔류 — PWA에서 문서 이탈 = 흰화면/이전 사이트라 '나가기' 무의미
+      history.pushState(history.state, '', location.href);
     }).toJS,
   );
 }

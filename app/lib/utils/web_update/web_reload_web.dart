@@ -1,7 +1,11 @@
-// dart:js_interop 기반 (wasm 호환 — dart:html 버전은 wasm서 스텁 처리됐었음).
+// 페이지 리로드 — js_interop extension type (직접 함수 바인딩 = this 깨짐).
 import 'dart:js_interop';
 
-@JS('window.location.reload')
-external void _reload();
+@JS('location')
+external JSObject get _locationObj;
 
-void reloadPage() => _reload();
+extension type _Location._(JSObject _) implements JSObject {
+  external void reload();
+}
+
+void reloadPage() => _Location._(_locationObj).reload();

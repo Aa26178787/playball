@@ -19,6 +19,8 @@ import 'api/api_service.dart';
 import 'utils/app_theme.dart';
 import 'utils/app_config.dart';
 // ⚠️ 조건 = js_interop (wasm 포함 웹 전체) — dart.library.html이면 wasm서 스텁 로드돼 죽음
+import 'utils/web_update/web_back_stub.dart'
+    if (dart.library.js_interop) 'utils/web_update/web_back_web.dart';
 import 'utils/web_update/web_theme_stub.dart'
     if (dart.library.js_interop) 'utils/web_update/web_theme_web.dart';
 
@@ -152,6 +154,14 @@ void main() async {
     statusBarIconBrightness: Brightness.dark,
   ));
   WidgetsBinding.instance.addObserver(_rootBackHandler);
+  // 웹: Navigator 1.0이라 엔진이 브라우저 히스토리를 안 쌓음 → OS back = 문서 이탈.
+  // JS 트랩(더미 엔트리+popstate)이 유일한 방어선 — 앱 내 뒤로가기로 변환
+  if (kIsWeb) {
+    installWebBackHandler(() {
+      appNavigatorKey.currentState?.maybePop();
+      return true;
+    });
+  }
   await _initFirebase();
   runApp(const PlayBallApp());
 }
