@@ -1078,23 +1078,9 @@ class _TeamScreenState extends State<TeamScreen>
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
 
-    Widget legendDot(String label, Color c) => Row(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 8, height: 8, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
-          const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontSize: 11, color: ink3, fontWeight: FontWeight.w600)),
-        ]);
-
     return [
           Text('포스트시즌 진출 확률 — Monte Carlo 100,000회',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ink3)),
-          const SizedBox(height: 8),
-          Wrap(spacing: 12, runSpacing: 6, children: [
-            legendDot('한국시리즈', _cKs),
-            legendDot('플레이오프', _cPo),
-            legendDot('준PO', _cSpo),
-            legendDot('WC 홈', _cWc4),
-            legendDot('WC 원정', _cWc5),
-          ]),
           const SizedBox(height: 14),
           // PS 확률 내림차순 자체 정렬 — 기간 필터(전반기/최근10) 순위를 따라가면
           // 확률 뷰 정렬이 뒤죽박죽 (06-13 보고)
@@ -1152,12 +1138,37 @@ class _TeamScreenState extends State<TeamScreen>
                   ]),
                   const SizedBox(height: 10),
                   _psStackedBar(ks, po, spo, wc4, wc5, out, ps, tc, height: 12),
+                  // 바 아래 항목별 % — 상단 공용 범례 대체 (06-13, 0.05% 미만은 생략)
+                  const SizedBox(height: 7),
+                  Wrap(spacing: 10, runSpacing: 4, children: [
+                    if (ks >= 0.05) _psPctLabel('한국시리즈', ks, _cKs),
+                    if (po >= 0.05) _psPctLabel('PO', po, _cPo),
+                    if (spo >= 0.05) _psPctLabel('준PO', spo, _cSpo),
+                    if (wc4 >= 0.05) _psPctLabel('WC홈', wc4, _cWc4),
+                    if (wc5 >= 0.05) _psPctLabel('WC원정', wc5, _cWc5),
+                    if (ks < 0.05 && po < 0.05 && spo < 0.05 && wc4 < 0.05 && wc5 < 0.05)
+                      _psPctLabel('탈락 유력', out, const Color(0xFF9A9AA3)),
+                  ]),
                 ],
               ),
             );
           }),
         ];
   }
+
+  Widget _psPctLabel(String label, double pct, Color c) =>
+      Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 7, height: 7,
+            decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text('$label ${pct.toStringAsFixed(1)}%',
+            style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFFC9C9D1) : const Color(0xFF5A5A62),
+                fontFeatures: const [FontFeature.tabularFigures()])),
+      ]);
 
   // ──────────────── DEPRECATED below ────────────────
   // ignore: unused_element
