@@ -201,10 +201,11 @@ class PlayBallApp extends StatelessWidget {
           themeMode: themeProvider.themeMode,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
-          // a11y 큰 글자 사용자 1.3 이하 clamp — UI 레이아웃 깨짐 방지
+          // a11y 큰 글자 clamp — 1.3은 iOS '텍스트 크기' 설정에서 전체 125% 부풂
+          // 체감(06-13 보고). 갤럭시와 일관 위해 1.1로 (접근성 vs 일관성 절충)
           builder: (ctx, child) => MediaQuery.withClampedTextScaling(
             minScaleFactor: 0.85,
-            maxScaleFactor: 1.3,
+            maxScaleFactor: 1.1,
             child: child ?? const SizedBox.shrink(),
           ),
           home: const AppEntryPoint(),
