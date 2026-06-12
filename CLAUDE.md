@@ -288,8 +288,8 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 
 ### 성능 백로그 (2026-06-10 — 측정 먼저: TimingMiddleware+nginx $request_time 로그+DevTools 타임라인으로 병목 확정 후 착수)
 - ✅즉효 3종(2026-06-10 적용): orjson(default_response_class — FastAPI 0.135가 deprecation 경고 1회 출력하나 동작·성능 정상, 향후 fastapi 업그레이드 시 반환타입 어노테이션 방식 검토)·uvicorn[standard](uvloop+httptools)·nginx TLS1.3/session_cache/stapling(06-09 기적용 확인)
-- 중간: **ETag/304**(30s 폴링이 매번 풀바디 재전송 중 — 해시 ETag+If-None-Match면 변화 없을 때 헤더만, 서버+클라 _dedupGet 양쪽 수정)·**서버측 캐시 SWR**(@cached 만료 시 stale 반환+백그라운드 갱신 — cold 시 Naver 5s 블로킹이 p99 원인, 날씨 워머 패턴 일반화)·**프로필 이미지 썸네일**(크롤 시 88px/리스트용 사전 리사이즈 — 목록 스크롤 대역폭/디코드)
-- 큰 체감(반나절+): **`/home/bootstrap` 집계 엔드포인트**(홈 진입 burst 20+요청→1요청 — RTT 왕복 절감, LTE서 최대 체감. rate limit 버스트 사고 원인도 제거)·대형 JSON `compute()` isolate 파싱(메인스레드 jank)·홈 위계 로딩(첫 프레임=오늘경기만, 나머지 후순위)
+- ✅중간 3종 (2026-06-13 적용): **ETag/304**(`_ETagMiddleware` GET 200 바디 md5 + 클라 dio 인터셉터 If-None-Match/304→보관바디 — GZip보다 안쪽 add라 원본 기준 해시)·**서버 SWR**(`@cached(ttl, swr=True)` 기본 — 만료 시 stale 즉시 반환+백그라운드 스레드 갱신, stale 보관 = ttl×10, `_refreshing` 셋으로 갱신 dedup)·~~프로필 썸네일~~(미착수 잔여)
+- ✅**`/home/bootstrap`** (2026-06-13): today+rankings(full)+이번달 calendar+app-config 1콜 (`api/routers/bootstrap.py` @cached(20), 조각별 try라 부분 실패 허용). 클라 = `_loadGames` isToday서 bootstrap 우선→실패 시 /games/today 폴백, `_applyBootstrapExtras`가 순위/캘린더/설정 주입(+`_skipNextRankingsFetch`로 개별 fetch 생략, initState서 `_loadGames().then(_loadRankings)` 체이닝 = race 방지). 잔여: compute() isolate 파싱·홈 위계 로딩·프로필 썸네일
 - 장기: Cloudflare CDN(이미지 edge 캐시 — 도메인 계획과 묶음)·dio+http2_adapter(h2 멀티플렉싱 — bootstrap 도입 시 가치 하락하니 후순위)·uvicorn --workers(인메모리 캐시 워커별 중복 → Naver fetch 배수 트레이드오프, 부하 생기면 검토)
 
 ## 주의사항
