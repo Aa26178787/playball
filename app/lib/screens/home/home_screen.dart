@@ -655,6 +655,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     if (state == AppLifecycleState.resumed && mounted) {
       _loadGames();
       _loadUnreadCount();
+      // 원격 설정 재로드 — 관리자 기능 토글이 재시작 없이 복귀 시점에 반영되게
+      AppConfig.load().then((_) {
+        if (mounted) setState(() {});
+      });
     }
   }
 

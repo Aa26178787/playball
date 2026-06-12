@@ -381,6 +381,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
             padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
             decoration: BoxDecoration(color: cs.paper, border: Border(bottom: BorderSide(color: cs.line))),
             child: Row(children: [
+              _Btn32(border: cs.line2, onTap: () => Navigator.maybePop(context),
+                child: Icon(Icons.chevron_left, size: 20, color: cs.ink2)),
+              const SizedBox(width: 10),
               Text('마이페이지', style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5)),
               const Spacer(),
               _Btn32(border: cs.line2, onTap: _logout,
