@@ -486,9 +486,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     ApiService.favoriteTeamsChanged.addListener(_loadFavoriteTeams);
-    _loadGames();        // 최우선
+    // 최우선 — 오늘이면 bootstrap 1콜이 순위/캘린더/설정까지 채움 → 완료 후
+    // _loadRankings는 스킵 플래그로 개별 fetch 생략 (race 방지 체이닝)
+    _loadGames().then((_) { if (mounted) _loadRankings(); });
     _loadFavoriteTeams();
-    _loadRankings();
     _loadCompactMode();
     _startAutoRefresh();
     // 웹 한정: 켜둔 세션에서 새 배포 감지 → 스낵바 (cold start는 no-cache가 보장)
@@ -723,11 +724,45 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     } catch (e) { debugPrint('home_screen: $e'); }
   }
 
+  // bootstrap이 방금 순위를 채웠으면 _loadRankings의 개별 fetch 1회 생략
+  bool _skipNextRankingsFetch = false;
+
+  /// 부트스트랩 부수 조각 적용 — 순위/이번달 캘린더/앱설정 (today는 _loadGames가 소비)
+  void _applyBootstrapExtras(Map<String, dynamic> boot) {
+    try {
+      final rk = boot['rankings'];
+      final rankings = (rk is Map) ? rk['rankings'] as List? : null;
+      if (rankings != null) {
+        LocalCache.set('team_rankings', rankings);
+        _skipNextRankingsFetch = true;
+        if (mounted) {
+          setState(() => _rankings = rankings);
+          _updateMyTeamData();
+        }
+      }
+      final cal = boot['calendar'];
+      final calGames = (cal is Map) ? cal['games'] as Map? : null;
+      if (calGames != null && mounted) {
+        final now = DateTime.now();
+        _loadedMonths.add('${now.year}-${now.month.toString().padLeft(2, '0')}');
+        setState(() => _gameDates.addAll(calGames.keys.cast<String>()));
+      }
+      final cfg = boot['config'];
+      if (cfg is Map) AppConfig.applyBootstrap(Map<String, dynamic>.from(cfg));
+    } catch (e) {
+      debugPrint('home_screen bootstrapExtras: $e');
+    }
+  }
+
   Future<void> _loadRankings() async {
     final cached = await LocalCache.get('team_rankings') as List?;
     if (cached != null && mounted) {
       setState(() => _rankings = cached);
       _updateMyTeamData();
+    }
+    if (_skipNextRankingsFetch) {
+      _skipNextRankingsFetch = false;
+      return; // bootstrap이 방금 채움 — 개별 fetch 생략
     }
     try {
       final data = await ApiService.getTeamRankings();
@@ -824,11 +859,21 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     }
 
     try {
-      // 오늘 날짜: /games/today (서버 30초 캐시) 사용 — /games/date/{date}는 5분 캐시라 스코어 갱신 지연
+      // 오늘 날짜: /home/bootstrap 우선 (경기+순위+캘린더+설정 1콜 — RTT 절감,
+      // 실패 시 기존 /games/today 폴백). 과거/미래는 기존 경로.
       debugPrint('[loadGames] dateStr=$dateStr isToday=$isToday calling API');
-      final data = isToday
-          ? await ApiService.getTodayGames()
-          : await ApiService.getGamesByDate(dateStr);
+      Map<String, dynamic> data;
+      if (isToday) {
+        final boot = await ApiService.getHomeBootstrap();
+        if (boot != null && boot['today'] is Map) {
+          data = Map<String, dynamic>.from(boot['today'] as Map);
+          _applyBootstrapExtras(boot);
+        } else {
+          data = await ApiService.getTodayGames();
+        }
+      } else {
+        data = await ApiService.getGamesByDate(dateStr);
+      }
       debugPrint('[loadGames] response keys=${data.keys.toList()} games_count=${(data['games'] as List?)?.length}');
       if (!mounted) { debugPrint('[loadGames] unmounted after API'); return; }
       if (_loadGen != gen) {

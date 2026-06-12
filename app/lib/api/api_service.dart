@@ -1130,6 +1130,17 @@ class ApiService {
     return Map<String, dynamic>.from(res.data);
   }
 
+  /// 홈 부트스트랩 — 오늘 경기+팀순위+이번달 캘린더+앱설정 1콜 (실패 시 null → 개별 폴백)
+  static Future<Map<String, dynamic>?> getHomeBootstrap() async {
+    try {
+      final res = await _dio.get('/home/bootstrap');
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      debugPrint('api_service bootstrap: $e');
+      return null;
+    }
+  }
+
   /// 뱃지 — 호출 시 서버 lazy 평가 (신규 충족분 자동 획득)
   static Future<Map<String, dynamic>> getBadges() async {
     final headers = await authHeaders();

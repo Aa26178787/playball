@@ -27,6 +27,16 @@ class AppConfig {
             : null;
   }
 
+  /// 홈 부트스트랩 응답의 config 조각 주입 (별도 /app-config 호출 절약)
+  static void applyBootstrap(Map<String, dynamic> cfg) {
+    _cfg = cfg;
+    final b = cfg['banner'];
+    bannerNotifier.value =
+        (b is Map && (b['message'] as String?)?.isNotEmpty == true)
+            ? Map<String, dynamic>.from(b)
+            : null;
+  }
+
   /// 현재 버전 < min_version → 강제 업데이트 (네트워크 실패/파싱 실패 시 false)
   static bool get forceUpdate {
     final min = _cfg['min_version'];
