@@ -56,6 +56,20 @@ for url in "https://playball.duckdns.org/games/today" "https://playball.duckdns.
     else bad "$url -> $code"; fi
 done
 
+# 6) duckdns = 이 서버 IP (구박스 cron 핑퐁 재발 감지 — 06-12 502 사고)
+MY_IP=$(curl -s --max-time 10 https://api.ipify.org || echo "?")
+DNS_IP=$(getent hosts playball.duckdns.org | awk '{print $1}' | head -1)
+if [ "$MY_IP" = "$DNS_IP" ]; then ok "duckdns -> $DNS_IP (이 서버)"
+else bad "duckdns -> $DNS_IP != 서버 $MY_IP (DNS 핑퐁/탈취 의심)"; fi
+
+# 7) fail2ban이 구박스 릴레이 IP를 밴하지 않았는지 (단일 IP 오인 밴 — 06-12 502 사고)
+RELAY_IP="168.107.61.147"
+if sudo fail2ban-client banned 2>/dev/null | grep -q "$RELAY_IP"; then
+    bad "fail2ban이 릴레이 $RELAY_IP 밴 중 (ignoreip 확인)"
+else
+    ok "fail2ban 릴레이 IP 미차단"
+fi
+
 echo "===================="
 if [ "$FAIL" = "0" ]; then echo "ALL PASS"; else echo "SMOKE FAILED"; fi
 exit $FAIL
