@@ -12,10 +12,16 @@ extension type _JSBlob._(JSObject _) implements JSObject {
 }
 
 @JS('createImageBitmap')
-external JSPromise<JSAny?> _createImageBitmap(_JSBlob blob);
+external JSPromise<JSAny?> _createImageBitmap(_JSBlob blob, JSAny? options);
 
 Future<ui.Image> bytesToUiImage(Uint8List bytes) async {
   final blob = _JSBlob([bytes.toJS as JSAny?].toJS);
-  final bitmap = await _createImageBitmap(blob).toDart;
+  // premultiplyAlpha 명시 — 미지정 시 전역 Transform.scale(기준폭 412) 다운스케일
+  // 합성에서 투명 PNG(로고/프로필)가 어둡게 블렌드 (06-13 보고)
+  final options = {
+    'premultiplyAlpha': 'premultiply',
+    'colorSpaceConversion': 'default',
+  }.jsify();
+  final bitmap = await _createImageBitmap(blob, options).toDart;
   return ui_web.createImageFromImageBitmap(bitmap!);
 }
