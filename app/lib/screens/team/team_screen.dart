@@ -147,12 +147,11 @@ class _TeamScreenState extends State<TeamScreen>
           ),
         );
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: Column(children: [
-          // ── 헤더 (탭 공통: 타이틀 + 32px 액션 버튼 + TabBar) ──
+      body: Column(children: [
+          // ── 헤더 (탭 공통) — 상태바 영역까지 paper (SafeArea 단차 방지, 06-13) ──
           Container(
             color: paper,
+            padding: EdgeInsets.only(top: MediaQuery.of(context).viewPadding.top),
             child: Column(children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
@@ -203,7 +202,6 @@ class _TeamScreenState extends State<TeamScreen>
             ),
           ),
         ]),
-      ),
     );
   }
 

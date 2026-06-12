@@ -178,9 +178,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     return Scaffold(
       backgroundColor: cs.bg,
-      body: SafeArea(
-        bottom: false,
-        child: Column(children: [
+      body: Column(children: [
           _buildAppBar(cs, myColor),
           Expanded(child: SingleChildScrollView(
             padding: EdgeInsets.only(bottom: bottomPad),
@@ -194,13 +192,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ]),
           )),
         ]),
-      ),
     );
   }
 
   Widget _buildAppBar(_C cs, Color myColor) {
+    // 상태바 영역까지 paper (SafeArea 단차 방지, 06-13)
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+      padding: EdgeInsets.fromLTRB(
+          18, 8 + MediaQuery.of(context).viewPadding.top, 18, 12),
       decoration: BoxDecoration(color: cs.paper, border: Border(bottom: BorderSide(color: cs.line))),
       child: Row(children: [
         Text('캘린더', style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5)),

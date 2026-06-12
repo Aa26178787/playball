@@ -87,12 +87,11 @@ class _CommunityScreenState extends State<CommunityScreen>
               color: cs.dark ? const Color(0xFF0F0F12) : Colors.white),
         ),
       ),
-      body: SafeArea(
-        bottom: false,
-        child: Column(children: [
-          // AppBar
+      body: Column(children: [
+          // AppBar — 상태바 영역까지 paper (SafeArea 단차 방지, 06-13)
           Container(
             color: cs.paper,
+            padding: EdgeInsets.only(top: MediaQuery.of(context).viewPadding.top),
             child: Column(children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 13),
@@ -146,7 +145,6 @@ class _CommunityScreenState extends State<CommunityScreen>
             ],
           )),
         ]),
-      ),
     );
   }
 }
