@@ -74,29 +74,17 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   // 다른 경기 스트립 접기/펴기 (영구 기억)
   bool _stripExpanded = true;
 
-  // 필드(290px) 축소 비율 — 화면 높이 구간별 명시 테이블 (06-12 사용자 요청).
-  // 디바이스 체감 보고 숫자만 손대면 됨. 구간 경계 점프 방지로 사이값은 선형 보간.
-  //   [화면높이 하한, 필드 비율]
-  static const _fieldRatioTable = [
-    [760.0, 1.00], // 일반 폰 (앱/큰 화면) — 원본
-    [700.0, 0.78], // 아이폰 Pro Max 사파리쯤
-    [640.0, 0.62], // 아이폰 일반 사파리 (탭바 펼침)
-    [560.0, 0.50], // 작은 폰/툴바 큰 상태
-    [0.0,   0.42], // 그 이하
-  ];
+  // 필드 패널 = 화면 높이의 일정 비율로 고정 (06-12 — 갤럭시 플립6 기준 비율).
+  // 플립6: CSS 뷰포트 ~1006px, 패널 498px ≈ 50% → 아래 스코어보드/득점요약 동시 노출.
+  // 모든 디바이스가 이 비율을 따르도록 패널이 화면 [_panelRatio]를 넘으면 필드를 축소.
+  static const _panelRatio = 0.50; // 패널 최대 비율 (플립6 체감 기준 — 여기만 조정)
+  static const _minShrink = 0.35;  // 필드 최소 축소 한계
 
   double get _fieldShrink {
     final h = MediaQuery.of(context).size.height;
-    for (var i = 0; i < _fieldRatioTable.length; i++) {
-      final lo = _fieldRatioTable[i][0], r = _fieldRatioTable[i][1];
-      if (h >= lo) {
-        if (i == 0) return r;
-        // 위 구간과 선형 보간 (경계에서 갑자기 점프하지 않게)
-        final hi = _fieldRatioTable[i - 1][0], rHi = _fieldRatioTable[i - 1][1];
-        return r + (rHi - r) * ((h - lo) / (hi - lo));
-      }
-    }
-    return _fieldRatioTable.last[1];
+    final base = _sameDayGames.isNotEmpty ? (_stripExpanded ? 498.0 : 428.0) : 408.0;
+    if (base <= h * _panelRatio) return 1.0; // 긴 화면(플립/태블릿) — 원본
+    return ((h * _panelRatio - base + 290) / 290).clamp(_minShrink, 1.0);
   }
 
   double _panelH(double base) => base - 290 * (1 - _fieldShrink);
