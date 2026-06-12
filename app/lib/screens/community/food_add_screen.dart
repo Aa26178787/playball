@@ -84,10 +84,11 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
     return Scaffold(
       backgroundColor: cs.bg,
       resizeToAvoidBottomInset: true,
-      body: SafeArea(child: Column(children: [
-        // AppBar
+      body: SafeArea(top: false, child: Column(children: [
+        // AppBar — 상태바까지 paper (단차 방지, 06-13)
         Container(
-          padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+          padding: EdgeInsets.fromLTRB(
+              18, 8 + MediaQuery.of(context).viewPadding.top, 18, 12),
           decoration: BoxDecoration(color: cs.paper, border: Border(bottom: BorderSide(color: cs.line))),
           child: Row(children: [
             _Btn32(border: cs.line2, onTap: () => Navigator.maybePop(context),

@@ -375,10 +375,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
     return Scaffold(
       backgroundColor: cs.bg,
       body: SafeArea(
+        top: false, // 헤더가 상태바까지 paper — 단차 방지 (06-13)
         child: Column(children: [
           // ── 헤더 (탭 공통 규격) ──
           Container(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+            padding: EdgeInsets.fromLTRB(
+                18, 8 + MediaQuery.of(context).viewPadding.top, 18, 12),
             decoration: BoxDecoration(color: cs.paper, border: Border(bottom: BorderSide(color: cs.line))),
             child: Row(children: [
               _Btn32(border: cs.line2, onTap: () => Navigator.maybePop(context),

@@ -337,12 +337,11 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0F0F12) : const Color(0xFFFAFAFB),
-      body: SafeArea(
-        bottom: false,
-        child: Column(children: [
-          // ── 팀컬러 헤더 (Option A: 흰색 _Btn32 back/star) ──
+      body: Column(children: [
+          // ── 팀컬러 헤더 — 상태바까지 팀컬러 (단차 방지, 06-13) ──
           Container(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+            padding: EdgeInsets.fromLTRB(
+                18, 8 + MediaQuery.of(context).viewPadding.top, 18, 12),
             color: color,
             child: Row(children: [
               _WhiteBtn32(icon: Icons.chevron_left, onTap: () => Navigator.maybePop(context)),
@@ -384,7 +383,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             ]),
           ),
         ]),
-      ),
     );
   }
 
