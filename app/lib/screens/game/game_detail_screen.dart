@@ -1249,7 +1249,22 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 35, 16, 20),
                           // C안: 좌표 자체 bilinear quad mapping (Matrix4 제거)
-                          child: SizedBox(height: 290 * _fieldShrink, width: double.infinity, child: fieldWidget),
+                          // 축소 시 FittedBox = 비율 유지 전체 축소 (painter가 max-fit이라
+                          // 높이만 줄이면 외야/홈이 위아래로 잘림 — 06-12)
+                          child: SizedBox(
+                            height: 290 * _fieldShrink,
+                            width: double.infinity,
+                            child: _fieldShrink >= 1.0
+                                ? fieldWidget
+                                : FittedBox(
+                                    fit: BoxFit.contain,
+                                    child: SizedBox(
+                                      width: MediaQuery.of(context).size.width - 32,
+                                      height: 290,
+                                      child: fieldWidget,
+                                    ),
+                                  ),
+                          ),
                         ),
                         // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
                         Positioned(
@@ -1684,7 +1699,21 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     const Positioned.fill(child: CustomPaint(painter: _GrassExtensionPainter())),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 35, 16, 20),
-                      child: SizedBox(height: 290 * _fieldShrink, width: double.infinity, child: fieldWidget),
+                      // 축소 시 FittedBox = 비율 유지 전체 축소 (높이만 줄이면 위아래 잘림)
+                      child: SizedBox(
+                        height: 290 * _fieldShrink,
+                        width: double.infinity,
+                        child: _fieldShrink >= 1.0
+                            ? fieldWidget
+                            : FittedBox(
+                                fit: BoxFit.contain,
+                                child: SizedBox(
+                                  width: MediaQuery.of(context).size.width - 32,
+                                  height: 290,
+                                  child: fieldWidget,
+                                ),
+                              ),
+                      ),
                     ),
                     // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
                     Positioned(
