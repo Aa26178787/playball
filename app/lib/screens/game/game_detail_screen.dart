@@ -74,18 +74,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   // 다른 경기 스트립 접기/펴기 (영구 기억)
   bool _stripExpanded = true;
 
-  // 필드 패널 = 화면 높이의 일정 비율로 고정 (06-12 — 갤럭시 플립6 기준 비율).
-  // 플립6: CSS 뷰포트 ~1006px, 패널 498px ≈ 50% → 아래 스코어보드/득점요약 동시 노출.
-  // 모든 디바이스가 이 비율을 따르도록 패널이 화면 [_panelRatio]를 넘으면 필드를 축소.
-  static const _panelRatio = 0.50; // 패널 최대 비율 (플립6 체감 기준 — 여기만 조정)
-  static const _minShrink = 0.35;  // 필드 최소 축소 한계
+  // 필드뷰 자체 = 화면 높이의 일정 비율로 고정 (06-12 — 갤럭시 플립6 기준).
+  // 플립6: CSS 뷰포트 ~1006px에서 필드 290px ≈ 29% (패널 50%는 스트립 포함 착시).
+  // 모든 디바이스에서 필드(290px 원본)가 화면의 [_fieldRatio]가 되도록 축소.
+  static const _fieldRatio = 0.29; // 필드/화면 비율 (플립6 기준 — 여기만 조정)
+  static const _minShrink = 0.35; // 필드 최소 축소 한계
 
-  double get _fieldShrink {
-    final h = MediaQuery.of(context).size.height;
-    final base = _sameDayGames.isNotEmpty ? (_stripExpanded ? 498.0 : 428.0) : 408.0;
-    if (base <= h * _panelRatio) return 1.0; // 긴 화면(플립/태블릿) — 원본
-    return ((h * _panelRatio - base + 290) / 290).clamp(_minShrink, 1.0);
-  }
+  double get _fieldShrink =>
+      (MediaQuery.of(context).size.height * _fieldRatio / 290).clamp(_minShrink, 1.0);
 
   double _panelH(double base) => base - 290 * (1 - _fieldShrink);
   // 이닝별 중계 — 선택 이닝 (null = 자동: 라이브 현재 이닝 / 종료 1회)
