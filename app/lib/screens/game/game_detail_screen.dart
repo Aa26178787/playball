@@ -11,6 +11,7 @@ import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
 import '../../utils/design_tokens.dart';
+import '../../utils/web_safe_area.dart';
 import 'pitch_location_chart.dart';
 import '../player/player_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -75,10 +76,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   // 짧은 뷰포트(아이폰 웹 사파리 등) 필드 패널 비례 축소 — 290px 필드가 화면을
   // 잠식해 하단 콘텐츠가 안 보이는 문제. 일반 폰(>=760)은 기존 크기 불변.
+  // 06-12 강화: 비례식(h/760, 최소 0.60)이 약해 사파리(~650-700px)서 여전히 잠식
+  // → 목표 기반: 패널 전체가 화면의 50%를 넘지 않도록 필드 축소량 역산 (최소 0.40)
   double get _fieldShrink {
     final h = MediaQuery.of(context).size.height;
     if (h >= 760) return 1.0;
-    return (h / 760).clamp(0.60, 1.0);
+    final base = _sameDayGames.isNotEmpty ? (_stripExpanded ? 498.0 : 428.0) : 408.0;
+    return ((h * 0.50 - base + 290) / 290).clamp(0.40, 1.0);
   }
 
   double _panelH(double base) => base - 290 * (1 - _fieldShrink);
@@ -784,7 +788,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           Positioned(
             left: 16,
             right: 16,
-            bottom: 16 + MediaQuery.of(context).viewPadding.bottom,
+            bottom: 16 + MediaQuery.of(context).viewPadding.bottom + webBottomGuard(context),
             child: _buildGameFloatingNav(),
           ),
         ],

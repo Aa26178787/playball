@@ -1,6 +1,7 @@
 // calendar_screen.dart — Option A 디자인 시스템 반영 (2026-06)
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
+import '../../utils/web_safe_area.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../utils/web_image.dart';
@@ -809,8 +810,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     await showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (_) => SafeArea(
-        child: Column(
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(bottom: webBottomGuard(ctx)),
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
@@ -841,6 +844,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             const SizedBox(height: 8),
           ],
         ),
+        ),
       ),
     );
   }
@@ -869,7 +873,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     await showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (_) => Column(
+      // SafeArea+guard: iOS 사파리 탭바(env=0)/홈인디케이터에 하단 항목 잘림 방지 (06-12)
+      builder: (ctx) => SafeArea(
+          child: Padding(
+        padding: EdgeInsets.only(bottom: webBottomGuard(ctx)),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
@@ -898,7 +906,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           }),
           const SizedBox(height: 8),
         ],
-      ),
+      ))),
     );
   }
 

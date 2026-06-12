@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../utils/design_tokens.dart';
+import '../../utils/web_safe_area.dart';
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:shimmer/shimmer.dart';
@@ -139,7 +140,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+    final bottomInset =
+        MediaQuery.of(context).viewPadding.bottom + webBottomGuard(context);
     return Scaffold(
       body: Stack(
         children: [
@@ -1488,7 +1490,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   double _listBottomPad(BuildContext context) {
     // tab pill 58 + optional myTeam pill (44 + 8 gap) + 16 margin + 18 clearance
     final navBarH = ApiService.myTeamData.value.isNotEmpty ? 110.0 : 58.0;
-    return navBarH + 34 + MediaQuery.of(context).padding.bottom;
+    return navBarH + 34 + MediaQuery.of(context).padding.bottom + webBottomGuard(context);
   }
 
   Widget _buildGameShimmer() {
