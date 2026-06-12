@@ -84,6 +84,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       (MediaQuery.of(context).size.height * _fieldRatio / 290).clamp(_minShrink, 1.0);
 
   double _panelH(double base) => base - 290 * (1 - _fieldShrink);
+
+  // 탭 콘텐츠 하단 클리어런스 — 플로팅 nav(+서브탭바)가 마지막 정보를 가리지 않게.
+  // 사파리 웹은 viewPadding=0이라 webBottomGuard 동반 (06-13 가림 보고)
+  double get _navClearance =>
+      200 + MediaQuery.of(context).viewPadding.bottom + webBottomGuard(context);
   // 이닝별 중계 — 선택 이닝 (null = 자동: 라이브 현재 이닝 / 종료 1회)
   int? _selectedRelayInning;
   final ScrollController _inningChipCtrl = ScrollController();
@@ -1968,7 +1973,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     // navBottom: 핀/탭 sub-label 모드에서 floating nav 가림 방지 (sub bar 시 더 큼)
     final hasSubBar = _tabController.index == 1 || _tabController.index == 2;
-    final navBottom = (hasSubBar ? 200.0 : 150.0) + MediaQuery.of(context).viewPadding.bottom;
+    final navBottom = _navClearance;
     return SingleChildScrollView(
       controller: _inningScrollController,
       physics: const ClampingScrollPhysics(),
@@ -3014,7 +3019,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     return SingleChildScrollView(
       // 하단 플로팅 탭(nav)에 가림 방지 — bottom 여유 패딩
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 120 + MediaQuery.of(context).viewPadding.bottom),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, _navClearance),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -3469,7 +3474,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
 
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 120 + MediaQuery.of(context).viewPadding.bottom),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, _navClearance),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -3539,9 +3544,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       }
     }
 
-    final vp = MediaQuery.of(context).viewPadding.bottom;
     return ListView(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 120 + vp),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, _navClearance),
       children: [
         _rosterSectionHeader('선발'),
         const SizedBox(height: 8),
@@ -3785,10 +3789,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildPitcherList(List pitchers) {
     // 투구위치 버튼: fixed 하단 → 리스트 마지막 항목 (스크롤 동행, 리스트 풀 높이 확보)
-    // 플로팅 nav 가림 방지 +120
-    final navBottom = 16.0 + MediaQuery.of(context).viewPadding.bottom + 120;
     return ListView(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, navBottom),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, _navClearance),
       children: [
         ...pitchers.map((p) {
           final pm = p as Map<String, dynamic>;
@@ -4056,7 +4058,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       }
     }
 
-    final bNavBottom = 120.0 + MediaQuery.of(context).viewPadding.bottom;
+    final bNavBottom = _navClearance;
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 16, 16, bNavBottom),
       children: sortedKeys.expand((order) {
@@ -4175,7 +4177,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final awayTeam = _gameData!['game']['away_team'];
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final rdNavBottom = 120.0 + MediaQuery.of(context).viewPadding.bottom;
+    final rdNavBottom = _navClearance;
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(16, 16, 16, rdNavBottom),
       child: Column(
