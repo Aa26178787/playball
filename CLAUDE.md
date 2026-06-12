@@ -5,6 +5,7 @@ KBO 야구 앱 | Flutter + FastAPI + PostgreSQL
 ## 인프라
 - 서버: Oracle Cloud **A1.Flex (ARM aarch64, 4 OCPU/24GB)** Ubuntu 22.04 | 168.107.36.158:8000 (내부), HTTPS: playball.duckdns.org (2026-06-11 마이그레이션 — duckdns 자동갱신 cron 서버 등록)
 - 구 x86 박스 168.107.61.147 = **DNS 릴레이 중** (nginx가 신 서버로 전체 프록시 — 폰/통신사 DNS 캐시가 구 IP 물고 502나던 사고 해결. 원본 conf 백업 = 구박스 /tmp/playball.nginx.pre-relay.bak). API/scheduler disabled, DB = 컷오버 스냅샷. **종료는 DNS 캐시 정리 후(1주+) — 끄면 캐시 잔존 유저 전원 접속 불가**
+  - ⚠️ **06-12 502 사고 2건 (해결·스모크 감시 추가)**: ① **duckdns cron 핑퐁** — 구박스 root crontab(`/opt/duckdns/update.sh`)이 5분마다 DNS를 구 IP로 되돌림 → 전 트래픽 릴레이 경유 (제거 완료. user crontab만 보면 못 찾음 — **root crontab 확인**) ② **fail2ban 단일 IP 오인 밴** — 전 유저+봇스캔이 릴레이 한 IP로 와서 nginx-botsearch가 구박스 밴 → 릴레이 502. 해결 = `/etc/fail2ban/jail.local` `ignoreip = 127.0.0.1/8 ::1 168.107.61.147` (구박스 종료 시 ignoreip서 제거). 스모크 6·7항이 둘 다 감시
 - SSH 키: `C:\Users\qq772\Downloads\ssh-key-2026-03-28 (2).key`
 - DB: localhost:5432(서버)/5433(터널), db=playball, user=playball_user, pw=<env DB_PASSWORD> (회전 2026-06-09, 평문 보관 금지)
   - pg 튜닝(2026-06-11, 24G 박스): ALTER SYSTEM(auto.conf) — shared_buffers 4G·effective_cache_size 12G·work_mem 32M·maintenance 1G·max_wal 2G·random_page_cost 1.1·parallel 4/2. DB 재구축 시 auto.conf 보존/재적용
