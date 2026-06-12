@@ -337,6 +337,11 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - **06-12b 메가B 완결+메가C**: **푸시GW**(fcm_service._send = 단일 게이트웨이 — KST 23:30~07:30 quiet hours 억제(user_settings.notify_quiet 기본 ON, 인앱 알림함은 전원 저장) + ntype→Android 채널 3종 라우팅(playball_live/myteam/community — main.dart 생성, 설정 '방해금지' 토글)) → **뱃지**(api/badges.py 11종 + user_badges 테이블, GET /user/badges lazy 평가) → **주간미션**(GET /user/missions — 예측3/출석5/직관1, KST 월요일 주차, 완료 시 자동 보상 reason=mission_weekly) → points_screen에 미션 진척바+뱃지 그리드 → **온보딩 모드**(홈 첫실행 프로/캐주얼 픽커 — 캐주얼=compact+notify_my_team_only) → **push_tokens 다수 검증**(가짜 토큰 시뮬: 멀티발송/quiet 억제·opt-out/채널/무효토큰 자동삭제 전부 라이브 통과 — InvalidArgumentError 매칭 보강이 픽스). **메가C**: showShareCardDialog(RepaintBoundary→png→share_plus, 웹=버튼 숨김)+VisitShareCard/PlayerShareCard → 직관 저장 직후 공유 제안+승리 시 인앱리뷰(in_app_review ^2.0.9) → 선수상세 FAB 시트 '카드 공유'(랜딩 링크 동봉) → **공유 랜딩** `/s/p/{id}`·`/s/g/{id}`(api/routers/share.py — og 메타+웹앱 유도 버튼). 딥링크 스킴 = 출시 시 App Links로 (메가D)
 
 ## 해야할 것
+### UI/UX 추천 백로그 (2026-06-13 큐레이션 — 구현비용 대비 체감순)
+- **강추 3**: ① 첫 실행 마이팀 선택 플로우(개인화 뿌리 — 홈 풀카드·푸시·캘린더 즉시 개인화) ② 홈 직관 미니 배너("이번 시즌 직관 5승 3패" — 차별 자산 노출, 데이터 보유) ③ 새 중계 항목 amber 페이드인(30s 폴링이 살아있는 중계로 체감)
+- 가성비: 선수 초성검색(ㄱㄷㅇ→김도영)·경기 없는 날 마이팀 D-day 카드·필드뷰 풀스크린 토글(작은폰 보완)·예측 마감 카운트다운(포인트 ON 시)·오프라인 배너(connectivity)
+- 완성도(출시 직전): AppEmptyView 공용 빈상태·목록→상세 Hero 전환·스낵바 톤 통일
+
 ### 즉시 (코드측)
 - [ ] **다크모드 육안검증** (⏸️ 사용자 지시로 보류 — 직접 요청 전까지 패스, 2026-06-12): 다크 ~15커밋+메가B/C 신규 UI 헤드리스만 검증된 상태. 골든이 회귀는 방어
 - 메가B/C/D 코드측 = ✅ 전부 완료 (06-12 변경이력). 잔여 = 외부작업(아래)과 메가D Play 내부테스트

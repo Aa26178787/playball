@@ -649,6 +649,14 @@ def _check_game_milestones(game_id: int):
                     cur2.close()
                     conn2.close()
 
+                    # 최소 의미 임계 — 기록 적은 선수는 '도루 1개'도 개인최다 경신이라
+                    # 사소 알림 폭증 ("시즌 첫 도루" 불편 보고 06-13). 이 값 이상만 발송
+                    PERSONAL_MIN = {
+                        'personal_monthly_hits': 25,
+                        'personal_monthly_hr': 6,
+                        'personal_monthly_rbi': 18,
+                        'personal_monthly_sb': 6,
+                    }
                     for pid, (pname, tname, _gh, _ghr, _grbi, _gsb, totals) in batter_monthly_totals.items():
                         pb = personal_bests.get(pid, (0, 0, 0, 0))
                         checks = [
@@ -658,7 +666,8 @@ def _check_game_milestones(game_id: int):
                             ('personal_monthly_sb',   totals['monthly_sb'],   pb[3]),
                         ]
                         for mtype, curr_val, prev_best in checks:
-                            if curr_val > 0 and curr_val > prev_best:
+                            if (curr_val >= PERSONAL_MIN[mtype] and
+                                    curr_val > prev_best):
                                 notify_milestone(pid, pname, tname, mtype, curr_val, season, month, game_id)
                 except Exception as pb_err:
                     print(f"[마일스톤] 개인 최다 쿼리 오류: {pb_err}")
@@ -2554,7 +2563,8 @@ def _notify_roster_for_fans():
             LEFT JOIN players p ON p.id = prc.player_id
             WHERE prc.change_date = CURRENT_DATE
               AND prc.player_id IS NOT NULL
-              AND prc.change_type IN ('1군 등록', '1군 말소')
+              -- DB 실값 = '1군등록'(공백 없음) — 공백 표기와 불일치로 역대 0건 발송 (06-13)
+              AND REPLACE(prc.change_type, ' ', '') IN ('1군등록', '1군말소')
         """)
         rows = cur.fetchall()
         cur.close()
@@ -2566,10 +2576,21 @@ def _notify_roster_for_fans():
         return
     try:
         from api.fcm_service import notify_roster_change, notify_team_roster_change
+        from datetime import date as _d
+        today_s = _d.today().isoformat()
+        sent = 0
         for player_id, player_name, change_type, team_id in rows:
+            # 크롤 주기(10분)마다 재호출 — notification_log dedup 필수
+            sub = f"{player_id}:{change_type}:{today_s}"
+            if _already_notified(0, 'roster_change', sub):
+                continue
             notify_roster_change(player_id, player_name, change_type)
             if team_id:
                 notify_team_roster_change(team_id, player_id, player_name, change_type)
+            _mark_notified(0, 'roster_change', sub)
+            sent += 1
+        if sent:
+            print(f"[FCM] 등록말소 알림 {sent}건 발송")
     except Exception as e:
         print(f"[FCM] 로스터 알림 오류: {e}")
 

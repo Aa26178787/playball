@@ -2476,25 +2476,26 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       return '${v.toInt()}';
     }
 
+    // ── 06-13 재구성: 좌우 스크롤 제거, 이닝+R/H/E 전 칸 Expanded 균등분배 ──
+    // (웹 9회 우측 공백·앱 스크롤 보고 — 연장 12회여도 한 화면에 균등)
     Widget col(String top, String mid, String bot,
-        {double w = 26, bool bold = false, bool hot = false}) {
+        {bool bold = false, bool hot = false}) {
       final st = TextStyle(
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
           color: hot ? const Color(0xFFE53935) : ink,
           fontFeatures: const [FontFeature.tabularFigures()]);
-      return SizedBox(
-        width: w,
+      return Expanded(
         child: Column(children: [
           Text(top,
               style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 9,
                   fontWeight: FontWeight.w700,
                   color: hot ? const Color(0xFFE53935) : sub)),
           const SizedBox(height: 7),
-          Text(mid, style: st),
+          FittedBox(fit: BoxFit.scaleDown, child: Text(mid, style: st)),
           const SizedBox(height: 6),
-          Text(bot, style: st),
+          FittedBox(fit: BoxFit.scaleDown, child: Text(bot, style: st)),
         ]),
       );
     }
@@ -2503,35 +2504,28 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     // 카드 decoration은 호출부 통합 카드(스코어보드+득점요약 병합 06-13)가 담당
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      child: Row(children: [
-        // 팀명 열 (고정)
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // 팀명 열 (고정폭 최소)
         SizedBox(
-          width: 52,
+          width: 40,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('팀', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: sub)),
+            Text('팀', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: sub)),
             const SizedBox(height: 7),
             Text(awayTeam, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: ink)),
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ink)),
             const SizedBox(height: 6),
             Text(homeTeam, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: ink)),
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ink)),
           ]),
         ),
-        // 이닝 칸 (스크롤)
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(children: [
-              for (int i = 1; i <= nCols; i++)
-                col('$i', cell(i, false), cell(i, true),
-                    hot: isLive && i == curInning),
-            ]),
-          ),
-        ),
-        // R/H/E (고정)
+        // 이닝 칸 — 균등분배 (스크롤 없음)
+        for (int i = 1; i <= nCols; i++)
+          col('$i', cell(i, false), cell(i, true),
+              hot: isLive && i == curInning),
+        // R/H/E 구분선 + 균등 칸
         Container(width: 1, height: 44, color: line,
-            margin: const EdgeInsets.symmetric(horizontal: 6)),
+            margin: const EdgeInsets.symmetric(horizontal: 4)),
         col('R', n(_liveScore(g.cast<String, dynamic>(), 'away_score')),
             n(_liveScore(g.cast<String, dynamic>(), 'home_score')), bold: true),
         col('H', n(g['away_hits']), n(g['home_hits'])),
