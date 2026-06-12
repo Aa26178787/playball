@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../utils/design_tokens.dart';
@@ -94,6 +95,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  bool _showVpDebug = true; // 임시 뷰포트 디버그 배지 (웹 전용 — 원인 확인 후 제거)
   List<Map<String, dynamic>> _myTeamChips = [];
   final PageController _pageController = PageController();
 
@@ -189,6 +191,32 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+          // 임시 뷰포트 디버그 (웹 전용) — 아이폰 확대 렌더 원인 추적 (06-12). 탭=숨김
+          if (kIsWeb && _showVpDebug)
+            Positioned(
+              left: 8,
+              top: MediaQuery.of(context).viewPadding.top + 60,
+              child: GestureDetector(
+                onTap: () => setState(() => _showVpDebug = false),
+                child: Builder(builder: (ctx) {
+                  final mq = MediaQuery.of(ctx);
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'vp ${mq.size.width.toStringAsFixed(0)}x${mq.size.height.toStringAsFixed(0)}'
+                      ' dpr ${mq.devicePixelRatio.toStringAsFixed(2)}\n'
+                      'txt ${mq.textScaler.scale(100).toStringAsFixed(0)}%'
+                      ' pad T${mq.viewPadding.top.toStringAsFixed(0)}/B${mq.viewPadding.bottom.toStringAsFixed(0)}',
+                      style: const TextStyle(fontSize: 10, color: Colors.white, height: 1.4),
+                    ),
+                  );
+                }),
+              ),
+            ),
         ],
       ),
     );
