@@ -17,10 +17,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'api/api_service.dart';
 import 'utils/app_theme.dart';
 import 'utils/app_config.dart';
+// ⚠️ 조건 = js_interop (wasm 포함 웹 전체) — dart.library.html이면 wasm서 스텁 로드돼 죽음
 import 'utils/web_update/web_back_stub.dart'
-    if (dart.library.html) 'utils/web_update/web_back_web.dart';
+    if (dart.library.js_interop) 'utils/web_update/web_back_web.dart';
 import 'utils/web_update/web_theme_stub.dart'
-    if (dart.library.html) 'utils/web_update/web_theme_web.dart';
+    if (dart.library.js_interop) 'utils/web_update/web_theme_web.dart';
 
 final FlutterLocalNotificationsPlugin _localNotif = FlutterLocalNotificationsPlugin();
 

@@ -1,4 +1,7 @@
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+// dart:js_interop 기반 (wasm 호환 — dart:html 버전은 wasm서 스텁 처리됐었음).
+import 'dart:js_interop';
 
-void reloadPage() => html.window.location.reload();
+@JS('window.location.reload')
+external void _reload();
+
+void reloadPage() => _reload();
