@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -18,8 +19,6 @@ import 'api/api_service.dart';
 import 'utils/app_theme.dart';
 import 'utils/app_config.dart';
 // ⚠️ 조건 = js_interop (wasm 포함 웹 전체) — dart.library.html이면 wasm서 스텁 로드돼 죽음
-import 'utils/web_update/web_back_stub.dart'
-    if (dart.library.js_interop) 'utils/web_update/web_back_web.dart';
 import 'utils/web_update/web_theme_stub.dart'
     if (dart.library.js_interop) 'utils/web_update/web_theme_web.dart';
 
@@ -130,18 +129,29 @@ Future<void> _initFirebase() async {
 // 웹 back-trap에서 라우트 pop용 (브라우저 뒤로가기 → 앱 내 뒤로가기)
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
+/// OS 뒤로가기(브라우저 back·안드로이드 제스처·iOS 스와이프) 처리 — Flutter 공식 경로.
+/// 엔진(SingleEntryBrowserHistory)이 popstate를 framework popRoute로 전달할 때 가로챔.
+/// JS pushState 트랩은 엔진 자체 히스토리 상태머신(serialCount)과 충돌해 폐기 (06-12).
+class _RootBackHandler with WidgetsBindingObserver {
+  @override
+  Future<bool> didPopRoute() async {
+    final nav = appNavigatorKey.currentState;
+    // 열린 라우트/다이얼로그 있으면 pop (PopScope 존중)
+    if (nav != null && await nav.maybePop()) return true;
+    // 루트: 웹 = 소비(PWA 문서 이탈 → 흰화면 방지), 네이티브 = 기본(앱 백그라운드)
+    return kIsWeb;
+  }
+}
+
+final _rootBackHandler = _RootBackHandler();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
   ));
-  // 웹: 브라우저 back/스와이프백 → Navigator.pop (SPA 이탈 → 흰화면 방지)
-  installWebBackHandler(() {
-    final nav = appNavigatorKey.currentState;
-    if (nav != null && nav.canPop()) nav.pop();
-    return true;
-  });
+  WidgetsBinding.instance.addObserver(_rootBackHandler);
   await _initFirebase();
   runApp(const PlayBallApp());
 }
