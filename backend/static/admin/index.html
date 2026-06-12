@@ -45,11 +45,25 @@
 </style>
 </head>
 <body>
+<!-- 로그인 게이트 (06-13) — 키 검증 후에만 콘솔 노출 -->
+<div id="login" style="position:fixed; inset:0; background:var(--bg); display:flex;
+     align-items:center; justify-content:center; z-index:50;">
+  <div style="text-align:center; width:300px;">
+    <div style="font-size:34px; margin-bottom:8px;">⚾</div>
+    <h1 style="font-size:20px; margin:0 0 18px;">PlayBall Admin</h1>
+    <input id="loginKey" type="password" placeholder="Admin Key"
+           style="width:100%; box-sizing:border-box; padding:11px 14px; margin-bottom:10px;"
+           onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()" style="width:100%; padding:11px;">접속</button>
+    <div id="loginMsg" style="margin-top:10px; font-size:12px; color:var(--amber); min-height:16px;"></div>
+  </div>
+</div>
+
+<div id="console" style="display:none;">
 <header>
   <h1>⚾ PlayBall Admin</h1>
   <div class="key">
-    <input id="adminKey" type="password" placeholder="Admin Key" style="width:180px">
-    <button onclick="saveKey()">저장</button>
+    <button onclick="doLogout()">로그아웃</button>
   </div>
 </header>
 <nav>
@@ -60,14 +74,49 @@
   <button data-tab="food" onclick="show('food')">맛집 승인</button>
   <button data-tab="features" onclick="show('features')">기능 토글</button>
 </nav>
-<main id="main">키 입력 후 탭을 선택하세요.</main>
+<main id="main"></main>
+</div>
 <div id="toast"></div>
 
 <script>
 const $ = s => document.querySelector(s);
-const keyEl = $('#adminKey');
-keyEl.value = localStorage.getItem('pb_admin_key') || '';
-function saveKey() { localStorage.setItem('pb_admin_key', keyEl.value.trim()); toast('키 저장됨'); }
+// 키는 localStorage 보관 — keyEl 호환 셔임 (기존 api()가 keyEl.value 사용)
+const keyEl = { get value() { return localStorage.getItem('pb_admin_key') || ''; } };
+
+async function doLogin() {
+  const k = $('#loginKey').value.trim();
+  if (!k) return;
+  $('#loginMsg').textContent = '확인 중…';
+  try {
+    const r = await fetch('/admin/overview', { headers: { 'X-Admin-Key': k } });
+    if (r.status === 403) { $('#loginMsg').textContent = '키가 올바르지 않습니다'; return; }
+    if (!r.ok) { $('#loginMsg').textContent = '서버 오류 (' + r.status + ')'; return; }
+    localStorage.setItem('pb_admin_key', k);
+    enterConsole();
+  } catch (e) { $('#loginMsg').textContent = '연결 실패'; }
+}
+function doLogout() {
+  localStorage.removeItem('pb_admin_key');
+  $('#console').style.display = 'none';
+  $('#login').style.display = 'flex';
+  $('#loginKey').value = '';
+  $('#loginMsg').textContent = '';
+}
+function enterConsole() {
+  $('#login').style.display = 'none';
+  $('#console').style.display = 'block';
+  show('overview');
+}
+// 저장된 키 있으면 자동 검증 후 진입
+(async () => {
+  const k = localStorage.getItem('pb_admin_key');
+  if (!k) return;
+  try {
+    const r = await fetch('/admin/overview', { headers: { 'X-Admin-Key': k } });
+    if (r.ok) enterConsole();
+    else localStorage.removeItem('pb_admin_key');
+  } catch (e) {}
+})();
 function toast(m) { const t = $('#toast'); t.textContent = m; t.style.display = 'block';
                     setTimeout(() => t.style.display = 'none', 2200); }
 async function api(method, path, body) {
