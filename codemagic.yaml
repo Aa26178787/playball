@@ -1,0 +1,26 @@
+# Codemagic — iOS unsigned ipa (경로 B: Windows + Sideloadly 사이드로드용)
+# 사용: codemagic.io 가입(GitHub 연동) → 이 repo 추가 → ios-unsigned 워크플로 실행
+# 산출물 playball-unsigned.ipa → Windows Sideloadly로 본인 Apple ID 서명+설치
+workflows:
+  ios-unsigned:
+    name: iOS unsigned ipa
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: 3.41.6
+      xcode: latest
+      cocoapods: default
+    working_directory: app
+    scripts:
+      - name: Flutter deps
+        script: flutter pub get
+      - name: Build iOS (no codesign)
+        script: flutter build ios --release --no-codesign
+      - name: Package ipa
+        script: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -qr playball-unsigned.ipa Payload
+    artifacts:
+      - app/build/ios/iphoneos/playball-unsigned.ipa
