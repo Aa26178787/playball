@@ -203,11 +203,45 @@ class PlayBallApp extends StatelessWidget {
           darkTheme: AppTheme.dark(),
           // a11y 큰 글자 clamp — 1.3은 iOS '텍스트 크기' 설정에서 전체 125% 부풂
           // 체감(06-13 보고). 갤럭시와 일관 위해 1.1로 (접근성 vs 일관성 절충)
-          builder: (ctx, child) => MediaQuery.withClampedTextScaling(
-            minScaleFactor: 0.85,
-            maxScaleFactor: 1.1,
-            child: child ?? const SizedBox.shrink(),
-          ),
+          builder: (ctx, child) {
+            final clamped = MediaQuery.withClampedTextScaling(
+              minScaleFactor: 0.85,
+              maxScaleFactor: 1.1,
+              child: child ?? const SizedBox.shrink(),
+            );
+            // 전역 기준폭 412(갤럭시 플립6) — 더 좁은 기기(아이폰 393 등)는
+            // 가상 412폭으로 레이아웃 후 비율 축소 렌더 → 모든 기기 동일 비율/여백
+            // (06-13 사용자 요청). 412 이상은 그대로. 15% 초과 축소는 가독성상 미적용.
+            const baseW = 412.0;
+            final mq = MediaQuery.of(ctx);
+            final scale = mq.size.width / baseW;
+            if (scale >= 1.0 || scale < 0.85 || mq.size.width == 0) return clamped;
+            final vSize = Size(mq.size.width / scale, mq.size.height / scale);
+            return MediaQuery(
+              data: mq.copyWith(
+                size: vSize,
+                padding: mq.padding / scale,
+                viewPadding: mq.viewPadding / scale,
+                viewInsets: mq.viewInsets / scale,
+              ),
+              child: Transform.scale(
+                scale: scale,
+                alignment: Alignment.topLeft,
+                child: OverflowBox(
+                  alignment: Alignment.topLeft,
+                  minWidth: 0,
+                  minHeight: 0,
+                  maxWidth: vSize.width,
+                  maxHeight: vSize.height,
+                  child: SizedBox(
+                    width: vSize.width,
+                    height: vSize.height,
+                    child: clamped,
+                  ),
+                ),
+              ),
+            );
+          },
           home: const AppEntryPoint(),
         );
         },
