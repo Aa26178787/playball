@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/web_safe_area.dart';
 import 'dart:async';
 import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
@@ -154,7 +155,7 @@ class _TeamScreenState extends State<TeamScreen>
             padding: EdgeInsets.only(top: MediaQuery.of(context).viewPadding.top),
             child: Column(children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+                padding: EdgeInsets.fromLTRB(18, headerTopGap(context), 18, 12),
                 child: Row(children: [
                   Text('순위',
                       style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra,

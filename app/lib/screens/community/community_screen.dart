@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
 import '../../utils/web_image.dart';
+import '../../utils/web_safe_area.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
@@ -94,7 +95,7 @@ class _CommunityScreenState extends State<CommunityScreen>
             padding: EdgeInsets.only(top: MediaQuery.of(context).viewPadding.top),
             child: Column(children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 8, 18, 13),
+                padding: EdgeInsets.fromLTRB(18, headerTopGap(context), 18, 13),
                 child: Row(children: [
                   Text('커뮤니티', style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5)),
                   const Spacer(),

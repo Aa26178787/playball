@@ -199,7 +199,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // 상태바 영역까지 paper (SafeArea 단차 방지, 06-13)
     return Container(
       padding: EdgeInsets.fromLTRB(
-          18, 8 + MediaQuery.of(context).viewPadding.top, 18, 12),
+          18,
+          headerTopGap(context) + MediaQuery.of(context).viewPadding.top,
+          18, 12),
       decoration: BoxDecoration(color: cs.paper, border: Border(bottom: BorderSide(color: cs.line))),
       child: Row(children: [
         Text('캘린더', style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5)),

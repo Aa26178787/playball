@@ -1323,7 +1323,9 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           // 상태바 영역까지 paper로 — SafeArea로 비우면 iOS에서 헤더와 색 단차 (06-13)
           Container(
             padding: EdgeInsets.fromLTRB(
-                18, 8 + MediaQuery.of(context).viewPadding.top, 18, 12),
+                18,
+                headerTopGap(context) + MediaQuery.of(context).viewPadding.top,
+                18, 12),
             decoration: BoxDecoration(
               color: t.paper,
               border: Border(bottom: BorderSide(color: t.line)),
