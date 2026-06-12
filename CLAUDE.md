@@ -337,6 +337,13 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - **06-12b 메가B 완결+메가C**: **푸시GW**(fcm_service._send = 단일 게이트웨이 — KST 23:30~07:30 quiet hours 억제(user_settings.notify_quiet 기본 ON, 인앱 알림함은 전원 저장) + ntype→Android 채널 3종 라우팅(playball_live/myteam/community — main.dart 생성, 설정 '방해금지' 토글)) → **뱃지**(api/badges.py 11종 + user_badges 테이블, GET /user/badges lazy 평가) → **주간미션**(GET /user/missions — 예측3/출석5/직관1, KST 월요일 주차, 완료 시 자동 보상 reason=mission_weekly) → points_screen에 미션 진척바+뱃지 그리드 → **온보딩 모드**(홈 첫실행 프로/캐주얼 픽커 — 캐주얼=compact+notify_my_team_only) → **push_tokens 다수 검증**(가짜 토큰 시뮬: 멀티발송/quiet 억제·opt-out/채널/무효토큰 자동삭제 전부 라이브 통과 — InvalidArgumentError 매칭 보강이 픽스). **메가C**: showShareCardDialog(RepaintBoundary→png→share_plus, 웹=버튼 숨김)+VisitShareCard/PlayerShareCard → 직관 저장 직후 공유 제안+승리 시 인앱리뷰(in_app_review ^2.0.9) → 선수상세 FAB 시트 '카드 공유'(랜딩 링크 동봉) → **공유 랜딩** `/s/p/{id}`·`/s/g/{id}`(api/routers/share.py — og 메타+웹앱 유도 버튼). 딥링크 스킴 = 출시 시 App Links로 (메가D)
 
 ## 해야할 것
+### 관리자 콘솔 확장 백로그 (2026-06-13 추천)
+- **1순위 묶음 (app_config 편집 — 한 세션감)**: ① 공지 배너 작성/해제 UI ② min_version/latest_version 강제업데이트 설정 ③ 공지 푸시 발송(전체/팀별, 확인 다이얼로그)
+- **사용자 추이**: DAU/WAU/MAU — 측정 인프라부터 필요: API 미들웨어서 인증 유저 (user_id, date) 일별 upsert(daily_active_users 테이블, 메모리 set+주기 flush로 경량) + 가입 추이(users.created_at 기존) + 콘솔 그래프 탭
+- 운영: 서버 상태 패널(스케줄러 하트비트·최근 에러·크롤 성공여부 — 등록말소 크롤 사고 류 콘솔 인지)·포인트 수동 지급(reason=admin)·댓글 검색/삭제·인스타 핸들 즉석 수정·시즌 단계 전환(season_phase)·알림 발송 내역 뷰어(CS 디버깅)
+- 분석: 기능 사용률(예측 참여/직관기록 수)·인기 게시글·팀별 팬 분포·알림 발송량 추이
+- 도구: 유저 상세(활동 이력+포인트+기기)·계정 정지(현재 삭제만)·크롤 수동 재실행 버튼·경기 데이터 무결성 체크·admin 접근로그 뷰어(security_log 기보유)·백업 최근 시각 표시
+
 ### UI/UX 추천 백로그 (2026-06-13 큐레이션 — 구현비용 대비 체감순)
 - **강추 3**: ① 첫 실행 마이팀 선택 플로우(개인화 뿌리 — 홈 풀카드·푸시·캘린더 즉시 개인화) ② 홈 직관 미니 배너("이번 시즌 직관 5승 3패" — 차별 자산 노출, 데이터 보유) ③ 새 중계 항목 amber 페이드인(30s 폴링이 살아있는 중계로 체감)
 - 가성비: 선수 초성검색(ㄱㄷㅇ→김도영)·경기 없는 날 마이팀 D-day 카드·필드뷰 풀스크린 토글(작은폰 보완)·예측 마감 카운트다운(포인트 ON 시)·오프라인 배너(connectivity)
