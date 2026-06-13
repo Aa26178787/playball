@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/rendering.dart';
 import 'dart:async';
 import 'dart:io';
@@ -75,35 +74,22 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   // 다른 경기 스트립 접기/펴기 (영구 기억)
   bool _stripExpanded = true;
 
-  // 필드 축소 기준 = "패널 아래 잔여 공간 [_minContentBelow]px 보장" (06-13).
-  // 비율 고정(29%)은 스트립 등 고정부(~208px) 때문에 작은 화면에서 패널 합산이
-  // 70%까지 차지 (아이폰 네이티브 보고). 잔여 절대량 보장이 체감 기준과 일치:
-  // 플립(1006px) = 원본 유지(사용자 만족 상태), 아이폰(~870)·사파리는 자동 축소.
-  static const _minContentBelow = 500.0; // 앱: 패널 아래 확보할 최소 px
-  static const _minShrink = 0.35; // 앱: 필드 최소 축소 한계
-  // 웹: 패널(스코어보드+필드)을 뷰포트 33% 캡 → AppBar 포함 헤더+스코어+필드 합 ~40% (06-13 지정).
-  // 폰 사파리(작은 뷰포트)는 캡보다 floor가 지배하므로 웹 floor도 0.18로 낮춰 ~40% 도달.
-  // 앱은 절대량(500px-below) 모델 유지 — 비율 고정 시 작은 화면서 70% 차지하던 이슈 방지.
-  static const _webPanelRatio = 0.33;
-  static const _webMinShrink = 0.18;
-
-  // 필드 크기는 스트립 펼침/접힘과 무관하게 고정 (06-14 사용자 요청) — base 상수.
-  // 스트립 펼침은 _currentPanelH에서 패널 높이에만 가산(필드를 축소하지 않음).
-  double get _fieldShrink {
-    final h = MediaQuery.of(context).size.height;
-    const base = 428.0; // 스트립 상태 무관 고정
-    final panelMax = kIsWeb ? (h * _webPanelRatio) : (h - _minContentBelow);
-    if (base <= panelMax) return 1.0;
-    return ((panelMax - base + 290) / 290).clamp(kIsWeb ? _webMinShrink : _minShrink, 1.0);
+  // 필드뷰 = 폭 기준 자연 비율(SVG 300x230) 렌더 (06-14). FittedBox 균일축소 폐기:
+  // 그 방식이 다이아몬드+마커+이름+포지션을 통째 줄여 글씨 tiny + 좌우 여백(letterbox) 유발.
+  // _FullFieldView 마커/텍스트는 내부 고정크기 → 직접 렌더 시 가독성 유지.
+  // 필드는 항상 폭에 맞춰 채움 → crop 없음·여백 없음·iPhone≈Android(폭 비슷)·스트립 펼침과 무관.
+  double _fieldH() {
+    final w = MediaQuery.of(context).size.width;
+    // 필드 박스 폭 = 화면폭 - 바깥패딩(18*2) - 안패딩(16*2) = w-68. 자연높이 = 폭*230/300.
+    return ((w - 68) * 230 / 300).clamp(180.0, 300.0);
   }
 
-  double _panelH(double base) => base - 290 * (1 - _fieldShrink);
-
-  // 패널 높이 = 고정 필드영역(428 기준) + 스트립 펼침 시 추가분(필드는 그대로).
+  // 패널 = 고정부(스코어보드+패딩+핸들 ~138) + 필드 + 스트립 펼침분(필드는 안 줄어듦).
   double _currentPanelH() {
-    final fieldPanel = _panelH(428);
-    if (_sameDayGames.isEmpty) return fieldPanel - 20; // 스트립/핸들 영역 없음
-    return fieldPanel + (_stripExpanded ? 70 : 0); // 펼침 = 스트립 그리드만 추가
+    const fixed = 138.0;
+    final field = _fieldH();
+    if (_sameDayGames.isEmpty) return fixed - 20 + field; // 핸들 없음
+    return fixed + field + (_stripExpanded ? 70 : 0);
   }
 
   // 탭 콘텐츠 하단 클리어런스 — 플로팅 nav(+서브탭바)가 마지막 정보를 가리지 않게.
@@ -1285,18 +1271,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           // 축소 시 FittedBox = 비율 유지 전체 축소 (painter가 max-fit이라
                           // 높이만 줄이면 외야/홈이 위아래로 잘림 — 06-12)
                           child: SizedBox(
-                            height: 290 * _fieldShrink,
+                            height: _fieldH(),
                             width: double.infinity,
-                            child: _fieldShrink >= 1.0
-                                ? fieldWidget
-                                : FittedBox(
-                                    fit: BoxFit.contain,
-                                    child: SizedBox(
-                                      width: MediaQuery.of(context).size.width - 32,
-                                      height: 290,
-                                      child: fieldWidget,
-                                    ),
-                                  ),
+                            child: fieldWidget,
                           ),
                         ),
                         // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
@@ -1734,18 +1711,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       padding: const EdgeInsets.fromLTRB(16, 35, 16, 12),
                       // 축소 시 FittedBox = 비율 유지 전체 축소 (높이만 줄이면 위아래 잘림)
                       child: SizedBox(
-                        height: 290 * _fieldShrink,
+                        height: _fieldH(),
                         width: double.infinity,
-                        child: _fieldShrink >= 1.0
-                            ? fieldWidget
-                            : FittedBox(
-                                fit: BoxFit.contain,
-                                child: SizedBox(
-                                  width: MediaQuery.of(context).size.width - 32,
-                                  height: 290,
-                                  child: fieldWidget,
-                                ),
-                              ),
+                        child: fieldWidget,
                       ),
                     ),
                     // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
