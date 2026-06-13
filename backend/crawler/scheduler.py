@@ -1367,8 +1367,11 @@ def smart_update():
                         except Exception:
                             pass
 
-                # 경기 시작 (재시작 안전: dedup)
-                elif cs == '진행' and ps in ('예정', '라인업', '') and not _already_notified(gid, 'game_start'):
+                # 경기 시작: 전환(예정/라인업→진행) OR 진행중 초반(≤2회) 미발송 catch-up.
+                # 재시작/예외/race로 전환을 놓쳐도 초반이면 자가복구. notification_log 영속 dedup이라
+                # 중복 없음. 이닝 진행된(>2회) 경기는 늦은 발송 방지 위해 제외 (06-14)
+                elif cs == '진행' and not _already_notified(gid, 'game_start') and (
+                        ps in ('예정', '라인업', '') or (curr.get('current_inning') or 0) <= 2):
                     # 선발 투수 조회
                     _hs = _ls = ''
                     try:
