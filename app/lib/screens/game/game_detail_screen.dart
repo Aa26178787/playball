@@ -70,7 +70,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   bool _isLoadingInFlight = false;
   bool _isRelayRefreshing = false;
   // 필드뷰 항상 상단 고정 (토글 버튼 제거 — 2026-06-06)
-  bool _fieldPinned = true;
+  bool _fieldPinned = false; // 기본 비고정(필드 스크롤) — 핀 시 상단 고정 (06-14 기본값 변경)
   // 다른 경기 스트립 접기/펴기 (영구 기억)
   bool _stripExpanded = true;
 
@@ -2014,8 +2014,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           // mockup divider (헤더와 ScoringSummary 사이)
           Container(height: 1, color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0)),
           const SizedBox(height: 16),
-          // 스코어보드 + 득점요약 = 통합 카드 (06-13 병합)
-          if (innings.isNotEmpty) ...[
+          // 득점요약 카드 (라인스코어는 상단 스코어보드와 중복이라 제거 — 06-14)
+          if (innings.isNotEmpty && _relayAllData != null) ...[
             Builder(builder: (ctx) {
               final isDarkC = Theme.of(ctx).brightness == Brightness.dark;
               return Container(
@@ -2028,11 +2028,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       width: 1),
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: Column(children: [
-                  _buildLineScore(innings, awayTeam, homeTeam),
-                  if (_relayAllData != null)
-                    _buildScoringSection(innings, awayTeam, homeTeam),
-                ]),
+                child: _buildScoringSection(innings, awayTeam, homeTeam),
               );
             }),
             const SizedBox(height: 16),
@@ -2469,95 +2465,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           }),
         ],
       ),
-    );
-  }
-
-  // ── 전통 라인스코어 스코어보드 (이닝별 + R/H/E, 가로 스크롤) ──
-  Widget _buildLineScore(List innings, String awayTeam, String homeTeam) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
-    final g = (_gameData?['game'] as Map?) ?? const {};
-
-    final byInning = <int, Map>{};
-    var lastInn = 0;
-    for (final inn in innings) {
-      final n = (inn['inning'] as num?)?.toInt() ?? 0;
-      byInning[n] = inn as Map;
-      if (n > lastInn) lastInn = n;
-    }
-    final nCols = lastInn > 9 ? lastInn : 9;
-    final status = g['status'] as String? ?? '';
-    final isLive = status == '진행';
-    final curInning = (g['current_inning'] as num?)?.toInt() ?? 0;
-    final curHalf = g['inning_half']?.toString();
-
-    String cell(int inn, bool home) {
-      final d = byInning[inn];
-      if (d == null) return '-';
-      final v = (home ? d['home_runs'] : d['away_runs']) as num?;
-      if (v == null) return '-';
-      // 라이브 현재 이닝: 아직 공격 전인 말(홈)은 '-'
-      if (isLive && inn == curInning && home && curHalf == '0') return '-';
-      return '${v.toInt()}';
-    }
-
-    // ── 06-13 재구성: 좌우 스크롤 제거, 이닝+R/H/E 전 칸 Expanded 균등분배 ──
-    // (웹 9회 우측 공백·앱 스크롤 보고 — 연장 12회여도 한 화면에 균등)
-    Widget col(String top, String mid, String bot,
-        {bool bold = false, bool hot = false}) {
-      final st = TextStyle(
-          fontSize: 11,
-          fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
-          color: hot ? const Color(0xFFE53935) : ink,
-          fontFeatures: const [FontFeature.tabularFigures()]);
-      return Expanded(
-        child: Column(children: [
-          Text(top,
-              style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  color: hot ? const Color(0xFFE53935) : sub)),
-          const SizedBox(height: 7),
-          FittedBox(fit: BoxFit.scaleDown, child: Text(mid, style: st)),
-          const SizedBox(height: 6),
-          FittedBox(fit: BoxFit.scaleDown, child: Text(bot, style: st)),
-        ]),
-      );
-    }
-
-    String n(dynamic v) => v == null ? '-' : '${(v as num).toInt()}';
-
-    // 카드 decoration은 호출부 통합 카드(스코어보드+득점요약 병합 06-13)가 담당
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // 팀명 열 (고정폭 최소)
-        SizedBox(
-          width: 40,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('팀', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: sub)),
-            const SizedBox(height: 7),
-            Text(awayTeam, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ink)),
-            const SizedBox(height: 6),
-            Text(homeTeam, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ink)),
-          ]),
-        ),
-        // 이닝 칸 — 균등분배 (스크롤 없음)
-        for (int i = 1; i <= nCols; i++)
-          col('$i', cell(i, false), cell(i, true),
-              hot: isLive && i == curInning),
-        // R/H/E 구분선 + 균등 칸
-        Container(width: 1, height: 44, color: line,
-            margin: const EdgeInsets.symmetric(horizontal: 4)),
-        col('R', n(_liveScore(g.cast<String, dynamic>(), 'away_score')),
-            n(_liveScore(g.cast<String, dynamic>(), 'home_score')), bold: true),
-        col('H', n(g['away_hits']), n(g['home_hits'])),
-        col('E', n(g['away_errors']), n(g['home_errors'])),
-      ]),
     );
   }
 
