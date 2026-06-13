@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'api/api_service.dart';
 import 'utils/app_theme.dart';
 import 'utils/app_config.dart';
+import 'utils/app_back.dart';
 // ⚠️ 조건 = js_interop (wasm 포함 웹 전체) — dart.library.html이면 wasm서 스텁 로드돼 죽음
 import 'utils/web_update/web_back_stub.dart'
     if (dart.library.js_interop) 'utils/web_update/web_back_web.dart';
@@ -140,6 +141,8 @@ class _RootBackHandler with WidgetsBindingObserver {
     final nav = appNavigatorKey.currentState;
     // 열린 라우트/다이얼로그 있으면 pop (PopScope 존중)
     if (nav != null && await nav.maybePop()) return true;
+    // 라우트 없으면 탭 히스토리 백 — 이전 탭으로 (#2)
+    if (appTabBackHandler?.call() ?? false) return true;
     // 루트: 웹 = 소비(PWA 문서 이탈 → 흰화면 방지), 네이티브 = 기본(앱 백그라운드)
     return kIsWeb;
   }
@@ -158,7 +161,13 @@ void main() async {
   // JS 트랩(더미 엔트리+popstate)이 유일한 방어선 — 앱 내 뒤로가기로 변환
   if (kIsWeb) {
     installWebBackHandler(() {
-      appNavigatorKey.currentState?.maybePop();
+      final nav = appNavigatorKey.currentState;
+      // 라우트/다이얼로그 있으면 pop(PopScope 존중), 없으면 탭 히스토리 백 (#2)
+      if (nav != null && nav.canPop()) {
+        nav.maybePop();
+      } else {
+        appTabBackHandler?.call();
+      }
       return true;
     });
   }

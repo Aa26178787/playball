@@ -20,6 +20,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../game/game_detail_screen.dart';
 import '../../widgets/onboarding_helper.dart';
+import '../../utils/app_back.dart';
 import '../team/team_screen.dart';
 import '../team/team_detail_screen.dart';
 import '../player/player_screen.dart';
@@ -97,11 +98,13 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   List<Map<String, dynamic>> _myTeamChips = [];
   final PageController _pageController = PageController();
+  final List<int> _tabHistory = []; // OS 뒤로가기용 탭 이동 히스토리 (#2)
 
   @override
   void initState() {
     super.initState();
     ApiService.myTeamData.addListener(_onMyTeamDataChanged);
+    appTabBackHandler = _handleTabBack;
   }
 
   void _onMyTeamDataChanged() {
@@ -111,12 +114,25 @@ class _HomeScreenState extends State<HomeScreen> {
   // 탭 전환 — 슬라이드 애니메이션 (제스처 hijack 없이 프로그램적 이동)
   void _goToTab(int i) {
     if (i < 0 || i >= _screens.length || i == _currentIndex) return;
+    _tabHistory.add(_currentIndex);
     _pageController.animateToPage(i,
         duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
   }
 
+  // OS 뒤로가기 — 팝할 라우트 없을 때 호출. 이전 탭으로 이동(있으면 true), 없으면 false (#2)
+  bool _handleTabBack() {
+    if (_tabHistory.isEmpty) return false;
+    final prev = _tabHistory.removeLast();
+    if (prev >= 0 && prev < _screens.length) {
+      _pageController.animateToPage(prev,
+          duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
+    }
+    return true;
+  }
+
   @override
   void dispose() {
+    if (appTabBackHandler == _handleTabBack) appTabBackHandler = null;
     ApiService.myTeamData.removeListener(_onMyTeamDataChanged);
     _pageController.dispose();
     super.dispose();
