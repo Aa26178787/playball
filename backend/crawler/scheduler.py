@@ -1299,6 +1299,12 @@ def smart_update():
     _update_lineup_fallback()
     _update_roster_changes_pregame()
 
+    # ⚠️ status 갱신 경로가 2개: _update_today_games(스케줄) + _update_live_games_realtime(relay).
+    # 후자가 curr_details 캡처 이후에도 status를 '진행'으로 바꿀 수 있어(relay 우선 감지),
+    # 알림 비교 직전 curr를 재캡처해 game_start 전환 누락 방지 (06-14 459 키움-한화 사고).
+    curr_details = _get_game_details()
+    curr_statuses = {gid: d['status'] for gid, d in curr_details.items()}
+
     if prev_details and curr_details:
         newly_finished = [
             gid for gid, status in curr_statuses.items()
