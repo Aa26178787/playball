@@ -3109,15 +3109,22 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             Text('시즌 성적',
                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ink3, letterSpacing: 0.3)),
             const SizedBox(height: 6),
-            Wrap(
-              spacing: 12, runSpacing: 4,
-              children: [
-                _statChip('평자', '${season['era'] ?? '-'}'),
-                _statChip('${season['wins'] ?? 0}승 ${season['losses'] ?? 0}패', ''),
-                _statChip('이닝', season['innings'] ?? '-'),
-                _statChip('삼진', '${season['kk'] ?? 0}'),
-                _statChip('볼넷', '${season['bb'] ?? 0}'),
-              ],
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(
+                children: [
+                  _statChip('평자', '${season['era'] ?? '-'}'),
+                  const SizedBox(width: 13),
+                  _statChip('승패', '${season['wins'] ?? 0}-${season['losses'] ?? 0}'),
+                  const SizedBox(width: 13),
+                  _statChip('이닝', season['innings'] ?? '-'),
+                  const SizedBox(width: 13),
+                  _statChip('삼진', '${season['kk'] ?? 0}'),
+                  const SizedBox(width: 13),
+                  _statChip('볼넷', '${season['bb'] ?? 0}'),
+                ],
+              ),
             ),
             if (vs['games'] != null && vs['games'] != '0') ...[
               const SizedBox(height: 10),
@@ -3213,14 +3220,20 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             Text('시즌 성적',
                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ink3, letterSpacing: 0.3)),
             const SizedBox(height: 6),
-            Wrap(
-              spacing: 12, runSpacing: 4,
-              children: [
-                _statChip('타율', '${season['avg'] ?? '-'}'),
-                _statChip('홈런', '${season['hr'] ?? 0}'),
-                _statChip('타점', '${season['rbi'] ?? 0}'),
-                _statChip('출루율', '${season['obp'] ?? '-'}'),
-              ],
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(
+                children: [
+                  _statChip('타율', '${season['avg'] ?? '-'}'),
+                  const SizedBox(width: 13),
+                  _statChip('홈런', '${season['hr'] ?? 0}'),
+                  const SizedBox(width: 13),
+                  _statChip('타점', '${season['rbi'] ?? 0}'),
+                  const SizedBox(width: 13),
+                  _statChip('출루율', '${season['obp'] ?? '-'}'),
+                ],
+              ),
             ),
             if (results.isNotEmpty) ...[
               const SizedBox(height: 10),

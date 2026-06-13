@@ -31,10 +31,12 @@ def get_calendar(year: int, month: int):
                 g.current_inning,
                 g.inning_half,
                 g.home_team_id,
-                g.away_team_id
+                g.away_team_id,
+                s.name AS stadium
             FROM games g
             JOIN teams ht ON ht.id = g.home_team_id
             JOIN teams at ON at.id = g.away_team_id
+            LEFT JOIN stadiums s ON g.stadium_id = s.id
             WHERE EXTRACT(YEAR  FROM g.game_date) = %s
               AND EXTRACT(MONTH FROM g.game_date) = %s
             ORDER BY g.game_date, g.start_time
@@ -48,7 +50,7 @@ def get_calendar(year: int, month: int):
     for row in rows:
         (gid, game_date, status, home_score, away_score, start_time,
          home_team, home_team_code, away_team, away_team_code,
-         current_inning, inning_half, home_team_id, away_team_id) = row
+         current_inning, inning_half, home_team_id, away_team_id, stadium) = row
 
         date_key = game_date.strftime("%Y-%m-%d")
 
@@ -78,6 +80,7 @@ def get_calendar(year: int, month: int):
             "start_time": start_time_str,
             "current_inning": current_inning,
             "inning_half": inning_half,
+            "stadium": stadium,
         }
 
         games.setdefault(date_key, []).append(game_entry)

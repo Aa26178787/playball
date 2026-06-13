@@ -1959,18 +1959,18 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     {'value': 'rbis',         'label': '타점'},
     {'value': 'hits',         'label': '안타'},
     {'value': 'stolen_bases', 'label': '도루'},
-    {'value': 'ops',          'label': '출루장타율'},
-    {'value': 'war',          'label': '대체승리기여'},
+    {'value': 'ops',          'label': 'OPS'},
+    {'value': 'war',          'label': 'WAR'},
   ];
 
   static const List<Map<String, String>> _pitcherCategories = [
-    {'value': 'era',        'label': '평균자책점'},
-    {'value': 'wins',       'label': '승리'},
+    {'value': 'era',        'label': 'ERA'},
+    {'value': 'wins',       'label': '승'},
     {'value': 'strikeouts', 'label': '탈삼진'},
     {'value': 'saves',      'label': '세이브'},
     {'value': 'holds',      'label': '홀드'},
-    {'value': 'whip',       'label': '이닝당출루'},
-    {'value': 'war',        'label': '대체승리기여'},
+    {'value': 'whip',       'label': 'WHIP'},
+    {'value': 'war',        'label': 'WAR'},
   ];
 
   String _hitterSort = 'avg';

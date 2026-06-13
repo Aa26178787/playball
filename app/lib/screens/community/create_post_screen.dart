@@ -479,10 +479,12 @@ class _MentionHelpRowState extends State<_MentionHelpRow> {
               border: Border.all(color: SemColor.brand(context).withValues(alpha: 0.15)),
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: _examples.map((e) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 3),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
                       width: 32,

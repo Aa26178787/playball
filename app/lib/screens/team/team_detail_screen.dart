@@ -689,13 +689,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     ));
   }
 
-  // 타자 position → 필터 그룹 (포수/내야/외야/DH)
-  String _posType(String pos) {
-    if (pos.contains('포수')) return '포수';
-    if (pos.contains('지명')) return 'DH';
-    if (pos.contains('외야') || pos.contains('좌익') || pos.contains('중견') || pos.contains('우익')) return '외야';
-    return '내야';
-  }
   // 투수 throws → 구위 (우완/좌완/언더)
   String _armType(String throws) {
     if (throws.contains('좌')) return '좌완';
@@ -724,7 +717,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final batters = _players.where((p) => p['player_type'] == '타자').toList();
     final pitchers = _players.where((p) => p['player_type'] == '투수').toList();
     final batF = _batFilter == '전체' ? batters
-        : batters.where((p) => _posType(((p as Map)['position'] ?? '').toString()) == _batFilter).toList();
+        : batters.where((p) => ((p as Map)['position'] ?? '').toString().contains(_batFilter)).toList();
     final pitF = _pitFilter == '전체' ? pitchers
         : pitchers.where((p) => _armType(((p as Map)['throws'] ?? '').toString()) == _pitFilter).toList();
 
@@ -733,7 +726,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       Expanded(child: Container(
         decoration: BoxDecoration(border: Border(right: BorderSide(color: cs.line))),
         child: Column(children: [
-          _ColumnHeader(title: '타자', filters: const ['전체', '포수', '내야', '외야'],
+          _ColumnHeader(title: '타자', filters: const ['전체', '포수', '1루', '2루', '3루', '유격', '좌익', '중견', '우익', '지명'],
               selected: _batFilter, tc: color, cs: cs, onSelect: (f) => setState(() => _batFilter = f)),
           Expanded(child: ListView.builder(
             padding: const EdgeInsets.only(bottom: 80),
@@ -963,7 +956,13 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final changeType = c['change_type'] as String? ?? '';
     final playerName = c['player_name'] as String? ?? '';
     final reason = c['reason'] as String? ?? '';
-    final position = c['position'] as String? ?? '';
+    final playerType = c['player_type'] as String? ?? '';
+    final throws = c['throws'] as String? ?? '';
+    final rawPosition = c['position'] as String? ?? '';
+    // 투수 = 피칭스타일(우투/좌완 등), 타자 = 실포지션(1루/유격 등)
+    final position = playerType == '투수'
+        ? (throws.isNotEmpty ? throws : rawPosition)
+        : rawPosition;
     final playerId = c['player_id'] as int?;
 
     final typeColor = changeType == '1군등록' ? const Color(0xFF2563EB)
@@ -1466,30 +1465,49 @@ class _ColumnHeader extends StatelessWidget {
   const _ColumnHeader({required this.title, required this.filters, required this.selected,
       required this.tc, required this.cs, required this.onSelect});
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
-    decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(title, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)),
-      const SizedBox(height: 8),
-      Wrap(spacing: 4, runSpacing: 4, children: filters.map((f) => GestureDetector(
-        onTap: () => onSelect(f),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: f == selected ? tc : cs.paper2,
-            borderRadius: BorderRadius.circular(Radii.pill),
-            border: Border.all(color: f == selected ? tc : cs.line),
+  Widget build(BuildContext context) {
+    final active = selected != '전체';
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
+      child: Row(children: [
+        Text(title, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)),
+        const Spacer(),
+        PopupMenuButton<String>(
+          initialValue: selected,
+          onSelected: onSelect,
+          position: PopupMenuPosition.under,
+          offset: const Offset(0, 4),
+          color: cs.paper,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: cs.line),
           ),
-          child: Text(f, style: TextStyle(fontSize: 10,
-              fontWeight: f == selected ? Typo.bold : Typo.medium,
-              color: f == selected ? (cs.dark ? const Color(0xFF0F0F12) : Colors.white) : cs.ink3)),
+          itemBuilder: (_) => filters.map((f) => PopupMenuItem<String>(
+            value: f, height: 40,
+            child: Text(f, style: TextStyle(fontSize: 12,
+                fontWeight: f == selected ? Typo.bold : Typo.medium,
+                color: f == selected ? tc : cs.ink)),
+          )).toList(),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: active ? tc.withValues(alpha: cs.dark ? 0.22 : 0.12) : cs.paper2,
+              borderRadius: BorderRadius.circular(Radii.pill),
+              border: Border.all(color: active ? tc.withValues(alpha: 0.45) : cs.line),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Text(selected, style: TextStyle(fontSize: 11, fontWeight: Typo.bold,
+                  color: active ? tc : cs.ink3)),
+              const SizedBox(width: 2),
+              Icon(Icons.keyboard_arrow_down_rounded, size: 15,
+                  color: active ? tc : cs.ink3),
+            ]),
+          ),
         ),
-      )).toList()),
-    ]),
-  );
+      ]),
+    );
+  }
 }
 
 // ── 상대전적 원형 게이지 ──

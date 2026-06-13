@@ -573,7 +573,7 @@ def get_roster_changes(team_id: int, days: int = 30):
               AND rc.change_date >= CURRENT_DATE - %s
         )
         SELECT d.id, d.player_name, d.player_id, d.change_type, d.reason, d.change_date,
-               p.position, p.player_type, p.profile_image
+               p.position, p.player_type, p.profile_image, p.throws
         FROM deduped d
         LEFT JOIN players p ON p.id = d.player_id
         WHERE d.rn = 1
@@ -595,6 +595,7 @@ def get_roster_changes(team_id: int, days: int = 30):
                 "position":     r[6],
                 "player_type":  r[7],
                 "profile_image": r[8],
+                "throws":       r[9],
             }
             for r in rows
         ]

@@ -95,9 +95,12 @@ class LocalCache {
   }
 
   // 로그아웃 시 호출 — 유저 개인 데이터 캐시 삭제
+  // 단 flag_(온보딩/도움말 등 기기 단위 UX 상태)는 보존 — 재로그인 시 픽커·힌트 재노출 방지
   static Future<void> clearUser() async {
     final prefs = await _getPrefs();
-    final toRemove = prefs.getKeys().where((k) => k.startsWith(_prefix)).toList();
+    final toRemove = prefs.getKeys()
+        .where((k) => k.startsWith(_prefix) && !k.startsWith('${_prefix}flag_'))
+        .toList();
     for (final k in toRemove) {
       await prefs.remove(k);
     }

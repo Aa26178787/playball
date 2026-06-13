@@ -331,7 +331,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
   ];
 
   List<Map<String, dynamic>> _pitcherRows(Map? s1, Map? s2) => [
-    {'label': '평균자책점', 'v1': _s(s1?['era'], dec: 2), 'v2': _s(s2?['era'], dec: 2), 'higher_is_better': false},
+    {'label': 'ERA', 'v1': _s(s1?['era'], dec: 2), 'v2': _s(s2?['era'], dec: 2), 'higher_is_better': false},
     {'label': '경기', 'v1': _s(s1?['games']), 'v2': _s(s2?['games']), 'higher_is_better': true},
     {'label': '승', 'v1': _s(s1?['wins']), 'v2': _s(s2?['wins']), 'higher_is_better': true},
     {'label': '패', 'v1': _s(s1?['losses']), 'v2': _s(s2?['losses']), 'higher_is_better': false},

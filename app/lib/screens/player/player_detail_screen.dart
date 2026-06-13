@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:dio/dio.dart';
 import '../../utils/design_tokens.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shimmer/shimmer.dart';
@@ -104,8 +102,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   bool _bodyLoading = false; // 바디 shimmer (initialData 있어서 헤더만 먼저 표시할 때)
   bool _isFav = false;
   bool _favLoading = false;
-  bool _voted = false;       // 인기투표 (하트)
-  int _voteCount = 0;
   String _hitterTrendStat = 'avg';
   String _pitcherTrendStat = 'era';
 
@@ -125,7 +121,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     }
     _loadPlayer();
     _loadFavStatus();
-    _loadVoteStatus();
     _loadCoreKeys();
   }
 
@@ -134,45 +129,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     _compareBubble?.remove();
     _compareBubble = null;
     super.dispose();
-  }
-
-  Future<void> _loadVoteStatus() async {
-    try {
-      final s = await ApiService.getPlayerVoteStatus(widget.playerId);
-      if (mounted) {
-        setState(() {
-          _voted = s['voted'] as bool? ?? false;
-          _voteCount = s['vote_count'] as int? ?? 0;
-        });
-      }
-    } catch (e) { debugPrint('player_detail: $e'); }
-  }
-
-  Future<void> _toggleVote() async {
-    HapticFeedback.mediumImpact();
-    try {
-      final res = await ApiService.votePlayer(widget.playerId);
-      if (mounted) {
-        setState(() {
-          _voted = res['voted'] as bool? ?? _voted;
-          _voteCount = res['vote_count'] as int? ?? _voteCount;
-        });
-      }
-    } on DioException catch (e) {
-      if (!mounted) return;
-      final code = e.response?.statusCode;
-      final msg = (code == 401 || code == 403)
-          ? '로그인 후 투표할 수 있습니다'
-          : (code == 429)
-              ? '잠시 후 다시 시도해주세요'
-              : '투표 중 오류가 발생했습니다';
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('투표 중 오류가 발생했습니다')));
-    }
   }
 
   Future<void> _loadFavStatus() async {
@@ -728,25 +684,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       }),
                       const SizedBox(height: 8),
                       Wrap(spacing: 7, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                        // 인기투표 하트 (모든 선수 — 탭하여 투표)
-                        GestureDetector(
-                          onTap: _toggleVote,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: _voted ? const Color(0xFFFF5A5F).withValues(alpha: 0.22) : Colors.white.withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: _voted ? const Color(0xFFFF5A5F).withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.28)),
-                            ),
-                            child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(_voted ? Icons.favorite : Icons.favorite_border,
-                                  size: 12, color: _voted ? const Color(0xFFFF5A5F) : Colors.white),
-                              const SizedBox(width: 4),
-                              Text('$_voteCount',
-                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
-                            ]),
-                          ),
-                        ),
                           // 인스타 버튼 (insta_handle 등록된 선수만)
                           if (player['insta_handle'] != null)
                             GestureDetector(
