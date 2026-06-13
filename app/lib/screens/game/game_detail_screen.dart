@@ -1323,14 +1323,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 ),
               ),
 
-            // 필드 고정/해제 토글 (비핀 모드서도 재고정 가능하게)
-            if (includeField)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Center(child: _fieldPinHandle(isDark)),
-              ),
             // ── 다른 경기 (1x4) — 필드뷰 아래 ──
             if (includeField && _sameDayGames.isNotEmpty) _buildSameDayStrip(),
+            // 필드 고정/해제 토글 (스트립 아래 — 핀 모드 하단 컨트롤행과 위치 통일)
+            if (includeField)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Center(child: _fieldPinHandle(isDark)),
+              ),
 
             const SizedBox(height: 14),
             Container(height: 1, color: line),
