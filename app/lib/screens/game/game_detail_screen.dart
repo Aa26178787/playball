@@ -87,15 +87,24 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   static const _webPanelRatio = 0.33;
   static const _webMinShrink = 0.18;
 
+  // 필드 크기는 스트립 펼침/접힘과 무관하게 고정 (06-14 사용자 요청) — base 상수.
+  // 스트립 펼침은 _currentPanelH에서 패널 높이에만 가산(필드를 축소하지 않음).
   double get _fieldShrink {
     final h = MediaQuery.of(context).size.height;
-    final base = _sameDayGames.isNotEmpty ? (_stripExpanded ? 498.0 : 428.0) : 408.0;
+    const base = 428.0; // 스트립 상태 무관 고정
     final panelMax = kIsWeb ? (h * _webPanelRatio) : (h - _minContentBelow);
     if (base <= panelMax) return 1.0;
     return ((panelMax - base + 290) / 290).clamp(kIsWeb ? _webMinShrink : _minShrink, 1.0);
   }
 
   double _panelH(double base) => base - 290 * (1 - _fieldShrink);
+
+  // 패널 높이 = 고정 필드영역(428 기준) + 스트립 펼침 시 추가분(필드는 그대로).
+  double _currentPanelH() {
+    final fieldPanel = _panelH(428);
+    if (_sameDayGames.isEmpty) return fieldPanel - 20; // 스트립/핸들 영역 없음
+    return fieldPanel + (_stripExpanded ? 70 : 0); // 펼침 = 스트립 그리드만 추가
+  }
 
   // 탭 콘텐츠 하단 클리어런스 — 플로팅 nav(+서브탭바)가 마지막 정보를 가리지 않게.
   // 사파리 웹은 viewPadding=0이라 webBottomGuard 동반 (06-13 가림 보고)
@@ -765,7 +774,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.easeOutCubic,
-                      height: _panelH(_sameDayGames.isNotEmpty ? (_stripExpanded ? 498 : 428) : 408),
+                      height: _currentPanelH(),
                     ),
                     Expanded(
                       // gameHeader skip — 핀 시 panel 바로 아래 TabBarView (득점요약/이닝중계)만 표시
@@ -1665,7 +1674,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       curve: Curves.easeOutCubic,
       // 스트립 토글: 펼침 498 / 접힘 428 (실기 11px overflow 보정 +12). 스트립 없으면 408
       // 짧은 뷰포트는 _panelH가 필드 축소분만큼 감산
-      height: _panelH(_sameDayGames.isNotEmpty ? (_stripExpanded ? 498 : 428) : 408),
+      height: _currentPanelH(),
       decoration: BoxDecoration(
         color: paper,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
