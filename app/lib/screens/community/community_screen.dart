@@ -9,6 +9,7 @@ import '../../utils/local_cache.dart';
 import '../../utils/team_theme.dart';
 import '../mypage/my_page_screen.dart';
 import '../../widgets/stadium_ranking_sheet.dart';
+import '../../widgets/common_widgets.dart';
 import 'post_detail_screen.dart';
 import 'create_post_screen.dart';
 import 'food_add_screen.dart';
@@ -156,7 +157,8 @@ class _CommunityScreenState extends State<CommunityScreen>
 class _PostListTab extends StatefulWidget {
   final String sort;
   final int? teamId;
-  const _PostListTab({super.key, required this.sort, this.teamId});
+  final Widget? headerExtra; // 검색바 아래 추가 영역 (팀별 탭 팀칩 — 4탭 검색바 위치 통일)
+  const _PostListTab({super.key, required this.sort, this.teamId, this.headerExtra});
 
   @override
   State<_PostListTab> createState() => _PostListTabState();
@@ -314,10 +316,11 @@ class _PostListTabState extends State<_PostListTab>
               ),
           ]),
         ),
+        if (widget.headerExtra != null) widget.headerExtra!,
         // 카테고리 칩
         SizedBox(
           height: 44,
-          child: _fade(ListView.separated(
+          child: HScrollFade(child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
             itemCount: _categories.length,
@@ -401,46 +404,48 @@ class _TeamTabState extends State<_TeamTab> {
   @override
   Widget build(BuildContext context) {
     final cs = _C(context);
-    return Column(
-      children: [
-        // 팀 칩 스크롤
-        Container(
-          height: 50,
-          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
-          child: _fade(ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-            itemCount: _kTeams.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 6),
-            itemBuilder: (_, i) {
-              final t = _kTeams[i];
-              final active = _selectedTeamId == t.id;
-              final c = teamColor(t.code);
-              return GestureDetector(
-                onTap: () => setState(() => _selectedTeamId = t.id),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: active ? c.withValues(alpha: cs.dark ? 0.22 : 0.1) : cs.paper2,
-                    borderRadius: BorderRadius.circular(Radii.pill),
-                    border: Border.all(color: active ? c.withValues(alpha: 0.4) : cs.line),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    TeamLogo(teamCode: t.code, size: 14),
-                    const SizedBox(width: 5),
-                    Text(t.name, style: TextStyle(fontSize: 11,
-                        fontWeight: active ? Typo.bold : Typo.medium,
-                        color: active ? c : cs.ink2)),
-                  ]),
-                ),
-              );
-            },
-          )),
-        ),
-        Expanded(
-          child: _PostListTab(key: ValueKey(_selectedTeamId), sort: 'latest', teamId: _selectedTeamId),
-        ),
-      ],
+    // 팀칩을 _PostListTab의 headerExtra로 전달 → 검색바 아래에 렌더(4탭 검색바 위치 통일)
+    return _PostListTab(
+      key: ValueKey(_selectedTeamId),
+      sort: 'latest',
+      teamId: _selectedTeamId,
+      headerExtra: _teamChips(cs),
+    );
+  }
+
+  Widget _teamChips(_C cs) {
+    return Container(
+      height: 50,
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
+      child: HScrollFade(child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        itemCount: _kTeams.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
+        itemBuilder: (_, i) {
+          final t = _kTeams[i];
+          final active = _selectedTeamId == t.id;
+          final c = teamColor(t.code);
+          return GestureDetector(
+            onTap: () => setState(() => _selectedTeamId = t.id),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: active ? c.withValues(alpha: cs.dark ? 0.22 : 0.1) : cs.paper2,
+                borderRadius: BorderRadius.circular(Radii.pill),
+                border: Border.all(color: active ? c.withValues(alpha: 0.4) : cs.line),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                TeamLogo(teamCode: t.code, size: 14),
+                const SizedBox(width: 5),
+                Text(t.name, style: TextStyle(fontSize: 11,
+                    fontWeight: active ? Typo.bold : Typo.medium,
+                    color: active ? c : cs.ink2)),
+              ]),
+            ),
+          );
+        },
+      )),
     );
   }
 }
@@ -658,7 +663,7 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
         Container(
           height: 50,
           decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
-          child: _fade(ListView.separated(
+          child: HScrollFade(child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             itemCount: _stadiums.length,
@@ -809,17 +814,6 @@ class _FoodTile extends StatelessWidget {
 }
 
 // ===== 공통 위젯 =====
-
-// 가로 스크롤 칩 스트립 — 양 끝 그라디언트 페이드
-Widget _fade(Widget child) => ShaderMask(
-  shaderCallback: (rect) => const LinearGradient(
-    begin: Alignment.centerLeft, end: Alignment.centerRight,
-    colors: [Colors.transparent, Colors.black, Colors.black, Colors.transparent],
-    stops: [0.0, 0.04, 0.96, 1.0],
-  ).createShader(rect),
-  blendMode: BlendMode.dstIn,
-  child: child,
-);
 
 class _Btn32 extends StatelessWidget {
   final Widget child;

@@ -10,6 +10,7 @@ import '../../providers/theme_provider.dart';
 import 'player_detail_screen.dart';
 import '../mypage/my_page_screen.dart';
 import '../../utils/web_image.dart';
+import '../../utils/web_safe_area.dart';
 
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({super.key});
@@ -861,7 +862,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
             child: Column(children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+                padding: EdgeInsets.fromLTRB(18, headerTopGap(context), 18, 12),
                 child: Row(children: [
                   Text('선수',
                       style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra,
