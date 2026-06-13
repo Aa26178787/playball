@@ -2014,8 +2014,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           // mockup divider (헤더와 ScoringSummary 사이)
           Container(height: 1, color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0)),
           const SizedBox(height: 16),
-          // 득점요약 카드 (라인스코어는 상단 스코어보드와 중복이라 제거 — 06-14)
-          if (innings.isNotEmpty && _relayAllData != null) ...[
+          // 통합 카드 — 핀: 라인스코어(상단=미니스코어뿐)+득점요약 / 비핀: 득점요약만(상단에 라인스코어)
+          if (innings.isNotEmpty && (_fieldPinned || _relayAllData != null)) ...[
             Builder(builder: (ctx) {
               final isDarkC = Theme.of(ctx).brightness == Brightness.dark;
               return Container(
@@ -2028,7 +2028,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       width: 1),
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: _buildScoringSection(innings, awayTeam, homeTeam),
+                child: Column(children: [
+                  if (_fieldPinned) _buildLineScore(innings, awayTeam, homeTeam),
+                  if (_relayAllData != null) _buildScoringSection(innings, awayTeam, homeTeam),
+                ]),
               );
             }),
             const SizedBox(height: 16),
@@ -2470,6 +2473,89 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           }),
         ],
       ),
+    );
+  }
+
+  // ── 라인스코어 (이닝별 + R/H/B/E, 균등분배) — 핀 모드 통합카드용 (상단은 미니스코어뿐이라) ──
+  Widget _buildLineScore(List innings, String awayTeam, String homeTeam) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final g = (_gameData?['game'] as Map?) ?? const {};
+
+    final byInning = <int, Map>{};
+    var lastInn = 0;
+    for (final inn in innings) {
+      final n = (inn['inning'] as num?)?.toInt() ?? 0;
+      byInning[n] = inn as Map;
+      if (n > lastInn) lastInn = n;
+    }
+    final nCols = lastInn > 9 ? lastInn : 9;
+    final status = g['status'] as String? ?? '';
+    final isLive = status == '진행';
+    final curInning = (g['current_inning'] as num?)?.toInt() ?? 0;
+    final curHalf = g['inning_half']?.toString();
+
+    String cell(int inn, bool home) {
+      final d = byInning[inn];
+      if (d == null) return '-';
+      final v = (home ? d['home_runs'] : d['away_runs']) as num?;
+      if (v == null) return '-';
+      if (isLive && inn == curInning && home && curHalf == '0') return '-';
+      return '${v.toInt()}';
+    }
+
+    Widget col(String top, String mid, String bot,
+        {bool bold = false, bool hot = false}) {
+      final st = TextStyle(
+          fontSize: 11,
+          fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+          color: hot ? const Color(0xFFE53935) : ink,
+          fontFeatures: const [FontFeature.tabularFigures()]);
+      return Expanded(
+        child: Column(children: [
+          Text(top,
+              style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: hot ? const Color(0xFFE53935) : sub)),
+          const SizedBox(height: 7),
+          FittedBox(fit: BoxFit.scaleDown, child: Text(mid, style: st)),
+          const SizedBox(height: 6),
+          FittedBox(fit: BoxFit.scaleDown, child: Text(bot, style: st)),
+        ]),
+      );
+    }
+
+    String n(dynamic v) => v == null ? '-' : '${(v as num).toInt()}';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(
+          width: 40,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('팀', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: sub)),
+            const SizedBox(height: 7),
+            Text(awayTeam, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ink)),
+            const SizedBox(height: 6),
+            Text(homeTeam, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ink)),
+          ]),
+        ),
+        for (int i = 1; i <= nCols; i++)
+          col('$i', cell(i, false), cell(i, true),
+              hot: isLive && i == curInning),
+        Container(width: 1, height: 44, color: line,
+            margin: const EdgeInsets.symmetric(horizontal: 4)),
+        col('R', n(_liveScore(g.cast<String, dynamic>(), 'away_score')),
+            n(_liveScore(g.cast<String, dynamic>(), 'home_score')), bold: true),
+        col('H', n(g['away_hits']), n(g['home_hits'])),
+        col('B', n(g['away_walks']), n(g['home_walks'])),
+        col('E', n(g['away_errors']), n(g['home_errors'])),
+      ]),
     );
   }
 
