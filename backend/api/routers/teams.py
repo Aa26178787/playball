@@ -478,11 +478,17 @@ def get_team_players(team_id: int):
     if not team:
         raise HTTPException(status_code=404, detail="팀을 찾을 수 없습니다")
 
+    # position = game_rosters 주포지션(mode, 세부값 1루수/유격수) 우선, 없으면 players.position(생값 내야수/외야수)
     cur.execute("""
-        SELECT id, name, player_type, position, number, throws
-        FROM players
-        WHERE team_id = %s AND is_active = TRUE
-        ORDER BY player_type, number
+        SELECT p.id, p.name, p.player_type, p.position, p.number, p.throws,
+               (SELECT mode() WITHIN GROUP (ORDER BY gr.position)
+                FROM game_rosters gr
+                WHERE gr.player_id = p.id
+                  AND gr.position IS NOT NULL AND gr.position <> ''
+                  AND gr.position NOT IN ('대타', '대주자', '투수')) AS detail_pos
+        FROM players p
+        WHERE p.team_id = %s AND p.is_active = TRUE
+        ORDER BY p.player_type, p.number
     """, (team_id,))
     rows = cur.fetchall()
     cur.close()
@@ -493,7 +499,7 @@ def get_team_players(team_id: int):
         "team_name": team[1],
         "count":     len(rows),
         "players": [
-            {"id": r[0], "name": r[1], "player_type": r[2], "position": r[3],
+            {"id": r[0], "name": r[1], "player_type": r[2], "position": r[6] or r[3],
              "number": r[4], "throws": r[5]}
             for r in rows
         ]

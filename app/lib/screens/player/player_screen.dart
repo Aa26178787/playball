@@ -73,6 +73,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     {'value': '좌익수', 'label': '좌익수'},
     {'value': '중견수', 'label': '중견수'},
     {'value': '우익수', 'label': '우익수'},
+    {'value': '지명타자', 'label': '지명타자'},
   ];
   static const List<Map<String, String>> _pitcherArmOpts = [
     {'value': '전체', 'label': '전체'}, {'value': '우완', 'label': '우완'},

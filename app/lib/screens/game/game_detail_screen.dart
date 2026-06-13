@@ -2140,11 +2140,16 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       children: [
                         // ── 승리확률 그래프 (타석별 시계열 — 인게임 모델) ──
                         _buildWinProbCard(),
-                        HScrollFade(child: SingleChildScrollView(
+                        LayoutBuilder(builder: (ctx, c) => HScrollFade(child: SingleChildScrollView(
                           controller: _inningChipCtrl,
                           scrollDirection: Axis.horizontal,
-                          child: Row(children: [for (final n in sortedInnings) chip(n)]),
-                        )),
+                          // 맞으면 가운데 정렬(minWidth=뷰포트), 넘치면 스크롤
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minWidth: c.maxWidth),
+                            child: Row(mainAxisAlignment: MainAxisAlignment.center,
+                                children: [for (final n in sortedInnings) chip(n)]),
+                          ),
+                        ))),
                         const SizedBox(height: 10),
                         // 좌우 스와이프 = 이전/다음 이닝 (칩 = 점프, 스와이프 = 순차)
                         GestureDetector(
