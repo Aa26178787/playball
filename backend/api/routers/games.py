@@ -1110,7 +1110,7 @@ def get_games_by_date(date_str: str):
                 (SELECT p2.name FROM game_pitchers gp2
                  JOIN players p2 ON gp2.player_id = p2.id
                  WHERE gp2.game_id = g.id AND gp2.team_side = 'home'
-                 AND gp2.pitching_order = 1
+                 ORDER BY gp2.pitching_order
                  LIMIT 1)
             ) AS name
         ) home_sp ON TRUE
@@ -1124,7 +1124,7 @@ def get_games_by_date(date_str: str):
                 (SELECT p2.name FROM game_pitchers gp2
                  JOIN players p2 ON gp2.player_id = p2.id
                  WHERE gp2.game_id = g.id AND gp2.team_side = 'away'
-                 AND gp2.pitching_order = 1
+                 ORDER BY gp2.pitching_order
                  LIMIT 1)
             ) AS name
         ) away_sp ON TRUE

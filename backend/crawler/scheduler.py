@@ -775,7 +775,12 @@ def _check_post_game_milestones(game_id: int):
             FROM game_pitchers gp
             JOIN players p ON p.id = gp.player_id
             JOIN teams t ON t.id = p.team_id
-            WHERE gp.game_id = %s AND gp.pitching_order = 1
+            -- starter = (game,side)별 pitching_order 최소. boxscore는 0-base, 라이브는 1-base라
+            -- 절대값(=1)이면 종료 후 2번째 투수를 선발로 오인 → QS/완투 마일스톤 누락 (06-14 박준영 사고)
+            WHERE gp.game_id = %s
+              AND gp.pitching_order = (
+                  SELECT MIN(g2.pitching_order) FROM game_pitchers g2
+                  WHERE g2.game_id = gp.game_id AND g2.team_side = gp.team_side)
         """, (game_id,))
         starters_cg = cur.fetchall()
         cur.close()
@@ -1852,6 +1857,8 @@ def update_finished_player_stats():
 
     # KBO가 규정타석 기준으로만 제공 → 나머지는 daily stats로 보완
     _sync_batter_stats_from_daily()
+    # KBO 투수 카운팅(QS/완투/완봉)도 규정충족자만 제공 → game_pitchers로 보완 (06-14 박준영 QS 0 사고)
+    _sync_pitcher_counting_from_games(2026)
 
     print(f"[{datetime.now()}] 경기 종료 후 선수 스탯 업데이트 완료")
 
@@ -1967,6 +1974,54 @@ def _sync_batter_stats_from_daily():
     cur.close()
     conn.close()
     print(f"[{datetime.now()}] batter_stats daily 동기화 완료 ({updated}명)")
+
+
+def _sync_pitcher_counting_from_games(season: int = 2026):
+    """game_pitchers(선발 등판)에서 QS/완투(CG)/완봉(SHO) 시즌 카운트 보완.
+    KBO 공식은 규정충족 투수만 제공 → 비규정 선발의 QS가 0으로 남는 문제 (06-14 박준영 사고).
+    starter = (game,team_side)별 pitching_order 최소(=첫 등판) — boxscore 0-base/라이브 1-base 양쪽 안전.
+    GREATEST라 KBO값을 깎지 않고 누락분만 채움. innings_pitched는 numeric(6.1=6⅓)이라 >=6 직접 비교 가능."""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            WITH calc AS (
+              SELECT gp.player_id,
+                COUNT(*) FILTER (
+                    WHERE gp.innings_pitched >= 6 AND COALESCE(gp.earned_runs,0) <= 3) AS qs,
+                COUNT(*) FILTER (
+                    WHERE (SELECT COUNT(*) FROM game_pitchers g3
+                           WHERE g3.game_id=gp.game_id AND g3.team_side=gp.team_side)=1) AS cg,
+                COUNT(*) FILTER (
+                    WHERE (SELECT COUNT(*) FROM game_pitchers g3
+                           WHERE g3.game_id=gp.game_id AND g3.team_side=gp.team_side)=1
+                          AND COALESCE(gp.runs_allowed,0)=0) AS sho
+              FROM game_pitchers gp
+              JOIN games g ON g.id = gp.game_id
+              WHERE g.status = '종료'
+                AND EXTRACT(YEAR FROM g.game_date) = %s
+                AND gp.pitching_order = (
+                    SELECT MIN(g2.pitching_order) FROM game_pitchers g2
+                    WHERE g2.game_id = gp.game_id AND g2.team_side = gp.team_side)
+              GROUP BY gp.player_id
+            )
+            UPDATE pitcher_stats ps SET
+              qs  = GREATEST(COALESCE(ps.qs,0),  calc.qs),
+              cg  = GREATEST(COALESCE(ps.cg,0),  calc.cg),
+              sho = GREATEST(COALESCE(ps.sho,0), calc.sho)
+            FROM calc
+            WHERE ps.player_id = calc.player_id AND ps.season = %s
+        """, (season, season))
+        n = cur.rowcount
+        conn.commit()
+        cur.close()
+        print(f"[{datetime.now()}] pitcher QS/CG/SHO game_pitchers 보완 완료 ({n}명)")
+    except Exception as e:
+        print(f"[{datetime.now()}] pitcher counting 보완 오류: {e}")
+    finally:
+        conn.close()
 
 
 def _save_player_daily_stats_today(target_date=None):
