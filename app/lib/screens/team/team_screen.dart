@@ -343,7 +343,7 @@ class _TeamScreenState extends State<TeamScreen>
       );
     }
 
-    return SingleChildScrollView(
+    return fadeEdgeH(SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(children: [
         chip('${DateTime.now().year} 시즌', 'full'),
@@ -354,7 +354,7 @@ class _TeamScreenState extends State<TeamScreen>
         const SizedBox(width: 8),
         psChip(),
       ]),
-    );
+    ));
   }
 
   Widget _buildCutLine(bool isDark) {
@@ -1730,7 +1730,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
   Widget _buildCategoryChips(List<Map<String, dynamic>> cats, String selected, Function(String) onSelect) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final t = _Tok.of(isDark);
-    return SizedBox(
+    return fadeEdgeH(SizedBox(
       height: 40,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
@@ -1761,7 +1761,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
           );
         },
       ),
-    );
+    ));
   }
 
   Widget _buildTeamStatList(List<Map<String, dynamic>> cats, String selected, bool isBatting) {

@@ -15,4 +15,4 @@ double webBottomGuard(BuildContext context) {
 /// 탭 헤더의 상태바 아래 추가 여백 — 노치/다이나믹 아일랜드 기기(상태바 영역이
 /// 이미 큼, ~59px)는 0, 그 외(갤럭시 ~30px·웹 0px)는 8 (06-13 iOS 헤더 비대 보고)
 double headerTopGap(BuildContext context) =>
-    MediaQuery.of(context).viewPadding.top > 40 ? 0 : 8;
+    MediaQuery.of(context).viewPadding.top > 40 ? 0 : 4;

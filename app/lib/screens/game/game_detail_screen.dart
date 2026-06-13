@@ -17,6 +17,7 @@ import 'pitch_location_chart.dart';
 import '../player/player_detail_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/web_image.dart';
+import '../../widgets/common_widgets.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:fl_chart/fl_chart.dart';
 
@@ -2133,11 +2134,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       children: [
                         // ── 승리확률 그래프 (타석별 시계열 — 인게임 모델) ──
                         _buildWinProbCard(),
-                        SingleChildScrollView(
+                        fadeEdgeH(SingleChildScrollView(
                           controller: _inningChipCtrl,
                           scrollDirection: Axis.horizontal,
                           child: Row(children: [for (final n in sortedInnings) chip(n)]),
-                        ),
+                        )),
                         const SizedBox(height: 10),
                         // 좌우 스와이프 = 이전/다음 이닝 (칩 = 점프, 스와이프 = 순차)
                         GestureDetector(

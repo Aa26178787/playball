@@ -3,6 +3,18 @@ import '../utils/web_image.dart';
 import '../utils/design_tokens.dart';
 import '../utils/team_theme.dart';
 
+/// 가로 스크롤 양 끝 페이드 (ShaderMask) — 가장자리 잘림을 자연스럽게 (#7 공용).
+/// ⚠️ Clip.none으로 자식이 경계 밖으로 튀어나오는 스크롤(예: 선택 강조 팝아웃)엔 쓰지 말 것 — 팝아웃이 잘림.
+Widget fadeEdgeH(Widget child) => ShaderMask(
+  shaderCallback: (rect) => const LinearGradient(
+    begin: Alignment.centerLeft, end: Alignment.centerRight,
+    colors: [Colors.transparent, Colors.black, Colors.black, Colors.transparent],
+    stops: [0.0, 0.04, 0.96, 1.0],
+  ).createShader(rect),
+  blendMode: BlendMode.dstIn,
+  child: child,
+);
+
 /// 통합 에러 위젯 — silent fail 대신 retry 안내
 class AppErrorView extends StatelessWidget {
   final String message;
