@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
+import '../../utils/app_config.dart';
 import '../../utils/team_theme.dart';
 import '../../utils/design_tokens.dart';
 import '../../utils/web_safe_area.dart';
@@ -158,6 +159,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   }
 
   Widget _buildWinProbCard() {
+    if (!AppConfig.enabled('win_prob')) return const SizedBox.shrink();
     final d = _winProbData;
     if (d == null) {
       _loadWinProb(); // lazy 시작 (비동기 — 빌드 안전)
@@ -274,7 +276,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             .then((d) { if (mounted) setState(() => _relayAllData = d); })
             .catchError((_) { if (mounted && _relayAllData == null) _scheduleRelayRetry(); });
       }
-      if (_tabController.index == 3 && _highlights.isEmpty && !_highlightsLoading) {
+      if (_tabController.index == 3 && _highlights.isEmpty && !_highlightsLoading
+          && AppConfig.enabled('highlights')) {
         _loadHighlights();
       }
     });
@@ -1072,7 +1075,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             ] else const SizedBox(height: 14),
 
             // ── WeatherLine (스코어보드 ↓ 팀로고 ↑ 사이) ──
-            if (_weatherData != null) ...[
+            if (_weatherData != null && AppConfig.enabled('weather')) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 child: Row(
@@ -3373,7 +3376,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       for (final p in bullpen) {
         bpGroups.putIfAbsent(bpClass(p), () => []).add(p['name'] as String? ?? '');
       }
-      if (bullpen.isNotEmpty) _loadBullpenStatus(); // 피로도 lazy 로드 (1회)
+      if (bullpen.isNotEmpty && AppConfig.enabled('bullpen')) _loadBullpenStatus(); // 피로도 lazy 로드 (1회)
 
       Widget secLabel(String t) => Padding(
         padding: const EdgeInsets.only(top: 10, bottom: 6),
@@ -3450,7 +3453,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             secLabel('불펜'),
             Builder(builder: (_) {
               final teamId = _gameData?['game']?['${side}_team_id'] as int?;
-              final fatigue = teamId != null ? _bullpenStatus[teamId] : null;
+              final fatigue = (teamId != null && AppConfig.enabled('bullpen'))
+                  ? _bullpenStatus[teamId] : null;
               final yellowC = isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706);
               const redC = Color(0xFFE53935);
               bool anyMark = false;
@@ -4360,6 +4364,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final paper = isDarkT ? const Color(0xFF18181C) : Colors.white;
     final paper2= isDarkT ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
     final line  = isDarkT ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    if (!AppConfig.enabled('highlights')) {
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.movie_outlined, size: 48, color: sub),
+        const SizedBox(height: 8),
+        Text('하이라이트는 현재 준비 중입니다', style: TextStyle(color: ink3, fontWeight: FontWeight.w600)),
+      ]));
+    }
     if (_highlightsLoading) {
       return Center(child: CircularProgressIndicator(color: ink, strokeWidth: 2.5));
     }

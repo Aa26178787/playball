@@ -7,6 +7,7 @@ import 'package:in_app_review/in_app_review.dart';
 import '../../utils/design_tokens.dart';
 import '../../utils/team_theme.dart';
 import '../../utils/share_card.dart';
+import '../../utils/app_config.dart';
 import '../../widgets/share_cards.dart';
 import '../../api/api_service.dart';
 
@@ -68,7 +69,7 @@ class _VisitRecordScreenState extends State<VisitRecordScreen> {
         imageUrl: imageUrl,
       );
       // 메가C: 저장 직후 공유 카드 제안 → 닫힌 뒤 승리면 인앱 리뷰 (OS가 빈도 제어)
-      if (mounted) {
+      if (mounted && AppConfig.enabled('share')) {
         await showShareCardDialog(
           context,
           filename: 'playball_visit',

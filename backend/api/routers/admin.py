@@ -571,11 +571,18 @@ def security_log_tail(request: Request, lines: int = Query(60, le=300),
 
 # ── 기능 킬스위치 토글 (app_config.kill_switches) ────────────────────────────
 
-# 토글 가능한 기능 목록 (UI 라벨용) — 클라 AppConfig.enabled(키)와 1:1
+# 토글 가능한 기능 목록 (UI 라벨용) — 클라 AppConfig.enabled(키)와 1:1.
+# OFF 시 앱/웹에서 해당 섹션 숨김(graceful). 추가 시 클라에도 AppConfig.enabled(키) 가드 필수.
 FEATURES = {
-    "points": "포인트/승부예측 (게임카드 팬투표·마이페이지 포인트·출석)",
-    "prediction": "AI 승리 예측 바",
-    "community": "커뮤니티",
+    "points":      "포인트/승부예측 (게임카드 팬투표·마이페이지 포인트·출석)",
+    "prediction":  "AI 승리 예측 바",
+    "community":   "커뮤니티",
+    "win_prob":    "라이브 승률 그래프 (경기상세 중계탭)",
+    "bullpen":     "불펜 피로도 신호등 (경기상세 로스터)",
+    "pitch_zone":  "피칭 디자인·존 히트맵 (선수상세)",
+    "highlights":  "하이라이트 (경기상세)",
+    "weather":     "구장 날씨 (경기상세)",
+    "share":       "공유 카드 (선수·직관 이미지 공유)",
 }
 
 
@@ -632,3 +639,41 @@ def set_feature_flag(body: dict, request: Request,
     log_admin_access(_client_ip(request), "POST /admin/feature-flags",
                      f"{feature}={enabled}", "OK")
     return {"feature": feature, "enabled": enabled, "kill_switches": ks}
+
+
+# ── 서비스 복구 (API 프로세스 직접 실행) ──────────────────────────────────────
+# 큐(admin_commands)는 scheduler 프로세스가 소비 → API 메모리의 캐시/풀은 못 건드림.
+# 캐시 오염·풀 고갈·날씨 cold 등 "기능이 죽었을 때" API 프로세스서 즉시 복구.
+@router.post("/maintenance")
+def run_maintenance(body: dict, request: Request,
+                    x_admin_key: str | None = Header(default=None)):
+    """{action} — clear_cache | reset_db_pool | rewarm_weather | all"""
+    _check(request, x_admin_key, "POST /admin/maintenance")
+    action = (body or {}).get("action")
+    valid = ("clear_cache", "reset_db_pool", "rewarm_weather", "all")
+    if action not in valid:
+        raise HTTPException(status_code=400, detail=f"action 확인: {valid}")
+    done = []
+    if action in ("clear_cache", "all"):
+        try:
+            from api.cache import cache_delete_prefix
+            n = cache_delete_prefix('')  # 빈 prefix = 전 키 삭제
+            done.append(f"API 캐시 {n}건 클리어")
+        except Exception as e:
+            done.append(f"캐시 클리어 실패: {e}")
+    if action in ("reset_db_pool", "all"):
+        try:
+            from database.connection import _reset_pool
+            _reset_pool()
+            done.append("DB 커넥션 풀 재생성")
+        except Exception as e:
+            done.append(f"풀 리셋 실패: {e}")
+    if action in ("rewarm_weather", "all"):
+        try:
+            from api import weather_service
+            weather_service._cache.clear()
+            done.append("날씨 캐시 비움 (다음 요청 시 재워밍)")
+        except Exception as e:
+            done.append(f"날씨 리워밍 실패: {e}")
+    log_admin_access(_client_ip(request), "POST /admin/maintenance", str(action), "OK")
+    return {"action": action, "results": done}

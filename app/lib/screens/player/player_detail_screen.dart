@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
+import '../../utils/app_config.dart';
 import 'player_compare_screen.dart';
 import '../../utils/team_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -27,6 +28,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   List<dynamic> _dailyStats = [];
   Map<String, dynamic>? _pitchStats;
   OverlayEntry? _compareBubble; // 숫자 길게누르기 비교 말풍선
+  bool _showCoreHint = false;   // 핵심스탯 길게누르기 1회성 점선 애니 힌트
 
   // 존/구종 카드용 시즌 (시즌칩 연동) — 미선택=올해, 통산=0(서버: 연도필터 해제)
   int get _zoneSeason =>
@@ -122,6 +124,17 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     _loadPlayer();
     _loadFavStatus();
     _loadCoreKeys();
+    // 핵심스탯 길게누르기 안내 — 1회성 점선 애니. 처음만 표시하고 즉시 플래그 set(다음부턴 숨김)
+    LocalCache.hasFlag('hint_core_longpress').then((done) {
+      if (!done && mounted) {
+        setState(() => _showCoreHint = true);
+        LocalCache.setFlag('hint_core_longpress');
+      }
+    });
+  }
+
+  void _dismissCoreHint() {
+    if (_showCoreHint && mounted) setState(() => _showCoreHint = false);
   }
 
   @override
@@ -326,11 +339,11 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   _buildDetailStatsGrids(player),
                   if (_dailyStats.isNotEmpty) _buildTrendCard(player),
                   if (_pitchStats != null) _buildPitchStatsCard(),
-                  if (_pitchDesign != null && (_pitchDesign!['total'] as int? ?? 0) > 0)
+                  if (AppConfig.enabled('pitch_zone') && _pitchDesign != null && (_pitchDesign!['total'] as int? ?? 0) > 0)
                     _buildPitchDesignCard(player),
-                  if (_pitcherZones != null && (_pitcherZones!['total'] as int? ?? 0) > 0)
+                  if (AppConfig.enabled('pitch_zone') && _pitcherZones != null && (_pitcherZones!['total'] as int? ?? 0) > 0)
                     _buildPitcherZonesCard(player),
-                  if (_batterZones != null && (_batterZones!['total'] as int? ?? 0) > 0)
+                  if (AppConfig.enabled('pitch_zone') && _batterZones != null && (_batterZones!['total'] as int? ?? 0) > 0)
                     _buildBatterZonesCard(player),
                   // PlayerStatsSection(시즌별 표) 제거 — 3열 그리드로 대체 (2026-06-07)
                   const SizedBox(height: 80),
@@ -1137,8 +1150,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PlayerCompareScreen()))),
               tile(Icons.query_stats, '상대전적 조회', '상대 선수와의 맞대결 기록',
                   () => _showMatchupSheet(player)),
-              tile(Icons.ios_share_rounded, '선수 카드 공유', '프로필+핵심 스탯 이미지로 공유',
-                  () => _sharePlayerCard(player)),
+              if (AppConfig.enabled('share'))
+                tile(Icons.ios_share_rounded, '선수 카드 공유', '프로필+핵심 스탯 이미지로 공유',
+                    () => _sharePlayerCard(player)),
             ]),
           ),
         );
@@ -1534,7 +1548,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             // 숫자 길게 누르면 누른 자리에 비교 말풍선
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onLongPressStart: (d) => _showCompareBubble(d.globalPosition, it.$3, c, cur[it.$3], isPitcher, tc),
+              onLongPressStart: (d) { _dismissCoreHint(); _showCompareBubble(d.globalPosition, it.$3, c, cur[it.$3], isPitcher, tc); },
               child: Text(it.$2, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
                   color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
             ),
@@ -1584,22 +1598,34 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             ]),
           ),
         ]),
-        const SizedBox(height: 4),
-        // 길게누르기 안내
-        Row(children: [
-          Icon(Icons.touch_app_outlined, size: 11, color: sub),
-          const SizedBox(width: 3),
-          Text('숫자를 길게 누르면 리그 평균 비교 · 설명',
-              style: TextStyle(fontSize: 10, color: sub)),
-        ]),
         const SizedBox(height: 10),
-        GridView.count(
-          crossAxisCount: 2, shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 10, crossAxisSpacing: 10,
-          childAspectRatio: 1.3,
-          children: [for (int i = 0; i < items.length; i++) card(items[i], i == 0)],
-        ),
+        Builder(builder: (_) {
+          final grid = GridView.count(
+            crossAxisCount: 2, shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 10, crossAxisSpacing: 10,
+            childAspectRatio: 1.3,
+            children: [for (int i = 0; i < items.length; i++) card(items[i], i == 0)],
+          );
+          // 1회성 점선 애니 힌트 — "꾹 눌러보세요" 유도 (설명글 대체)
+          if (!_showCoreHint) return grid;
+          return _MarchingAntsBox(
+            color: tc,
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Column(children: [
+                grid,
+                const SizedBox(height: 8),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.touch_app_outlined, size: 13, color: tc),
+                  const SizedBox(width: 4),
+                  Text('숫자를 꾹 눌러보세요 — 리그 평균·설명',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: tc)),
+                ]),
+              ]),
+            ),
+          );
+        }),
       ]),
     );
   }
@@ -2719,4 +2745,65 @@ class _BubbleShape extends CustomPainter {
   @override
   bool shouldRepaint(_BubbleShape o) =>
       o.fill != fill || o.border != border || o.tailX != tailX || o.tailDown != tailDown;
+}
+
+// 점선 네모가 돌아가는(marching ants) 1회성 안내 박스 — 길게누르기 유도
+class _MarchingAntsBox extends StatefulWidget {
+  final Widget child;
+  final Color color;
+  const _MarchingAntsBox({required this.child, required this.color});
+  @override
+  State<_MarchingAntsBox> createState() => _MarchingAntsBoxState();
+}
+
+class _MarchingAntsBoxState extends State<_MarchingAntsBox>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 800))..repeat();
+  @override
+  void dispose() { _c.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, child) => CustomPaint(
+        foregroundPainter: _DashedBorderPainter(
+            phase: _c.value, color: widget.color, radius: 16),
+        child: child,
+      ),
+      child: widget.child,
+    );
+  }
+}
+
+class _DashedBorderPainter extends CustomPainter {
+  final double phase; // 0~1, 대시가 둘레를 따라 이동
+  final Color color;
+  final double radius;
+  _DashedBorderPainter({required this.phase, required this.color, required this.radius});
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rrect = RRect.fromRectAndRadius(
+        Offset.zero & size, Radius.circular(radius));
+    final path = Path()..addRRect(rrect);
+    const dash = 8.0, gap = 5.0;
+    final span = dash + gap;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..color = color;
+    for (final metric in path.computeMetrics()) {
+      double start = -(phase * span); // 매 프레임 시작점 이동 = 회전 효과
+      while (start < metric.length) {
+        final s = start < 0 ? 0.0 : start;
+        final e = (start + dash).clamp(0.0, metric.length);
+        if (e > s) canvas.drawPath(metric.extractPath(s, e), paint);
+        start += span;
+      }
+    }
+  }
+  @override
+  bool shouldRepaint(_DashedBorderPainter o) =>
+      o.phase != phase || o.color != color || o.radius != radius;
 }

@@ -341,6 +341,14 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - **06-12b 메가B 완결+메가C**: **푸시GW**(fcm_service._send = 단일 게이트웨이 — KST 23:30~07:30 quiet hours 억제(user_settings.notify_quiet 기본 ON, 인앱 알림함은 전원 저장) + ntype→Android 채널 3종 라우팅(playball_live/myteam/community — main.dart 생성, 설정 '방해금지' 토글)) → **뱃지**(api/badges.py 11종 + user_badges 테이블, GET /user/badges lazy 평가) → **주간미션**(GET /user/missions — 예측3/출석5/직관1, KST 월요일 주차, 완료 시 자동 보상 reason=mission_weekly) → points_screen에 미션 진척바+뱃지 그리드 → **온보딩 모드**(홈 첫실행 프로/캐주얼 픽커 — 캐주얼=compact+notify_my_team_only) → **push_tokens 다수 검증**(가짜 토큰 시뮬: 멀티발송/quiet 억제·opt-out/채널/무효토큰 자동삭제 전부 라이브 통과 — InvalidArgumentError 매칭 보강이 픽스). **메가C**: showShareCardDialog(RepaintBoundary→png→share_plus, 웹=버튼 숨김)+VisitShareCard/PlayerShareCard → 직관 저장 직후 공유 제안+승리 시 인앱리뷰(in_app_review ^2.0.9) → 선수상세 FAB 시트 '카드 공유'(랜딩 링크 동봉) → **공유 랜딩** `/s/p/{id}`·`/s/g/{id}`(api/routers/share.py — og 메타+웹앱 유도 버튼). 딥링크 스킴 = 출시 시 App Links로 (메가D)
 
 ## 해야할 것
+### AI 경기 한줄평 알림 (2026-06-14 요청)
+- **목표**: 경기 종료 시 경기 상황·결과를 분석해 **AI 한줄평**을 생성, 알림으로 전송 (마이팀/관심경기 대상)
+- **트리거**: scheduler 종료 후처리(`post_finished_done` 블록, game_summary 발송 지점과 동일) — game_summary 보강 형태
+- **입력 데이터(전부 보유)**: 최종 스코어·이닝별 득점, 승/패/세이브 투수, 결정적 타석(WPA 최대 — plate_appearances.win_rate_before/after), 역전/끝내기 여부(game_event_stream walkoff/extra_innings), 최다 안타·홈런·타점 선수(game_batters), 선발 QS 여부, 클러치 순간(clutch_moment)
+- **생성 방식 2안**: ① **템플릿 기반**(LLM 없이 — WPA 최대 타석+스코어로 규칙 조립, 비용 0, 아침브리핑 패턴 재사용) ② **Claude API**(claude-haiku-4-5 등 저비용 — 자연스러움↑, 매일 5경기 소액). 1차 템플릿 → 추후 LLM 업그레이드 (브리핑/3줄요약과 콘텐츠 파이프 공유 — 변경이력 시너지번들 9)
+- **전송**: 푸시GW(`fcm_service._send`) 경유 — quiet hours/채널 라우팅 자동. ntype = `ai_review`(또는 game_summary 흡수). 알림 설정 토글 1개 신설(daily_briefing 류) + notification_log dedup(`game_id, 'ai_review'`)
+- **표시**: 인앱 알림함 저장 + (옵션)경기 상세 상단 한줄평 배지. 라이트팬 진입장벽↓ 자산(경기 3줄 요약·다이제스트와 연결)
+
 ### 관리자 콘솔 확장 백로그 (2026-06-13 추천)
 - **1순위 묶음 (app_config 편집 — 한 세션감)**: ① 공지 배너 작성/해제 UI ② min_version/latest_version 강제업데이트 설정 ③ 공지 푸시 발송(전체/팀별, 확인 다이얼로그)
 - **사용자 추이**: DAU/WAU/MAU — 측정 인프라부터 필요: API 미들웨어서 인증 유저 (user_id, date) 일별 upsert(daily_active_users 테이블, 메모리 set+주기 flush로 경량) + 가입 추이(users.created_at 기존) + 콘솔 그래프 탭
