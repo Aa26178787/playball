@@ -80,8 +80,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   // 필드는 항상 폭에 맞춰 채움 → crop 없음·여백 없음·iPhone≈Android(폭 비슷)·스트립 펼침과 무관.
   double _fieldH() {
     final w = MediaQuery.of(context).size.width;
-    // 필드 박스 폭 = 화면폭 - 바깥패딩(18*2) - 안패딩(16*2) = w-68. 자연높이 = 폭*230/300.
-    return ((w - 68) * 230 / 300).clamp(180.0, 300.0);
+    // 필드 박스 폭 = 화면폭 - 바깥패딩(18*2) - 안패딩(16*2) = w-68.
+    // 자연높이(폭*230/300)의 0.82 — stretch 렌더라 세로 약간 압축(패널 축소·마커 고정크기 가독 유지).
+    return ((w - 68) * 230 / 300 * 0.82).clamp(160.0, 240.0);
   }
 
   // 패널 = 고정부(스코어보드+패딩+핸들 ~138) + 필드 + 스트립 펼침분(필드는 안 줄어듦).
@@ -5044,15 +5045,13 @@ class _FullFieldView extends StatelessWidget {
       const svgVisTop = 66.0;
       const svgVisH = 230.0;
       const svgW = 300.0;
-      final scaleH = h / svgVisH;
-      final scaleW = w / svgW;
-      final fScale = math.max(scaleH, scaleW * 0.95);
-      final fDx = (w - svgW * fScale) / 2;
-      final fDy = -svgVisTop * fScale + (h - svgVisH * fScale) / 2;
+      // painter와 동일 stretch(sx/sy) — 마커가 다이아몬드와 정합. 고정 size라 가독 유지.
+      final sx = w / svgW;
+      final sy = h / svgVisH;
 
       Widget placed(Offset svgPos, Widget child, double chipW, double chipH) {
-        final cx = svgPos.dx * fScale + fDx;
-        final cy = svgPos.dy * fScale + fDy;
+        final cx = svgPos.dx * sx;
+        final cy = (svgPos.dy - svgVisTop) * sy;
         return Positioned(
           left: (cx - chipW / 2).clamp(0, w - chipW),
           top:  (cy - chipH / 2).clamp(0, h - chipH),
@@ -5077,7 +5076,7 @@ class _FullFieldView extends StatelessWidget {
             isDark: isDark,
             size: 24,
           ),
-          68, 40,
+          68, 50,
         ));
       }
 
@@ -5388,14 +5387,12 @@ class _FieldBgPainter extends CustomPainter {
     // 위/아래 배경 dead space 제거 → field 자체 확장
     const svgVisTop = 66.0;
     const svgVisH   = 230.0;  // 296 - 66
-    final scaleH = size.height / svgVisH;
-    final scaleW = size.width / _kFieldW;
-    final scale = math.max(scaleH, scaleW * 0.95);  // 키워서 잘림 허용
-    final dx = (size.width - _kFieldW * scale) / 2;
-    final dy = -svgVisTop * scale + (size.height - svgVisH * scale) / 2;
+    // stretch(비균일 sx/sy) — 박스를 꽉 채움(세로 약간 압축 허용). crop/좌우여백 제거 (06-14).
+    final sx = size.width / _kFieldW;
+    final sy = size.height / svgVisH;
     canvas.save();
-    canvas.translate(dx, dy);
-    canvas.scale(scale, scale);
+    canvas.translate(0, -svgVisTop * sy);
+    canvas.scale(sx, sy);
 
     // 1. 배경 (파울 지역 어두운 잔디)
     canvas.drawRect(
