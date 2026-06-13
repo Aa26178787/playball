@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/rendering.dart';
 import 'dart:async';
 import 'dart:io';
@@ -77,15 +78,20 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   // 비율 고정(29%)은 스트립 등 고정부(~208px) 때문에 작은 화면에서 패널 합산이
   // 70%까지 차지 (아이폰 네이티브 보고). 잔여 절대량 보장이 체감 기준과 일치:
   // 플립(1006px) = 원본 유지(사용자 만족 상태), 아이폰(~870)·사파리는 자동 축소.
-  static const _minContentBelow = 500.0; // 패널 아래 확보할 최소 px (여기만 조정)
-  static const _minShrink = 0.35; // 필드 최소 축소 한계
+  static const _minContentBelow = 500.0; // 앱: 패널 아래 확보할 최소 px
+  static const _minShrink = 0.35; // 앱: 필드 최소 축소 한계
+  // 웹: 패널(스코어보드+필드)을 뷰포트 33% 캡 → AppBar 포함 헤더+스코어+필드 합 ~40% (06-13 지정).
+  // 폰 사파리(작은 뷰포트)는 캡보다 floor가 지배하므로 웹 floor도 0.18로 낮춰 ~40% 도달.
+  // 앱은 절대량(500px-below) 모델 유지 — 비율 고정 시 작은 화면서 70% 차지하던 이슈 방지.
+  static const _webPanelRatio = 0.33;
+  static const _webMinShrink = 0.18;
 
   double get _fieldShrink {
     final h = MediaQuery.of(context).size.height;
     final base = _sameDayGames.isNotEmpty ? (_stripExpanded ? 498.0 : 428.0) : 408.0;
-    final panelMax = h - _minContentBelow;
+    final panelMax = kIsWeb ? (h * _webPanelRatio) : (h - _minContentBelow);
     if (base <= panelMax) return 1.0;
-    return ((panelMax - base + 290) / 290).clamp(_minShrink, 1.0);
+    return ((panelMax - base + 290) / 290).clamp(kIsWeb ? _webMinShrink : _minShrink, 1.0);
   }
 
   double _panelH(double base) => base - 290 * (1 - _fieldShrink);
