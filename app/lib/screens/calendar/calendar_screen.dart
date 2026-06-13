@@ -178,6 +178,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     return Scaffold(
       backgroundColor: cs.bg,
+      // 일정·직관 추가 = 커뮤니티 FAB와 동일 형태/위치 (06-14)
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(
+          bottom: (ApiService.myTeamData.value.isNotEmpty ? 142.0 : 90.0) + MediaQuery.of(context).viewPadding.bottom,
+        ),
+        child: FloatingActionButton(
+          onPressed: () => _showAddMenu(_selectedDate ?? DateTime.now()),
+          backgroundColor: cs.ink,
+          foregroundColor: cs.dark ? const Color(0xFF0F0F12) : Colors.white,
+          child: Icon(Icons.add, color: cs.dark ? const Color(0xFF0F0F12) : Colors.white),
+        ),
+      ),
       body: Column(children: [
           _buildAppBar(cs, myColor),
           Expanded(child: SingleChildScrollView(
@@ -206,15 +218,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Row(children: [
         Text('캘린더', style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5)),
         const Spacer(),
-        Tooltip(
-          message: '일정·직관 기록 추가',
-          child: _Btn32(
-            border: cs.line2,
-            onTap: () => _showAddMenu(_selectedDate ?? DateTime.now()),
-            child: Icon(Icons.add, size: 18, color: cs.ink3),
-          ),
-        ),
-        const SizedBox(width: 7),
         Tooltip(
           message: cs.dark ? '라이트 모드' : '다크 모드',
           child: _Btn32(
