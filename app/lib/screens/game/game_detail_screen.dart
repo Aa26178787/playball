@@ -1271,7 +1271,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         ),
                         // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
                         Positioned(
-                            top: 8, left: 0, right: 0,
+                            top: 4, left: 0, right: 0,
                             child: Center(
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1717,7 +1717,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     ),
                     // BSO overlay — 항상 표시 (비라이브 시 0/0/0)
                     Positioned(
-                        top: 8, left: 0, right: 0,
+                        top: 4, left: 0, right: 0,
                         child: Center(
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1782,8 +1782,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             ),
           ),
           // ── 하단 컨트롤 행: 필드 고정 토글(항상) + 다른구장 스트립 핸들(있을 때) ──
+          // top = 스트립↔버튼 여백(펼침), bottom = 버튼↔패널하단 여백(접힘). Spacer(필드↔스트립)가 그만큼 자동 축소.
           Padding(
-            padding: const EdgeInsets.only(top: 1),
+            padding: const EdgeInsets.only(top: 8, bottom: 4),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               _fieldPinHandle(isDark),
               if (_sameDayGames.isNotEmpty) ...[
@@ -5027,7 +5028,7 @@ class _FullFieldView extends StatelessWidget {
     'SS': Offset(117, 153),   // 유격수
     '3B': Offset(80,  186),   // 3루수
     'LF': Offset(64,  118),   // 좌익수 (밑으로 8)
-    'CF': Offset(150, 84),    // 중견수
+    'CF': Offset(150, 92),    // 중견수 (BSO 오버레이 겹침 회피로 살짝 내림)
     'RF': Offset(236, 118),   // 우익수
     'DH': Offset(30,  280),   // 지명타자 (벤치)
   };
