@@ -69,7 +69,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   bool _isLoadingInFlight = false;
   bool _isRelayRefreshing = false;
   // 필드뷰 항상 상단 고정 (토글 버튼 제거 — 2026-06-06)
-  final bool _fieldPinned = true;
+  bool _fieldPinned = true;
   // 다른 경기 스트립 접기/펴기 (영구 기억)
   bool _stripExpanded = true;
 
@@ -258,6 +258,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     super.initState();
     LocalCache.getStale('other_strip_expanded').then((v) {
       if (mounted && v is bool && v != _stripExpanded) setState(() => _stripExpanded = v);
+    });
+    LocalCache.getStale('field_pinned').then((v) {
+      if (mounted && v is bool && v != _fieldPinned) setState(() => _fieldPinned = v);
     });
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
@@ -722,6 +725,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: _fieldPinned ? '필드뷰 고정 해제' : '필드뷰 상단 고정',
+            icon: Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined, size: 20),
+            onPressed: () {
+              setState(() => _fieldPinned = !_fieldPinned);
+              LocalCache.set('field_pinned', _fieldPinned);
+            },
+          ),
           IconButton(
             tooltip: '경기 공유',
             icon: const Icon(Icons.share),
@@ -1704,7 +1715,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   children: [
                     const Positioned.fill(child: CustomPaint(painter: _GrassExtensionPainter())),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 35, 16, 20),
+                      padding: const EdgeInsets.fromLTRB(16, 35, 16, 12),
                       // 축소 시 FittedBox = 비율 유지 전체 축소 (높이만 줄이면 위아래 잘림)
                       child: SizedBox(
                         height: 290 * _fieldShrink,
@@ -1796,7 +1807,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 LocalCache.set('other_strip_expanded', _stripExpanded);
               },
               child: Container(
-                margin: const EdgeInsets.only(top: 3),
+                margin: const EdgeInsets.only(top: 1),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
