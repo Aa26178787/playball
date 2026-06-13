@@ -343,7 +343,7 @@ class _TeamScreenState extends State<TeamScreen>
       );
     }
 
-    return fadeEdgeH(SingleChildScrollView(
+    return HScrollFade(child: SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(children: [
         chip('${DateTime.now().year} 시즌', 'full'),
@@ -1730,7 +1730,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
   Widget _buildCategoryChips(List<Map<String, dynamic>> cats, String selected, Function(String) onSelect) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final t = _Tok.of(isDark);
-    return fadeEdgeH(SizedBox(
+    return HScrollFade(child: SizedBox(
       height: 40,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,

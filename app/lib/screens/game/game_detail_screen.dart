@@ -729,14 +729,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         ),
         actions: [
           IconButton(
-            tooltip: _fieldPinned ? '필드뷰 고정 해제' : '필드뷰 상단 고정',
-            icon: Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined, size: 20),
-            onPressed: () {
-              setState(() => _fieldPinned = !_fieldPinned);
-              LocalCache.set('field_pinned', _fieldPinned);
-            },
-          ),
-          IconButton(
             tooltip: '경기 공유',
             icon: const Icon(Icons.share),
             onPressed: () => showModalBottomSheet(
@@ -1331,6 +1323,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 ),
               ),
 
+            // 필드 고정/해제 토글 (비핀 모드서도 재고정 가능하게)
+            if (includeField)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Center(child: _fieldPinHandle(isDark)),
+              ),
             // ── 다른 경기 (1x4) — 필드뷰 아래 ──
             if (includeField && _sameDayGames.isNotEmpty) _buildSameDayStrip(),
 
@@ -1783,38 +1781,71 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   : _buildSameDayStrip(),
             ),
           ),
-          // ── 블라인드 핸들 (패널 중앙 하단) — 접힘: 라벨+▼ / 펼침: ▲만 ──
-          if (_sameDayGames.isNotEmpty)
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                setState(() => _stripExpanded = !_stripExpanded);
-                LocalCache.set('other_strip_expanded', _stripExpanded);
-              },
-              child: Container(
-                margin: const EdgeInsets.only(top: 1),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+          // ── 하단 컨트롤 행: 필드 고정 토글(항상) + 다른구장 스트립 핸들(있을 때) ──
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              _fieldPinHandle(isDark),
+              if (_sameDayGames.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    setState(() => _stripExpanded = !_stripExpanded);
+                    LocalCache.set('other_strip_expanded', _stripExpanded);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      if (!_stripExpanded) ...[
+                        Text('다른 구장 경기',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+                                color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73))),
+                        const SizedBox(width: 4),
+                      ],
+                      Icon(_stripExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                          size: 16,
+                          color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73)),
+                    ]),
+                  ),
                 ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  if (!_stripExpanded) ...[
-                    Text('다른 구장 경기',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
-                            color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73))),
-                    const SizedBox(width: 4),
-                  ],
-                  Icon(_stripExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                      size: 16,
-                      color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73)),
-                ]),
-              ),
-            ),
+              ],
+            ]),
+          ),
         ],
       ),
     );
   }
+
+  // 필드 고정/해제 토글 핸들 (하단 컨트롤 행 + 비핀 gameHeader 공용)
+  Widget _fieldPinHandle(bool isDark) {
+    final fg = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        setState(() => _fieldPinned = !_fieldPinned);
+        LocalCache.set('field_pinned', _fieldPinned);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined, size: 13, color: fg),
+          const SizedBox(width: 3),
+          Text(_fieldPinned ? '필드 고정' : '고정 해제',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg)),
+        ]),
+      ),
+    );
+  }
+
   Widget _buildLiveStatus() {
     final state = _relayData!['current_state'];
     if (state == null) return const SizedBox.shrink();
@@ -2112,7 +2143,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       children: [
                         // ── 승리확률 그래프 (타석별 시계열 — 인게임 모델) ──
                         _buildWinProbCard(),
-                        fadeEdgeH(SingleChildScrollView(
+                        HScrollFade(child: SingleChildScrollView(
                           controller: _inningChipCtrl,
                           scrollDirection: Axis.horizontal,
                           child: Row(children: [for (final n in sortedInnings) chip(n)]),

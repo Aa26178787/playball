@@ -3,17 +3,58 @@ import '../utils/web_image.dart';
 import '../utils/design_tokens.dart';
 import '../utils/team_theme.dart';
 
-/// 가로 스크롤 양 끝 페이드 (ShaderMask) — 가장자리 잘림을 자연스럽게 (#7 공용).
-/// ⚠️ Clip.none으로 자식이 경계 밖으로 튀어나오는 스크롤(예: 선택 강조 팝아웃)엔 쓰지 말 것 — 팝아웃이 잘림.
-Widget fadeEdgeH(Widget child) => ShaderMask(
-  shaderCallback: (rect) => const LinearGradient(
-    begin: Alignment.centerLeft, end: Alignment.centerRight,
-    colors: [Colors.transparent, Colors.black, Colors.black, Colors.transparent],
-    stops: [0.0, 0.04, 0.96, 1.0],
-  ).createShader(rect),
-  blendMode: BlendMode.dstIn,
-  child: child,
-);
+/// 가로 스크롤 양 끝 반응형 페이드 (#7 공용).
+/// 실제로 넘치는(스크롤되는) 쪽만 페이드 — 내용이 다 보이면(스크롤 없음) 페이드 없음.
+/// 스크롤 위치에 따라 좌/우 동적(좌로 스크롤 시 왼쪽, 더 남으면 오른쪽).
+/// ⚠️ Clip.none 팝아웃 스크롤(선택 강조 튀어나옴)엔 쓰지 말 것 — 팝아웃이 잘림.
+class HScrollFade extends StatefulWidget {
+  final Widget child; // 가로 스크롤 위젯(ListView/SingleChildScrollView 등)
+  const HScrollFade({super.key, required this.child});
+  @override
+  State<HScrollFade> createState() => _HScrollFadeState();
+}
+
+class _HScrollFadeState extends State<HScrollFade> {
+  double _pos = 0;
+  double _max = -1; // -1 = 아직 측정 전
+
+  void _sync(ScrollMetrics m) {
+    if (m.axis != Axis.horizontal) return;
+    if ((m.pixels - _pos).abs() > 0.5 || (m.maxScrollExtent - _max).abs() > 0.5) {
+      if (mounted) setState(() { _pos = m.pixels; _max = m.maxScrollExtent; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fadeL = _max > 0 && _pos > 1;
+    final fadeR = _max > 0 && (_max - _pos) > 1;
+    Widget content = widget.child;
+    if (fadeL || fadeR) {
+      content = ShaderMask(
+        shaderCallback: (rect) => LinearGradient(
+          begin: Alignment.centerLeft, end: Alignment.centerRight,
+          colors: [
+            fadeL ? Colors.transparent : Colors.black,
+            Colors.black, Colors.black,
+            fadeR ? Colors.transparent : Colors.black,
+          ],
+          stops: const [0.0, 0.06, 0.94, 1.0],
+        ).createShader(rect),
+        blendMode: BlendMode.dstIn,
+        child: widget.child,
+      );
+    }
+    // ScrollMetricsNotification = 레이아웃/내용변화(스크롤 없이도) → 초기 넘침 감지
+    return NotificationListener<ScrollMetricsNotification>(
+      onNotification: (n) { _sync(n.metrics); return false; },
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (n) { _sync(n.metrics); return false; },
+        child: content,
+      ),
+    );
+  }
+}
 
 /// 통합 에러 위젯 — silent fail 대신 retry 안내
 class AppErrorView extends StatelessWidget {
