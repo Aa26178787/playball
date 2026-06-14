@@ -577,6 +577,8 @@ def get_roster_changes(team_id: int, days: int = 30):
             FROM player_roster_changes rc
             WHERE rc.team_id = %s
               AND rc.change_date >= CURRENT_DATE - %s
+              -- 1군 등록현황 diff 자동분 제외 (최근 등록말소 도배 방지 — 배지는 선수상세)
+              AND (rc.reason IS NULL OR rc.reason NOT LIKE '%%(자동)%%')
         )
         SELECT d.id, d.player_name, d.player_id, d.change_type, d.reason, d.change_date,
                p.position, p.player_type, p.profile_image, p.throws
@@ -1016,6 +1018,8 @@ def get_today_roster_changes():
         LEFT JOIN teams t ON t.id = rc.team_id
         LEFT JOIN players p ON p.id = rc.player_id
         WHERE rc.change_date = CURRENT_DATE
+          -- 1군 등록현황 diff 자동 생성분 제외 (홈 배너 172건 도배 방지 — 배지는 선수상세서 노출)
+          AND (rc.reason IS NULL OR rc.reason NOT LIKE '%(자동)%')
         ORDER BY rc.change_type, t.name, rc.player_name
     """)
     rows = cur.fetchall()

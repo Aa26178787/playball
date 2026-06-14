@@ -621,76 +621,95 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         Padding(padding: const EdgeInsets.symmetric(vertical: 14),
             child: Text('월별 성적이 없습니다', style: TextStyle(color: cs.sub, fontSize: 12)))
       else
-        ...ms.map((m) {
-          final w = (m['wins'] as num?)?.toInt() ?? 0;
-          final l = (m['losses'] as num?)?.toInt() ?? 0;
-          final mn = monthNames[(m['month'] as num?)?.toInt()] ?? '${m['month']}월';
-          return _pctBarRow(cs, tc,
-              Text(mn, style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink)), w, l);
-        }),
-      const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line),
+              borderRadius: BorderRadius.circular(Radii.lg)),
+          clipBehavior: Clip.antiAlias,
+          child: Column(children: ms.asMap().entries.map((e) {
+            final m = e.value;
+            final w = (m['wins'] as num?)?.toInt() ?? 0;
+            final l = (m['losses'] as num?)?.toInt() ?? 0;
+            final mn = monthNames[(m['month'] as num?)?.toInt()] ?? '${m['month']}월';
+            return _pctBarRow(cs, tc,
+                Text(mn, style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.ink)),
+                w, l, last: e.key == ms.length - 1);
+          }).toList()),
+        ),
+      const SizedBox(height: 18),
       // 상대 전적
       label('상대 전적'),
-      // ② 천적/호구
+      // ② 약세/강세
       if (rival != null || patsy != null)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+        Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(color: cs.paper2, borderRadius: BorderRadius.circular(Radii.md)),
           child: Row(children: [
-            if (rival != null) ...[
-              const Text('😤', style: TextStyle(fontSize: 13)),
-              const SizedBox(width: 3),
-              Text('천적 ${rival['opp_name']} ${(rival['wins'] as num?)?.toInt() ?? 0}-${(rival['losses'] as num?)?.toInt() ?? 0}',
-                  style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink2)),
-            ],
-            if (patsy != null) ...[
-              const SizedBox(width: 12),
-              const Text('😋', style: TextStyle(fontSize: 13)),
-              const SizedBox(width: 3),
-              Text('호구 ${patsy['opp_name']} ${(patsy['wins'] as num?)?.toInt() ?? 0}-${(patsy['losses'] as num?)?.toInt() ?? 0}',
-                  style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink2)),
-            ],
+            if (rival != null) Expanded(child: Row(children: [
+              const Text('📉', style: TextStyle(fontSize: 15)),
+              const SizedBox(width: 5),
+              Flexible(child: Text('약세 ${rival['opp_name']} ${(rival['wins'] as num?)?.toInt() ?? 0}-${(rival['losses'] as num?)?.toInt() ?? 0}',
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink2))),
+            ])),
+            if (patsy != null) Expanded(child: Row(children: [
+              const Text('📈', style: TextStyle(fontSize: 15)),
+              const SizedBox(width: 5),
+              Flexible(child: Text('강세 ${patsy['opp_name']} ${(patsy['wins'] as num?)?.toInt() ?? 0}-${(patsy['losses'] as num?)?.toInt() ?? 0}',
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink2))),
+            ])),
           ]),
         ),
       if (h2h.isEmpty)
         Padding(padding: const EdgeInsets.symmetric(vertical: 14),
             child: Text('상대 전적이 없습니다', style: TextStyle(color: cs.sub, fontSize: 12)))
       else
-        ...h2h.map((h) {
-          final w = (h['wins'] as num?)?.toInt() ?? 0;
-          final l = (h['losses'] as num?)?.toInt() ?? 0;
-          return _pctBarRow(cs, tc, Row(children: [
-            TeamLogo(teamCode: h['opp_code'] as String? ?? '', size: 22),
-            const SizedBox(width: 6),
-            Flexible(child: Text(h['opp_name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink))),
-          ]), w, l);
-        }),
+        Container(
+          decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line),
+              borderRadius: BorderRadius.circular(Radii.lg)),
+          clipBehavior: Clip.antiAlias,
+          child: Column(children: h2h.asMap().entries.map((e) {
+            final h = e.value;
+            final w = (h['wins'] as num?)?.toInt() ?? 0;
+            final l = (h['losses'] as num?)?.toInt() ?? 0;
+            return _pctBarRow(cs, tc, Row(children: [
+              TeamLogo(teamCode: h['opp_code'] as String? ?? '', size: 24),
+              const SizedBox(width: 7),
+              Flexible(child: Text(h['opp_name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink))),
+            ]), w, l, last: e.key == h2h.length - 1);
+          }).toList()),
+        ),
+      const SizedBox(height: 8),
     ]);
   }
 
-  // 통일 win% 바 행 — leading(월/상대) + 승패 + 바 + 승률
-  Widget _pctBarRow(_C cs, Color tc, Widget leading, int w, int l) {
+  // 통일 win% 바 행 — leading(월/상대) + 승패 + 바 + 승률 (카드 내 행, 구분선)
+  Widget _pctBarRow(_C cs, Color tc, Widget leading, int w, int l, {bool last = false}) {
     final g = w + l;
     final frac = (g > 0 ? w / g : 0.0).clamp(0.0, 1.0);
     final pctStr = '.${(frac * 1000).round().toString().padLeft(3, '0')}';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+          border: last ? null : Border(bottom: BorderSide(color: cs.line))),
       child: Row(children: [
-        SizedBox(width: 84, child: leading),
-        SizedBox(width: 56, child: Text('$w승 $l패',
-            style: TextStyle(fontSize: 12, color: cs.ink2))),
+        SizedBox(width: 92, child: leading),
+        SizedBox(width: 60, child: Text('$w승 $l패',
+            style: TextStyle(fontSize: 13, color: cs.ink2))),
         Expanded(child: ClipRRect(
           borderRadius: BorderRadius.circular(Radii.pill),
-          child: Container(height: 8, color: cs.track,
+          child: Container(height: 12, color: cs.track,
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft, widthFactor: frac,
               child: Container(color: frac >= 0.5 ? tc : const Color(0xFF9A9AA3)),
             ),
           ),
         )),
-        const SizedBox(width: 8),
-        SizedBox(width: 36, child: Text(pctStr, textAlign: TextAlign.right,
-            style: TextStyle(fontSize: 11, fontWeight: Typo.bold,
+        const SizedBox(width: 10),
+        SizedBox(width: 40, child: Text(pctStr, textAlign: TextAlign.right,
+            style: TextStyle(fontSize: 12, fontWeight: Typo.bold,
                 color: frac >= 0.5 ? tc : cs.sub,
                 fontFeatures: const [FontFeature.tabularFigures()]))),
       ]),
