@@ -18,6 +18,7 @@ import '../../utils/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../game/game_detail_screen.dart';
+import '../wrapped/season_wrapped_screen.dart';
 import '../../widgets/onboarding_helper.dart';
 import '../../utils/app_back.dart';
 import '../team/team_screen.dart';
@@ -1620,6 +1621,37 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     );
   }
 
+  // 오프시즌 홈 — 무경기 + season_phase=offseason. 결산 진입 중심 (메가G)
+  Widget _buildOffseasonView() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return RefreshIndicator(
+      onRefresh: () { HapticFeedback.lightImpact(); return _loadGames(); },
+      child: ListView(
+        padding: EdgeInsets.only(bottom: _listBottomPad(context)),
+        children: [
+          SizedBox(height: MediaQuery.of(context).size.height * 0.12),
+          Center(child: Column(children: [
+            Icon(Icons.ac_unit, size: 56, color: isDark ? Colors.grey[600] : Colors.grey[400]),
+            const SizedBox(height: 14),
+            Text('시즌 오프 기간이에요',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white70 : Colors.black87)),
+            const SizedBox(height: 6),
+            Text('다음 시즌을 기다리며 올해를 돌아봐요',
+                style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const SeasonWrappedScreen())),
+              icon: const Icon(Icons.auto_awesome, size: 18),
+              label: const Text('내 시즌 결산 보기'),
+            ),
+          ])),
+        ],
+      ),
+    );
+  }
+
   Widget _buildGameList() {
     List filtered;
     if (_myTeamOnly && _favoriteTeamIds.isNotEmpty) {
@@ -1640,6 +1672,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     }
 
     if (filtered.isEmpty) {
+      if (AppConfig.seasonPhase == 'offseason') return _buildOffseasonView();
       final isToday = _selectedDate.year == DateTime.now().year &&
           _selectedDate.month == DateTime.now().month &&
           _selectedDate.day == DateTime.now().day;
