@@ -69,11 +69,13 @@ def create_refresh_token(user_id: int) -> str:
     conn = get_connection()
     if conn:
         cur = conn.cursor()
-        # 유저당 최대 5개 유지 (오래된 것 삭제)
+        # 유저당 활성 토큰 최대 5개 유지 (최신 4개 보존 + 아래 INSERT 1개).
+        # ⚠️ created_at DESC 필수 — ASC면 "오래된 4개"를 남기고 방금 활동한
+        #    기기의 최신 토큰을 지워 다기기 사용자가 가끔 로그아웃됨(역전 버그).
         cur.execute("""
             DELETE FROM refresh_tokens WHERE id IN (
                 SELECT id FROM refresh_tokens WHERE user_id=%s AND revoked=FALSE
-                ORDER BY created_at ASC
+                ORDER BY created_at DESC
                 OFFSET 4
             )
         """, (user_id,))
