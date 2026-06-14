@@ -303,7 +303,10 @@ def crawl_active_rosters() -> dict:
             if not tid:
                 continue
             try:
-                driver.execute_script(f"fnSearchChange('{code}')")
+                # 팀 링크 클릭 (execute_script 직접 호출은 strict-mode arguments 에러)
+                link = driver.find_element(
+                    By.XPATH, f"//a[contains(@href, \"fnSearchChange('{code}')\")]")
+                driver.execute_script("arguments[0].click();", link)
                 time.sleep(1.5)
                 names = set()
                 for tbl in driver.find_elements(By.TAG_NAME, 'table'):
