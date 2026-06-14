@@ -114,6 +114,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   (IconData, Color) _typeIcon(String? type) {
     switch (type) {
       case 'game_start':      return (Icons.sports_baseball, const Color(0xFF1976D2));
+      case 'game_soon':       return (Icons.alarm, const Color(0xFF1976D2));
       case 'score_change':    return (Icons.local_fire_department, const Color(0xFFE53935));
       case 'comeback':        return (Icons.bolt, const Color(0xFFFFA000));
       case 'game_end':        return (Icons.flag, const Color(0xFF455A64));

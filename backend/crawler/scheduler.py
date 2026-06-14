@@ -3240,10 +3240,13 @@ def _send_pregame_notifications():
                 body = f"{label} 뒤에 경기가 시작됩니다"
 
                 user_ids = [t[0] for t in targets]
+                # ⚠️ type='game_soon' (NOT 'game_start') — 경기전 알림이 user_notifications에
+                # 'game_start'를 남기면 _already_notified(game_id,'game_start')가 전역으로 True가 돼
+                # 실제 경기 시작 알림이 억제됨 (06-14 사고: 한 명만 pregame 받아도 전원 game_start 누락)
                 cur.executemany(
                     "INSERT INTO user_notifications (user_id, title, body, type, game_id)"
                     " VALUES (%s,%s,%s,%s,%s)",
-                    [(uid, title, body, 'game_start', game_id) for uid in user_ids]
+                    [(uid, title, body, 'game_soon', game_id) for uid in user_ids]
                 )
                 cur.executemany(
                     "INSERT INTO pregame_notifications_sent (user_id, game_id)"
