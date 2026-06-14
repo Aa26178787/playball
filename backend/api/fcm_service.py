@@ -606,6 +606,41 @@ def notify_game_summary(game_id: int, home_team: str, away_team: str,
           {"game_id": str(game_id), "type": "game_summary"}, "game_end", game_id)
 
 
+# ── 승부예측 결과 (메가F) ─────────────────────────────────────────────────────
+
+def notify_prediction_result(user_id: int, game_id: int, home_team: str,
+                             away_team: str, outcome: str, points: int):
+    """승부예측 정산 결과 — 예측한 본인에게. outcome ∈ win/lose/draw.
+    dedup은 호출측(정산)에서 notification_log (game_id,'prediction_result',user_id)."""
+    matchup = f"{home_team} vs {away_team}"
+    if outcome == 'win':
+        title, body = "🎯 예측 적중!", f"{matchup} — 적중! +{points}P"
+    elif outcome == 'draw':
+        title, body = "⚾ 무승부", f"{matchup} — 무승부 참여 +{points}P"
+    else:
+        title, body = "승부예측 결과", f"{matchup} — 아쉽게 빗나감 +{points}P"
+
+    targets: list[tuple[int, str]] = []
+    conn = get_connection()
+    if conn:
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT token FROM push_tokens WHERE user_id = %s", (user_id,))
+            targets = [(user_id, r[0]) for r in cur.fetchall()]
+            cur.close()
+        except Exception as e:
+            logger.error(f"[FCM] 예측결과 토큰조회 실패 uid={user_id}: {e}")
+        finally:
+            conn.close()
+
+    data = {"game_id": str(game_id), "type": "prediction_result"}
+    if targets:
+        _send(targets, title, body, data, "prediction_result", game_id)
+    else:
+        # 푸시 토큰 없는 유저(웹 등)도 인앱 알림함엔 저장
+        _save_notifications([user_id], title, body, "prediction_result", game_id)
+
+
 # ── 결정적 순간 (승률 급변) ───────────────────────────────────────────────────
 
 def notify_clutch_moment(game_id: int, home_team: str, away_team: str,

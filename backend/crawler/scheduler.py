@@ -1665,20 +1665,40 @@ def smart_update():
                                         "SELECT user_id, pick FROM game_predictions WHERE game_id = %s",
                                         (gid,))
                                     _n_win = _n_part = 0
+                                    _results = []  # (uid, outcome) — 결과 푸시용
                                     for _uid, _pick in cur_pt.fetchall():
                                         if _winner is None:
                                             award(cur_pt, _uid, 'prediction_draw', f'pred:{gid}')
-                                            _n_part += 1
+                                            _n_part += 1; _results.append((_uid, 'draw'))
                                         elif _pick == _winner:
                                             award(cur_pt, _uid, 'prediction_win', f'pred:{gid}')
-                                            _n_win += 1
+                                            _n_win += 1; _results.append((_uid, 'win'))
                                         else:
                                             award(cur_pt, _uid, 'prediction_lose', f'pred:{gid}')
-                                            _n_part += 1
+                                            _n_part += 1; _results.append((_uid, 'lose'))
                                     conn_pt.commit()
-                                    cur_pt.close()
                                     if _n_win or _n_part:
                                         print(f"[{datetime.now()}] 예측 정산 game={gid}: 적중 {_n_win} / 참여 {_n_part}")
+                                    # 예측 결과 푸시 (메가F) — 예측자별, notification_log uid dedup
+                                    try:
+                                        cur_pt.execute("""SELECT t1.name, t2.name FROM games g
+                                            JOIN teams t1 ON t1.id=g.home_team_id
+                                            JOIN teams t2 ON t2.id=g.away_team_id WHERE g.id=%s""", (gid,))
+                                        _tn = cur_pt.fetchone()
+                                    except Exception:
+                                        _tn = None
+                                    cur_pt.close()
+                                    if _tn:
+                                        from api.fcm_service import notify_prediction_result
+                                        _pts = {'win': 50, 'draw': 10, 'lose': 10}
+                                        for _uid, _oc in _results:
+                                            if _already_notified(gid, 'prediction_result', str(_uid)):
+                                                continue
+                                            try:
+                                                notify_prediction_result(_uid, gid, _tn[0], _tn[1], _oc, _pts[_oc])
+                                                _mark_notified(gid, 'prediction_result', str(_uid))
+                                            except Exception as _pe:
+                                                print(f"[predict] 결과푸시 오류 uid={_uid}: {_pe}")
                                 finally:
                                     conn_pt.close()
                     except Exception as pt_err:
