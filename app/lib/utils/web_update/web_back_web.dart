@@ -36,9 +36,11 @@ void installWebBackHandler(bool Function() onBack) {
   addEventListener(
     'popstate',
     ((JSAny? event) {
-      onBack();
-      // 루트여도 잔류 — PWA에서 문서 이탈 = 흰화면/이전 사이트라 '나가기' 무의미
+      // ⚠️ sentinel 재푸시를 onBack보다 '먼저' — 갤럭시/삼성인터넷 엣지 스와이프는
+      // 빠른 연속 back을 내, onBack(maybePop 등) 처리 도중 sentinel이 비면 2차 스와이프가
+      // 곧장 이전 사이트로 탈출. 재푸시 선행 = 매 popstate서 즉시 트랩 복구 (06-14 사고).
       history.pushState(history.state, '', location.href);
+      onBack();
     }).toJS,
   );
 }

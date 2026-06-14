@@ -1221,11 +1221,16 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
   // 숫자 길게 누르면 누른 위치에 말풍선으로 리그 평균 대비 비교 출력
   void _showCompareBubble(Offset pos, String key, Map? c, dynamic pv, bool isPitcher, Color tc) {
-    if (c == null) return;
-    final res = _compareText(key, c, pv, isPitcher);
-    if (res.$1.isEmpty) return;
+    var res = _compareText(key, c, pv, isPitcher);
+    if (res.$1.isEmpty) {
+      // 규정타석/이닝 미달 등 리그 비교 데이터 없음 → 값+설명만으로 팝업 표시
+      final v = _fmtStat(key, pv);
+      final hasInfo = (v.isNotEmpty && v != '-') || _statExplain(key, isPitcher).isNotEmpty;
+      if (!hasInfo) return;
+      res = ('${_statLabel(key, isPitcher)} $v', false);
+    }
     _dismissCompareBubble();
-    final lg = c['lg'] as num?;
+    final lg = c?['lg'] as num?;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final media = MediaQuery.of(context).size;
     final padTop = MediaQuery.of(context).padding.top;
