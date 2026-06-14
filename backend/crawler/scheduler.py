@@ -2657,6 +2657,8 @@ def _notify_roster_for_fans():
               AND prc.player_id IS NOT NULL
               -- DB 실값 = '1군등록'(공백 없음) — 공백 표기와 불일치로 역대 0건 발송 (06-13)
               AND REPLACE(prc.change_type, ' ', '') IN ('1군등록', '1군말소')
+              -- 1군 등록현황 diff 자동 생성분은 알림 제외 (스팸 방지)
+              AND (prc.reason IS NULL OR prc.reason NOT LIKE '%(자동)%')
         """)
         rows = cur.fetchall()
         cur.close()
@@ -2870,10 +2872,15 @@ def update_team_rankings():
 def _update_roster_changes():
     """오늘 등록말소 + 선수이동 크롤링"""
     try:
-        from crawler.kbo_roster_crawler import run_today, run_trade
+        from crawler.kbo_roster_crawler import run_today, run_trade, sync_active_roster
         print(f"[{datetime.now()}] 등록말소 크롤링 시작")
         run_today()
         run_trade(days=7)
+        # 1군 등록현황 diff — 부상/이탈로 1군서 빠진 선수 자동 '등록말소' 표기 (문동주류)
+        try:
+            sync_active_roster()
+        except Exception as _se:
+            print(f"[ActiveRoster] sync 오류: {_se}")
         _notify_roster_for_fans()
         # 등록말소 발생 → 오늘 예정 게임 예측 캐시 무효화 + 재로깅
         try:

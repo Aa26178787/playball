@@ -283,8 +283,107 @@ def run_trade(days: int = 30):
     return saved
 
 
+# 1군 등록현황 코드 (Register.aspx fnSearchChange — DB short_name과 동일)
+_REG_TEAM_CODES = ['LG', 'KT', 'SS', 'HT', 'OB', 'HH', 'SK', 'NC', 'LT', 'WO']
+
+
+def crawl_active_rosters() -> dict:
+    """Register.aspx 구단별 등록현황 → {team_id: set(선수명)} 현재 1군 등록.
+    팀 0명이면 제외(부분 크롤 가드)."""
+    from selenium.webdriver.common.by import By
+    import time
+    team_id_map = _get_team_id_map()
+    result = {}
+    driver = _get_driver()
+    try:
+        driver.get('https://www.koreabaseball.com/Player/Register.aspx')
+        time.sleep(3)
+        for code in _REG_TEAM_CODES:
+            tid = team_id_map.get(code)
+            if not tid:
+                continue
+            try:
+                driver.execute_script(f"fnSearchChange('{code}')")
+                time.sleep(1.5)
+                names = set()
+                for tbl in driver.find_elements(By.TAG_NAME, 'table'):
+                    rows = tbl.find_elements(By.TAG_NAME, 'tr')
+                    if not rows:
+                        continue
+                    hdr = [c.text.strip() for c in
+                           rows[0].find_elements(By.TAG_NAME, 'th')
+                           or rows[0].find_elements(By.TAG_NAME, 'td')]
+                    # 선수 테이블만 (2번째 헤더 = 포지션그룹) — 감독/코치/일일등록말소 제외
+                    if len(hdr) < 2 or hdr[1] not in ('투수', '포수', '내야수', '외야수'):
+                        continue
+                    for r in rows[1:]:
+                        cols = [td.text.strip() for td in r.find_elements(By.TAG_NAME, 'td')]
+                        if len(cols) >= 2 and cols[1]:
+                            names.add(cols[1])
+                if names:
+                    result[tid] = names
+                    print(f'[ActiveRoster] {code}: {len(names)}명')
+                else:
+                    print(f'[ActiveRoster] {code}: 0명 — 스킵(부분크롤 가드)')
+            except Exception as e:
+                print(f'[ActiveRoster] {code} 오류: {e}')
+    finally:
+        driver.quit()
+    return result
+
+
+def sync_active_roster():
+    """1군 등록현황 diff → player_roster_changes 자동 표기.
+    이탈(1군 미등록)='등록말소', 복귀='1군등록'. reason '(자동)' = 알림 경로서 스킵."""
+    from datetime import date
+    from crawler.roster_diff import classify_roster_diff
+    rosters = crawl_active_rosters()
+    if not rosters:
+        print('[ActiveRoster] 크롤 결과 없음 — 동기화 스킵')
+        return
+    conn = get_connection()
+    if not conn:
+        return
+    today = date.today()
+    total = 0
+    try:
+        cur = conn.cursor()
+        for team_id, registered in rosters.items():
+            cur.execute("""
+                SELECT p.name,
+                  (EXISTS(SELECT 1 FROM game_batters gb JOIN games g ON g.id=gb.game_id
+                          WHERE gb.player_id=p.id AND EXTRACT(YEAR FROM g.game_date)=2026)
+                   OR EXISTS(SELECT 1 FROM game_pitchers gp JOIN games g2 ON g2.id=gp.game_id
+                          WHERE gp.player_id=p.id AND EXTRACT(YEAR FROM g2.game_date)=2026)) AS had_1gun,
+                  (SELECT rc.change_type FROM player_roster_changes rc
+                   WHERE rc.player_id=p.id ORDER BY rc.change_date DESC, rc.id DESC LIMIT 1) AS latest
+                FROM players p WHERE p.team_id=%s AND p.is_active=TRUE
+            """, (team_id,))
+            db_players = [{'name': r[0], 'had_1gun': bool(r[1]), 'latest': r[2]}
+                          for r in cur.fetchall()]
+            for name, ctype in classify_roster_diff(registered, db_players):
+                pid = _find_player_id(name, team_id)
+                reason = '1군 미등록(자동)' if ctype == '등록말소' else '복귀(자동)'
+                cur.execute("""
+                    INSERT INTO player_roster_changes
+                        (player_name, team_id, player_id, change_type, reason, change_date)
+                    VALUES (%s,%s,%s,%s,%s,%s)
+                    ON CONFLICT (player_name, team_id, change_type, change_date) DO NOTHING
+                """, (name, team_id, pid, ctype, reason, today))
+                total += cur.rowcount
+        conn.commit()
+        cur.close()
+        print(f'[ActiveRoster] 동기화 {total}건')
+    except Exception as e:
+        print(f'[ActiveRoster] 동기화 오류: {e}')
+    finally:
+        conn.close()
+
+
 if __name__ == '__main__':
     print('=== 등록말소 크롤링 ===')
     run_today()
     print('=== 선수이동 크롤링 (30일) ===')
     run_trade(days=30)
+    print('=== 1군 등록현황 동기화 ===')
+    sync_active_roster()
