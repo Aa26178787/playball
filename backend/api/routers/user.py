@@ -1021,6 +1021,58 @@ _WEEKLY_MISSIONS = [
 ]
 
 
+@router.get('/season-wrapped')
+def season_wrapped(year: int | None = None, current_user: dict = Depends(get_current_user)):
+    """연말결산 — 해당 연도 직관/예측/포인트/출석/최애 집계 (메가G)."""
+    from datetime import datetime
+    uid = current_user['user_id']
+    yr = year or datetime.now().year
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail='DB 연결 실패')
+    cur = conn.cursor()
+    out = {'year': yr, 'visits': {}, 'predictions': {}, 'points': 0,
+           'attendance_days': 0, 'fav_team': None, 'fav_player': None}
+    try:
+        cur.execute("""
+            SELECT COUNT(*),
+                   COUNT(*) FILTER (WHERE v.result='win'),
+                   COUNT(*) FILTER (WHERE v.result='loss'),
+                   COUNT(*) FILTER (WHERE v.result='draw'),
+                   COUNT(DISTINCT g.stadium_id)
+            FROM user_stadium_visits v JOIN games g ON g.id=v.game_id
+            WHERE v.user_id=%s AND EXTRACT(YEAR FROM g.game_date)=%s
+        """, (uid, yr))
+        r = cur.fetchone()
+        out['visits'] = {'total': r[0], 'wins': r[1], 'losses': r[2], 'draws': r[3], 'stadiums': r[4]}
+        cur.execute("""
+            SELECT COUNT(*) FILTER (WHERE reason='prediction_win'),
+                   COUNT(*) FILTER (WHERE reason IN ('prediction_win','prediction_lose','prediction_draw')),
+                   COUNT(*) FILTER (WHERE reason='attendance'),
+                   COALESCE(SUM(points),0)
+            FROM point_ledger
+            WHERE user_id=%s AND EXTRACT(YEAR FROM created_at)=%s
+        """, (uid, yr))
+        r = cur.fetchone()
+        out['predictions'] = {'correct': r[0], 'total': r[1]}
+        out['attendance_days'] = r[2]
+        out['points'] = int(r[3])
+        cur.execute("""SELECT t.name FROM user_favorite_teams f JOIN teams t ON t.id=f.team_id
+                       WHERE f.user_id=%s LIMIT 1""", (uid,))
+        rr = cur.fetchone()
+        out['fav_team'] = rr[0] if rr else None
+        cur.execute("""SELECT p.name FROM user_favorite_players f JOIN players p ON p.id=f.player_id
+                       WHERE f.user_id=%s LIMIT 1""", (uid,))
+        rr = cur.fetchone()
+        out['fav_player'] = rr[0] if rr else None
+    except Exception as e:
+        print(f"[wrapped] 집계 오류 uid={uid}: {e}")
+    finally:
+        cur.close()
+        conn.close()
+    return out
+
+
 @router.get('/missions')
 def weekly_missions(current_user: dict = Depends(get_current_user)):
     """주간미션 진척 + 완료 시 자동 보상 (KST 월요일 시작 주차)"""

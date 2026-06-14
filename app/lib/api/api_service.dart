@@ -355,6 +355,14 @@ class ApiService {
     return res.data;
   }
 
+  static Future<Map<String, dynamic>> getSeasonWrapped({int? year}) async {
+    final headers = await authHeaders();
+    final res = await _dio.get('/user/season-wrapped',
+        queryParameters: year != null ? {'year': year} : null,
+        options: Options(headers: headers));
+    return res.data as Map<String, dynamic>;
+  }
+
   /// 온보딩 모드 서버 영속 (pro|casual) — 기기 storage 지워져도 재노출 방지
   static Future<void> setAppMode(String mode) async {
     final headers = await authHeaders();
