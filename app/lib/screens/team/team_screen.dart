@@ -1142,10 +1142,10 @@ class _TeamScreenState extends State<TeamScreen>
                   const SizedBox(height: 7),
                   Wrap(spacing: 10, runSpacing: 4, children: [
                     if (ks >= 0.05) _psPctLabel('한국시리즈', ks, _cKs),
-                    if (po >= 0.05) _psPctLabel('PO', po, _cPo),
-                    if (spo >= 0.05) _psPctLabel('준PO', spo, _cSpo),
-                    if (wc4 >= 0.05) _psPctLabel('WC홈', wc4, _cWc4),
-                    if (wc5 >= 0.05) _psPctLabel('WC원정', wc5, _cWc5),
+                    if (po >= 0.05) _psPctLabel('플레이오프', po, _cPo),
+                    if (spo >= 0.05) _psPctLabel('준플레이오프', spo, _cSpo),
+                    if (wc4 >= 0.05) _psPctLabel('와일드카드 홈', wc4, _cWc4),
+                    if (wc5 >= 0.05) _psPctLabel('와일드카드 원정', wc5, _cWc5),
                     if (ks < 0.05 && po < 0.05 && spo < 0.05 && wc4 < 0.05 && wc5 < 0.05)
                       _psPctLabel('탈락 유력', out, const Color(0xFF9A9AA3)),
                   ]),
