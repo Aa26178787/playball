@@ -783,14 +783,17 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             Text(p['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink)),
             const SizedBox(height: 3),
-            if (isPitcher)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                decoration: BoxDecoration(color: armColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(3)),
-                child: Text(arm, style: TextStyle(fontSize: 9, fontWeight: Typo.bold, color: armColor)),
-              )
-            else
-              Text(p['position'] ?? '', style: TextStyle(fontSize: 10, color: cs.sub)),
+            // 타자/투수 2번째 줄 동일 칩 구조 — 행 높이 일치(투수만 칩이면 열 높이 어긋남)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: (isPitcher ? armColor : cs.sub).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text(isPitcher ? arm : (p['position'] ?? ''),
+                  style: TextStyle(fontSize: 9, fontWeight: Typo.bold,
+                      color: isPitcher ? armColor : cs.sub)),
+            ),
           ])),
         ]),
       ),
