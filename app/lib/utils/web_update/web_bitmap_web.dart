@@ -16,10 +16,14 @@ external JSPromise<JSAny?> _createImageBitmap(_JSBlob blob, JSAny? options);
 
 Future<ui.Image> bytesToUiImage(Uint8List bytes) async {
   final blob = _JSBlob([bytes.toJS as JSAny?].toJS);
-  // premultiplyAlpha 명시 — 미지정 시 전역 Transform.scale(기준폭 412) 다운스케일
-  // 합성에서 투명 PNG(로고/프로필)가 어둡게 블렌드 (06-13 보고)
+  // ⚠️ premultiplyAlpha = 'none' (straight). skwasm(wasm 렌더러)이 ImageBitmap을
+  // straight-alpha로 가정하고 GPU 업로드 시 한 번 premultiply함. bitmap을 'premultiply'로
+  // 주면 이중 premultiply → 반투명 픽셀(로고/프로필 안티앨리어싱 엣지)이 다크모드(어두운
+  // 배경)서 눈에 띄게 어두워짐 (라이트 배경선 미미) — 06-14 다크모드 이미지 어두움 사고.
+  // 'none'이면 엔진이 한 번만 premultiply → 합성 정확. (다운스케일도 엔진이 premultiplied
+  // 텍스처에서 수행하므로 검은 프린지 없음.)
   final options = {
-    'premultiplyAlpha': 'premultiply',
+    'premultiplyAlpha': 'none',
     'colorSpaceConversion': 'default',
   }.jsify();
   final bitmap = await _createImageBitmap(blob, options).toDart;

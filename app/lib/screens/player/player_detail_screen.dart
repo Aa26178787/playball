@@ -1545,12 +1545,21 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 child: Icon(Icons.info_outline, size: 13, color: labelCol.withValues(alpha: 0.6)),
               ),
             ])),
-            // 숫자 길게 누르면 누른 자리에 비교 말풍선
+            // 숫자 클릭 시 누른 자리에 비교 말풍선. 1회성 힌트 = 기록(숫자)에만 점선 애니
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onLongPressStart: (d) { _dismissCoreHint(); _showCompareBubble(d.globalPosition, it.$3, c, cur[it.$3], isPitcher, tc); },
-              child: Text(it.$2, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
-                  color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
+              onTapUp: (d) { _dismissCoreHint(); _showCompareBubble(d.globalPosition, it.$3, c, cur[it.$3], isPitcher, tc); },
+              child: _showCoreHint
+                  ? _MarchingAntsBox(
+                      color: tc,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        child: Text(it.$2, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
+                            color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
+                      ),
+                    )
+                  : Text(it.$2, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
+                      color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
             ),
           ]),
           if (c != null) ...[
@@ -1598,34 +1607,23 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             ]),
           ),
         ]),
-        const SizedBox(height: 10),
-        Builder(builder: (_) {
-          final grid = GridView.count(
-            crossAxisCount: 2, shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10, crossAxisSpacing: 10,
-            childAspectRatio: 1.3,
-            children: [for (int i = 0; i < items.length; i++) card(items[i], i == 0)],
-          );
-          // 1회성 점선 애니 힌트 — "꾹 눌러보세요" 유도 (설명글 대체)
-          if (!_showCoreHint) return grid;
-          return _MarchingAntsBox(
-            color: tc,
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: Column(children: [
-                grid,
-                const SizedBox(height: 8),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.touch_app_outlined, size: 13, color: tc),
-                  const SizedBox(width: 4),
-                  Text('숫자를 꾹 눌러보세요 — 리그 평균·설명',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: tc)),
-                ]),
-              ]),
-            ),
-          );
-        }),
+        if (_showCoreHint) ...[
+          Row(children: [
+            Icon(Icons.touch_app_outlined, size: 11, color: tc),
+            const SizedBox(width: 3),
+            Text('점선 숫자를 눌러 리그 평균·설명 보기',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: tc)),
+          ]),
+          const SizedBox(height: 6),
+        ],
+        const SizedBox(height: 4),
+        GridView.count(
+          crossAxisCount: 2, shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10, crossAxisSpacing: 10,
+          childAspectRatio: 1.3,
+          children: [for (int i = 0; i < items.length; i++) card(items[i], i == 0)],
+        ),
       ]),
     );
   }
@@ -2768,7 +2766,7 @@ class _MarchingAntsBoxState extends State<_MarchingAntsBox>
       animation: _c,
       builder: (_, child) => CustomPaint(
         foregroundPainter: _DashedBorderPainter(
-            phase: _c.value, color: widget.color, radius: 16),
+            phase: _c.value, color: widget.color, radius: 9),
         child: child,
       ),
       child: widget.child,
