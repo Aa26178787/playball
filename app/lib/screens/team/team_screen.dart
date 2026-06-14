@@ -1082,18 +1082,26 @@ class _TeamScreenState extends State<TeamScreen>
           Text('포스트시즌 진출 확률 — Monte Carlo 100,000회',
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ink3)),
           const SizedBox(height: 14),
-          // PS 확률 내림차순 자체 정렬 — 기간 필터(전반기/최근10) 순위를 따라가면
-          // 확률 뷰 정렬이 뒤죽박죽 (06-13 보고)
+          // PS 확률 뷰 시드 가중 정렬 — 단순 합(=PS 진출확률)으로 정렬하면
+          // 상위팀이 모두 ~100%로 수렴해 동점→순서 무의미(06-14 보고).
+          // 상위 시드일수록 가중치↑ (KS×5>PO×4>준PO×3>WC홈×2>WC원정×1) →
+          // 시드 품질순. 동점은 rank로 tiebreak. (기간 필터 rank 따라가면
+          // 확률 뷰가 뒤죽박죽이라 rank 단독 정렬도 불가 — 06-13)
           ...(() {
-            double psOf(Map t) {
+            double psScore(Map t) {
               final o = oddsById[t['id'] as int? ?? -1];
               if (o == null) return -1;
               double p(String k) => (o[k] as num? ?? 0).toDouble();
-              return p('ks_direct_prob') + p('po_direct_prob') +
-                  p('spo_direct_prob') + p('wc_seed4_prob') + p('wc_seed5_prob');
+              return p('ks_direct_prob') * 5 + p('po_direct_prob') * 4 +
+                  p('spo_direct_prob') * 3 + p('wc_seed4_prob') * 2 +
+                  p('wc_seed5_prob');
             }
             final sorted = _teams.map((t) => t as Map).toList()
-              ..sort((a, b) => psOf(b).compareTo(psOf(a)));
+              ..sort((a, b) {
+                final c = psScore(b).compareTo(psScore(a));
+                if (c != 0) return c;
+                return (a['rank'] as int? ?? 99).compareTo(b['rank'] as int? ?? 99);
+              });
             return sorted;
           })().map((team) {
             final id = team['id'] as int? ?? -1;

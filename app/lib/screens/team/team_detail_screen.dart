@@ -67,7 +67,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     _loadPlayers();
     _loadFavStatus();
     _loadSeasonStats();
-    _loadGamesBehind();
+    _loadStandings();
     _loadRosterChanges();
     _loadNews();
   }
@@ -92,34 +92,47 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     if (idx == 3 && _battingOrderStats.isEmpty && !_battingOrderLoading) _loadBattingOrder();
   }
 
-  Future<void> _loadGamesBehind() async {
-    // widget.team에 games_behind 있으면 그대로 사용
-    final existing = widget.team['games_behind'];
-    if (existing != null) {
-      if (mounted) setState(() => _gamesBehind = existing as num);
+  // 헤더가 쓰는 순위 필드들. 진입점에 따라 widget.team이 부분 Map일 수 있어
+  // (홈 로고탭=id/코드/이름만, 검색·멘션=부분) team_rankings에서 백필.
+  static const _standingsKeys = [
+    'wins', 'losses', 'draws', 'win_rate', 'rank', 'games_behind',
+    'home_record', 'away_record', 'pythag_winpct',
+  ];
+
+  Future<void> _loadStandings() async {
+    final t = widget.team;
+    // 핵심필드(승/패/승률) 다 있으면 풀 Map 진입(순위탭) — 백필 불필요
+    final hasCore = t['win_rate'] != null && t['wins'] != null && t['losses'] != null;
+    if (hasCore) {
+      if (t['games_behind'] != null && mounted) {
+        setState(() => _gamesBehind = t['games_behind'] as num?);
+      }
       return;
     }
-    // 없으면 team_rankings 캐시에서 보완
-    final cached = await LocalCache.getStale('team_rankings') as List?;
-    if (cached != null) {
-      final teamId = widget.team['id'];
+    final teamId = t['id'];
+    Map? find(List? rows) {
+      if (rows == null) return null;
       try {
-        final found = cached.firstWhere((t) => t['id'] == teamId, orElse: () => null);
-        if (found != null && found['games_behind'] != null && mounted) {
-          setState(() => _gamesBehind = found['games_behind'] as num);
-          return;
-        }
+        return rows.firstWhere((r) => r['id'] == teamId, orElse: () => null) as Map?;
+      } catch (e) { debugPrint('team_detail: $e'); return null; }
+    }
+    Map? found = find(await LocalCache.getStale('team_rankings') as List?);
+    if (found == null) {
+      try {
+        final data = await ApiService.getTeamRankings();
+        final rankings = data['rankings'] as List? ?? [];
+        await LocalCache.set('team_rankings', rankings);
+        found = find(rankings);
       } catch (e) { debugPrint('team_detail: $e'); }
     }
-    // 캐시도 없으면 API 호출
-    try {
-      final data = await ApiService.getTeamRankings();
-      final rankings = data['rankings'] as List? ?? [];
-      await LocalCache.set('team_rankings', rankings);
-      final teamId = widget.team['id'];
-      final found = rankings.firstWhere((t) => t['id'] == teamId, orElse: () => null);
-      if (found != null && mounted) setState(() => _gamesBehind = found['games_behind'] as num?);
-    } catch (e) { debugPrint('team_detail: $e'); }
+    if (found != null && mounted) {
+      setState(() {
+        for (final k in _standingsKeys) {
+          if (t[k] == null && found![k] != null) t[k] = found[k];
+        }
+        _gamesBehind = (t['games_behind'] as num?) ?? _gamesBehind;
+      });
+    }
   }
 
   Future<void> _loadFavStatus() async {
