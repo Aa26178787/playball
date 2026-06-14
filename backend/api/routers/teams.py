@@ -530,7 +530,7 @@ def get_team_games(team_id: int, limit: int = 10):
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
         WHERE (g.home_team_id = %s OR g.away_team_id = %s)
-          AND g.status = '종료'
+          AND g.status IN ('종료', '취소')
         ORDER BY g.game_date DESC
         LIMIT %s
     """, (team_id, team_id, limit))

@@ -826,7 +826,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       final lastDate = DateTime.tryParse(lastG['game_date'] as String? ?? '') ?? DateTime(2000);
       final dayDiff = date.difference(lastDate).inDays;
 
-      if (lastOpp == opp && dayDiff <= 3 && last.length < 3) {
+      // 3-cap은 종료경기만 카운트 — 취소경기(rainout)는 슬롯 미소비, 시리즈 내부 유지
+      final playedInLast = last.where((m) => m['status'] != '취소').length;
+      if (lastOpp == opp && dayDiff <= 3 && playedInLast < 3) {
         last.add(g);
       } else {
         series.add([g]);
@@ -860,11 +862,51 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         ? seriesList.sublist(0, seriesList.length - 1)
         : seriesList;
 
+    // 전부 취소인 그룹 제외 — 취소경기는 시리즈(종료경기) 내부에서만 노출
+    final shown = display.where((s) =>
+        s.any((g) => g['status'] != '취소')).toList();
+
+    // 주차("N월 M주차") 구분선 — 진출선 스타일. 시리즈 첫 경기 날짜 기준, 바뀔 때만 삽입
+    final children = <Widget>[];
+    String? lastWeek;
+    for (final s in shown) {
+      final wk = _weekLabel(s);
+      if (wk.isNotEmpty && wk != lastWeek) {
+        children.add(_weekDivider(cs, wk));
+        lastWeek = wk;
+      }
+      children.add(_seriesCard(cs, tc, teamName, s));
+    }
+
     return ListView(
       padding: const EdgeInsets.all(18),
-      children: display.map((s) => _seriesCard(cs, tc, teamName, s)).toList(),
+      children: children,
     );
   }
+
+  String _weekLabel(List s) {
+    final dates = s
+        .map((g) => (g as Map)['game_date'] as String? ?? '')
+        .where((d) => d.length >= 10)
+        .toList()
+      ..sort();
+    if (dates.isEmpty) return '';
+    final d = DateTime.tryParse(dates.first);
+    if (d == null) return '';
+    final week = ((d.day - 1) ~/ 7) + 1;
+    return '${d.month}월 $week주차';
+  }
+
+  Widget _weekDivider(_C cs, String label) => Padding(
+        padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+        child: Row(children: [
+          Expanded(child: Container(height: 1, color: cs.line)),
+          const SizedBox(width: 10),
+          Text(label, style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: cs.sub)),
+          const SizedBox(width: 10),
+          Expanded(child: Container(height: 1, color: cs.line)),
+        ]),
+      );
 
   Widget _seriesCard(_C cs, Color tc, String teamName, List s) {
     final games = s.cast<Map>();
@@ -888,6 +930,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             if (i > 0) VerticalDivider(width: 1, color: cs.line),
             Expanded(child: Builder(builder: (_) {
               final g = games[i];
+              final cancelled = (g['status'] as String? ?? '') == '취소';
               final r = _gResult(g, teamName);
               final gid = g['id'] as int?;
               final d = (g['game_date'] as String? ?? '');
@@ -903,13 +946,18 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                     Text(md(d), style: TextStyle(fontSize: 10, color: cs.sub)),
                     const SizedBox(height: 6),
-                    TeamLogo(teamCode: oppCode, size: 24),
+                    TeamLogo(teamCode: oppCode, size: 34),
                     const SizedBox(height: 6),
-                    Text('${g['home_score'] ?? 0} : ${g['away_score'] ?? 0}',
-                        style: TextStyle(fontSize: 17, fontWeight: Typo.extra, color: rc(r))),
-                    const SizedBox(height: 3),
-                    Text(rLabel,
-                        style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: rc(r))),
+                    if (cancelled)
+                      Text('취소',
+                          style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.sub))
+                    else ...[
+                      Text('${g['home_score'] ?? 0} : ${g['away_score'] ?? 0}',
+                          style: TextStyle(fontSize: 17, fontWeight: Typo.extra, color: rc(r))),
+                      const SizedBox(height: 3),
+                      Text(rLabel,
+                          style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: rc(r))),
+                    ],
                   ]),
                 ),
               );
