@@ -359,11 +359,17 @@ def sync_active_roster():
                    OR EXISTS(SELECT 1 FROM game_pitchers gp JOIN games g2 ON g2.id=gp.game_id
                           WHERE gp.player_id=p.id AND EXTRACT(YEAR FROM g2.game_date)=2026)) AS had_1gun,
                   (SELECT rc.change_type FROM player_roster_changes rc
-                   WHERE rc.player_id=p.id ORDER BY rc.change_date DESC, rc.id DESC LIMIT 1) AS latest
+                   WHERE rc.player_id=p.id ORDER BY rc.change_date DESC, rc.id DESC LIMIT 1) AS latest,
+                  (CURRENT_DATE - (SELECT MAX(gd) FROM (
+                       SELECT g3.game_date gd FROM game_batters gb2 JOIN games g3 ON g3.id=gb2.game_id
+                         WHERE gb2.player_id=p.id
+                       UNION ALL
+                       SELECT g4.game_date FROM game_pitchers gp2 JOIN games g4 ON g4.id=gp2.game_id
+                         WHERE gp2.player_id=p.id) la)) AS days_since_last
                 FROM players p WHERE p.team_id=%s AND p.is_active=TRUE
             """, (team_id,))
-            db_players = [{'name': r[0], 'had_1gun': bool(r[1]), 'latest': r[2]}
-                          for r in cur.fetchall()]
+            db_players = [{'name': r[0], 'had_1gun': bool(r[1]), 'latest': r[2],
+                           'days_since_last': r[3]} for r in cur.fetchall()]
             for name, ctype in classify_roster_diff(registered, db_players):
                 pid = _find_player_id(name, team_id)
                 reason = '1군 미등록(자동)' if ctype == '등록말소' else '복귀(자동)'
