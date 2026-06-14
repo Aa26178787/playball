@@ -47,7 +47,7 @@ class _Tok {
     ink:    isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark,
     ink2:   isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46),
     ink3:   isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73),
-    sub:    isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2),
+    sub:    isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2),
     track:  isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC),
   );
 }

@@ -506,7 +506,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink2 = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
-    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final code = p['team_code'] as String? ?? '';
     final raw = teamColor(code);
@@ -558,7 +558,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   // ── 카드 그리드 셀 (mockup _PlayerCard — 팀컬러 헤더 + 등번호) ──
   Widget _buildStatCard(int rank, Map p, String statVal, String statLabel) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
@@ -744,7 +744,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final bg = isDark ? const Color(0xFF111113) : const Color(0xFFFAFAFB);
     final bar = isDark ? const Color(0xFF18181C) : Colors.white;
     final paper2 = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);

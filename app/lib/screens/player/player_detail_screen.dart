@@ -1325,7 +1325,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   Widget _seasonGridSection(String title, List<(String, String, String)> items, {bool isPitcher = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final labelCol = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF52525B); // 기록명 — sub보다 선명
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
@@ -1509,7 +1509,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final cmp = isLatestView ? ((player['core_compare'] as Map?) ?? const {}) : const {};
     final qualified = !isLatestView || (player['qualified'] as bool? ?? true);
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final labelCol = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF52525B); // 기록명 — sub보다 선명
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
@@ -1675,7 +1675,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final rawTc = teamColor(player['team_code'] as String? ?? '');
@@ -1814,7 +1814,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final emptyCell = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
@@ -1983,7 +1983,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final emptyCell = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
@@ -2393,7 +2393,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     // 그리드 섹션과 동일 디자인 언어 (2026-06-07): sub 타이틀 + paper 카드, 요약 4칸 + 경기 행 통합
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
 

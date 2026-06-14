@@ -798,7 +798,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     // mockup MiniGames — 2-col grid
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub   = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final paper2= isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
     final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
@@ -1009,7 +1009,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     // ── 토큰 ──────────────────────────────
     final ink    = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink3   = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub    = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub    = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final paper  = isDark ? const Color(0xFF18181C) : Colors.white;
     final line   = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final line2  = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
@@ -1335,7 +1335,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildWinRatePill(double rate) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink2  = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
-    final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub   = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final paper2= isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -1497,7 +1497,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub   = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final line2 = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
     final track = isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);
     final displayed = isHome ? recent.reversed.toList() : recent;
@@ -2210,7 +2210,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink2  = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
     final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub   = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final paper2= isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
     final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final line2 = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
@@ -2851,7 +2851,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final idx = _tabController.index;
     final activeColor = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final inactiveColor = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final inactiveColor = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final pillBg = isDark ? const Color(0xFF18181C) : Colors.white;
     final borderColor = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
 
@@ -3051,7 +3051,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink2  = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
     final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub   = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final track = isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);
@@ -3174,7 +3174,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink2  = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
     final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub   = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
 
@@ -3275,7 +3275,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _statChip(String label, String value) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -3292,7 +3292,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     if (_rosterData == null) {
@@ -4078,7 +4078,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final isDarkT = Theme.of(context).brightness == Brightness.dark;
     final ink   = isDarkT ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink3  = isDarkT ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub   = isDarkT ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub   = isDarkT ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final paper = isDarkT ? const Color(0xFF18181C) : Colors.white;
     final paper2= isDarkT ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
     final line  = isDarkT ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
@@ -5383,7 +5383,7 @@ class _WinProbChart extends StatelessWidget {
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final ink = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
-    final sub = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final hc = isDark ? Color.lerp(homeColor, Colors.white, 0.25)! : homeColor;
 
     final spots = <FlSpot>[];

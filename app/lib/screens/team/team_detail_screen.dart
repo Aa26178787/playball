@@ -90,9 +90,11 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
   void _onGameSubChange(int idx) {
     setState(() => _gameSubIndex = idx);
-    if (idx == 1 && _monthlyStats.isEmpty && !_monthlyLoading) _loadMonthlyStats();
-    if (idx == 2 && _h2hRecords.isEmpty && !_h2hLoading) _loadH2H();
-    if (idx == 3 && _battingOrderStats.isEmpty && !_battingOrderLoading) _loadBattingOrder();
+    if (idx == 1) {  // 월별·상대전적 병합 — 둘 다 로드
+      if (_monthlyStats.isEmpty && !_monthlyLoading) _loadMonthlyStats();
+      if (_h2hRecords.isEmpty && !_h2hLoading) _loadH2H();
+    }
+    if (idx == 2 && _battingOrderStats.isEmpty && !_battingOrderLoading) _loadBattingOrder();
   }
 
   // 헤더가 쓰는 순위 필드들. 진입점에 따라 widget.team이 부분 Map일 수 있어
@@ -403,32 +405,35 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     );
   }
 
+  // 홈 _FloatingNavBar와 형태/사이즈 통일 (height58·radius30·Icon22·active=ink·highlight ink@0.12)
   Widget _buildMainFloatingNav(Color color) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    const labels = ['개요', '선수', '경기', '커뮤'];
+    final cs = _C(context);
+    const labels = ['개요', '선수', '경기', '커뮤니티'];
     const icons = [Icons.home_outlined, Icons.people_outlined, Icons.sports_baseball_outlined, Icons.forum_outlined];
+    const activeIcons = [Icons.home_rounded, Icons.people_rounded, Icons.sports_baseball_rounded, Icons.forum_rounded];
+    final active = cs.ink;
+    final inactive = cs.sub;
     return Container(
-      height: 52,
+      height: 58,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF26262C) : Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        border: isDark ? Border.all(color: const Color(0xFF3A3A42)) : null,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.12), blurRadius: 16, offset: const Offset(0, 4))],
+        color: cs.paper,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: cs.line, width: 1),
+        boxShadow: [BoxShadow(color: cs.dark ? Colors.black45 : Colors.black.withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 4))],
       ),
       child: LayoutBuilder(builder: (ctx, c) {
         final slotW = c.maxWidth / labels.length;
         return Stack(children: [
-          // 슬라이딩 선택 하이라이트
           AnimatedPositioned(
             duration: const Duration(milliseconds: 280),
             curve: Curves.easeOutCubic,
             left: _mainTabIndex * slotW + 4,
-            top: 4, bottom: 4,
+            top: 6, bottom: 6,
             width: slotW - 8,
             child: Container(
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(22),
+                color: active.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
               ),
             ),
           ),
@@ -442,12 +447,13 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(icons[i], size: 18, color: selected ? color : Colors.grey),
-                      const SizedBox(height: 1),
+                      Icon(selected ? activeIcons[i] : icons[i], size: 22, color: selected ? active : inactive),
+                      const SizedBox(height: 2),
                       Text(labels[i], style: TextStyle(
                         fontSize: 11,
                         fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                        color: selected ? color : Colors.grey,
+                        color: selected ? active : inactive,
+                        fontFamily: 'Pretendard',
                       )),
                     ],
                   ),
@@ -551,10 +557,20 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     );
   }
 
+  // 월별성적 + 상대전적 병합 — 한 탭에 상하 배치 (각자 스크롤)
+  Widget _buildMonthlyAndH2H() {
+    final cs = _C(context);
+    return Column(children: [
+      Expanded(child: _buildMonthlyStats()),
+      Container(height: 8, color: cs.bg),
+      Expanded(child: _buildHeadToHead()),
+    ]);
+  }
+
   Widget _buildGamesTab() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = teamColor(widget.team['short_name'] as String? ?? '');
-    const subLabels = ['최근경기', '월별성적', '상대전적', '타순별'];
+    const subLabels = ['최근경기', '월별·상대전적', '타순별'];
     return Column(
       children: [
         Container(
@@ -592,7 +608,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         Expanded(
           child: IndexedStack(
             index: _gameSubIndex,
-            children: [_buildGames(), _buildMonthlyStats(), _buildHeadToHead(), _buildBattingOrder()],
+            children: [_buildGames(), _buildMonthlyAndH2H(), _buildBattingOrder()],
           ),
         ),
       ],
@@ -945,19 +961,19 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Text(md(d), style: TextStyle(fontSize: 10, color: cs.sub)),
+                    Text(md(d), style: TextStyle(fontSize: 12, color: cs.sub)),
                     const SizedBox(height: 6),
                     TeamLogo(teamCode: oppCode, size: 34),
                     const SizedBox(height: 6),
                     if (cancelled)
                       Text('취소',
-                          style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.sub))
+                          style: TextStyle(fontSize: 17, fontWeight: Typo.bold, color: cs.sub))
                     else ...[
                       Text('${g['home_score'] ?? 0} : ${g['away_score'] ?? 0}',
-                          style: TextStyle(fontSize: 17, fontWeight: Typo.extra, color: rc(r))),
+                          style: TextStyle(fontSize: 20, fontWeight: Typo.extra, color: rc(r))),
                       const SizedBox(height: 3),
                       Text(rLabel,
-                          style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: rc(r))),
+                          style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: rc(r))),
                     ],
                   ]),
                 ),
@@ -1673,7 +1689,7 @@ class _C {
       ink    = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFFF4F4F5) : const Color(0xFF111113),
       ink2   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46),
       ink3   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73),
-      sub    = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2),
+      sub    = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2),
       line   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
       line2  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4),
       track  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);

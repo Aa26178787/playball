@@ -129,7 +129,7 @@ class _TeamScreenState extends State<TeamScreen>
     final paper = isDark ? const Color(0xFF18181C) : Colors.white;
     final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub   = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub   = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
     final line2 = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
     Widget hdrBtn({required IconData icon, required String tip, required VoidCallback onTap}) =>
@@ -413,7 +413,7 @@ class _TeamScreenState extends State<TeamScreen>
     final ink    = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
     final ink2   = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
     final ink3   = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub    = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
+    final sub    = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
     final track  = isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);
 
     final tc = teamColorOn(code, isDark); // 다크 대비 보정 — 순위숫자/테두리 전경
@@ -911,7 +911,7 @@ class _Tok {
     ink:    isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark,
     ink2:   isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46),
     ink3:   isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73),
-    sub:    isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2),
+    sub:    isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2),
     track:  isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC),
   );
 }

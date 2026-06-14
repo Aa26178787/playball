@@ -682,14 +682,12 @@ def get_batting_order_stats(team_id: int, season: int = 2026):
     """, (team_id, team_id, season))
     rows = cur.fetchall()
 
-    # 타순별 최다 출전 선수
+    # 타순별 최다 출전 선수 — 각 선수는 '주 타순'(최다 출전 슬롯)에만 배정해
+    # 한 선수가 여러 슬롯 대표로 중복되는 것 방지 (예: 김도영 3·4번 동시 표기 버그)
     cur.execute("""
-        WITH slot_players AS (
-            SELECT gb.batting_order, p.id AS player_id, p.name AS player_name, p.profile_image,
-                   COUNT(*) AS apps,
-                   ROW_NUMBER() OVER (
-                       PARTITION BY gb.batting_order ORDER BY COUNT(*) DESC
-                   ) AS rn
+        WITH app_counts AS (
+            SELECT gb.batting_order, p.id AS player_id, p.name AS player_name,
+                   p.profile_image, COUNT(*) AS apps
             FROM game_batters gb
             JOIN games g ON g.id = gb.game_id
             JOIN players p ON p.id = gb.player_id
@@ -700,8 +698,22 @@ def get_batting_order_stats(team_id: int, season: int = 2026):
               AND gb.batting_order BETWEEN 1 AND 9
               AND gb.at_bats > 0
             GROUP BY gb.batting_order, p.id, p.name, p.profile_image
+        ),
+        primary_slot AS (  -- 선수별 주 타순 (최다 출전, 동률 시 낮은 타순)
+            SELECT player_id, batting_order,
+                   ROW_NUMBER() OVER (PARTITION BY player_id
+                                      ORDER BY apps DESC, batting_order) AS prn
+            FROM app_counts
+        ),
+        slot_pick AS (  -- 주 타순인 선수 중 슬롯별 최다
+            SELECT ac.batting_order, ac.player_id, ac.player_name, ac.profile_image,
+                   ROW_NUMBER() OVER (PARTITION BY ac.batting_order
+                                      ORDER BY ac.apps DESC) AS rn
+            FROM app_counts ac
+            JOIN primary_slot ps ON ps.player_id = ac.player_id
+                 AND ps.batting_order = ac.batting_order AND ps.prn = 1
         )
-        SELECT batting_order, player_id, player_name, profile_image FROM slot_players WHERE rn = 1
+        SELECT batting_order, player_id, player_name, profile_image FROM slot_pick WHERE rn = 1
     """, (team_id, team_id, season))
     top_players = {r[0]: (r[1], r[2], r[3]) for r in cur.fetchall()}  # order → (id, name, image)
 
