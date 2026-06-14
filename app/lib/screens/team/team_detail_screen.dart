@@ -868,112 +868,74 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
   Widget _seriesCard(_C cs, Color tc, String teamName, List s) {
     final games = s.cast<Map>();
-    int wins = 0, losses = 0, draws = 0;
-    for (final g in games) {
-      final r = _gResult(g, teamName);
-      if (r == 'win') {
-        wins++;
-      } else if (r == 'loss') {
-        losses++;
-      } else {
-        draws++;
-      }
-    }
     final first = games.first;
     final firstIsHome = first['home_team'] == teamName;
     final oppName = (firstIsHome ? first['away_team'] : first['home_team']) ?? '';
     final oppCode = (firstIsHome ? first['away_code'] : first['home_code']) as String? ?? '';
-    final isWinning = wins > losses;
-    final label = wins == games.length ? '스윕승'
-        : losses == games.length ? '스윕패'
-        : wins > losses ? '위닝' : wins < losses ? '루징' : '스플릿';
-    // 승=팀컬러, 패/무=무채색(패 진한 / 무 연한)
-    final labelColor = isWinning ? tc : wins < losses ? const Color(0xFF71717A) : cs.sub;
     Color rc(String r) => r == 'win' ? tc : r == 'draw' ? const Color(0xFFA1A1AA) : const Color(0xFF71717A);
-    // 날짜 범위
-    final dates = games.map((g) => (g['game_date'] as String? ?? '')).toList()..sort();
     String md(String d) => d.length >= 10 ? '${d.substring(5, 7)}.${d.substring(8, 10)}' : d;
-    final dateRange = dates.isEmpty ? '' : '${md(dates.first)}~${md(dates.last).substring(md(dates.last).length - 2)}';
+    final dates = games.map((g) => (g['game_date'] as String? ?? '')).toList()..sort();
+    final dateRange = dates.isEmpty
+        ? ''
+        : dates.first == dates.last ? md(dates.first) : '${md(dates.first)} ~ ${md(dates.last)}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: cs.paper,
-        border: Border.all(color: isWinning ? tc.withValues(alpha: 0.3) : cs.line),
+        border: Border.all(color: cs.line),
         borderRadius: BorderRadius.circular(Radii.lg),
       ),
       child: Column(children: [
-        // 헤더
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
-          child: Row(children: [
+        // 상단: 날짜 범위 + 상대팀 로고/이름 (위닝/스윕 라벨 제거)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+          child: Column(children: [
             Text(dateRange, style: TextStyle(fontSize: 11, color: cs.sub)),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-              decoration: BoxDecoration(color: labelColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(Radii.pill)),
-              child: Text(label, style: TextStyle(fontSize: 11, fontWeight: Typo.extra, color: labelColor)),
-            ),
+            const SizedBox(height: 6),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              TeamLogo(teamCode: oppCode, size: 28),
+              const SizedBox(width: 7),
+              Text('vs $oppName',
+                  style: TextStyle(fontSize: 14, fontWeight: Typo.extra, color: cs.ink)),
+            ]),
           ]),
         ),
-        // 3등분
-        IntrinsicHeight(child: Row(children: [
-          // ① 상대팀
-          Expanded(child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              TeamLogo(teamCode: oppCode, size: 44),
-              const SizedBox(height: 7),
-              Text('vs $oppName', style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)),
-            ]),
-          )),
-          VerticalDivider(width: 1, color: cs.line),
-          // ② 경기별 스코어
-          Expanded(child: Column(children: games.asMap().entries.map((e) {
-            final g = e.value;
-            final last = e.key == games.length - 1;
-            final r = _gResult(g, teamName);
-            final gid = g['id'] as int?;
-            final d = (g['game_date'] as String? ?? '');
-            return GestureDetector(
-              onTap: gid != null ? () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: gid))) : null,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
-                child: Row(children: [
-                  SizedBox(width: 30, child: Text(d.length >= 10 ? '${d.substring(5, 7)}.${d.substring(8, 10)}' : d,
-                      style: TextStyle(fontSize: 10, color: cs.sub))),
-                  Expanded(child: Text('${g['home_score'] ?? 0} : ${g['away_score'] ?? 0}',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 15, fontWeight: Typo.extra, color: cs.ink))),
-                  Container(width: 18, height: 18,
-                    decoration: BoxDecoration(color: rc(r), borderRadius: BorderRadius.circular(5)),
-                    child: Center(child: Text(r == 'win' ? '승' : r == 'draw' ? '무' : '패',
-                        style: TextStyle(fontSize: 10, fontWeight: Typo.extra,
-                            color: cs.dark ? const Color(0xFF0F0F12) : Colors.white)))),
-                ]),
-              ),
-            );
-          }).toList())),
-          VerticalDivider(width: 1, color: cs.line),
-          // ③ 시리즈 요약
-          Expanded(child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: games.map((g) => Container(
-                width: 14, height: 14, margin: const EdgeInsets.symmetric(horizontal: 2),
-                decoration: BoxDecoration(color: rc(_gResult(g, teamName)), borderRadius: BorderRadius.circular(4)),
-              )).toList()),
-              const SizedBox(height: 8),
-              Text('$wins승$losses패${draws > 0 ? '$draws무' : ''}',
-                  style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: labelColor)),
-              const SizedBox(height: 4),
-              Text('${games.length}연전', style: TextStyle(fontSize: 10, color: cs.sub)),
-            ]),
-          )),
-        ])),
+        Divider(height: 1, color: cs.line),
+        // 경기별 3칸 — 각 칸 = 날짜 + 스코어(승패색) + 승/패/무
+        IntrinsicHeight(
+          child: Row(children: [
+            for (int i = 0; i < games.length; i++) ...[
+              if (i > 0) VerticalDivider(width: 1, color: cs.line),
+              Expanded(child: Builder(builder: (_) {
+                final g = games[i];
+                final r = _gResult(g, teamName);
+                final gid = g['id'] as int?;
+                final d = (g['game_date'] as String? ?? '');
+                final rLabel = r == 'win' ? '승' : r == 'draw' ? '무' : '패';
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: gid != null
+                      ? () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: gid)))
+                      : null,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Text(md(d), style: TextStyle(fontSize: 10, color: cs.sub)),
+                      const SizedBox(height: 5),
+                      Text('${g['home_score'] ?? 0} : ${g['away_score'] ?? 0}',
+                          style: TextStyle(fontSize: 17, fontWeight: Typo.extra, color: rc(r))),
+                      const SizedBox(height: 3),
+                      Text(rLabel,
+                          style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: rc(r))),
+                    ]),
+                  ),
+                );
+              })),
+            ],
+          ]),
+        ),
       ]),
     );
   }
