@@ -870,14 +870,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final games = s.cast<Map>();
     final first = games.first;
     final firstIsHome = first['home_team'] == teamName;
-    final oppName = (firstIsHome ? first['away_team'] : first['home_team']) ?? '';
     final oppCode = (firstIsHome ? first['away_code'] : first['home_code']) as String? ?? '';
     Color rc(String r) => r == 'win' ? tc : r == 'draw' ? const Color(0xFFA1A1AA) : const Color(0xFF71717A);
     String md(String d) => d.length >= 10 ? '${d.substring(5, 7)}.${d.substring(8, 10)}' : d;
-    final dates = games.map((g) => (g['game_date'] as String? ?? '')).toList()..sort();
-    final dateRange = dates.isEmpty
-        ? ''
-        : dates.first == dates.last ? md(dates.first) : '${md(dates.first)} ~ ${md(dates.last)}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -886,57 +881,42 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         border: Border.all(color: cs.line),
         borderRadius: BorderRadius.circular(Radii.lg),
       ),
-      child: Column(children: [
-        // 상단: 날짜 범위 + 상대팀 로고/이름 (위닝/스윕 라벨 제거)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-          child: Column(children: [
-            Text(dateRange, style: TextStyle(fontSize: 11, color: cs.sub)),
-            const SizedBox(height: 6),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              TeamLogo(teamCode: oppCode, size: 28),
-              const SizedBox(width: 7),
-              Text('vs $oppName',
-                  style: TextStyle(fontSize: 14, fontWeight: Typo.extra, color: cs.ink)),
-            ]),
-          ]),
-        ),
-        Divider(height: 1, color: cs.line),
-        // 경기별 3칸 — 각 칸 = 날짜 + 스코어(승패색) + 승/패/무
-        IntrinsicHeight(
-          child: Row(children: [
-            for (int i = 0; i < games.length; i++) ...[
-              if (i > 0) VerticalDivider(width: 1, color: cs.line),
-              Expanded(child: Builder(builder: (_) {
-                final g = games[i];
-                final r = _gResult(g, teamName);
-                final gid = g['id'] as int?;
-                final d = (g['game_date'] as String? ?? '');
-                final rLabel = r == 'win' ? '승' : r == 'draw' ? '무' : '패';
-                return GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: gid != null
-                      ? () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: gid)))
-                      : null,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Text(md(d), style: TextStyle(fontSize: 10, color: cs.sub)),
-                      const SizedBox(height: 5),
-                      Text('${g['home_score'] ?? 0} : ${g['away_score'] ?? 0}',
-                          style: TextStyle(fontSize: 17, fontWeight: Typo.extra, color: rc(r))),
-                      const SizedBox(height: 3),
-                      Text(rLabel,
-                          style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: rc(r))),
-                    ]),
-                  ),
-                );
-              })),
-            ],
-          ]),
-        ),
-      ]),
+      // 헤더 없이 경기별 3칸 — 각 칸 = 날짜 / 상대로고 / 스코어(승패색) / 승·패·무
+      child: IntrinsicHeight(
+        child: Row(children: [
+          for (int i = 0; i < games.length; i++) ...[
+            if (i > 0) VerticalDivider(width: 1, color: cs.line),
+            Expanded(child: Builder(builder: (_) {
+              final g = games[i];
+              final r = _gResult(g, teamName);
+              final gid = g['id'] as int?;
+              final d = (g['game_date'] as String? ?? '');
+              final rLabel = r == 'win' ? '승' : r == 'draw' ? '무' : '패';
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: gid != null
+                    ? () => Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: gid)))
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Text(md(d), style: TextStyle(fontSize: 10, color: cs.sub)),
+                    const SizedBox(height: 6),
+                    TeamLogo(teamCode: oppCode, size: 24),
+                    const SizedBox(height: 6),
+                    Text('${g['home_score'] ?? 0} : ${g['away_score'] ?? 0}',
+                        style: TextStyle(fontSize: 17, fontWeight: Typo.extra, color: rc(r))),
+                    const SizedBox(height: 3),
+                    Text(rLabel,
+                        style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: rc(r))),
+                  ]),
+                ),
+              );
+            })),
+          ],
+        ]),
+      ),
     );
   }
 
