@@ -970,7 +970,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   Widget _buildChangeItem(_C cs, Map<String, dynamic> c, bool last) {
     final changeType = c['change_type'] as String? ?? '';
     final playerName = c['player_name'] as String? ?? '';
-    final reason = c['reason'] as String? ?? '';
     final playerType = c['player_type'] as String? ?? '';
     final throws = c['throws'] as String? ?? '';
     final rawPosition = c['position'] as String? ?? '';
@@ -1002,13 +1001,12 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           Expanded(child: Row(children: [
             Flexible(child: Text(playerName, maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink))),
-            if (reason.isNotEmpty) ...[
+            if (position.isNotEmpty) ...[
               const SizedBox(width: 6),
-              Flexible(child: Text(reason, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 10, color: cs.sub))),
+              Flexible(child: Text(position, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11, color: cs.sub))),
             ],
           ])),
-          if (position.isNotEmpty) Text(position, style: TextStyle(fontSize: 11, color: cs.sub)),
         ]),
       ),
     );
