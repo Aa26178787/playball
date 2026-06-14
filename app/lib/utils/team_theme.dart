@@ -59,6 +59,26 @@ const Map<String, String> kTeamDisplayNames = {
 Color teamColor(String? code) =>
     kTeamColors[code] ?? const Color(0xFF607D8B);
 
+/// 대비 보정 — 너무 어두운 팀색(네이비/검정: NC·두산·KT·키움)은 다크모드서 lightness 부스트,
+/// 너무 밝은 색은 라이트모드서 살짝 darken. **전경(텍스트·아이콘·테두리·점)** 으로 쓸 때 사용.
+/// 로고(이미지)·그라디언트 배경엔 raw teamColor 유지.
+Color adjustTeamColor(Color c, bool isDark) {
+  final hsl = HSLColor.fromColor(c);
+  if (isDark) {
+    if (hsl.lightness < 0.45) {
+      return hsl.withLightness((hsl.lightness + 0.30).clamp(0.0, 0.75)).toColor();
+    }
+    return c;
+  }
+  if (hsl.lightness > 0.6) {
+    return hsl.withLightness((hsl.lightness - 0.10).clamp(0.0, 1.0)).toColor();
+  }
+  return c;
+}
+
+/// 다크/라이트 대비 보정된 팀 전경색.
+Color teamColorOn(String? code, bool isDark) => adjustTeamColor(teamColor(code), isDark);
+
 String teamDisplayName(String? code) =>
     kTeamDisplayNames[code] ?? (code ?? '');
 

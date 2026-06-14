@@ -416,7 +416,7 @@ class _TeamScreenState extends State<TeamScreen>
     final sub    = isDark ? const Color(0xFF71717A) : const Color(0xFF9A9AA2);
     final track  = isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);
 
-    final tc = teamColor(code);
+    final tc = teamColorOn(code, isDark); // 다크 대비 보정 — 순위숫자/테두리 전경
     final cardBg = isFav ? tc.withValues(alpha: isDark ? 0.18 : 0.07) : paper;
     final cardBd = isFav ? tc.withValues(alpha: isDark ? 0.55 : 0.40) : line;
     final rankCol = isFav ? tc : (rank <= 3 ? ink : sub);
@@ -1161,7 +1161,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
           final code = t['short_name'] as String? ?? '';
           final id = t['id'] as int? ?? -1;
           final isFav = favIds.contains(id);
-          final tc = teamColor(code);
+          final tc = teamColorOn(code, isDark); // 다크 대비 보정 (PS%·순위 전경)
 
           double barFraction = 0;
           if (rawVal is num && bestVal is num && bestVal != 0) {

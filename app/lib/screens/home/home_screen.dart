@@ -1988,22 +1988,6 @@ class GameCard extends StatelessWidget {
 
   // 다크 모드: 어두운 팀색(KT/NC/두산 등) lightness 부스트로 가시성 확보
   // 라이트 모드: 너무 밝은 팀색 약간 어둡게 (대비 확보)
-  Color _adjustTeamColor(Color c, bool isDark) {
-    final hsl = HSLColor.fromColor(c);
-    if (isDark) {
-      // lightness < 0.45 인 색만 부스트 (밝은 색은 그대로)
-      if (hsl.lightness < 0.45) {
-        return hsl.withLightness((hsl.lightness + 0.30).clamp(0.0, 0.75)).toColor();
-      }
-      return c;
-    } else {
-      // 라이트: lightness > 0.6인 색만 약간 어둡게
-      if (hsl.lightness > 0.6) {
-        return hsl.withLightness((hsl.lightness - 0.10).clamp(0.0, 1.0)).toColor();
-      }
-      return c;
-    }
-  }
 
   Widget _buildMini5(List<String> recent, Color accent, _Tok t, bool isDark, {bool recentFirst = false}) {
     if (recent.isEmpty) return const SizedBox(height: 17);
@@ -2096,7 +2080,7 @@ class GameCard extends StatelessWidget {
         const SizedBox(height: 7),
         // 최근5: 가장 최근 경기가 중앙(스코어)쪽을 향하도록 — 홈(좌)=newest 우측끝, 어웨이(우)=reversed로 newest 좌측끝
         _buildMini5(isHome ? recent : recent.reversed.toList(),
-            _adjustTeamColor(teamColor(code), isDark), t, isDark, recentFirst: !isHome),
+            adjustTeamColor(teamColor(code), isDark), t, isDark, recentFirst: !isHome),
       ],
     );
   }
@@ -2368,7 +2352,7 @@ class GameCard extends StatelessWidget {
     final awayColor = teamColor(game.awayTeamCode);
     // 마이팀 색: 한화가 home이면 homeColor, away면 awayColor (둘 다 마이팀인 경우 홈 우선)
     // 다크모드 대비: badge bg/border/text 용도 → _adjustTeamColor 적용 (winner glow는 raw 유지)
-    final myColor = _adjustTeamColor(
+    final myColor = adjustTeamColor(
       myTeamIsHome ? homeColor : (myTeamIsAway ? awayColor : homeColor),
       isDark,
     );

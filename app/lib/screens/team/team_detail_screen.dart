@@ -625,6 +625,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       int wins, int losses, int draws,
       Map<String, dynamic> hr, Map<String, dynamic> ar) {
     final cs = _C(context);
+    final fg = adjustTeamColor(color, cs.dark); // 전경(배지·아이콘) 다크 대비 보정
     final gb = _gamesBehind ?? team['games_behind'] as num?;
     final gbText = (gb == null || gb == 0) ? '선두' : '${gb.toStringAsFixed(1)} 게임차';
     final pythag = (team['pythag_winpct'] as num?)?.toStringAsFixed(3);
@@ -646,7 +647,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
-                child: Text('${team['rank'] ?? '-'}위', style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: color)),
+                child: Text('${team['rank'] ?? '-'}위', style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: fg)),
               ),
             ]),
             const SizedBox(height: 5),
@@ -661,13 +662,13 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         if (_teamLinks[code] != null) ...[
           const SizedBox(height: 12),
           Row(children: [
-            _linkBtn(Icons.smart_display, '유튜브', color, _teamLinks[code]!['yt'], color),
+            _linkBtn(Icons.smart_display, '유튜브', fg, _teamLinks[code]!['yt'], color),
             const SizedBox(width: 7),
-            _linkBtn(Icons.photo_camera, '인스타', color, _teamLinks[code]!['ig'], color),
+            _linkBtn(Icons.photo_camera, '인스타', fg, _teamLinks[code]!['ig'], color),
             const SizedBox(width: 7),
-            _linkBtn(Icons.shopping_bag, '굿즈', color, _teamLinks[code]!['gd'], color),
+            _linkBtn(Icons.shopping_bag, '굿즈', fg, _teamLinks[code]!['gd'], color),
             const SizedBox(width: 7),
-            _linkBtn(Icons.language, '공식홈', color, _teamLinks[code]!['home'], color),
+            _linkBtn(Icons.language, '공식홈', fg, _teamLinks[code]!['home'], color),
           ]),
         ],
         if (_seasonStats != null) ...[
@@ -849,7 +850,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
   Widget _buildGames() {
     final cs = _C(context);
-    final tc = teamColor(widget.team['short_name'] as String? ?? '');
+    final tc = teamColorOn(widget.team['short_name'] as String? ?? '', cs.dark);
     if (_gamesLoading) return Center(child: CircularProgressIndicator(color: tc, strokeWidth: 2.5));
     if (_games.isEmpty) return Center(child: Text('경기 정보가 없습니다', style: TextStyle(color: cs.sub)));
 
