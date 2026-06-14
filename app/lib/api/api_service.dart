@@ -558,8 +558,8 @@ class ApiService {
     return res.data;
   }
 
-  static Future<Map<String, dynamic>> getTeamGames(int teamId) async {
-    final res = await _dio.get('/teams/$teamId/games');
+  static Future<Map<String, dynamic>> getTeamGames(int teamId, {int limit = 18}) async {
+    final res = await _dio.get('/teams/$teamId/games', queryParameters: {'limit': limit});
     return res.data;
   }
 

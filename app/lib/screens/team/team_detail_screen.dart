@@ -38,6 +38,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   int _gameSubIndex = 0;
   List _players = [];
   List _games = [];
+  // 최근경기 fetch 수 — 시리즈(≈3경기)로 묶을 때 윈도우 경계가 시리즈 중간을
+  // 자르면 가장 오래된 시리즈가 1~2경기 orphan이 됨. 넉넉히 받아 잘린 끝을 숨김.
+  static const _kGamesFetch = 18;
   List _rosterChanges = [];
   List _news = [];
   List _communityPosts = [];
@@ -213,7 +216,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       setState(() => _gamesLoading = true);
     }
     try {
-      final data = await ApiService.getTeamGames(teamId);
+      final data = await ApiService.getTeamGames(teamId, limit: _kGamesFetch);
       final games = data['games'] as List? ?? [];
       await LocalCache.set(ck, games);
       if (mounted) setState(() { _games = games; _gamesLoading = false; });
@@ -850,10 +853,16 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
     final teamName = widget.team['name'] as String? ?? '';
     final seriesList = _groupIntoSeries(_games, teamName); // 최근 시리즈 우선
+    // fetch가 가득 찼으면(=더 오래된 경기 존재) 가장 오래된 시리즈는 윈도우에 잘려
+    // 1~2경기만 들어온 orphan일 수 있음 → 불완전(3경기 미만)하면 숨김.
+    final display = (_games.length >= _kGamesFetch &&
+            seriesList.isNotEmpty && seriesList.last.length < 3)
+        ? seriesList.sublist(0, seriesList.length - 1)
+        : seriesList;
 
     return ListView(
       padding: const EdgeInsets.all(18),
-      children: seriesList.map((s) => _seriesCard(cs, tc, teamName, s)).toList(),
+      children: display.map((s) => _seriesCard(cs, tc, teamName, s)).toList(),
     );
   }
 
