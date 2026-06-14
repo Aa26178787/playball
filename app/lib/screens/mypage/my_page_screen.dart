@@ -17,6 +17,7 @@ import '../community/post_detail_screen.dart';
 import 'phone_verify_screen.dart';
 import 'blocked_users_screen.dart';
 import 'points_screen.dart';
+import '../wrapped/season_wrapped_screen.dart';
 import '../../utils/app_config.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/web_image.dart';
@@ -858,16 +859,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
         child: Container(
           decoration: _cardDeco(cs),
           child: Column(children: [
+            _hubRow(cs, Icons.auto_awesome, '내 시즌 결산', null,
+                iconColor: const Color(0xFF2D6A4F),
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => const SeasonWrappedScreen())),
+                first: true),
             if (showPoints)
               _hubRow(cs, Icons.stars_rounded, '내 포인트 · 랭킹', null,
                   iconColor: const Color(0xFFD97706),
                   onTap: () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => const PointsScreen())),
-                  first: true),
+                      builder: (_) => const PointsScreen()))),
             _hubRow(cs, Icons.block, '차단한 사용자', null,
                 onTap: () => Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => const BlockedUsersScreen())),
-                first: !showPoints),
+                    builder: (_) => const BlockedUsersScreen()))),
             _hubRow(cs, Icons.restart_alt, '설정 초기화', null,
                 onTap: _resetSettings, last: true),
           ]),
