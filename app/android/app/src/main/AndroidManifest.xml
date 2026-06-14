@@ -108,6 +108,11 @@
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="vnd.youtube"/>
         </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="instagram"/>
+        </intent>
         <package android:name="com.google.android.youtube"/>
+        <package android:name="com.instagram.android"/>
     </queries>
 </manifest>

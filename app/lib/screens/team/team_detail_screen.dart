@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../utils/insta_launch.dart';
 import '../../utils/web_image.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
@@ -666,6 +667,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final cs = _C(context);
     return Expanded(child: GestureDetector(
       onTap: () async {
+        if (url.contains('instagram.com')) { await launchInstagram(url); return; }
         final u = Uri.tryParse(url);
         if (u == null) return;
         try {

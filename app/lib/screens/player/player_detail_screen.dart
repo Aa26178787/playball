@@ -5,9 +5,9 @@ import 'package:shimmer/shimmer.dart';
 import '../../api/api_service.dart';
 import '../../utils/local_cache.dart';
 import '../../utils/app_config.dart';
+import '../../utils/insta_launch.dart';
 import 'player_compare_screen.dart';
 import '../../utils/team_theme.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../widgets/common_widgets.dart';
 import '../../widgets/share_cards.dart';
 import '../../utils/share_card.dart';
@@ -700,12 +700,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                           // 인스타 버튼 (insta_handle 등록된 선수만)
                           if (player['insta_handle'] != null)
                             GestureDetector(
-                              onTap: () async {
-                                final url = Uri.parse('https://instagram.com/${player['insta_handle']}');
-                                if (await canLaunchUrl(url)) {
-                                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                                }
-                              },
+                              onTap: () => launchInstagram('${player['insta_handle']}'),
                               onLongPress: () => _reportInsta(player),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
