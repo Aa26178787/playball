@@ -3473,6 +3473,48 @@ def _purge_dead_refresh_tokens():
         conn.close()
 
 
+def _update_season_phase():
+    """매일: games 일정으로 시즌 단계 자동 갱신. postseason(admin 핀)은 보존."""
+    import json
+    from datetime import timedelta
+    from api.season import compute_phase
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        today = datetime.now().date()
+        cur.execute("""
+            SELECT MIN(game_date), MAX(game_date),
+                   BOOL_OR(game_date BETWEEN %s AND %s)
+            FROM games WHERE EXTRACT(YEAR FROM game_date) = %s
+        """, (today - timedelta(days=10), today + timedelta(days=10), today.year))
+        row = cur.fetchone()
+        first_g, last_g, has_recent = (row[0], row[1], bool(row[2])) if row else (None, None, False)
+        phase = compute_phase(today, first_g, last_g, has_recent)
+        cur.execute("SELECT value FROM app_config WHERE key='season_phase'")
+        r = cur.fetchone()
+        current = r[0] if r else None  # jsonb 자동파싱 → str
+        if current == 'postseason':
+            cur.close()
+            return  # admin 핀 보존
+        if current != phase:
+            cur.execute("UPDATE app_config SET value=%s WHERE key='season_phase'",
+                        (json.dumps(phase),))
+            conn.commit()
+            print(f"[{datetime.now()}] season_phase {current}→{phase}")
+            try:
+                from api.cache import cache_delete_prefix
+                cache_delete_prefix('api.routers.app_config.get_app_config')
+            except Exception:
+                pass
+        cur.close()
+    except Exception as e:
+        print(f"[season_phase] 오류: {e}")
+    finally:
+        conn.close()
+
+
 def run_scheduler():
     print("PlayBall 스케줄러 시작!")
     try:
@@ -3563,6 +3605,9 @@ def run_scheduler():
 
     # 매일 UTC 18:00 (KST 03:00): 죽은 refresh_token 전역 정리 (bloat 방지)
     schedule.every().day.at("18:00").do(_purge_dead_refresh_tokens)
+
+    # 매일 UTC 18:30 (KST 03:30): 시즌 단계 자동 갱신 (postseason=admin 핀 보존)
+    schedule.every().day.at("18:30").do(_update_season_phase)
 
     # 매시간: 팀 뉴스 크롤링
     schedule.every(1).hours.do(_crawl_news_hourly)
