@@ -48,12 +48,6 @@ class NicknameUpdate(BaseModel):
     nickname: str
 
 
-class StadiumRecord(BaseModel):
-    wins: int
-    losses: int
-    draws: int
-
-
 class StadiumVisitCreate(BaseModel):
     game_id: int
     result: str  # win / loss / draw

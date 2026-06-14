@@ -1076,17 +1076,3 @@ def notify_allstar_vote_period(stage: str, season: int, deadline: str = '',
           "score_change", None)
 
 
-def notify_allstar_vote_player_in(player_id: int, player_name: str, team_name: str,
-                                    league: str = '', vote_rank: int = 0):
-    """즐겨찾기 선수가 올스타 팬투표 상위권(예: TOP3) 진입 시 알림.
-    league: 'dream'/'nanum'."""
-    targets = _get_player_fan_targets(player_id, 'notify_allstar_vote')
-    if not targets:
-        return
-    league_str = f"({'드림' if league == 'dream' else '나눔'} 올스타) " if league else ""
-    rank_str = f"팬투표 {vote_rank}위" if vote_rank > 0 else "상위권 진입"
-    _send(targets,
-          f"📈 {player_name} 올스타 투표 {rank_str}",
-          f"{team_name} {player_name} 선수 {league_str}{rank_str}!",
-          {"player_id": str(player_id), "type": "allstar_vote_in"},
-          "score_change", None)

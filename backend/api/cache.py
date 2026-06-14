@@ -62,14 +62,6 @@ def cache_set(key: str, value: Any, ttl: int, stale_factor: int = 10) -> None:
         _store[key] = (value, now + ttl, now + ttl * stale_factor)
 
 
-def cache_delete(key: str) -> bool:
-    with _global_lock:
-        if key in _store:
-            del _store[key]
-            return True
-    return False
-
-
 def cache_delete_prefix(prefix: str) -> int:
     """prefix로 시작하는 모든 키 삭제."""
     with _global_lock:

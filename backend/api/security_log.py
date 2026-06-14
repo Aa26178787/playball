@@ -38,5 +38,3 @@ def log_admin_access(ip: str, endpoint: str, action: str, result: str):
                     ip, endpoint, action, result)
 
 
-def log_auth_fail(ip: str, detail: str):
-    _logger.warning("AUTH_FAIL ip=%s detail=%s", ip, detail)

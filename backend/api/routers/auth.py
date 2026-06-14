@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from database.connection import get_connection
-from api.security_log import log_login_fail, log_login_ok, log_auth_fail
+from api.security_log import log_login_fail, log_login_ok
 import bcrypt
 import hashlib
 import os

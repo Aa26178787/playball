@@ -1563,18 +1563,6 @@ def update_live_game_innings(db_game_id, naver_game_id):
         print(f"이닝 업데이트 오류 ({naver_game_id}): {e}")
 
 
-def get_game_lineup(naver_game_id):
-    url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/lineup"
-    try:
-        res = requests.get(url, headers=HEADERS, timeout=10)
-        res.raise_for_status()
-        data = res.json()
-        return data.get("result", {}).get("lineUpData")
-    except Exception as e:
-        print(f"라인업 크롤링 오류 ({naver_game_id}): {e}")
-        return None
-
-
 if __name__ == "__main__":
     print("=== 2026 시즌 전체 일정 수집 ===")
     all_games = get_season_schedule(2026)

@@ -1227,47 +1227,6 @@ def _send_game_summary(game_id: int):
         print(f"[FCM] 경기요약 알림 오류: {e}")
 
 
-def _notify_fav_player_lineup(game_id: int, home_team: str, away_team: str):
-    """경기 시작 시 즐겨찾기 선수 선발 출전 알림"""
-    conn = get_connection()
-    if not conn:
-        return
-    try:
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT gb.player_id, p.name, t.name,
-                   gb.batting_order, gb.position, gb.team_side
-            FROM game_batters gb
-            JOIN players p ON p.id = gb.player_id
-            JOIN teams t ON t.id = p.team_id
-            WHERE gb.game_id = %s AND gb.batting_order > 0
-              AND gb.position IS NOT NULL AND gb.position != ''
-        """, (game_id,))
-        starters = cur.fetchall()
-        cur.close()
-    except Exception:
-        return
-    finally:
-        conn.close()
-
-    try:
-        from api.fcm_service import notify_fav_player_lineup
-        for player_id, pname, tname, batting_order, position, side in starters:
-            sub_id = str(player_id)
-            if (game_id, player_id) in _fav_lineup_sent:
-                continue
-            if _already_notified(game_id, 'fav_lineup', sub_id):
-                _fav_lineup_sent.add((game_id, player_id))
-                continue
-            opponent = away_team if side == 'home' else home_team
-            notify_fav_player_lineup(player_id, pname, tname, game_id,
-                                     opponent, batting_order or 0, position or '')
-            _fav_lineup_sent.add((game_id, player_id))
-            _mark_notified(game_id, 'fav_lineup', sub_id)
-    except Exception as e:
-        print(f"[FCM] 선발출전 알림 오류: {e}")
-
-
 def _fixup_starter_positions():
     """대타 starter + 실제 포지션 sub 케이스 보정.
     Naver lineup이 batting_order 9번을 '대타'로만 표기하고 실제 유격수/포수 등은 sub로 기록 → 필드뷰 포지션 누락.
@@ -2413,18 +2372,6 @@ def _update_roster_changes_pregame():
         run_today()
     except Exception as e:
         print(f"[{datetime.now()}] 등록말소 크롤링 오류: {e}")
-
-
-def _get_game_statuses():
-    conn = get_connection()
-    if not conn:
-        return {}
-    cur = conn.cursor()
-    cur.execute("SELECT id, status FROM games WHERE game_date = CURRENT_DATE")
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return {r[0]: r[1] for r in rows}
 
 
 def _get_game_details():

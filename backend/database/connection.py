@@ -1,6 +1,5 @@
 import os
 import threading
-import psycopg2
 from psycopg2 import pool
 
 DB_CONFIG = {

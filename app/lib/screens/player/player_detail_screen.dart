@@ -2108,28 +2108,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     );
   }
 
-  // ignore: unused_element
-  Widget _buildInfoCard(Map<String, dynamic> player) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _sectionLabel('기본 정보'),
-              _infoRow('생년월일', player['birth_date'] ?? '-'),
-              _infoRow('신장/체중', '${player['height'] ?? '-'}cm / ${player['weight'] ?? '-'}kg'),
-              _infoRow('팀', player['team'] ?? '-'),
-              _infoRow('투/타', '${player['throws'] ?? '-'} / ${player['bats'] ?? '-'}'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   static const _hitterTrendOptions = [
     {'value': 'avg',        'label': '타율',   'decimals': 3},
     {'value': 'hits',       'label': '안타',   'decimals': 0},
@@ -2681,18 +2659,6 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     );
   }
 
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
 }
 
 // 말풍선 = 둥근 사각형 + 꼬리를 하나의 연속 외곽선 path로 (이음새 없음)
