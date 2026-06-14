@@ -3372,6 +3372,26 @@ def _recover_missed_daily_stats():
             print(f'[recovery] {check_date} daily_stats OK ({daily_count}건)')
 
 
+def _purge_dead_refresh_tokens():
+    """매일: revoked/만료 refresh_token 전역 삭제 — bloat 방지.
+    create_refresh_token의 per-user 정리가 못 닿는 휴면 계정분까지 청소."""
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM refresh_tokens WHERE revoked = TRUE OR expires_at < now()")
+        n = cur.rowcount
+        conn.commit()
+        cur.close()
+        if n:
+            print(f"[{datetime.now()}] refresh_token 정리: {n}행 삭제")
+    except Exception as e:
+        print(f"[purge_tokens] 오류: {e}")
+    finally:
+        conn.close()
+
+
 def run_scheduler():
     print("PlayBall 스케줄러 시작!")
     try:
@@ -3459,6 +3479,9 @@ def run_scheduler():
 
     # 매시간: 좀비 크롬 정리
     schedule.every(1).hours.do(kill_zombie_chrome)
+
+    # 매일 UTC 18:00 (KST 03:00): 죽은 refresh_token 전역 정리 (bloat 방지)
+    schedule.every().day.at("18:00").do(_purge_dead_refresh_tokens)
 
     # 매시간: 팀 뉴스 크롤링
     schedule.every(1).hours.do(_crawl_news_hourly)
