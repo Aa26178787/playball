@@ -310,7 +310,8 @@ def get_me(current_user: dict = Depends(get_current_user)):
                us.notify_streak, us.notify_rank_change,
                us.notify_roster, us.notify_comment,
                us.notify_pennant_race,
-               us.notify_fav_hr, us.notify_walkoff, us.notify_starter_ko
+               us.notify_fav_hr, us.notify_walkoff, us.notify_starter_ko,
+               us.app_mode
         FROM users u
         LEFT JOIN user_settings us ON u.id = us.user_id
         WHERE u.id = %s
@@ -330,6 +331,7 @@ def get_me(current_user: dict = Depends(get_current_user)):
         "created_at":     str(row[4]),
         "phone_number":   row[9],
         "phone_verified": row[10] or False,
+        "app_mode":       row[19],  # 온보딩 모드 (pro|casual|None) — 서버 영속, storage 지워져도 유지
         "settings": {
             "notify_game_start":   row[5],
             "notify_score_change": row[6],

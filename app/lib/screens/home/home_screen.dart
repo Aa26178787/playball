@@ -555,6 +555,23 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   /// 캐주얼 = compact 카드 + 알림 마이팀만 / 프로 = 풀카드 + 전체 알림(기본값)
   Future<void> _maybeShowModePicker() async {
     if (await LocalCache.hasFlag('app_mode_chosen')) return;
+    // 서버 영속 체크 — 로그인 유저가 이미 모드를 골랐으면(서버 app_mode) 픽커 스킵.
+    // 웹 localStorage/사파리 ITP로 로컬 flag가 증발해도 재로그인 시 재노출 방지 (06-14)
+    if (_authProvider?.isLoggedIn == true) {
+      try {
+        final me = await ApiService.getMe();
+        final serverMode = me['app_mode'] as String?;
+        if (serverMode == 'pro' || serverMode == 'casual') {
+          await LocalCache.setFlag('app_mode_chosen');
+          await LocalCache.set('app_mode', serverMode);
+          if (serverMode == 'casual') {
+            await LocalCache.setFlag('compact_mode');
+            if (mounted) setState(() => _compactMode = true);
+          }
+          return;
+        }
+      } catch (e) { debugPrint('home modePicker server: $e'); }
+    }
     await LocalCache.setFlag('app_mode_chosen');
     if (!mounted) return;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -579,6 +596,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     );
     if (mode == null) return;
     await LocalCache.set('app_mode', mode);
+    // 서버 영속 저장 (로그인 유저) — 기기 storage 지워져도 재노출 방지
+    if (_authProvider?.isLoggedIn == true) {
+      try { await ApiService.setAppMode(mode); } catch (e) { debugPrint('home setAppMode: $e'); }
+    }
     if (mode == 'casual') {
       await LocalCache.setFlag('compact_mode');
       if (mounted) setState(() => _compactMode = true);

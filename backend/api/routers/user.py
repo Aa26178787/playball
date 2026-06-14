@@ -391,6 +391,28 @@ def update_settings(body: NotificationSettings, current_user: dict = Depends(get
     return {"message": "알림 설정 변경 완료"}
 
 
+@router.post("/app-mode")
+def set_app_mode(body: dict, current_user: dict = Depends(get_current_user)):
+    """온보딩 모드 저장 (pro|casual) — 서버 영속. 기기 localStorage(웹) 지워져도
+    재로그인 시 /auth/me의 app_mode로 픽커 재노출 방지 (06-14)."""
+    mode = (body or {}).get("mode")
+    if mode not in ("pro", "casual"):
+        raise HTTPException(status_code=400, detail="mode는 pro 또는 casual")
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE user_settings SET app_mode = %s, updated_at = NOW() WHERE user_id = %s",
+            (mode, current_user["user_id"]))
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+    return {"app_mode": mode}
+
+
 # ===== FCM 푸시 토큰 =====
 
 @router.post("/push-token")

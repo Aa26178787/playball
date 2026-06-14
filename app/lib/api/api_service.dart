@@ -355,6 +355,13 @@ class ApiService {
     return res.data;
   }
 
+  /// 온보딩 모드 서버 영속 (pro|casual) — 기기 storage 지워져도 재노출 방지
+  static Future<void> setAppMode(String mode) async {
+    final headers = await authHeaders();
+    await _dio.post('/user/app-mode',
+        data: {'mode': mode}, options: Options(headers: headers));
+  }
+
   static Future<Map<String, dynamic>> updateNickname(String nickname) async {
     final headers = await authHeaders();
     final res = await _dio.put('/user/nickname',
