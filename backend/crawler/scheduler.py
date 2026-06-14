@@ -1132,22 +1132,84 @@ def _send_game_summary(game_id: int):
                 save_pitcher = pname
 
         winner_side = 'home' if home_score > away_score else 'away'
+        # 오늘의 MVP — WPA(plate_appearances, 홈기준 0~100) 우선, 없으면 rbis 휴리스틱.
+        # 승팀이 home이면 '말' 타석 그대로, away면 '초' 타석에 부호 반전 = 원정 +WPA.
+        wpa_half = '말' if winner_side == 'home' else '초'
+        mvp_player_id = mvp_name = None
+        mvp_hits = mvp_hr = mvp_rbi = 0
+
+        def _batter_stat(name_filter, order_by, params):
+            cur.execute(f"""
+                SELECT gb.player_id, p.name, COALESCE(gb.hits,0),
+                       COALESCE(gb.home_runs,0), COALESCE(gb.rbis,0)
+                FROM game_batters gb JOIN players p ON p.id = gb.player_id
+                WHERE gb.game_id = %s AND gb.team_side = %s {name_filter}
+                {order_by} LIMIT 1
+            """, params)
+            return cur.fetchone()
+
         cur.execute("""
-            SELECT p.name, COALESCE(gb.hits,0), COALESCE(gb.home_runs,0), COALESCE(gb.rbis,0)
-            FROM game_batters gb
-            JOIN players p ON p.id = gb.player_id
-            WHERE gb.game_id = %s AND gb.team_side = %s
-              AND (gb.rbis > 0 OR gb.home_runs > 0)
-            ORDER BY gb.rbis DESC, gb.home_runs DESC, gb.hits DESC
+            SELECT pa.batter_name,
+                   SUM(CASE WHEN pa.inning_half = '말'
+                            THEN pa.win_rate_after - pa.win_rate_before
+                            ELSE -(pa.win_rate_after - pa.win_rate_before) END) AS wpa
+            FROM plate_appearances pa
+            WHERE pa.game_id = %s AND pa.inning_half = %s
+              AND pa.win_rate_before IS NOT NULL AND pa.win_rate_after IS NOT NULL
+            GROUP BY pa.batter_name
+            ORDER BY wpa DESC
             LIMIT 1
-        """, (game_id, winner_side))
-        mvp_row = cur.fetchone()
+        """, (game_id, wpa_half))
+        wpa_row = cur.fetchone()
+        if wpa_row and wpa_row[1] is not None and wpa_row[1] > 0:
+            mr = _batter_stat("AND p.name = %s", "", (game_id, winner_side, wpa_row[0]))
+            if mr:
+                mvp_player_id, mvp_name, mvp_hits, mvp_hr, mvp_rbi = mr
+        if not mvp_name:  # 폴백: rbis/hr 휴리스틱
+            mr = _batter_stat("AND (gb.rbis > 0 OR gb.home_runs > 0)",
+                              "ORDER BY gb.rbis DESC, gb.home_runs DESC, gb.hits DESC",
+                              (game_id, winner_side))
+            if mr:
+                mvp_player_id, mvp_name, mvp_hits, mvp_hr, mvp_rbi = mr
+
+        # 끝내기/연장 플래그 (game_event_stream)
+        cur.execute("""
+            SELECT type FROM game_event_stream
+            WHERE game_id = %s AND type IN ('walkoff', 'extra_innings')
+        """, (game_id,))
+        event_flags = {r[0] for r in cur.fetchall()}
         cur.close()
     except Exception as e:
         print(f"[FCM] 경기요약 쿼리 오류: {e}")
         return
     finally:
         conn.close()
+
+    # AI 한줄평 생성 (템플릿) + game_reviews 저장
+    from api.narrative import game_review, mvp_line
+    mvp_l = mvp_line({'hits': mvp_hits, 'home_runs': mvp_hr, 'rbis': mvp_rbi}) if mvp_name else ''
+    review = game_review({
+        'home_team': home_team, 'away_team': away_team,
+        'home_score': home_score, 'away_score': away_score,
+        'win_pitcher': win_pitcher, 'save_pitcher': save_pitcher,
+        'mvp_name': mvp_name or '', 'mvp_line': mvp_l,
+        'walkoff': 'walkoff' in event_flags,
+        'extra_innings': 'extra_innings' in event_flags,
+    })
+    try:
+        c2 = get_connection()
+        if c2:
+            cur2 = c2.cursor()
+            cur2.execute("""
+                INSERT INTO game_reviews (game_id, review_text, mvp_player_id, mvp_name, mvp_line)
+                VALUES (%s,%s,%s,%s,%s)
+                ON CONFLICT (game_id) DO UPDATE SET
+                  review_text=EXCLUDED.review_text, mvp_player_id=EXCLUDED.mvp_player_id,
+                  mvp_name=EXCLUDED.mvp_name, mvp_line=EXCLUDED.mvp_line, created_at=now()
+            """, (game_id, review, mvp_player_id, mvp_name, mvp_l))
+            c2.commit(); cur2.close(); c2.close()
+    except Exception as e:
+        print(f"[narrative] game_reviews 저장 오류 game={game_id}: {e}")
 
     try:
         from api.fcm_service import notify_game_summary
@@ -1157,10 +1219,9 @@ def _send_game_summary(game_id: int):
             win_pitcher=win_pitcher, win_ip=win_ip, win_er=win_er,
             loss_pitcher=loss_pitcher,
             hold_pitcher=hold_pitcher, save_pitcher=save_pitcher,
-            mvp_name=mvp_row[0] if mvp_row else '',
-            mvp_hits=mvp_row[1] if mvp_row else 0,
-            mvp_hr=mvp_row[2] if mvp_row else 0,
-            mvp_rbi=mvp_row[3] if mvp_row else 0,
+            mvp_name=mvp_name or '', mvp_hits=mvp_hits or 0,
+            mvp_hr=mvp_hr or 0, mvp_rbi=mvp_rbi or 0,
+            review_text=review,
         )
     except Exception as e:
         print(f"[FCM] 경기요약 알림 오류: {e}")

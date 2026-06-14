@@ -567,8 +567,10 @@ def notify_game_summary(game_id: int, home_team: str, away_team: str,
                         loss_pitcher: str = '',
                         hold_pitcher: str = '', save_pitcher: str = '',
                         mvp_name: str = '', mvp_hits: int = 0,
-                        mvp_hr: int = 0, mvp_rbi: int = 0):
-    """경기 종료 30분 후 결과 요약 — notify_game_end ON 유저에게"""
+                        mvp_hr: int = 0, mvp_rbi: int = 0,
+                        review_text: str = ''):
+    """경기 종료 30분 후 결과 요약 — notify_game_end ON 유저에게.
+    review_text(AI 한줄평) 있으면 본문으로 사용, 없으면 기존 라인 조립(하위호환)."""
     targets = _get_targets('notify_game_end', [home_team_id, away_team_id])
     if home_score > away_score:
         winner, loser, ws, ls = home_team, away_team, home_score, away_score
@@ -599,7 +601,8 @@ def notify_game_summary(game_id: int, home_team: str, away_team: str,
         if mvp_rbi:
             mvp_stats.append(f"{mvp_rbi}타점")
         lines.append(f"⭐ {mvp_name} {' '.join(mvp_stats)}")
-    _send(targets, title, "\n".join(lines),
+    body = review_text if review_text else "\n".join(lines)
+    _send(targets, title, body,
           {"game_id": str(game_id), "type": "game_summary"}, "game_end", game_id)
 
 
