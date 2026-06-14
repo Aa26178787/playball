@@ -73,6 +73,13 @@ def _find_player_id(name: str, team_id: int | None) -> int | None:
     return row[0] if row else None
 
 
+# 자동 비활성/재활성 대상 (A — 미계약 외인 등 이탈 선수 정리).
+# 방출/웨이버/임의탈퇴 = 팀 이탈 → is_active off. 1군등록/복귀 = 재합류 → 재활성(self-heal).
+# 등록말소(1군 강등·잔류)·트레이드(타팀 active)·자유계약(도메 FA 잔류)·군입대는 제외.
+_DEACTIVATE_TYPES = {'방출', '웨이버', '임의탈퇴'}
+_REACTIVATE_TYPES = {'1군등록', '복귀'}
+
+
 def _save_changes(records: list[dict], team_id_map: dict) -> int:
     if not records:
         return 0
@@ -99,6 +106,11 @@ def _save_changes(records: list[dict], team_id_map: dict) -> int:
             ))
             if cur.rowcount > 0:
                 saved += 1
+            # 이탈/재합류 시 활성 플래그 동기화 (idempotent — 매 크롤 적용 안전)
+            if player_id and r['change_type'] in _DEACTIVATE_TYPES:
+                cur.execute("UPDATE players SET is_active = FALSE WHERE id = %s", (player_id,))
+            elif player_id and r['change_type'] in _REACTIVATE_TYPES:
+                cur.execute("UPDATE players SET is_active = TRUE WHERE id = %s", (player_id,))
         except Exception as e:
             print(f"[RosterCrawl] 저장 실패 {player_clean}: {e}")
     conn.commit()
