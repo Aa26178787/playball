@@ -948,6 +948,11 @@ def get_game_detail(game_id: int):
     home_recent_5 = recent5_map.get(home_team_id, [])
     away_recent_5 = recent5_map.get(away_team_id, [])
 
+    # AI 한줄평 + 오늘의 MVP (메가E — game_reviews)
+    cur.execute("SELECT review_text, mvp_name, mvp_line FROM game_reviews WHERE game_id = %s", (game_id,))
+    _rv = cur.fetchone()
+    review = {"text": _rv[0], "mvp_name": _rv[1], "mvp_line": _rv[2]} if _rv else None
+
     cur.close()
     conn.close()
 
@@ -1000,6 +1005,7 @@ def get_game_detail(game_id: int):
             "win_pitcher_image":  win_p["profile_image"] if win_p else None,
             "lose_pitcher_image": lose_p["profile_image"] if lose_p else None,
         },
+        "review": review,
         "innings": [
             {"inning": r[0], "home_runs": r[1], "away_runs": r[2]}
             for r in innings
@@ -1462,6 +1468,22 @@ def get_game_relay(game_id: int):
         except Exception:
             _hwp = None
 
+        # 라이브 상황 캡션 ("지금 무슨 상황?" — 메가E 내러티브 엔진)
+        try:
+            from api.narrative import live_caption
+            _situation_caption = live_caption({
+                "inning": relay.get("inn") or inning,
+                "half": '말' if batting_side == 'home' else '초',
+                "out": int(game_state.get("out", 0) or 0),
+                "base1": game_state.get("base1") not in [None, "0", 0],
+                "base2": game_state.get("base2") not in [None, "0", 0],
+                "base3": game_state.get("base3") not in [None, "0", 0],
+                "home_score": int(game_state.get("homeScore", 0) or 0),
+                "away_score": int(game_state.get("awayScore", 0) or 0),
+            })
+        except Exception:
+            _situation_caption = ""
+
         return {
             "game_id":      game_id,
             "inning":       relay.get("inn"),
@@ -1474,6 +1496,7 @@ def get_game_relay(game_id: int):
                 "base2":      game_state.get("base2") not in [None, "0", 0],
                 "base3":      game_state.get("base3") not in [None, "0", 0],
                 "home_win_prob": _hwp,
+                "situation_caption": _situation_caption,
                 "home_score": game_state.get("homeScore"),
                 "away_score": game_state.get("awayScore"),
                 "home_hit":   game_state.get("homeHit"),
