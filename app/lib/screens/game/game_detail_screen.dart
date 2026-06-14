@@ -1908,6 +1908,75 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     );
   }
 
+  // 메가E 내러티브 배너 — 종료=AI 한줄평+오늘의 MVP칩 / 진행=라이브 상황 캡션.
+  // narrative 킬스위치 OFF or 내용 없으면 빈 위젯.
+  Widget _buildNarrativeBanner() {
+    if (!AppConfig.enabled('narrative')) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
+    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    const amber = Color(0xFFFFA000);
+
+    final cap = (_relayData?['current_state']?['situation_caption'] as String?) ?? '';
+    final review = _gameData?['review'] as Map<String, dynamic>?;
+    final reviewText = (review?['text'] as String?) ?? '';
+    final mvpName = (review?['mvp_name'] as String?) ?? '';
+    final mvpLine = (review?['mvp_line'] as String?) ?? '';
+
+    String text;
+    bool live = false;
+    if (reviewText.isNotEmpty) {
+      text = reviewText;
+    } else if (cap.isNotEmpty) {
+      text = cap;
+      live = true;
+    } else {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: paper,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: line, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(live ? Icons.bolt : Icons.auto_awesome, size: 14, color: amber),
+            const SizedBox(width: 6),
+            Expanded(child: Text(text,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ink, height: 1.35))),
+          ]),
+          if (mvpName.isNotEmpty && !live) ...[
+            const SizedBox(height: 6),
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: amber.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text('오늘의 MVP',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: amber)),
+              ),
+              const SizedBox(width: 6),
+              Flexible(child: Text(mvpLine.isNotEmpty ? '$mvpName  $mvpLine' : mvpName,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: sub))),
+            ]),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildInningsTab(List innings) {
     final awayTeam = _gameData!['game']['away_team'] as String;
     final homeTeam = _gameData!['game']['home_team'] as String;
@@ -1995,6 +2064,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 메가E 내러티브 배너 (종료=한줄평+MVP / 진행=라이브 캡션)
+          _buildNarrativeBanner(),
           // mockup divider (헤더와 ScoringSummary 사이)
           Container(height: 1, color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0)),
           const SizedBox(height: 16),
