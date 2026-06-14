@@ -379,11 +379,6 @@ class _TeamScreenState extends State<TeamScreen>
     );
   }
 
-  TextStyle get _hdrStyle => TextStyle(
-        fontSize: 11, fontWeight: FontWeight.w700,
-        color: Colors.grey[500], letterSpacing: 0.6,
-      );
-
   // 포스트시즌 단계 색상
   static const Color _cKs = Color(0xFFFFB300);
   static const Color _cPo = Color(0xFF1565C0);
@@ -738,6 +733,7 @@ class _TeamScreenState extends State<TeamScreen>
       child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: fg)),
     );
   }
+  // ignore: unused_element
   Widget _buildHeroCardLegacy(Map team, Map? odds) {
     final rank = team['rank'] as int? ?? 0;
     final code = team['short_name'] as String? ?? '';
@@ -1309,14 +1305,6 @@ class _TeamScreenState extends State<TeamScreen>
     return Colors.grey;
   }
 
-  Color _seriesLabelColor(String label) {
-    if (label.contains('스윕 승')) return const Color(0xFF1565C0);
-    if (label.contains('위닝')) return const Color(0xFF1976D2);
-    if (label.contains('스플릿')) return Colors.grey;
-    if (label.contains('루징')) return const Color(0xFFE53935);
-    if (label.contains('스윕 패')) return const Color(0xFFC62828);
-    return Colors.grey;
-  }
 
   // ignore: unused_element
   Widget _buildTeamRowLegacy(Map<String, dynamic> team, {bool isTied = false}) {
@@ -2047,26 +2035,6 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
         if (allEmpty) _error = true;
       });
       }
-    }
-  }
-
-  Future<List> _fetchHitter(String sort) async {
-    final qualified = sort == 'avg' || sort == 'ops';
-    try {
-      final data = await ApiService.getHitters(sortBy: sort, limit: 10, qualified: qualified);
-      return data['hitters'] ?? [];
-    } catch (_) {
-      return [];
-    }
-  }
-
-  Future<List> _fetchPitcher(String sort) async {
-    final qualified = sort == 'era' || sort == 'whip';
-    try {
-      final data = await ApiService.getPitchers(sortBy: sort, limit: 10, qualified: qualified);
-      return data['pitchers'] ?? [];
-    } catch (_) {
-      return [];
     }
   }
 

@@ -137,7 +137,7 @@ Widget netImage(
       height: height,
       fit: fit,
       filterQuality: filterQuality,
-      errorBuilder: (_, err, __) => error?.call() ?? const SizedBox.shrink(),
+      errorBuilder: (_, err, _) => error?.call() ?? const SizedBox.shrink(),
     );
   }
   return CachedNetworkImage(
@@ -150,7 +150,7 @@ Widget netImage(
     memCacheHeight: memCacheHeight,
     fadeInDuration: Duration.zero,
     fadeOutDuration: Duration.zero,
-    errorWidget: (_, __, ___) => error?.call() ?? const SizedBox.shrink(),
-    placeholder: placeholder != null ? (_, __) => placeholder() : null,
+    errorWidget: (_, _, _) => error?.call() ?? const SizedBox.shrink(),
+    placeholder: placeholder != null ? (_, _) => placeholder() : null,
   );
 }

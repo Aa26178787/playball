@@ -15,7 +15,6 @@ import '../../utils/design_tokens.dart';
 import '../../utils/web_safe_area.dart';
 import 'pitch_location_chart.dart';
 import '../player/player_detail_screen.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/web_image.dart';
 import '../../widgets/common_widgets.dart';
 import 'package:shimmer/shimmer.dart';
@@ -1034,24 +1033,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final line2  = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
     const live   = Color(0xFFE53935);
 
-    // BSO dot
-    Widget bsoDot(bool on, Color c) => Container(
-      width: 8, height: 8,
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: on ? c : line2,
-      ),
-    );
-    Widget bsoGroup(String lbl, int count, int max, Color c) => Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(lbl, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: ink3)),
-        const SizedBox(width: 3),
-        ...List.generate(max, (i) => bsoDot(i < count, c)),
-      ],
-    );
-
     String shortName(String n) => n.length > 3 ? n.substring(0, 3) : n;
 
     return ClipRRect(
@@ -1850,6 +1831,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     );
   }
 
+  // ignore: unused_element
   Widget _buildLiveStatus() {
     final state = _relayData!['current_state'];
     if (state == null) return const SizedBox.shrink();
@@ -2004,8 +1986,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       return result;
     }
 
-    // navBottom: 핀/탭 sub-label 모드에서 floating nav 가림 방지 (sub bar 시 더 큼)
-    final hasSubBar = _tabController.index == 1 || _tabController.index == 2;
+    // navBottom: 핀/탭 sub-label 모드에서 floating nav 가림 방지
     final navBottom = _navClearance;
     return SingleChildScrollView(
       controller: _inningScrollController,
@@ -4917,7 +4898,7 @@ class _MarqueeTextState extends State<_MarqueeText>
           height: painter.height,
           child: AnimatedBuilder(
             animation: _ctrl!,
-            builder: (_, __) => Transform.translate(
+            builder: (_, _) => Transform.translate(
               offset: Offset(-span * _ctrl!.value, 0),
               child: OverflowBox(
                 alignment: Alignment.centerLeft,

@@ -1,7 +1,6 @@
 // share_card.dart — 위젯 → 이미지 캡처 공유 (메가C 성장 루프)
 // 사용: showShareCardDialog(context, card: 위젯, filename: 'playball_visit')
 // 웹: 파일 공유 미지원 영역 → 공유 버튼 대신 안내 (CLAUDE.md 웹 동반 원칙 고지 케이스)
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -36,8 +35,9 @@ Future<void> showShareCardDialog(BuildContext context,
             final file = File(
                 '${dir.path}/${filename}_${DateTime.now().millisecondsSinceEpoch}.png');
             await file.writeAsBytes(bytes);
-            await Share.shareXFiles([XFile(file.path, mimeType: 'image/png')],
-                text: shareText ?? 'PlayBall — KBO 라이브 야구');
+            await SharePlus.instance.share(ShareParams(
+                files: [XFile(file.path, mimeType: 'image/png')],
+                text: shareText ?? 'PlayBall — KBO 라이브 야구'));
           } catch (e) {
             debugPrint('share_card: $e');
             if (ctx.mounted) {
