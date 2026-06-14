@@ -2696,6 +2696,9 @@ class GameCard extends StatelessWidget {
                           awayTeamId: game.awayTeamId!,
                           homeCode: game.homeTeamCode,
                           awayCode: game.awayTeamCode,
+                          deadline: (game.startTime != null && game.startTime!.isNotEmpty && game.gameDate.isNotEmpty)
+                              ? DateTime.tryParse('${game.gameDate} ${game.startTime!.length == 5 ? '${game.startTime}:00' : game.startTime}')
+                              : null,
                         ),
                       ],
                     ),
@@ -2724,6 +2727,7 @@ class _PredictionBar extends StatefulWidget {
   final int awayTeamId;
   final String homeCode;
   final String awayCode;
+  final DateTime? deadline; // 예측 마감 = 경기 시작 시각 (null=시간 미정)
 
   const _PredictionBar({
     super.key,
@@ -2732,6 +2736,7 @@ class _PredictionBar extends StatefulWidget {
     required this.awayTeamId,
     required this.homeCode,
     required this.awayCode,
+    this.deadline,
   });
 
   @override
@@ -2753,6 +2758,7 @@ class _PredictionBarState extends State<_PredictionBar> {
   String? _myPick;
   bool _fanLoaded = false;
   bool _voting = false;
+  Timer? _tick; // 마감 카운트다운 1분 갱신
 
   @override
   void initState() {
@@ -2760,6 +2766,35 @@ class _PredictionBarState extends State<_PredictionBar> {
     _applyCache();
     if (_loading) _load();
     _loadFan();
+    _maybeStartTick();
+  }
+
+  void _maybeStartTick() {
+    final dl = widget.deadline;
+    if (dl == null || !DateTime.now().isBefore(dl)) return;
+    _tick = Timer.periodic(const Duration(seconds: 60), (_) {
+      if (!mounted) return;
+      setState(() {});
+      final d = widget.deadline;
+      if (d == null || !DateTime.now().isBefore(d)) _tick?.cancel();
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  // 마감 상태 — (locked, label). label 비어있으면 표시 안 함.
+  ({bool locked, String label}) _deadlineState() {
+    final dl = widget.deadline;
+    if (dl == null) return (locked: false, label: '');
+    final diff = dl.difference(DateTime.now());
+    if (diff.isNegative) return (locked: true, label: '투표 마감');
+    final m = diff.inMinutes;
+    if (m < 60) return (locked: false, label: '마감 ${m + 1}분 전');
+    return (locked: false, label: '마감 ${diff.inHours}시간 전');
   }
 
   @override
@@ -2934,6 +2969,7 @@ class _PredictionBarState extends State<_PredictionBar> {
     if (!AppConfig.enabled('points')) return const SizedBox.shrink();
     if (!_fanLoaded) return const SizedBox(height: 24);
     final total = _fanHome + _fanAway;
+    final ds = _deadlineState();
 
     Widget header = Padding(
       padding: const EdgeInsets.only(bottom: 7),
@@ -2942,14 +2978,27 @@ class _PredictionBarState extends State<_PredictionBar> {
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: t.ink3, letterSpacing: 0.2)),
         const Spacer(),
         Text(
-          total > 0 ? '$total명 참여 · 적중 +50P' : '적중 +50P',
-          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: t.sub),
+          ds.label.isNotEmpty ? ds.label : (total > 0 ? '$total명 참여 · 적중 +50P' : '적중 +50P'),
+          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600,
+              color: (ds.label.isNotEmpty && !ds.locked) ? const Color(0xFFFFA000) : t.sub),
         ),
       ]),
     );
 
     // 미투표: 고스트 버튼 2개 (paper2 배경, 보더리스 — 탭 시 팀컬러 픽)
     if (_myPick == null) {
+      if (ds.locked) {
+        return Column(mainAxisSize: MainAxisSize.min, children: [
+          header,
+          Container(
+            height: 34,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: t.track, borderRadius: BorderRadius.circular(10)),
+            child: Text('투표가 마감되었습니다',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.sub)),
+          ),
+        ]);
+      }
       Widget pickBtn(String code, Color c, String pick) => Expanded(
             child: GestureDetector(
               onTap: _voting ? null : () => _vote(pick),
