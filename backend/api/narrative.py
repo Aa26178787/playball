@@ -1,0 +1,94 @@
+"""내러티브 엔진 — 경기 데이터 → 한국어 문구 (템플릿 v1, DB 없음).
+
+generate 인터페이스를 추상화: 추후 LLM 백엔드는 game_review/live_caption을
+동일 시그니처로 교체하면 된다. 모든 함수는 입력 누락/빈값에 안전(예외 던지지 않음).
+"""
+
+
+def mvp_line(mvp: dict) -> str:
+    """타자 성적 → '1홈런 3안타 4타점' 류 한 줄. 빈 입력은 빈 문자열."""
+    parts = []
+    h = mvp.get("hits") or 0
+    hr = mvp.get("home_runs") or 0
+    rbi = mvp.get("rbis") or 0
+    if hr:
+        parts.append(f"{hr}홈런")
+    if h:
+        parts.append(f"{h}안타")
+    if rbi:
+        parts.append(f"{rbi}타점")
+    return " ".join(parts)
+
+
+def game_review(facts: dict) -> str:
+    """종료 한줄평. 분기 우선순위: 무승부 > 끝내기 > 연장 > 대승 > 접전 > 평이."""
+    h = facts.get("home_team", "")
+    a = facts.get("away_team", "")
+    hs = facts.get("home_score", 0) or 0
+    as_ = facts.get("away_score", 0) or 0
+
+    if hs == as_:
+        return f"{h} {hs}-{as_} {a}, 팽팽한 무승부"
+
+    winner = h if hs > as_ else a
+    loser = a if hs > as_ else h
+    wscore, lscore = max(hs, as_), min(hs, as_)
+    diff = wscore - lscore
+
+    if facts.get("walkoff"):
+        lead = f"{winner}, {wscore}-{lscore} 끝내기 승리"
+    elif facts.get("extra_innings"):
+        lead = f"{winner}, 연장 접전 끝 {wscore}-{lscore} 승"
+    elif diff >= 8:
+        lead = f"{winner}, {wscore}-{lscore} 대승"
+    elif diff <= 1:
+        lead = f"{winner}, {wscore}-{lscore} 진땀승"
+    else:
+        lead = f"{winner}, {wscore}-{lscore}로 {loser} 제압"
+
+    mvp_name = facts.get("mvp_name", "")
+    mvp_l = facts.get("mvp_line", "")
+    if mvp_name and mvp_l:
+        return f"{lead}. {mvp_name} {mvp_l}"
+    if facts.get("win_pitcher"):
+        return f"{lead}. 승리투수 {facts['win_pitcher']}"
+    return lead
+
+
+def _runners_phrase(b1: bool, b2: bool, b3: bool) -> str:
+    if b1 and b2 and b3:
+        return "만루"
+    n = int(b1) + int(b2) + int(b3)
+    if n == 0:
+        return "주자 없음"
+    if b2 or b3:
+        return "득점권 주자"
+    return "1루 주자"
+
+
+def live_caption(state: dict) -> str:
+    """relay current_state → 짧은 상황 한 줄. 경기 외/데이터 부족이면 빈 문자열."""
+    inning = state.get("inning") or state.get("current_inning") or 0
+    if not inning:
+        return ""
+    half = state.get("half") or state.get("inning_half") or ""
+    out = state.get("out", 0) or 0
+    b1 = bool(state.get("base1"))
+    b2 = bool(state.get("base2"))
+    b3 = bool(state.get("base3"))
+    hs = state.get("home_score", 0) or 0
+    as_ = state.get("away_score", 0) or 0
+    diff = abs(hs - as_)
+
+    runners = _runners_phrase(b1, b2, b3)
+    situation = f"{inning}회{half} {out}사 {runners}"
+
+    if diff == 0:
+        tone = "동점 승부"
+    elif diff <= 1:
+        tone = "1점차 접전"
+    elif diff <= 3:
+        tone = f"{diff}점차"
+    else:
+        tone = f"{diff}점차 리드"
+    return f"{situation}, {tone}"
