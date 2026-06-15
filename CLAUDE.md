@@ -413,10 +413,10 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - [x] 스파이크: KBO 1군기록(1982~) + 퓨처스(2010~) 구조 확인, statiz 불법 판정·드롭
 - [x] **스파이크2**: KBO detail 페이지 은퇴선수 bio ✅존재(양준혁 검증) — 트랙A 생존, #4 해소
 - [x] **스파이크3**: 수상(History/Etc·Player/Awards) + 드래프트(draft.koreabaseball.com) URL ✅확인 (구조 selenium서)
-- [~] **스파이크4**: Naver api `{season}` free-form·min-season 가드無 확인. **실측 깊이 cutoff = 이 환경서 미측정**(WebFetch가 api-gw UA/Referer 못 실음) → impl서 1줄 curl(`get_hitter_stats(2001/1990)`). 전략 결론: KBO=1982~ 깊은 tail 확정소스, Naver=최근 깔끔(JSON 1콜)서 우선, 하이브리드
+- [x] **스파이크4 (실측 종결 2026-06-15d)**: 서버 curl 실측 → naver stat api = **2007~만**(2006=count0, 2007부터 데이터). 역대 1982~2006은 naver 불가 → **KBO 단일 spine 확정**(id space 하나=kbo_player_id, 브릿지 불요). naver는 라이브/현역 파이프 전용 유지
 - [x] ⏸️ **설계 게이트** (2026-06-15 사용자 결정): **#1 스키마=별도 역대테이블**(`historical_players`+`historical_season_stats`, 현 players 무손상, 앱 active∪historical 병합조회) / **#2 동명이인키=`kbo_player_id` UNIQUE 정규키**(naver_player_id=라이브보조, 이름조인 전면폐기) / **#3=단계적 착수**(구단계보 1단계만 하고 재평가)
 - [x] 구단계보/팀역사 테이블 설계+시드 (2026-06-15): `team_franchises` 22행 시드, 프로덕션 적용·검증 완료
-- [ ] 트랙A코어 크롤러: 신상→통산스탯→수상→PS (KBO postback, recompute 연동) ← **다음 단계 (#3 재평가 지점 — GO 확인 후 착수)**
+- [~] 트랙A코어 크롤러 (2026-06-15 GO): **통산스탯 ✅** = `crawler/historical_crawler.py`(Basic1+Basic2, playerId 키, 이종테이블 방어) 빌드+검증(이병규2005·손민한2005·백인천1982·박철순1982 정합), **1982~2025 배치 실행중**(서버 nohup, `/tmp/hist_crawl.log`). 잔여: **신상(bio)**·**수상**·**PS**·franchise링크·세이버 recompute = 다음 sub-step
 - [ ] 트랙C1: 콜업/말소+2군스탯 크롤러 → roster_status 정밀화
 - [ ] 트랙B: 박스역대(~2015+)+스플릿 기본축 → 예측 피처 편입·재학습
 - [ ] 트랙A꼬리: 드래프트·(가능시)연봉
@@ -425,6 +425,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 
 ### 진행로그
 - 2026-06-15: 착수. 브레인스톰 완료(3트랙+C1/C2 분할). 스파이크1 완료 — statiz 서버렌더지만 **크롤 불법 판정→드롭**. KBO 1군 1982~2026·퓨처스 2010~2026 postback 확인. 트리거 프로토콜·이 섹션 신설. 다음=스파이크2(KBO bio).
+- 2026-06-15d: 트랙A코어 통산스탯 크롤러 완료(배치 진행중). **스파이크4 실측 종결**: naver stat api = **2007~만**(2006=0, 2007✅) → 역대는 KBO 단일 spine 확정. **스키마 적용**: historical_players+historical_season_stats 프로덕션 생성. **크롤러**: `historical_crawler.py` — KBO `{Hitter,Pitcher}Basic/Basic1·Basic2.aspx`(⚠️ `Basic.aspx`(no"1")는 에러페이지 — `Basic1`/`Basic2`가 실 리스트, repo kbo_daily_crawler 패턴), ddlSeason 1982~9999, 선수명 앵커 `/Record/Retire/...playerId=` 추출=kbo_player_id. ⚠️**서버 IP는 detail+list("Basic1")만 도달, Main/search/History/PlayerPrize 등 aggregation은 에러**(WebFetch도 동일 — JS세션 필요. 단 우리 용도엔 Basic1으로 충분). ⚠️KBO 리스트=**규정충족자만**(2005 타43/투15, 비규정은 미노출 — 완전성은 후속 과제). **버그수정**: 1페이지 시즌서 `//a[.="2"]` 스트레이 클릭→18열 이종테이블 로드→ON CONFLICT 정상행 덮어씀(손민한 W18→0) → headers 열수 가드+(선수,팀)dedup+새행0종료. 검증=이병규2005(.337/9HR/.843)·손민한2005(18W/168.1IP)·백인천1982(.412)·박철순1982(24W/1.84). 1982~2025 배치 nohup 실행중(PID 185718). 다음=bio/수상/PS enrichment.
 - 2026-06-15c: 구단계보 단계 완료. `team_franchises`(current_team_id NULL=단절, team_name/code/start_year/end_year/is_continuous/note, UNIQUE(team_name,start_year)) 마이그레이션+22행 시드 → 프로덕션 적용·검증(17 mapped/5 defunct). 개명·인수=현구단 연속, 현대(삼미→청보→태평양→현대)·쌍방울=KBO 관례대로 단절. 다음=트랙A코어 크롤러(#3 재평가 지점, GO 확인 후).
 - 2026-06-15b: 스파이크2/3/4 일괄. **스파이크2 ✅**: KBO `Record/Player/HitterDetail/Basic.aspx?playerId=` 은퇴선수(양준혁) detail에 bio 풀세트(생년월일/신장체중/투타/포지션/경력출신교) 렌더 확인 → 트랙A 콘텐츠 생존, #4 해소. **스파이크3 ✅**: 수상=`History/Etc/PlayerPrize·GoldenGlove.aspx`+`Player/Awards/*`, 드래프트=`draft.koreabaseball.com`(별 subdomain) URL 확인(WebFetch는 KBO list/history 에러라 구조 검증은 selenium impl서). **스파이크4 [~]**: naver api `{season}` free-form 확인하나 실측 깊이는 이 환경서 미측정(WebFetch api-gw 차단) → impl서 curl 1줄. 다음=⏸️ 설계 게이트(스키마#1·동명이인키#2·우선순위#3 사용자 결정).
 
