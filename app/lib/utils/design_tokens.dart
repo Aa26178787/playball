@@ -9,15 +9,21 @@ import 'package:flutter/material.dart';
 /// line2: 강조 외곽선 (2px) 또는 separator
 /// ink/ink2/ink3/sub: 텍스트 4단계 (진함 → 흐림)
 class Typo {
-  // size scale (px)
-  static const double micro   = 9;   // dot, badge mini
-  static const double caption = 11;  // chip, label
-  static const double body    = 13;  // 본문, 일반 정보
-  static const double subtitle= 14;  // 부제목
-  static const double title   = 16;  // 제목
-  static const double h2      = 20;  // 큰 제목
-  static const double h1      = 24;  // 스코어 등 강조
-  static const double display = 34;  // 스코어보드 메인
+  // ── size scale (px) — 데이터 밀집 UI 기준 단계. 인라인 fontSize 리터럴 대신 사용.
+  // 점진 마이그레이션: off-scale 리터럴 → 가장 가까운 토큰. **화면 단위로 육안검증과 함께** 전환.
+  //   off-scale 매핑:  8→micro(9) · 15→subtitle(14) · 17→title(16) · 19→lg(18) · 22→h2(20) · 26→h1(24)
+  //   실사용 빈도(2026-06): 11(176)·12(120)·13(112)·10(85)·14(54)·9(34)·16(31) = 소형 단계 다층(의도)
+  static const double micro    = 9;   // dot, mini badge
+  static const double mini     = 10;  // 타임스탬프·카운트 등 최소 메타
+  static const double caption  = 11;  // chip, label
+  static const double small    = 12;  // 보조 정보
+  static const double body     = 13;  // 본문, 일반 정보
+  static const double subtitle = 14;  // 부제 / 강조 정보
+  static const double title    = 16;  // 카드 제목
+  static const double lg       = 18;  // 큰 값 / 소제목
+  static const double h2       = 20;  // 섹션 제목
+  static const double h1       = 24;  // 강조 숫자 (스코어 등)
+  static const double display  = 34;  // 스코어보드 메인
 
   // weight tokens
   static const FontWeight regular = FontWeight.w400;
