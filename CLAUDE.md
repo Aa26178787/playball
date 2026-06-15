@@ -362,7 +362,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
   - **backend pytest 확장**: roster_diff·narrative·season·auth rotation·points·badges·pa = scratch DB(`playball_test`) 검증, CI backend-test(postgres) job
   - **refresh_tokens bloat**: revoked 토큰 영구누적(92% dead) → create 시 per-user 정리 + scheduler 일일 전역 purge
 
-## 역대 데이터 수집 프로젝트 (KBO 1982~) — 진행중 (2026-06-15 착수, 브레인스톰+스파이크 단계)
+## 역대 데이터 수집 프로젝트 (KBO 1982~) — ✅ 핵심 완료 (2026-06-15 착수 ~ 06-16 A/C1/B/꼬리/검증 완료, C2만 장기보류)
 
 ### ⚡ 트리거 (재개 프로토콜)
 - **트리거 문구**: 사용자가 **`역대수집 진행`** 입력 시 = 이 섹션 재개.
@@ -420,12 +420,13 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - [x] ~~트랙A코어 (구 상세)~~: **통산스탯 ✅**(`historical_crawler.py` Basic1+Basic2, **1982~2025 배치 실행중** nohup `/tmp/hist_crawl.log`) · **신상bio ✅**(`enrich_bio` detail div.player_info, 손민한 검증) · **franchise링크 ✅**(`link_franchises` 919/919, 백인천→LG) · **수상 ✅**(`enrich_awards` detail `Award.aspx` — ⚠️per-player Award는 서버 도달 OK(aggregation History만 차단), 손민한 2005 MVP+골글 검증). **⚠️배치 완료 후 runbook**: `python3 -m crawler.historical_crawler link` → `bio` → `awards`(전부 재실행안전). 잔여: **PS**(✅소스확정 = Basic1 `ddlSeries` 드롭다운 0정규/4와일드카드/3준PO/5PO/7한국시리즈 → **같은 크롤러+series param**, 스키마에 series_type 컬럼+UNIQUE 추가 필요, 배치후 빌드) · **세이버**(war=infeasible / fip=시즌집계로 계산가능, woba/wrc+=리그가중치 근사 필요 / babip·iso 등은 현 스키마에 컬럼 없음) · 비규정선수 완전성(KBO=규정자만, `ddlTeam` 팀필터가 우회 가능성). ※**trackB 스플릿 소스도 발견**: Basic1 `ddlSituation`(월별/구장별/홈방문/상대팀별/주야/전후반)
 - [x] 트랙C1 (2026-06-16): **2군(부상≠강등) 구분 완료·배포**. `crawl_active_futures`(futures/player/register.aspx, 1군과 동일구조 `_crawl_register_page` 공유, 255명/10팀) + `classify_roster_diff` futures_registered 인자(2군 등록=positive→'2군' 즉시판정, 어느군도 없음=등록말소 stale가드, 2군크롤실패=폴백) + sync 통합('2군 강등(자동)' reason). roster_diff 테스트 10종 PASS, sync 라이브 123건(KT 이채호 등 2군 정합), scheduler 배포+smoke ALL PASS. ⚠️새 change_type='2군'도 reason '(자동)'이라 news surface 제외·선수상세 배지만 노출(도배방지 정책 준수). 2군 시즌스탯(historical)은 C2.
 - [x] 트랙B (2026-06-16, 스플릿만): **박스역대→모델 = 저ROI 스킵**(야구 천장 .854/.52, CLAUDE.md 명시 — 9시즌 크롤 대비 AUC 거의 안 움직임). **스플릿 기본축 v1 완료**: `historical_splits`(타자 홈원정/상대팀/월별, ddlSituation+Detail 이중드롭 동적순회) — 2025 적재(2250행)+2023~2024 배치, slg=구성요소 계산(양의지 홈 .336/.512 검증). ⚠️v1 한계: 분할값당 ~80% 커버(KBO 분할뷰 표시필터/페이지 — 일부 스타 한 분할 누락), 투수/OPS·OBP(BB 미수집)·역대전체=후속(세밀축 장기). UI(선수상세 스플릿 테이블)=별도 기능작업.
-- [ ] 트랙A꼬리: 드래프트·(가능시)연봉
-- [ ] 검증: 스팟체크(김도영 HR 정합류)+pytest scratch DB
+- [x] 트랙A꼬리 (2026-06-16): **드래프트 ✅** = detail '지명순위'(예 손민한 '97 롯데 1차') → `draft_info` 컬럼, bio enrich 통합, 전체 재크롤중(`/tmp/hist_draft.log`, ~30min). **연봉 = 보류**(합법성 회색, 공시/언론뿐). draft.koreabaseball.com 별도크롤 불요(detail에 있음).
+- [x] 검증 (2026-06-16): 라이브 스팟체크(이승엽 467HR·MVP×44·선동열 FIP0.52·백인천.412·양의지/김도영 스플릿·손민한 draft) + pytest 15종(test_historical_parse 5: _parse_ip/_parse_bio/draft + test_roster_diff 10: C1 2군구분). 전부 PASS.
 - [ ] (장기 큐) 트랙C2 퓨처스 경기단위 / 스플릿 세밀축
 
 ### 진행로그
 - 2026-06-15: 착수. 브레인스톰 완료(3트랙+C1/C2 분할). 스파이크1 완료 — statiz 서버렌더지만 **크롤 불법 판정→드롭**. KBO 1군 1982~2026·퓨처스 2010~2026 postback 확인. 트리거 프로토콜·이 섹션 신설. 다음=스파이크2(KBO bio).
+- 2026-06-16g: **역대수집 핵심 완료**. 트랙A꼬리 드래프트(`draft_info`='지명순위', detail서 추출, 연봉=보류) + 검증(pytest 15 PASS: 파서+roster_diff, 라이브 스팟체크). 체크리스트 A/C1/B/꼬리/검증 전부 [x], 남은 건 C2(퓨처스 경기단위/스플릿 세밀축)=장기 큐 보류(설계대로). draft bio 재크롤 ~30min 완주중(`/tmp/hist_draft.log`). **데이터 깊이 적재 종료** — 다음 가치=UI 노출(앱/API, 별도 기능작업).
 - 2026-06-16f: **트랙B 스플릿 v1 완료**(모델=저ROI 스킵 결정). `historical_splits` 스키마+`crawl_splits_season`(ddlSituation 축 + ddlSituationDetail 값 동적순회, 타자 Basic1 코어). FK 위반(스플릿엔 비규정선수 등장)→INSERT전 `_upsert_player` 픽스. slg는 분할뷰에 TB컬럼 없어 구성요소(H+2B+2*3B+3*HR)/AB 계산+백필(4496행). 2025 검증(양의지 홈 .336/.512), 2023~2024 배치(PID 246262, `/tmp/hist_splits.log`). ⚠️분할값당 첫값 150/나머지 120 = ~80% 커버(KBO 표시필터 추정, 일부 누락) — v1 수용, 정밀화 후속. 2023~2025 배치 완료(6750행, ~235선수/시즌) + slg 백필 완료(~99.9% AB>0, 김도영2024 홈 .339/.591 검증). **역대수집 주요트랙(A/C1/B) 전부 일단락**. 남은=PS완성(low-pri)·세밀축/투수스플릿/트랙A꼬리draft(장기)·**UI노출(앱/API — 별도 기능작업)**.
 - 2026-06-16e: PS 배치 종료(부분) + trackB 스플릿 제약 발견. **PS**: 최적화본도 sleep-bound(~9s/page-sweep×8/season)라 glacial(kill 시 1984에 머묾) → kill. 현재 PS 적재=부분(한국시리즈 13시즌/PO 10/준PO 7, 주로 ~2005, 2006~ 결손). **low-priority라 부분 수용**, crawler 유휴 시 재개 가능(`ps 2006 2025`). **trackB 스플릿 제약**: ddlSituation은 situation1(축)+situation2(값) 이중드롭(홈/방문 등), split당 1크롤 → 전체 역대 스플릿(7축×값×44시즌×타투) = **비현실적(수일)**. 기본축=바운드 필수(현/최근시즌·홈원정/상대팀/월별). 좌우투 핸디드니스는 ddlSituation에 없음(별도). 스키마는 스코프 확정 후. 다음=스플릿 스코프 결정.
 - 2026-06-16d: **트랙C1 완료·배포** (부상≠2군 구분). 기존 roster_diff 한계(1군 부재=무조건 '등록말소'라 강등·부상 혼동) 해결 = 2군 등록현황(`futures/player/register.aspx`, 1군과 구조동일) 크롤해 positive 증거로 '2군' 판정. classify_roster_diff에 futures_registered(2군 등록=즉시 '2군', 부재+stale=등록말소, 크롤실패=종전폴백) — 테스트 10 PASS. sync_active_roster 통합('2군 강등(자동)'), 라이브 123건 동기화(KT 이채호/문상철 등 2군 정합), scheduler 배포+smoke ALL PASS. ⚠️'2군' change_type도 '(자동)'이라 news surface 제외, 선수상세 배지만. historical 2군 시즌스탯=C2(장기). 다음 트랙=B(모델) 미착수. PS 배치 계속.
