@@ -160,7 +160,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
       const SizedBox(width: 8),
-      Text(labels[s], style: TextStyle(fontSize: 11, color: colors[s], fontWeight: FontWeight.bold)),
+      Text(labels[s], style: TextStyle(fontSize: Typo.caption, color: colors[s], fontWeight: FontWeight.bold)),
     ]);
   }
 
@@ -170,7 +170,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final color = (msg != null || ok == false) ? Colors.red : Colors.green;
     return Padding(
       padding: const EdgeInsets.only(left: 4, top: 4, bottom: 4),
-      child: Text(text, style: TextStyle(fontSize: 12, color: color)),
+      child: Text(text, style: TextStyle(fontSize: Typo.small, color: color)),
     );
   }
 
@@ -299,7 +299,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const Expanded(
                   child: Text(
                     '서비스 이용약관 및 개인정보 처리방침에 동의합니다',
-                    style: TextStyle(fontSize: 13),
+                    style: TextStyle(fontSize: Typo.body),
                   ),
                 ),
               ]),
@@ -311,7 +311,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text(_error!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red, fontSize: 13)),
+                      style: const TextStyle(color: Colors.red, fontSize: Typo.body)),
                 ),
 
               // ── 가입 조건 안내 ──
@@ -327,7 +327,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ? '이용약관에 동의해주세요'
                                 : '',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.orange, fontSize: 12),
+                    style: const TextStyle(color: Colors.orange, fontSize: Typo.small),
                   ),
                 ),
 
@@ -342,7 +342,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: auth.isLoading
                       ? CircularProgressIndicator(
                           color: isDark ? SemColor.panelDark : Colors.white, strokeWidth: 2)
-                      : const Text('회원가입', style: TextStyle(fontSize: 16)),
+                      : const Text('회원가입', style: TextStyle(fontSize: Typo.title)),
                 ),
               ),
               const SizedBox(height: 16),
@@ -356,6 +356,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // bg/fg는 글로벌 elevatedButtonTheme(theme-aware) 상속 — 다크모드 윤곽소실 방지
   ButtonStyle _smallBtn() => ElevatedButton.styleFrom(
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
-    textStyle: const TextStyle(fontSize: 13),
+    textStyle: const TextStyle(fontSize: Typo.body),
   );
 }

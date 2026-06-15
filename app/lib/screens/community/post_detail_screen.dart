@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../widgets/common_widgets.dart';
+import '../../utils/design_tokens.dart';
 import 'package:provider/provider.dart';
 import '../../api/api_service.dart';
 import '../../providers/auth_provider.dart';
@@ -299,17 +300,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               children: [
                 Text(
                   _post!['title'] ?? '',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: Typo.h2, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   '${_post!['author'] ?? ''} | ${(_post!['created_at'] ?? '').toString().length >= 10 ? (_post!['created_at'] as String).substring(0, 10) : ''}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  style: TextStyle(color: Colors.grey[600], fontSize: Typo.small),
                 ),
                 const Divider(),
                 MentionText(
                   text: _post!['content'] ?? '',
-                  style: const TextStyle(fontSize: 15, height: 1.6),
+                  style: const TextStyle(fontSize: Typo.subtitle, height: 1.6),
                 ),
                 Builder(builder: (_) {
                   final imgs = (_post!['image_urls'] as List?)?.cast<String>()
@@ -361,10 +362,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     },
                     title: MentionText(
                       text: c['content'] ?? '',
-                      style: const TextStyle(fontSize: 14),
+                      style: const TextStyle(fontSize: Typo.subtitle),
                     ),
                     subtitle: Text('${c['author'] ?? ''}  ${(c['created_at'] ?? '').toString().length >= 10 ? (c['created_at'] as String).substring(0, 10) : ''}',
-                        style: const TextStyle(fontSize: 11)),
+                        style: const TextStyle(fontSize: Typo.caption)),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -382,7 +383,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                   size: 16, color: likedByMe ? Colors.red : Colors.grey),
                               if (likesCount > 0) ...[
                                 const SizedBox(width: 2),
-                                Text('$likesCount', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                Text('$likesCount', style: const TextStyle(fontSize: Typo.caption, color: Colors.grey)),
                               ],
                             ],
                           ),

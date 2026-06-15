@@ -91,7 +91,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       children: [
         const Icon(Icons.check_circle, color: Colors.green, size: 72),
         const SizedBox(height: 16),
-        const Text('비밀번호가 변경되었습니다', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text('비밀번호가 변경되었습니다', style: TextStyle(fontSize: Typo.lg, fontWeight: FontWeight.bold)),
         const SizedBox(height: 24),
         ElevatedButton(
           onPressed: () => Navigator.pop(context),
@@ -150,7 +150,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             keyboardType: TextInputType.number,
             maxLength: 6,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 22, letterSpacing: 8, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: Typo.h2, letterSpacing: 8, fontWeight: FontWeight.bold),
             decoration: const InputDecoration(
               labelText: '인증번호 6자리',
               border: OutlineInputBorder(),
@@ -218,10 +218,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           radius: 14,
           backgroundColor: active ? accent : Colors.grey[300],
           child: Text('${step + 1}',
-              style: TextStyle(color: active ? onAccent : Colors.grey, fontSize: 12)),
+              style: TextStyle(color: active ? onAccent : Colors.grey, fontSize: Typo.small)),
         ),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 11, color: active ? accent : Colors.grey)),
+        Text(label, style: TextStyle(fontSize: Typo.caption, color: active ? accent : Colors.grey)),
       ],
     );
   }
