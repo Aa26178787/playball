@@ -430,6 +430,8 @@ def crawl_splits_season(season, driver=None):
                         ab = _safe_int(cc('ab'))
                         tb = _safe_int(cc('tb'))
                         slg = round(tb / ab, 3) if ab and tb is not None and ab > 0 else None
+                        nm = cells[1] if len(cells) > 1 else None  # 선수명
+                        _upsert_player(cur, pid, nm, '타자')  # FK 보장 (스플릿엔 비규정 선수도 등장)
                         cur.execute("""
                             INSERT INTO historical_splits (
                                 kbo_player_id, season, player_type, split_axis, split_value,
