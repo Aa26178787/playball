@@ -23,7 +23,7 @@ class PlayerStatsSection extends StatelessWidget {
     try {
       if (statsList.isEmpty) {
         return const Padding(
-          padding: EdgeInsets.all(24),
+          padding: EdgeInsets.all(Space.xl),
           child: Text('아직 시즌 기록이 없습니다', style: TextStyle(color: Colors.grey)),
         );
       }
@@ -268,7 +268,7 @@ class PlayerStatsSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _sectionLabel(title),
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.sm),
               ...rows,
             ],
           ),

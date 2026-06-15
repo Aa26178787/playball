@@ -263,7 +263,7 @@ class _TeamScreenState extends State<TeamScreen>
           children: [
             // ── 필터 chip (stub: mv/전반기/최근10 백엔드 미지원) ──
             _buildFilterChips(isDark),
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.sm),
             if (_showPsView)
               // ── PS 확률 보기 (세부 카테고리) ──
               ..._psChildren(isDark)
@@ -287,7 +287,7 @@ class _TeamScreenState extends State<TeamScreen>
                 );
               }),
             ],
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.sm),
           ],
         ),
       ),
@@ -347,11 +347,11 @@ class _TeamScreenState extends State<TeamScreen>
       scrollDirection: Axis.horizontal,
       child: Row(children: [
         chip('${DateTime.now().year} 시즌', 'full'),
-        const SizedBox(width: 8),
+        const SizedBox(width: Space.sm),
         chip('전반기', 'first_half'),
-        const SizedBox(width: 8),
+        const SizedBox(width: Space.sm),
         chip('최근 10경기', 'last_10'),
-        const SizedBox(width: 8),
+        const SizedBox(width: Space.sm),
         psChip(),
       ]),
     ));
@@ -454,7 +454,7 @@ class _TeamScreenState extends State<TeamScreen>
                               fontSize: Typo.lg, fontWeight: Typo.extra, color: rankCol,
                               letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()],
                             )),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: Space.xs),
                         _buildMoveIndicator(team['rank_change'] as int?, ink2, sub, line2),
                       ]),
                     ),
@@ -529,7 +529,7 @@ class _TeamScreenState extends State<TeamScreen>
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: Space.sm),
                     // 우측: 게임차 + chevron 토글
                     SizedBox(
                       width: 40,
@@ -543,7 +543,7 @@ class _TeamScreenState extends State<TeamScreen>
                                 color: isLead ? ink : ink2, letterSpacing: 0,
                                 fontFeatures: const [FontFeature.tabularFigures()],
                               )),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: Space.xs),
                           Text('게임차', style: TextStyle(fontSize: 9.5, fontWeight: Typo.medium, color: sub)),
                           const SizedBox(height: 6),
                           InkWell(
@@ -677,7 +677,7 @@ class _TeamScreenState extends State<TeamScreen>
             Expanded(child: statCell('원정', away)),
             Expanded(child: statCell(oneRunLabel, oneRunStr)),
           ]),
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.md),
           Row(children: [
             Expanded(child: statCell('최근 시리즈', lastSeriesLabel)),
             Expanded(child: statCell('연속', streakStr)),
@@ -759,7 +759,7 @@ class _TeamScreenState extends State<TeamScreen>
           ),
         ),
         if (showPctLabel) ...[
-          const SizedBox(width: 8),
+          const SizedBox(width: Space.sm),
           SizedBox(
             width: 44,
             child: Text(
@@ -845,7 +845,7 @@ class _TeamScreenState extends State<TeamScreen>
                           style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra, color: tc)),
                     ),
                     TeamLogo(teamCode: code, size: 26, logoUrl: team['logo_url'] as String?),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: Space.sm),
                     Expanded(
                       child: Text(team['name'] as String? ?? '',
                           style: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra)),
@@ -879,7 +879,7 @@ class _TeamScreenState extends State<TeamScreen>
       Row(mainAxisSize: MainAxisSize.min, children: [
         Container(width: 7, height: 7,
             decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
-        const SizedBox(width: 4),
+        const SizedBox(width: Space.xs),
         Text('$label ${pct.toStringAsFixed(1)}%',
             style: TextStyle(
                 fontSize: 10.5,
@@ -1223,7 +1223,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: Space.md),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
@@ -1271,7 +1271,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
                   _battingSort,
                   (v) => setState(() => _battingSort = v),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: Space.xs),
                 Expanded(child: RefreshIndicator(
                   onRefresh: _load,
                   child: _buildTeamStatList(
@@ -1287,7 +1287,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
                   _pitchingSort,
                   (v) => setState(() => _pitchingSort = v),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: Space.xs),
                 Expanded(child: RefreshIndicator(
                   onRefresh: _load,
                   child: _buildTeamStatList(
@@ -1538,7 +1538,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.sm),
             Text(p['name'] ?? '',
                 style: TextStyle(fontSize: rank == 1 ? 13 : 11, fontWeight: Typo.bold, color: nameColor),
                 textAlign: TextAlign.center, overflow: TextOverflow.ellipsis),
@@ -1626,7 +1626,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
       children: [
         _buildCategoryChips(_hitterCategories, _hitterSort,
             (val) => setState(() => _hitterSort = val)),
-        const SizedBox(height: 4),
+        const SizedBox(height: Space.xs),
         Expanded(
           child: _loading
               ? _buildRankShimmer()
@@ -1647,7 +1647,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
       children: [
         _buildCategoryChips(_pitcherCategories, _pitcherSort,
             (val) => setState(() => _pitcherSort = val)),
-        const SizedBox(height: 4),
+        const SizedBox(height: Space.xs),
         Expanded(
           child: _loading
               ? _buildRankShimmer()
@@ -1681,7 +1681,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
           child: Row(
             children: [
               Container(width: 32, height: 15, color: Colors.white),
-              const SizedBox(width: 8),
+              const SizedBox(width: Space.sm),
               Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
               const SizedBox(width: 10),
               Expanded(child: Column(
@@ -1749,7 +1749,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                         letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()],
                       )),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: Space.md),
                 netCircleAvatar(
                   radius: 18,
                   backgroundColor: tc.withValues(alpha: isDark ? 0.35 : 0.18),
@@ -1758,7 +1758,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                           teamDisplayName(teamCode).length.clamp(0, 2)),
                       style: TextStyle(color: tc, fontSize: Typo.caption, fontWeight: Typo.extra)),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: Space.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

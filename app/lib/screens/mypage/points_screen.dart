@@ -86,18 +86,18 @@ class _PointsScreenState extends State<PointsScreen> {
                       if (_missions.isNotEmpty) ...[
                         const SizedBox(height: 20),
                         _buildSection('주간미션 (월요일 초기화)', sub),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: Space.sm),
                         ..._missions.map((m) => _missionTile(m as Map, cardColor, line, sub)),
                       ],
                       if (_badges.isNotEmpty) ...[
                         const SizedBox(height: 20),
                         _buildSection('뱃지', sub),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: Space.sm),
                         _badgeGrid(cardColor, line, sub),
                       ],
                       const SizedBox(height: 20),
                       _buildSection('포인트 랭킹 TOP 50', sub),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: Space.sm),
                       ...List.generate(_leaders.length,
                           (i) => _leaderRow(_leaders[i] as Map, cardColor, line, sub)),
                       if (_leaders.isEmpty)
@@ -109,9 +109,9 @@ class _PointsScreenState extends State<PointsScreen> {
                         ),
                       const SizedBox(height: 20),
                       _buildSection('최근 적립 내역', sub),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: Space.sm),
                       ..._historyTiles(cardColor, line, sub),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: Space.lg),
                       Text(
                         '적립: 승부예측 적중 +50 · 참여 +10 · 출석 +5 · 직관 기록 +20',
                         style: TextStyle(fontSize: Typo.caption, color: sub),
@@ -270,7 +270,7 @@ class _PointsScreenState extends State<PointsScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(m['name'] as String? ?? '',
                 style: const TextStyle(fontSize: Typo.body, fontWeight: Typo.bold)),
-            const SizedBox(height: 4),
+            const SizedBox(height: Space.xs),
             ClipRRect(
               borderRadius: BorderRadius.circular(Radii.pill),
               child: LinearProgressIndicator(
@@ -318,7 +318,7 @@ class _PointsScreenState extends State<PointsScreen> {
               child: Text(b['emoji'] as String? ?? '🏅',
                   style: const TextStyle(fontSize: Typo.h2)),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: Space.xs),
             Text(b['name'] as String? ?? '',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

@@ -189,17 +189,17 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             children: [
               Row(children: [
                 CircleAvatar(radius: 36, backgroundColor: Colors.white),
-                const SizedBox(width: 16),
+                const SizedBox(width: Space.lg),
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  box(120, 20), const SizedBox(height: 8), box(80, 14),
+                  box(120, 20), const SizedBox(height: Space.sm), box(80, 14),
                   const SizedBox(height: 6), box(100, 14),
                 ]),
               ]),
-              const SizedBox(height: 24),
+              const SizedBox(height: Space.xl),
               box(double.infinity, 100),
-              const SizedBox(height: 16),
+              const SizedBox(height: Space.lg),
               box(double.infinity, 180),
-              const SizedBox(height: 16),
+              const SizedBox(height: Space.lg),
               box(double.infinity, 120),
             ],
           ),
@@ -313,7 +313,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             : null,
         actions: [
           _favLoading
-              ? Padding(padding: const EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: SemColor.brand(context))))
+              ? Padding(padding: const EdgeInsets.all(Space.md), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: SemColor.brand(context))))
               : IconButton(
                   icon: Icon(_isFav ? Icons.star : Icons.star_border, color: Colors.amber),
                   tooltip: _isFav ? '즐겨찾기 해제' : '즐겨찾기 추가',
@@ -364,16 +364,16 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     return Shimmer.fromColors(
       baseColor: base, highlightColor: hi,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Space.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(_playerData!),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.md),
             box(double.infinity, 100),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.md),
             box(double.infinity, 180),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.md),
             box(double.infinity, 120),
           ],
         ),
@@ -436,7 +436,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 children: [
                   Text('상대전적 — ${player['name']} vs ${isBatter ? '투수' : '타자'}',
                       style: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.bold)),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: Space.md),
                   TextField(
                     controller: searchCtrl,
                     autofocus: true,
@@ -452,7 +452,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     ),
                     onSubmitted: doSearch,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: Space.sm),
                   if (searching)
                     Expanded(child: Center(child: CircularProgressIndicator(color: SemColor.brand(context), strokeWidth: 2.5)))
                   else if (matchupData != null)
@@ -505,11 +505,11 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           else
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(Space.lg),
                 child: Column(
                   children: [
                     Text('$games경기 · $pa타석 직접 맞대결', style: const TextStyle(fontSize: Typo.small, color: Colors.grey)),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: Space.md),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
@@ -519,7 +519,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                         _statBox('홈런', '$hr'),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: Space.md),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
@@ -569,7 +569,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final reason = status['reason'] as String? ?? '';
     return Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(icon, size: 12, color: color),
-      const SizedBox(width: 4),
+      const SizedBox(width: Space.xs),
       Flexible(
         child: Text(
           reason.isNotEmpty ? '$type · $reason' : type,
@@ -674,7 +674,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                         ),
                         // 등록말소/부상자명단 배지 — 백넘버 옆
                         if (player['roster_status'] != null) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: Space.sm),
                           Flexible(child: _buildRosterBadge(player['roster_status'])),
                         ],
                       ]),
@@ -695,7 +695,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                               style: TextStyle(fontSize: 10.5, color: Colors.white.withValues(alpha: 0.62))),
                         );
                       }),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: Space.sm),
                       Wrap(spacing: 7, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
                           // 인스타 버튼 (insta_handle 등록된 선수만)
                           if (player['insta_handle'] != null)
@@ -717,7 +717,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                                     ).createShader(b),
                                     child: const Icon(Icons.camera_alt_outlined, size: 12, color: Colors.white),
                                   ),
-                                  const SizedBox(width: 4),
+                                  const SizedBox(width: Space.xs),
                                   Text('@${player['insta_handle']}',
                                       style: TextStyle(fontSize: Typo.micro, fontWeight: Typo.bold,
                                           color: Colors.white.withValues(alpha: 0.92))),
@@ -1077,7 +1077,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
               const SizedBox(width: 7),
               Text(label, style: TextStyle(fontSize: Typo.title, fontWeight: Typo.extra, color: ink)),
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.md),
             Text(txt, style: TextStyle(fontSize: Typo.subtitle, height: 1.55, color: sub)),
           ]),
         );
@@ -1287,9 +1287,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           SizedBox(width: contentW, child: Text(avgT, style: avgStyle)),
         ],
         if (explain.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.sm),
           Container(height: 1, color: sub.withValues(alpha: 0.22)),
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.sm),
           SizedBox(width: contentW, child: Text(explainT, style: explainStyle)),
         ],
       ]),
@@ -1360,7 +1360,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(title, style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: sub, letterSpacing: 0.5)),
-        const SizedBox(height: 12),
+        const SizedBox(height: Space.md),
         GridView.count(
           crossAxisCount: 3, shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -1451,7 +1451,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           padding: EdgeInsets.fromLTRB(20, 18, 20, 20 + MediaQuery.of(ctx).viewPadding.bottom),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('핵심 스탯 4개 선택', style: TextStyle(fontSize: Typo.title, fontWeight: Typo.extra, color: ink)),
-            const SizedBox(height: 4),
+            const SizedBox(height: Space.xs),
             Text('${slots.where((e) => e != null).length}/4 · 순서대로 표시 (첫 항목 강조)', style: TextStyle(fontSize: Typo.small, color: sub)),
             const SizedBox(height: 14),
             Flexible(child: SingleChildScrollView(
@@ -1563,7 +1563,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             ),
           ]),
           if (c != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.sm),
             Row(children: [
               Text('리그 ${c['rank']}위',
                   style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: tc)),
@@ -1583,7 +1583,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             Text('리그 평균 ${_fmtStat(it.$3, (c['lg'] as num?) ?? 0)}',
                 style: TextStyle(fontSize: Typo.small, fontWeight: Typo.medium, color: sub)),
           ] else if (_rateStats.contains(it.$3) && !qualified) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.sm),
             Text(isPitcher ? '규정이닝 미달' : '규정타석 미달',
                 style: TextStyle(fontSize: Typo.small, fontWeight: Typo.medium, color: sub)),
           ],
@@ -1616,7 +1616,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           ]),
           const SizedBox(height: 6),
         ],
-        const SizedBox(height: 4),
+        const SizedBox(height: Space.xs),
         GridView.count(
           crossAxisCount: 2, shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -1704,7 +1704,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         children: [
           Text('피칭 디자인 — 구종별 로케이션',
               style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: sub, letterSpacing: 0.5)),
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.md),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
@@ -1733,7 +1733,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     _loadPitchDesign();
                   }),
                 ]),
-                const SizedBox(height: 4),
+                const SizedBox(height: Space.xs),
                 // 구종 칩 (구사율 %)
                 Wrap(children: [
                   for (final t in types)
@@ -1789,7 +1789,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     ]),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: Space.sm),
                 Text('$selType $selCount구 · 전체 $total구 · 셀 숫자 = 해당 구종 내 비율(%)',
                     style: TextStyle(fontSize: Typo.mini, color: sub)),
               ],
@@ -1880,7 +1880,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         children: [
           Text('존 히트맵',
               style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: sub, letterSpacing: 0.5)),
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.md),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
@@ -1960,7 +1960,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     ]),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: Space.sm),
                 Text('전체 $total구 · ${metricNote()}',
                     style: TextStyle(fontSize: Typo.mini, color: sub)),
               ],
@@ -2036,7 +2036,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         children: [
           Text('피칭 존 히트맵',
               style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: sub, letterSpacing: 0.5)),
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.md),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
@@ -2098,7 +2098,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     ]),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: Space.sm),
                 Text('전체 $total구 · $note', style: TextStyle(fontSize: Typo.mini, color: sub)),
               ],
             ),
@@ -2200,7 +2200,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _sectionLabel('시즌 트렌드'),
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.sm),
               // 스탯 선택 칩
               SizedBox(
                 height: 32,
@@ -2422,7 +2422,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         children: [
           Text('최근 5경기',
               style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: sub, letterSpacing: 0.5)),
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.md),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
@@ -2440,7 +2440,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [for (final s in summary) summaryCell(s.$1, s.$2, s.$3)],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: Space.md),
                 Container(height: 1, color: line),
                 const SizedBox(height: 6),
                 isHitter ? _buildHitterRows(recent) : _buildPitcherRows(recent),
@@ -2634,7 +2634,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                         ),
                       ]),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: Space.sm),
                     SizedBox(
                       width: 52,
                       child: Text('${pct.toStringAsFixed(1)}% ($cnt)',

@@ -181,7 +181,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Icon(Icons.notifications_none, size: 56, color: Colors.grey),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: Space.md),
                               Text('알림이 없습니다', style: TextStyle(color: Colors.grey[500])),
                             ],
                           ),
@@ -235,7 +235,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   child: Icon(icon, size: 19, color: color),
                                 );
                               }),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: Space.md),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,7 +270,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                       style: TextStyle(
                                           fontSize: Typo.body, color: Colors.grey[600]),
                                     ),
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: Space.xs),
                                     Text(
                                       _relativeTime(n['created_at'] as String),
                                       style: TextStyle(

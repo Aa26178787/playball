@@ -366,7 +366,7 @@ class _PostListTabState extends State<_PostListTab>
                             if (i == _posts.length) {
                               if (_loadingMore) {
                                 return const Padding(
-                                  padding: EdgeInsets.all(16),
+                                  padding: EdgeInsets.all(Space.lg),
                                   child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
                                 );
                               }
@@ -531,7 +531,7 @@ class _PostCard extends StatelessWidget {
                     style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink, height: 1.45),
                     maxLines: 2, overflow: TextOverflow.ellipsis),
                 if (!hasImage && content != null && content.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: Space.xs),
                   Text(content,
                       style: TextStyle(fontSize: Typo.small, color: cs.ink3),
                       maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -704,7 +704,7 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.restaurant_menu, size: 48, color: cs.line2),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: Space.md),
                       Text('아직 팬 추천 맛집이 없습니다\n첫 번째로 추천해보세요!',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: cs.sub, fontSize: Typo.body)),
@@ -771,7 +771,7 @@ class _FoodTile extends StatelessWidget {
               size: 17, color: approved ? SemColor.live : cs.sub,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: Space.md),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Flexible(child: Text(place['name'] as String? ?? '',

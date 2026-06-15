@@ -155,7 +155,7 @@ class _PhotoCropScreenState extends State<PhotoCropScreen> {
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           const Text('사진 접근 권한이 필요합니다',
               style: TextStyle(color: Colors.white70, fontSize: Typo.body)),
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.md),
           TextButton(
             onPressed: () => PhotoManager.openSetting(),
             child: const Text('설정 열기', style: TextStyle(color: Color(0xFF3897F0))),

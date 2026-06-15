@@ -185,7 +185,7 @@ class _VisitRecordScreenState extends State<VisitRecordScreen> {
                   const SizedBox(width: 14),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(_dateStr, style: TextStyle(fontSize: Typo.title, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.3)),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: Space.xs),
                     Text('$_dowStr${stadium.isNotEmpty ? ' · $stadium' : ''}${startTime.isNotEmpty ? ' $startTime' : ''}',
                         style: TextStyle(fontSize: Typo.small, color: cs.ink3)),
                   ])),
@@ -296,7 +296,7 @@ class _VisitRecordScreenState extends State<VisitRecordScreen> {
                         ),
                         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                           Icon(Icons.add_photo_alternate_outlined, size: 20, color: cs.sub),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: Space.sm),
                           Text('사진 추가 (선택)', style: TextStyle(fontSize: Typo.small, color: cs.sub)),
                         ]),
                       ),

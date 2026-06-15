@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.sports_baseball, size: 80, color: brand),
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.sm),
               Text(
                 'PlayBall',
                 style: TextStyle(fontSize: 32, fontWeight: Typo.bold, color: brand),
@@ -109,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: Space.lg),
 
               // 비밀번호
               TextField(
@@ -121,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: Space.xs),
 
               // 자동 로그인 체크박스
               Row(
@@ -166,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       : const Text('로그인', style: TextStyle(fontSize: Typo.title)),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: Space.lg),
 
               // 비밀번호 찾기
               TextButton(

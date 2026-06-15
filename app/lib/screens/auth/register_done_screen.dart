@@ -107,7 +107,7 @@ class _RegisterDoneScreenState extends State<RegisterDoneScreen>
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: Space.xl),
               ],
             ),
           ),

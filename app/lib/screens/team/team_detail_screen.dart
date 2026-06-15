@@ -475,10 +475,10 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       // 등록말소
       _SectionLabel(label: '최근 등록말소', cs: cs),
       if (_rosterLoading)
-        _CardWrap(cs: cs, child: Padding(padding: const EdgeInsets.all(16),
+        _CardWrap(cs: cs, child: Padding(padding: const EdgeInsets.all(Space.lg),
             child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: color))))
       else if (rosters.isEmpty)
-        _CardWrap(cs: cs, child: Padding(padding: const EdgeInsets.all(16),
+        _CardWrap(cs: cs, child: Padding(padding: const EdgeInsets.all(Space.lg),
             child: Text('최근 30일 등록말소 내역이 없습니다', style: TextStyle(color: cs.sub, fontSize: Typo.small))))
       else
         _CardWrap(cs: cs, child: Column(children: rosters.asMap().entries.map((e) =>
@@ -486,15 +486,15 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       // 뉴스
       _SectionLabel(label: '최근 뉴스', cs: cs),
       if (_newsLoading)
-        _CardWrap(cs: cs, child: Padding(padding: const EdgeInsets.all(16),
+        _CardWrap(cs: cs, child: Padding(padding: const EdgeInsets.all(Space.lg),
             child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: color))))
       else if (newsList.isEmpty)
-        _CardWrap(cs: cs, child: Padding(padding: const EdgeInsets.all(16),
+        _CardWrap(cs: cs, child: Padding(padding: const EdgeInsets.all(Space.lg),
             child: Text('뉴스가 없습니다', style: TextStyle(color: cs.sub, fontSize: Typo.small))))
       else
         _CardWrap(cs: cs, child: Column(children: newsList.asMap().entries.map((e) =>
             _buildNewsItem(cs, e.value as Map, e.key == newsList.length - 1)).toList())),
-      const SizedBox(height: 24),
+      const SizedBox(height: Space.xl),
     ]);
   }
 
@@ -603,7 +603,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic, children: [
           Text(rec, style: TextStyle(fontSize: Typo.small, color: cs.ink2)),
-          const SizedBox(width: 8),
+          const SizedBox(width: Space.sm),
           Text(pctStr, style: TextStyle(fontSize: Typo.body, fontWeight: Typo.extra,
               color: frac >= 0.5 ? tc : cs.sub,
               fontFeatures: const [FontFeature.tabularFigures()])),
@@ -632,7 +632,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 w, l, last: e.key == ms.length - 1);
           }).toList()),
         ),
-      const SizedBox(height: 16),
+      const SizedBox(height: Space.lg),
       // 상대 전적
       label('상대 전적'),
       // ② 강세 → 약세 (분할 카드)
@@ -675,7 +675,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             ]), w, l, last: e.key == h2h.length - 1);
           }).toList()),
         ),
-      const SizedBox(height: 8),
+      const SizedBox(height: Space.sm),
     ]);
   }
 
@@ -802,7 +802,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             Row(children: [
               Flexible(child: Text(team['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5))),
-              const SizedBox(width: 8),
+              const SizedBox(width: Space.sm),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
@@ -819,7 +819,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           ])),
         ]),
         if (_teamLinks[code] != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.md),
           Row(children: [
             _linkBtn(Icons.smart_display, '유튜브', fg, _teamLinks[code]!['yt'], color),
             const SizedBox(width: 7),
@@ -941,7 +941,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
         child: Row(children: [
           _NumChip(no: p['number'] as int?, tc: color, cs: cs),
-          const SizedBox(width: 8),
+          const SizedBox(width: Space.sm),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(p['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink)),
@@ -1186,7 +1186,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('커뮤니티 글이 없습니다', style: TextStyle(color: cs.sub)),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.md),
             TextButton.icon(
               icon: const Icon(Icons.refresh, size: 16),
               label: const Text('다시 시도'),
@@ -1258,22 +1258,22 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                   Text(title,
                       style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink, height: 1.45),
                       maxLines: 2, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: Space.sm),
                   Row(children: [
                     Text(nickname, style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
                     if (dateStr.isNotEmpty) ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: Space.sm),
                       Text(dateStr, style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
                     ],
                     const Spacer(),
                     Icon(Icons.visibility_outlined, size: 12, color: cs.sub),
                     const SizedBox(width: 2),
                     Text('$views', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: Space.sm),
                     Icon(Icons.favorite_border, size: 12, color: cs.sub),
                     const SizedBox(width: 2),
                     Text('$likes', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: Space.sm),
                     Icon(Icons.mode_comment_outlined, size: 12, color: cs.sub),
                     const SizedBox(width: 2),
                     Text('$comments', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
@@ -1306,7 +1306,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     if (hitters.isEmpty && pitchers.isEmpty) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
         Text('팀 리더 데이터가 없습니다', style: TextStyle(color: cs.sub)),
-        const SizedBox(height: 12),
+        const SizedBox(height: Space.md),
         TextButton.icon(onPressed: _loadTeamLeaders, icon: const Icon(Icons.refresh, size: 16), label: const Text('다시 시도')),
       ]));
     }
@@ -1325,7 +1325,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       padding: const EdgeInsets.fromLTRB(11, 9, 11, 5),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.5)),
-        const SizedBox(height: 8),
+        const SizedBox(height: Space.sm),
         ...rows.asMap().entries.map((e) {
           final i = e.key;
           final r = e.value as Map;
@@ -1353,7 +1353,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 const SizedBox(width: 6),
                 Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: Typo.body, fontWeight: isTop ? Typo.bold : Typo.medium, color: cs.ink))),
-                const SizedBox(width: 4),
+                const SizedBox(width: Space.xs),
                 Text(fmt(val), style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra,
                     color: isTop ? tcOn : cs.ink2, fontFeatures: const [FontFeature.tabularFigures()])),
               ]),
@@ -1395,7 +1395,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         if (hCards.isNotEmpty) ...[sectionLabel('타자'), ...hCards],
         if (pCards.isNotEmpty) ...[const SizedBox(height: 6), sectionLabel('투수'), ...pCards],
       ],
-      const SizedBox(height: 8),
+      const SizedBox(height: Space.sm),
     ]);
   }
 
@@ -1551,7 +1551,7 @@ class _StatBlock extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 10),
     child: Column(children: [
       Text(value, style: TextStyle(fontSize: Typo.body, fontWeight: Typo.extra, color: cs.ink)),
-      const SizedBox(height: 4),
+      const SizedBox(height: Space.xs),
       Text(label, style: TextStyle(fontSize: Typo.micro, color: cs.sub)),
     ]),
   ));

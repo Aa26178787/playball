@@ -72,19 +72,19 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('이메일 인증')),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(Space.xl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Icon(Icons.mark_email_unread_outlined,
                 size: 56, color: SemColor.brand(context)),
-            const SizedBox(height: 16),
+            const SizedBox(height: Space.lg),
             const Text(
               '가입한 이메일로 인증번호를 발송합니다.\n인증 후 커뮤니티 글쓰기가 가능합니다.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey, fontSize: Typo.body, height: 1.6),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: Space.xxl),
             if (_sentToEmail == null) ...[
               ElevatedButton.icon(
                 onPressed: _sending ? null : _sendCode,
@@ -105,7 +105,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
               Text('인증번호 발송: $_sentToEmail',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: Typo.body, color: Colors.grey)),
-              const SizedBox(height: 16),
+              const SizedBox(height: Space.lg),
               TextField(
                 controller: _codeCtrl,
                 keyboardType: TextInputType.number,
@@ -118,7 +118,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                   counterText: '',
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: Space.lg),
               ElevatedButton(
                 onPressed: _verifying ? null : _verifyCode,
                 style: ElevatedButton.styleFrom(
@@ -131,7 +131,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Text('인증 확인', style: TextStyle(fontSize: Typo.title)),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.sm),
               TextButton(
                 onPressed: _sending ? null : _sendCode,
                 child: const Text('인증번호 재발송'),

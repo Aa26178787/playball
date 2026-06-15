@@ -170,7 +170,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
             children: [
               Text('투구 위치', style: TextStyle(fontSize: Typo.title, fontWeight: Typo.extra, color: _ink, letterSpacing: -0.3)),
               if (widget.gameStatus == '진행') ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.sm),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(color: SemColor.live, borderRadius: BorderRadius.circular(Radii.xs)),
@@ -179,7 +179,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
               ],
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: Space.xs),
           if (_loading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_error)
@@ -452,7 +452,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 4),
+        const SizedBox(width: Space.xs),
         Text(label, style: TextStyle(fontSize: Typo.caption, color: _sub)),
       ],
     );
@@ -469,7 +469,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
             painter: _DashLinePainter(color),
           ),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: Space.xs),
         Text(label, style: TextStyle(fontSize: Typo.caption, color: _sub)),
       ],
     );

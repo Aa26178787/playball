@@ -657,7 +657,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           onRefresh: () async { _loadAttempt = 0; setState(() => _isLoading = true); await _loadData(); },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(Space.lg),
             child: SizedBox(
               height: MediaQuery.of(context).size.height - 120,
               child: _buildRelayShimmer(),
@@ -1034,7 +1034,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   child: _buildFieldScoreOverlay(innings, game),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: Space.md),
             ] else const SizedBox(height: 14),
 
             // ── WeatherLine (스코어보드 ↓ 팀로고 ↑ 사이) ──
@@ -1046,7 +1046,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   children: [
                     Container(width: 7, height: 7,
                         decoration: BoxDecoration(color: line2, shape: BoxShape.circle)),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: Space.sm),
                     DefaultTextStyle(
                       style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.medium, color: ink3),
                       child: _buildWeatherRow(_weatherData!),
@@ -1054,7 +1054,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: Space.md),
             ],
 
             // ── MatchupHeader (paper/ink) ──
@@ -1073,7 +1073,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         if (homeRank != null && homeRank > 0)
                           Text('$homeRank위', style: TextStyle(color: sub, fontSize: Typo.caption, fontWeight: Typo.medium)),
                         if (homeWinRate != null) ...[
-                          const SizedBox(height: 4),
+                          const SizedBox(height: Space.xs),
                           _buildWinRatePill(homeWinRate),
                         ],
                         if (homeRecent.isNotEmpty) ...[
@@ -1188,7 +1188,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         if (awayRank != null && awayRank > 0)
                           Text('$awayRank위', style: TextStyle(color: sub, fontSize: Typo.caption, fontWeight: Typo.medium)),
                         if (awayWinRate != null) ...[
-                          const SizedBox(height: 4),
+                          const SizedBox(height: Space.xs),
                           _buildWinRatePill(awayWinRate),
                         ],
                         if (awayRecent.isNotEmpty) ...[
@@ -1209,7 +1209,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ),
             ),
 
-            if (includeField) const SizedBox(height: 16),
+            if (includeField) const SizedBox(height: Space.lg),
             // ── FieldSlot (확장 슬롯 + 상단 BSO overlay) ──
             if (includeField && fieldWidget != null)
               Padding(
@@ -1262,13 +1262,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                         const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: Typo.micro, fontWeight: Typo.extra)),
                                       ]),
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: Space.sm),
                                     _bsoOverlayGroup('B', ((_relayData?['current_state']?['ball'] as int?) ?? 0).clamp(0, 3), 3, const Color(0xFF22C55E)),
                                     const SizedBox(width: 6),
                                     _bsoOverlayGroup('S', ((_relayData?['current_state']?['strike'] as int?) ?? 0).clamp(0, 2), 2, live),
                                     const SizedBox(width: 6),
                                     _bsoOverlayGroup('O', ((_relayData?['current_state']?['out'] as int?) ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: Space.sm),
                                     SizedBox(
                                       width: 16, height: 16,
                                       child: _isRelayRefreshing
@@ -1628,7 +1628,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.sm),
           // ── mini-scoreboard: 홈로고 | 스코어 | 원정로고 ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -1662,7 +1662,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.sm),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: CustomPaint(
@@ -1706,13 +1706,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                     const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: Typo.micro, fontWeight: Typo.extra)),
                                   ]),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: Space.sm),
                                 _bsoOverlayGroup('B', ((_relayData?['current_state']?['ball'] as int?) ?? 0).clamp(0, 3), 3, const Color(0xFF22C55E)),
                                 const SizedBox(width: 6),
                                 _bsoOverlayGroup('S', ((_relayData?['current_state']?['strike'] as int?) ?? 0).clamp(0, 2), 2, live),
                                 const SizedBox(width: 6),
                                 _bsoOverlayGroup('O', ((_relayData?['current_state']?['out'] as int?) ?? 0).clamp(0, 2), 2, const Color(0xFFFFA000)),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: Space.sm),
                                 SizedBox(
                                   width: 16, height: 16,
                                   child: _isRelayRefreshing
@@ -1754,7 +1754,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               _fieldPinHandle(isDark),
               if (_sameDayGames.isNotEmpty) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.sm),
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
@@ -1772,7 +1772,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         Text('다른 구장 경기',
                             style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold,
                                 color: Pal.ink3(isDark))),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: Space.xs),
                       ],
                       Icon(_stripExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
                           size: 16,
@@ -1973,7 +1973,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           _buildNarrativeBanner(),
           // mockup divider (헤더와 ScoringSummary 사이)
           Container(height: 1, color: Pal.line(Theme.of(context).brightness == Brightness.dark)),
-          const SizedBox(height: 16),
+          const SizedBox(height: Space.lg),
           // 통합 카드 — 핀: 라인스코어(상단=미니스코어뿐)+득점요약 / 비핀: 득점요약만(상단에 라인스코어)
           if (innings.isNotEmpty && (_fieldPinned || _relayAllData != null)) ...[
             Builder(builder: (ctx) {
@@ -1994,7 +1994,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 ]),
               );
             }),
-            const SizedBox(height: 16),
+            const SizedBox(height: Space.lg),
           ],
 
           if (_relayAllData == null)
@@ -2080,7 +2080,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                                     fontFeatures: const [FontFeature.tabularFigures()])),
                             // 득점 이닝 dot (amber)
                             if (hasRun) ...[
-                              const SizedBox(width: 4),
+                              const SizedBox(width: Space.xs),
                               Container(width: 5, height: 5,
                                   decoration: BoxDecoration(
                                       color: isSel ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
@@ -2088,7 +2088,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                             ],
                             // 라이브 현재 이닝 dot (red)
                             if (isCur) ...[
-                              const SizedBox(width: 4),
+                              const SizedBox(width: Space.xs),
                               Container(width: 5, height: 5,
                                   decoration: const BoxDecoration(
                                       color: Color(0xFFE53935), shape: BoxShape.circle)),
@@ -2159,7 +2159,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                             children: [
                               if (topItems.isEmpty && botItems.isEmpty)
                                 Padding(
-                                  padding: const EdgeInsets.all(16),
+                                  padding: const EdgeInsets.all(Space.lg),
                                   child: Text('기록이 없습니다',
                                       style: TextStyle(fontSize: Typo.small, color: ink3, fontWeight: Typo.medium)),
                                 ),
@@ -2309,7 +2309,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.grid_on, size: 10, color: ink3),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: Space.xs),
                       Text('투구위치', style: TextStyle(fontSize: Typo.caption, color: ink3, fontWeight: Typo.bold)),
                     ]),
                   ),
@@ -2403,7 +2403,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       textAlign: TextAlign.right,
                       style: TextStyle(fontSize: Typo.caption, color: sub, fontWeight: Typo.semibold)),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.sm),
                 Container(
                   width: 22, height: 22,
                   decoration: BoxDecoration(color: dotBg, shape: BoxShape.circle),
@@ -2411,7 +2411,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   child: Text(pitchResult ?? '',
                       style: TextStyle(fontSize: Typo.caption, color: dotFg, fontWeight: Typo.extra)),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.sm),
                 SizedBox(
                   // 62: '스트라이크'(5자)가 한 줄에 들어가는 폭 — 50이면 '스트라이/크' 중간개행
                   width: 62,
@@ -2735,8 +2735,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         final sideCluster = Row(
           mainAxisSize: MainAxisSize.min,
           children: isHome
-              ? [chipBox, const SizedBox(width: 4), badge]
-              : [badge, const SizedBox(width: 4), chipBox],
+              ? [chipBox, const SizedBox(width: Space.xs), badge]
+              : [badge, const SizedBox(width: Space.xs), chipBox],
         );
         return Padding(
           padding: EdgeInsets.only(top: first ? 0 : 6),
@@ -2935,7 +2935,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               ]);
             }),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.sm),
         ],
         Container(
           height: 52,
@@ -2997,7 +2997,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         children: [
           // (시즌 상대전적 섹션 삭제 — 2026-06-07 요청)
           _rosterSectionHeader('선발 맞대결'),
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.md),
           Stack(
             alignment: Alignment.center,
             children: [
@@ -3005,7 +3005,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(child: _buildStarterCard(homeStarter, homeTeam)),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: Space.sm),
                   Expanded(child: _buildStarterCard(awayStarter, awayTeam)),
                 ],
               ),
@@ -3031,12 +3031,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           const SizedBox(height: 20),
           if (homeTop != null || awayTop != null) ...[
             _rosterSectionHeader('키 플레이어'),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.md),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(child: _buildTopPlayerCard(homeTop, homeTeam)),
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.sm),
                 Expanded(child: _buildTopPlayerCard(awayTop, awayTeam)),
               ],
             ),
@@ -3086,7 +3086,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(teamName, style: TextStyle(fontSize: Typo.caption, color: sub, fontWeight: Typo.medium)),
-            const SizedBox(height: 4),
+            const SizedBox(height: Space.xs),
             Text(starter['name'] ?? '',
                 style: TextStyle(fontWeight: Typo.extra, fontSize: Typo.title, color: ink, letterSpacing: 0)),
             Text(starter['hit_type'] ?? '',
@@ -3153,7 +3153,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: Space.sm),
                       Text('$ratio% ${speed}km',
                           style: TextStyle(fontSize: Typo.caption, color: sub, fontWeight: Typo.medium,
                               fontFeatures: const [FontFeature.tabularFigures()])),
@@ -3199,7 +3199,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(teamName, style: TextStyle(fontSize: Typo.caption, color: sub, fontWeight: Typo.medium)),
-            const SizedBox(height: 4),
+            const SizedBox(height: Space.xs),
             Text(top['name'] ?? '',
                 style: TextStyle(fontWeight: Typo.extra, fontSize: Typo.title, color: ink, letterSpacing: 0)),
             Container(height: 1, color: line, margin: const EdgeInsets.symmetric(vertical: 10)),
@@ -3378,7 +3378,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 ),
               ]),
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.sm),
           for (final b in starters)
             Padding(
               padding: const EdgeInsets.only(bottom: 7),
@@ -3389,7 +3389,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       style: TextStyle(fontSize: Typo.small, fontWeight: Typo.extra, color: sub,
                           fontFeatures: const [FontFeature.tabularFigures()])),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: Space.xs),
                 Expanded(
                   child: Text(b['name'] as String? ?? '',
                       maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -3931,7 +3931,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _rosterSectionHeader('주요 기록'),
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.md),
           Table(
             border: TableBorder.all(color: isDark ? const Color(0xFF26262C) : const Color(0xFFE0E0E4)),
             columnWidths: const {
@@ -3957,7 +3957,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           ),
           const SizedBox(height: 20),
           _rosterSectionHeader('팀 투구'),
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.md),
           Table(
             border: TableBorder.all(color: isDark ? const Color(0xFF26262C) : const Color(0xFFE0E0E4)),
             columnWidths: const {
@@ -3986,7 +3986,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           const SizedBox(height: 20),
           if (etcRecords.isNotEmpty) ...[
             _rosterSectionHeader('특이 기록'),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.md),
             ...etcRecords.map((e) {
               final type = e['type'] as String? ?? '';
               final desc = e['description'] as String? ?? '';
@@ -4011,7 +4011,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                               fontWeight: Typo.extra,
                               color: Pal.ink(Theme.of(context).brightness == Brightness.dark))),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: Space.md),
                     Expanded(child: Text(desc, style: const TextStyle(fontSize: Typo.body))),
                   ],
                 ),
@@ -4085,7 +4085,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     if (!AppConfig.enabled('highlights')) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.movie_outlined, size: 48, color: sub),
-        const SizedBox(height: 8),
+        const SizedBox(height: Space.sm),
         Text('하이라이트는 현재 준비 중입니다', style: TextStyle(color: ink3, fontWeight: Typo.medium)),
       ]));
     }
@@ -4098,7 +4098,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.movie_outlined, size: 48, color: sub),
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.sm),
             Text('하이라이트가 없습니다', style: TextStyle(color: ink3, fontWeight: Typo.medium)),
           ],
         ),
@@ -4218,7 +4218,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra, color: ink, letterSpacing: 0, height: 1.3)),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: Space.sm),
                         metaRow(),
                       ],
                     ),
@@ -4397,7 +4397,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: Space.md),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _sharing ? null : _captureAndShare,
@@ -4477,7 +4477,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: Space.lg),
           // Teams + Score
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -4546,7 +4546,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
                   if (winPitcher != null)
                     _pitcherChip('승 $winPitcher', Colors.blue.shade300, imageUrl: webSafeImageUrl(g['win_pitcher_image'] as String?)),
                   if (winPitcher != null && losePitcher != null)
-                    const SizedBox(width: 8),
+                    const SizedBox(width: Space.sm),
                   if (losePitcher != null)
                     _pitcherChip('패 $losePitcher', Colors.red.shade300, imageUrl: webSafeImageUrl(g['lose_pitcher_image'] as String?)),
                 ],
@@ -4709,11 +4709,11 @@ class _FullFieldView extends StatelessWidget {
                     style: TextStyle(fontSize: Typo.small, fontWeight: Typo.extra,
                         color: isOccupied ? Colors.black87 : (isDark ? Colors.white70 : Colors.black54))),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: Space.sm),
               Text(isOccupied ? '주자 점거' : '비어있음',
                   style: TextStyle(fontSize: Typo.body, color: isDark ? Colors.white70 : Colors.black54)),
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.md),
             if (hasRunner) ...[
               Row(children: [
                 _PlayerDot(
@@ -4722,7 +4722,7 @@ class _FullFieldView extends StatelessWidget {
                   label: '',
                   isOffense: true, isDark: isDark, size: 44,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: Space.md),
                 Expanded(child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -5445,7 +5445,7 @@ class _WinProbChart extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.sm),
           SizedBox(
             height: 104, // 승률그래프 — 130서 하향 (정보밀도 대비 과점유 피드백)
             child: LineChart(
@@ -5524,7 +5524,7 @@ class _WinProbChart extends StatelessWidget {
           Row(
             children: [
               Text('↑ $homeName', style: TextStyle(fontSize: 8.5, color: hc, fontWeight: Typo.bold)),
-              const SizedBox(width: 8),
+              const SizedBox(width: Space.sm),
               Text('↓ $awayName', style: TextStyle(fontSize: 8.5, color: sub)),
               const Spacer(),
               Text('숫자 = 이닝', style: TextStyle(fontSize: 8.5, color: sub)),

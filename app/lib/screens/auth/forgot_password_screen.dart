@@ -79,7 +79,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('비밀번호 찾기')),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(Space.xl),
         child: _step == 2 ? _buildDone() : _buildForm(),
       ),
     );
@@ -90,9 +90,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const Icon(Icons.check_circle, color: Colors.green, size: 72),
-        const SizedBox(height: 16),
+        const SizedBox(height: Space.lg),
         const Text('비밀번호가 변경되었습니다', style: TextStyle(fontSize: Typo.lg, fontWeight: Typo.bold)),
-        const SizedBox(height: 24),
+        const SizedBox(height: Space.xl),
         ElevatedButton(
           onPressed: () => Navigator.pop(context),
           style: ElevatedButton.styleFrom(
@@ -116,7 +116,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             _stepDot(1, '인증+재설정'),
           ],
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: Space.xxl),
 
         TextField(
           controller: _emailCtrl,
@@ -130,7 +130,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
 
         if (_step == 0) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: Space.lg),
           ElevatedButton(
             onPressed: _loading ? null : _sendCode,
             style: _btnStyle(),
@@ -144,7 +144,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ],
 
         if (_step == 1) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: Space.lg),
           TextField(
             controller: _codeCtrl,
             keyboardType: TextInputType.number,
@@ -157,7 +157,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               counterText: '',
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.md),
           TextField(
             controller: _pwCtrl,
             obscureText: _obscure,
@@ -172,7 +172,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: Space.md),
           TextField(
             controller: _pwConfirmCtrl,
             obscureText: _obscure,
@@ -182,7 +182,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               prefixIcon: Icon(Icons.lock_outline),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: Space.lg),
           ElevatedButton(
             onPressed: _loading ? null : _resetPassword,
             style: _btnStyle(Colors.green),
@@ -220,7 +220,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           child: Text('${step + 1}',
               style: TextStyle(color: active ? onAccent : Colors.grey, fontSize: Typo.small)),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: Space.xs),
         Text(label, style: TextStyle(fontSize: Typo.caption, color: active ? accent : Colors.grey)),
       ],
     );

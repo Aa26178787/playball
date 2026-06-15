@@ -159,7 +159,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ),
-      const SizedBox(width: 8),
+      const SizedBox(width: Space.sm),
       Text(labels[s], style: TextStyle(fontSize: Typo.caption, color: colors[s], fontWeight: Typo.bold)),
     ]);
   }
@@ -183,11 +183,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       appBar: AppBar(title: const Text('회원가입')),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(Space.xl),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.sm),
 
               // ── 닉네임 ──
               Row(children: [
@@ -202,12 +202,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       border: const OutlineInputBorder(),
                       counterText: '',
                       errorText: _nicknameError,
-                      suffixIcon: Padding(padding: const EdgeInsets.all(12),
+                      suffixIcon: Padding(padding: const EdgeInsets.all(Space.md),
                           child: _availIcon(_nicknameAvailable, _checkingNickname)),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.sm),
                 ElevatedButton(
                   onPressed: (_checkingNickname || _nicknameError != null) ? null : _checkNickname,
                   style: _smallBtn(),
@@ -230,12 +230,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       prefixIcon: const Icon(Icons.email_outlined),
                       border: const OutlineInputBorder(),
                       errorText: _emailError,
-                      suffixIcon: Padding(padding: const EdgeInsets.all(12),
+                      suffixIcon: Padding(padding: const EdgeInsets.all(Space.md),
                           child: _availIcon(_emailAvailable, _checkingEmail)),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.sm),
                 ElevatedButton(
                   onPressed: (_checkingEmail || _emailError != null) ? null : _checkEmail,
                   style: _smallBtn(),
@@ -303,7 +303,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
               ]),
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.sm),
 
               // ── 오류 ──
               if (_error != null)
@@ -345,7 +345,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       : const Text('회원가입', style: TextStyle(fontSize: Typo.title)),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: Space.lg),
             ],
           ),
         ),

@@ -413,13 +413,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       if (_settingsLoaded) _buildNotifSettings(cs, myColor),
                       _buildDarkMode(cs, myColor),
                       _buildUtilCard(cs),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: Space.sm),
                       Center(child: TextButton(
                         onPressed: _deleteAccount,
                         child: Text('회원탈퇴',
                             style: TextStyle(color: SemColor.live.withValues(alpha: 0.7), fontSize: Typo.small)),
                       )),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: Space.xl),
                     ]),
                   ),
           ),
@@ -455,7 +455,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Space.lg),
         decoration: _cardDeco(cs),
         child: Row(children: [
           GestureDetector(
@@ -507,7 +507,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 decoration: BoxDecoration(color: const Color(0xFF22C55E).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
                 child: const Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.check, size: 10, color: Color(0xFF22C55E)),
-                  SizedBox(width: 4),
+                  SizedBox(width: Space.xs),
                   Text('이메일 인증 완료', style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: Color(0xFF22C55E))),
                 ]),
               )
@@ -522,7 +522,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   decoration: BoxDecoration(color: SemColor.warning.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(6)),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.error_outline, size: 10, color: SemColor.warning),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: Space.xs),
                     Text('이메일 인증하기', style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: SemColor.warning)),
                   ]),
                 ),
@@ -563,7 +563,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     child: const Center(child: Text('★', style: TextStyle(fontSize: Typo.micro, color: Colors.white, height: 1))),
                   )),
                 ]),
-                const SizedBox(width: 12),
+                const SizedBox(width: Space.md),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     Flexible(child: Text(t['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -754,7 +754,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             border: last ? null : Border(bottom: BorderSide(color: cs.line))),
         child: Row(children: [
           Icon(icon, size: 18, color: iconColor ?? cs.sub),
-          const SizedBox(width: 12),
+          const SizedBox(width: Space.md),
           Expanded(child: Text(label,
               style: TextStyle(fontSize: 13.5, fontWeight: Typo.bold, color: cs.ink))),
           if (count != null && count > 0)
@@ -841,7 +841,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           Row(children: [
             Expanded(child: Text(c['post_title'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: Typo.mini, color: cs.sub))),
-            const SizedBox(width: 8),
+            const SizedBox(width: Space.sm),
             Text(_shortDate(c['created_at']), style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
           ]),
         ]),
@@ -901,10 +901,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
           Row(children: [
             if (chip != null && chip.isNotEmpty) ...[
               _SmallChip(label: chip, color: cs.ink3, bg: cs.paper2, border: cs.line),
-              const SizedBox(width: 8),
+              const SizedBox(width: Space.sm),
             ],
             Text('♡ $likes', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
-            const SizedBox(width: 8),
+            const SizedBox(width: Space.sm),
             Text('💬 $comments', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
             const Spacer(),
             Text(date, style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
@@ -1028,7 +1028,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           const SizedBox(height: 3),
                           Text(item['desc'] as String, style: TextStyle(fontSize: Typo.mini, color: cs.sub, height: 1.4)),
                         ])),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: Space.md),
                         _AppToggle(
                           on: item['value'] as bool,
                           color: myColor,

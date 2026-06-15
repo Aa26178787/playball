@@ -652,7 +652,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 _StatusBadge(isLive: isLive, isDone: isDone, isCancel: isCancel,
                     time: game['start_time'] as String?, cs: cs),
               ]),
-              const SizedBox(height: 12),
+              const SizedBox(height: Space.md),
               // 팀 vs 스코어
               Row(children: [
                 Expanded(child: _TeamCol(code: homeCode, name: game['home_team'] as String? ?? '', role: '홈', cs: cs)),
@@ -680,7 +680,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               // 투수
               if ((isDone && (winPitcher != null || losePitcher != null || isDraw)) ||
                   (isUpcoming && (homeStarter != null || awayStarter != null))) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: Space.md),
                 Divider(height: 1, color: tc != null ? tc.withValues(alpha: 0.15) : cs.line),
                 const SizedBox(height: 10),
                 if (isDone && isDraw)
@@ -765,7 +765,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ],
             ]),
             if (description != null && description.isNotEmpty) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: Space.xs),
               Text(description, style: TextStyle(fontSize: Typo.caption, color: cs.ink3, height: 1.4),
                   maxLines: 2, overflow: TextOverflow.ellipsis),
             ],
@@ -778,7 +778,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             onPressed: () => _confirmDeleteEvent(id),
             padding: EdgeInsets.zero,
           ),
-        const SizedBox(width: 4),
+        const SizedBox(width: Space.xs),
       ])),
       ),
     );
@@ -845,7 +845,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 }
               },
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.sm),
           ],
         ),
         ),
@@ -908,7 +908,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               },
             );
           }),
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.sm),
         ],
       ))),
     );
@@ -1017,10 +1017,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
             ),
             const Text('직관 통계', style: TextStyle(fontSize: Typo.title, fontWeight: Typo.bold)),
-            const SizedBox(height: 16),
+            const SizedBox(height: Space.lg),
             if (byStadium.isNotEmpty) ...[
               const Text('구장별', style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: Colors.teal)),
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.sm),
               ...byStadium.map((s) {
                 final total = s['total'] as int;
                 final wins = s['wins'] as int;
@@ -1032,7 +1032,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     children: [
                       Expanded(child: Text(s['name'] as String, style: const TextStyle(fontSize: Typo.body))),
                       Text('$wins승 $losses패', style: const TextStyle(fontSize: Typo.small, color: Colors.grey)),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: Space.sm),
                       Container(
                         width: 44,
                         alignment: Alignment.centerRight,
@@ -1051,7 +1051,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ],
             if (byMonth.isNotEmpty) ...[
               const Text('월별', style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: Colors.teal)),
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.sm),
               ...byMonth.map((m) {
                 final wins = m['wins'] as int;
                 final losses = m['losses'] as int;
@@ -1064,7 +1064,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       Text('${m['year']}년 ${m['month']}월', style: const TextStyle(fontSize: Typo.body)),
                       const Spacer(),
                       Text('$total회 ($wins승 $losses패)', style: const TextStyle(fontSize: Typo.small, color: Colors.grey)),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: Space.sm),
                       Text('$pct%',
                           style: TextStyle(
                             fontSize: Typo.body,
@@ -1078,7 +1078,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ],
             if (byStadium.isEmpty && byMonth.isEmpty)
               const Center(child: Padding(
-                padding: EdgeInsets.all(32),
+                padding: EdgeInsets.all(Space.xxl),
                 child: Text('직관 기록이 없습니다', style: TextStyle(color: Colors.grey)),
               )),
           ],

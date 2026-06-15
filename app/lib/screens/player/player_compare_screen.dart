@@ -92,7 +92,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
 
   Widget _buildSearchRow() {
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(Space.md),
       child: Row(
         children: [
           Expanded(child: _buildSearchField(1, _ctrl1, _results1)),
@@ -212,7 +212,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
           // 스탯 비교 테이블
           if (rows.isEmpty)
             const Padding(
-              padding: EdgeInsets.all(24),
+              padding: EdgeInsets.all(Space.xl),
               child: Text('기록이 없거나 포지션이 달라 비교할 수 없습니다',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey)),

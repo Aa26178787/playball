@@ -352,7 +352,7 @@ class SplashScreen extends StatelessWidget {
               size: 80,
               color: Colors.white,
             ),
-            SizedBox(height: 16),
+            SizedBox(height: Space.lg),
             Text(
               'PlayBall',
               style: TextStyle(
@@ -362,7 +362,7 @@ class SplashScreen extends StatelessWidget {
                 letterSpacing: 2,
               ),
             ),
-            SizedBox(height: 8),
+            SizedBox(height: Space.sm),
             Text(
               'KBO 야구 앱',
               style: TextStyle(

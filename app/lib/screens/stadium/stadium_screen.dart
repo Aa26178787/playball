@@ -249,7 +249,7 @@ function resetView() {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         CircularProgressIndicator(strokeWidth: 2),
-                        SizedBox(height: 12),
+                        SizedBox(height: Space.md),
                         Text('지도 불러오는 중...', style: TextStyle(fontSize: Typo.small, color: Colors.grey)),
                       ],
                     ),
@@ -291,7 +291,7 @@ function resetView() {
       child: Column(children: [
         Icon(Icons.map_outlined, size: 30,
             color: isDark ? const Color(0xFF9A9AA0) : const Color(0xFF707078)),
-        const SizedBox(height: 8),
+        const SizedBox(height: Space.sm),
         Text(
           sel != null ? (sel['name'] as String) : '구장을 선택하면 지도를 볼 수 있어요',
           style: const TextStyle(fontSize: 13.5, fontWeight: Typo.bold),
@@ -371,7 +371,7 @@ function resetView() {
                 )).toList(),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: Space.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -407,7 +407,7 @@ function resetView() {
                   size: 20,
                   color: isSelected ? color : Colors.grey[400],
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: Space.xs),
                 IconButton(
                   icon: Icon(Icons.restaurant_menu, size: 20,
                       color: isSelected ? color : Colors.grey[400]),
@@ -571,7 +571,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                 Row(
                   children: [
                     TeamLogo(teamCode: widget.teamCode, size: 28),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: Space.sm),
                     Expanded(
                       child: Text(
                         '${widget.stadiumName} 맛집',
@@ -658,7 +658,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.restaurant_menu, size: 48, color: Colors.grey[300]),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: Space.md),
                     Text('아직 팬 추천 맛집이 없습니다\n첫 번째로 추천해보세요!',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.grey[500], fontSize: Typo.body)),
@@ -828,7 +828,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         height: MediaQuery.of(context).size.height * 0.7,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Space.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -845,10 +845,10 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: Space.xs),
             Text('구장 2km 이내 음식점만 등록 가능합니다',
                 style: TextStyle(fontSize: Typo.small, color: Colors.grey[500])),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.md),
             Row(
               children: [
                 Expanded(
@@ -863,7 +863,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
                     onSubmitted: (_) => _search(),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.sm),
                 ElevatedButton(
                   onPressed: _searching ? null : _search,
                   style: ElevatedButton.styleFrom(
@@ -878,7 +878,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.sm),
             if (_selected != null) ...[
               Container(
                 padding: const EdgeInsets.all(10),
@@ -897,7 +897,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.sm),
               TextField(
                 controller: _memoCtrl,
                 decoration: InputDecoration(
@@ -908,7 +908,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
                 ),
                 maxLength: 50,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: Space.sm),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

@@ -183,7 +183,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                       ),
                   ]),
                 )),
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.sm),
                 GestureDetector(
                   onTap: _searching ? null : _search,
                   child: Container(

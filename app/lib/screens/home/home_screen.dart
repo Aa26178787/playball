@@ -585,7 +585,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           _modeOption(ctx, isDark, 'casual', '⚾ 가볍게 즐겨요',
               '간단한 카드 · 마이팀 알림만'),
-          const SizedBox(height: 8),
+          const SizedBox(height: Space.sm),
           _modeOption(ctx, isDark, 'pro', '📊 기록까지 챙겨요',
               '풀 카드 · 모든 경기 알림'),
           const SizedBox(height: 6),
@@ -1168,7 +1168,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   ],
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: Space.lg),
               // 월 그리드 (범위 밖 = 비활성)
               GridView.count(
                 shrinkWrap: true,
@@ -1367,7 +1367,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           children: [
             if (icon != null) ...[
               Icon(icon, size: 12, color: fg),
-              const SizedBox(width: 4),
+              const SizedBox(width: Space.xs),
             ],
             Text(label, style: TextStyle(
               fontSize: Typo.small, fontWeight: Typo.bold, color: fg,
@@ -1415,7 +1415,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             child: Row(children: [
               Icon(Icons.sports_baseball, size: 20,
                   color: isDark ? t.ink : AppColors.primary),
-              const SizedBox(width: 8),
+              const SizedBox(width: Space.sm),
               Text('PlayBall',
                   style: TextStyle(
                     fontFamily: 'Pretendard',
@@ -1494,7 +1494,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
               children: [
                 if (_favoriteTeamIds.isNotEmpty) ...[
                   _buildFilterChip('전체', !_myTeamOnly, () => setState(() => _myTeamOnly = false)),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: Space.sm),
                   _buildFilterChip('마이팀', _myTeamOnly, () => setState(() => _myTeamOnly = true), icon: Icons.star),
                 ],
                 const Spacer(),
@@ -1601,13 +1601,13 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   children: [
                     Row(children: [
                       Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: Space.sm),
                       Container(width: 60, height: 14, color: Colors.white),
                     ]),
                     Container(width: 40, height: 20, color: Colors.white),
                     Row(children: [
                       Container(width: 60, height: 14, color: Colors.white),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: Space.sm),
                       Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
                     ]),
                   ],
@@ -1690,12 +1690,12 @@ class _TodayGamesTabState extends State<TodayGamesTab>
               children: [
                 if (_loadError && !_myTeamOnly) ...[
                   Icon(Icons.wifi_off, size: 64, color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[600] : Colors.grey[300]),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: Space.lg),
                   Text(
                     '불러오기 실패',
                     style: TextStyle(fontSize: Typo.title, fontWeight: Typo.medium, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: Space.sm),
                   Text('네트워크를 확인하고 다시 시도해주세요', style: TextStyle(fontSize: Typo.body, color: Colors.grey[500])),
                   const SizedBox(height: 20),
                   OutlinedButton.icon(
@@ -1716,12 +1716,12 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                     _myTeamOnly ? Icons.star_border : Icons.sports_baseball,
                     size: 64, color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[600] : Colors.grey[300],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: Space.lg),
                   Text(
                     _myTeamOnly ? '마이팀 경기가 없습니다' : '경기가 없는 날입니다',
                     style: TextStyle(fontSize: Typo.title, fontWeight: Typo.medium, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: Space.sm),
                   Text(
                     _myTeamOnly
                         ? '마이팀 필터를 해제하면 전체 경기를 볼 수 있습니다'
@@ -1839,7 +1839,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
               children: [
                 Icon(warn ? Icons.warning_amber_rounded : Icons.campaign_outlined,
                     size: 18, color: fg),
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.sm),
                 Expanded(
                   child: Text(
                     banner['message'] as String? ?? '',
@@ -1884,15 +1884,15 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 const SizedBox(width: 6),
                 Text('오늘 등록말소',
                     style: TextStyle(fontSize: Typo.body, fontWeight: Typo.extra, color: t.ink, letterSpacing: 0)),
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.sm),
                 if (registrations.isNotEmpty)
                   _rosterChip('${registrations.length}명 등록', const Color(0xFF1976D2), t),
                 if (removals.isNotEmpty) ...[
-                  const SizedBox(width: 4),
+                  const SizedBox(width: Space.xs),
                   _rosterChip('${removals.length}명 말소', const Color(0xFFFFA000), t),
                 ],
                 if (injuries.isNotEmpty) ...[
-                  const SizedBox(width: 4),
+                  const SizedBox(width: Space.xs),
                   _rosterChip('${injuries.length}명 부상', const Color(0xFFE53935), t),
                 ],
                 const Spacer(),
@@ -1928,12 +1928,12 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                                 ),
                                 child: Text(type, style: TextStyle(fontSize: Typo.caption, color: col, fontWeight: Typo.extra)),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: Space.sm),
                               Text(c['team_name'] ?? '', style: TextStyle(fontSize: Typo.caption, color: t.ink3, fontWeight: Typo.medium)),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: Space.xs),
                               Text(c['player_name'] ?? '', style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: t.ink)),
                               if ((c['reason'] as String? ?? '').isNotEmpty) ...[
-                                const SizedBox(width: 4),
+                                const SizedBox(width: Space.xs),
                                 Expanded(
                                   child: Text('(${c['reason']})',
                                       style: TextStyle(fontSize: Typo.caption, color: t.sub),
@@ -2105,7 +2105,7 @@ class GameCard extends StatelessWidget {
             child: Text(pitcherLabel ?? '',
                 style: TextStyle(fontSize: Typo.body, color: pitcherLabelColor ?? t.ink3, fontWeight: Typo.extra)),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: Space.xs),
           Flexible(
             child: Text(pitcher,
                 style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: t.ink2),
@@ -2144,7 +2144,7 @@ class GameCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             TeamLogo(teamCode: ns['code'] ?? '', size: 17),
-            const SizedBox(width: 4),
+            const SizedBox(width: Space.xs),
             Flexible(
               child: Text(ns['name'] ?? '',
                   style: TextStyle(fontSize: Typo.body, fontWeight: Typo.medium, color: t.ink3),
@@ -2185,7 +2185,7 @@ class GameCard extends StatelessWidget {
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             const _LivePulseDot(size: 4),
-            const SizedBox(width: 4),
+            const SizedBox(width: Space.xs),
             Text('${game.currentInning ?? 0}회 ${game.inningHalf ?? ''}',
                 style: const TextStyle(fontSize: Typo.mini, fontWeight: Typo.extra, color: _kLiveRed)),
           ]),
@@ -2308,7 +2308,7 @@ class GameCard extends StatelessWidget {
                           statusBadge(),
                           // ── 3층: 승패투수 또는 선발 ──
                           if (subLine != null) ...[
-                            const SizedBox(height: 4),
+                            const SizedBox(height: Space.xs),
                             Text(subLine,
                                 textAlign: TextAlign.center,
                                 maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -2395,7 +2395,7 @@ class GameCard extends StatelessWidget {
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(Icons.cancel_outlined, size: 11, color: dangerOn),
-            const SizedBox(width: 4),
+            const SizedBox(width: Space.xs),
             Text('취소',
                 style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.extra, color: dangerOn,
                     decoration: TextDecoration.lineThrough, decorationColor: dangerOn)),
@@ -2984,7 +2984,7 @@ class _PredictionBarState extends State<_PredictionBar> {
   Widget _buildFanSection(_Tok t, Color homeColor, Color awayColor) {
     // points 킬스위치 (관리자 콘솔 '기능 토글') — OFF면 팬투표 섹션 자체 미노출
     if (!AppConfig.enabled('points')) return const SizedBox.shrink();
-    if (!_fanLoaded) return const SizedBox(height: 24);
+    if (!_fanLoaded) return const SizedBox(height: Space.xl);
     final total = _fanHome + _fanAway;
     final ds = _deadlineState();
 
@@ -3042,7 +3042,7 @@ class _PredictionBarState extends State<_PredictionBar> {
         header,
         Row(children: [
           pickBtn(widget.homeCode, homeColor, 'home'),
-          const SizedBox(width: 8),
+          const SizedBox(width: Space.sm),
           pickBtn(widget.awayCode, awayColor, 'away'),
         ]),
       ]);

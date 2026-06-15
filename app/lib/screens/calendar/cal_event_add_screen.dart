@@ -256,7 +256,7 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
                   const SizedBox(width: 14),
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(_dateStr, style: TextStyle(fontSize: Typo.title, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.3)),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: Space.xs),
                     Text(
                       widget.gameCount > 0 ? '$_dowStr · KBO ${widget.gameCount}경기' : _dowStr,
                       style: TextStyle(fontSize: Typo.small, color: cs.ink3)),
@@ -376,7 +376,7 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
                     ),
                   ),
                 )),
-                const SizedBox(width: 4),
+                const SizedBox(width: Space.xs),
                 Text(_kColorLabels[_colorIdx], style: TextStyle(fontSize: Typo.caption, color: cs.ink3)),
               ]),
             ),
@@ -419,7 +419,7 @@ class _TimeBox extends StatelessWidget {
       decoration: BoxDecoration(color: cs.paper2, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.md)),
       child: Row(children: [
         Icon(Icons.access_time_outlined, size: 14, color: cs.sub),
-        const SizedBox(width: 8),
+        const SizedBox(width: Space.sm),
         Text(_fmt, style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.bold, color: cs.ink)),
       ]),
     ),
@@ -466,7 +466,7 @@ class _DateBox extends StatelessWidget {
       decoration: BoxDecoration(color: cs.paper2, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.md)),
       child: Row(children: [
         Icon(Icons.calendar_today_outlined, size: 14, color: cs.sub),
-        const SizedBox(width: 8),
+        const SizedBox(width: Space.sm),
         Text(_fmt, style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.bold, color: cs.ink)),
       ]),
     ),

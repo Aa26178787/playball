@@ -128,14 +128,14 @@ class _PlayerScreenState extends State<PlayerScreen>
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Container(width: 5, height: 5, decoration: BoxDecoration(color: tc, shape: BoxShape.circle)),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: Space.xs),
                   Text(p['name'] ?? '', style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.medium, color: ink)),
                 ]),
               ),
             );
           },
         )),
-        const SizedBox(width: 8),
+        const SizedBox(width: Space.sm),
       ]),
     );
   }
@@ -410,13 +410,13 @@ class _PlayerScreenState extends State<PlayerScreen>
             currentLabel: labelOf(sorts, sortVal), active: true,
             initial: sortVal, onSelected: onSort,
             items: sorts.map(opt).toList()),
-        const SizedBox(width: 8),
+        const SizedBox(width: Space.sm),
         _filterDropdown<String>(
             currentLabel: posVal == '전체' ? posHint : labelOf(posOpts, posVal),
             active: posVal != '전체',
             initial: posVal, onSelected: onPos,
             items: posOpts.map(opt).toList()),
-        const SizedBox(width: 8),
+        const SizedBox(width: Space.sm),
         _filterDropdown<int?>(
             currentLabel: teamLabel, active: _selectedTeamId != null,
             initial: _selectedTeamId,
@@ -537,7 +537,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 Text(p['name'] ?? '',
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra, color: ink)),
-                const SizedBox(height: 4),
+                const SizedBox(height: Space.xs),
                 Text('${teamDisplayName(code)} · $position',
                     style: TextStyle(fontSize: Typo.mini, color: ink2)),
               ]),
@@ -623,7 +623,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(Space.md),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
                 Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
                   Flexible(
@@ -632,7 +632,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                         style: TextStyle(fontSize: Typo.h1, fontWeight: Typo.extra, color: tcText,
                             letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()])),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: Space.xs),
                   Text(statLabel, style: TextStyle(fontSize: Typo.mini, color: sub)),
                 ]),
                 const SizedBox(height: 5),
@@ -768,7 +768,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                   ),
                   child: Row(children: [
                     Icon(Icons.search, size: 16, color: sub),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: Space.sm),
                     Expanded(
                       child: TextField(
                         controller: _searchController,
@@ -824,12 +824,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               child: Row(children: [
                                 _numAvatar(p, 42),
-                                const SizedBox(width: 12),
+                                const SizedBox(width: Space.md),
                                 Expanded(
                                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                     Text(p['name'] ?? '',
                                         style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: ink)),
-                                    const SizedBox(height: 4),
+                                    const SizedBox(height: Space.xs),
                                     Text('${p['team'] ?? ''} · ${p['position'] ?? p['player_type'] ?? ''} · #${p['number'] ?? '-'}',
                                         style: TextStyle(fontSize: Typo.mini, color: ink3)),
                                   ]),

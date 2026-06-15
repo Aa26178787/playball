@@ -121,7 +121,7 @@ class _SeasonWrappedScreenState extends State<SeasonWrappedScreen> {
             _bigStat('최애', favTeam ?? favPlayer ?? '-',
                 (favTeam != null && favPlayer != null) ? favPlayer : ''),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: Space.lg),
           const Text('PlayBall ⚾',
               style: TextStyle(fontSize: Typo.small, fontWeight: Typo.extra, color: Colors.white60)),
         ],

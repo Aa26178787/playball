@@ -83,7 +83,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               decoration: const InputDecoration(labelText: '제목', border: OutlineInputBorder()),
               maxLength: 100,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: Space.sm),
             TextField(
               controller: contentCtrl,
               decoration: const InputDecoration(labelText: '내용', border: OutlineInputBorder()),
@@ -296,13 +296,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             child: RefreshIndicator(
               onRefresh: _loadPost,
               child: ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(Space.lg),
               children: [
                 Text(
                   _post!['title'] ?? '',
                   style: const TextStyle(fontSize: Typo.h2, fontWeight: Typo.bold),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: Space.sm),
                 Text(
                   '${_post!['author'] ?? ''} | ${(_post!['created_at'] ?? '').toString().length >= 10 ? (_post!['created_at'] as String).substring(0, 10) : ''}',
                   style: TextStyle(color: Colors.grey[600], fontSize: Typo.small),
@@ -317,7 +317,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       ?? (_post!['image_url'] != null ? <String>[_post!['image_url'] as String] : <String>[]);
                   if (imgs.isEmpty) return const SizedBox.shrink();
                   return Column(children: [
-                    const SizedBox(height: 12),
+                    const SizedBox(height: Space.md),
                     ...imgs.map((u) => Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: ClipRRect(
@@ -328,13 +328,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     )),
                   ]);
                 }),
-                const SizedBox(height: 8),
+                const SizedBox(height: Space.sm),
                 Text('❤️ ${_post!['likes'] ?? 0}',
                     style: const TextStyle(color: Colors.red)),
                 const Divider(),
                 Text('댓글 ${comments.length}개',
                     style: const TextStyle(fontWeight: Typo.bold)),
-                const SizedBox(height: 8),
+                const SizedBox(height: Space.sm),
                 ...comments.map((c) {
                   final isMyComment = myUserId != null && myUserId == c['user_id'];
                   final likedByMe = c['liked_by_me'] as bool? ?? false;
@@ -403,7 +403,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             ),
           ),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(Space.sm),
             decoration: BoxDecoration(
               border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
             ),
@@ -422,7 +422,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: Space.sm),
                 IconButton(
                   icon: const Icon(Icons.send),
                   tooltip: '댓글 등록',

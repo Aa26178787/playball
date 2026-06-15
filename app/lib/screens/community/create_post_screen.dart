@@ -255,9 +255,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 )),
               ),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: Space.lg),
             Divider(height: 1, color: cs.line),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.md),
             // 제목
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -276,7 +276,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
             ),
             Divider(height: 1, color: cs.line),
-            const SizedBox(height: 12),
+            const SizedBox(height: Space.md),
             // 본문
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -337,7 +337,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
                             : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                                 Icon(Icons.add_photo_alternate_outlined, size: 20, color: cs.sub),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: Space.xs),
                                 Text('${_imageFiles.length}/$_maxImages', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
                               ]),
                       ),
@@ -357,7 +357,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               child: _ToolBtn(icon: Icons.image_outlined, cs: cs,
                   onTap: _imageUploading ? null : _pickImage),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: Space.xs),
             Tooltip(
               message: '@ 멘션 삽입',
               child: _ToolBtn(icon: Icons.alternate_email, cs: cs, onTap: _insertMention),
@@ -462,7 +462,7 @@ class _MentionHelpRowState extends State<_MentionHelpRow> {
           child: Row(
             children: [
               Icon(Icons.alternate_email, size: 14, color: SemColor.brand(context)),
-              const SizedBox(width: 4),
+              const SizedBox(width: Space.xs),
               Text('@ 링크 명령어 보기', style: TextStyle(fontSize: Typo.small, color: SemColor.brand(context))),
               Icon(_expanded ? Icons.expand_less : Icons.expand_more,
                   size: 14, color: SemColor.brand(context)),
@@ -495,7 +495,7 @@ class _MentionHelpRowState extends State<_MentionHelpRow> {
                       ),
                       child: Text(e.$1, style: TextStyle(fontSize: Typo.caption, color: SemColor.brand(context))),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: Space.sm),
                     Text(e.$2, style: const TextStyle(
                       fontSize: Typo.small, fontWeight: Typo.bold, fontFamily: 'monospace')),
                     const SizedBox(width: 6),
