@@ -175,14 +175,17 @@ def _upsert_player(cur, kbo_id, name, ptype):
     """, (kbo_id, name, ptype))
 
 
-def crawl_hitter_season(season, series='0', series_label='정규'):
-    """타자 시즌스탯 (Basic1 + Basic2) → historical_*. series=ddlSeries(정규/PS). 반환: 적재 행수."""
-    driver = _get_driver()
+def crawl_hitter_season(season, series='0', series_label='정규', driver=None):
+    """타자 시즌스탯 (Basic1 + Basic2) → historical_*. series=ddlSeries(정규/PS). driver 주면 재사용. 반환: 적재 행수."""
+    own = driver is None
+    if own:
+        driver = _get_driver()
     try:
         h1, rows1 = _iter_season_rows(driver, _HIT_B1, season, series)
         h2, rows2 = _iter_season_rows(driver, _HIT_B2, season, series)
     finally:
-        driver.quit()
+        if own:
+            driver.quit()
     if not rows1:
         print(f"[hist hitter {season}/{series_label}] 데이터 없음")
         return 0
@@ -253,14 +256,17 @@ def crawl_hitter_season(season, series='0', series_label='정규'):
     return saved
 
 
-def crawl_pitcher_season(season, series='0', series_label='정규'):
-    """투수 시즌스탯 (Basic1 + Basic2) → historical_*. series=ddlSeries(정규/PS). 반환: 적재 행수."""
-    driver = _get_driver()
+def crawl_pitcher_season(season, series='0', series_label='정규', driver=None):
+    """투수 시즌스탯 (Basic1 + Basic2) → historical_*. series=ddlSeries(정규/PS). driver 주면 재사용. 반환: 적재 행수."""
+    own = driver is None
+    if own:
+        driver = _get_driver()
     try:
         h1, rows1 = _iter_season_rows(driver, _PIT_B1, season, series)
         h2, rows2 = _iter_season_rows(driver, _PIT_B2, season, series)
     finally:
-        driver.quit()
+        if own:
+            driver.quit()
     if not rows1:
         print(f"[hist pitcher {season}/{series_label}] 데이터 없음")
         return 0
@@ -344,13 +350,20 @@ def crawl_season(season, series='0', series_label='정규'):
 _PS_SERIES = [('4', '와일드카드'), ('3', '준플레이오프'), ('5', '플레이오프'), ('7', '한국시리즈')]
 
 
-def crawl_ps_season(season):
-    """한 시즌 전 포스트시즌 시리즈 적재 (열리지 않은 시리즈는 데이터 없음으로 자동 스킵)."""
+def crawl_ps_season(season, driver=None):
+    """한 시즌 전 포스트시즌 시리즈 적재. driver 주면 재사용(드라이버 startup 8→1로 절감)."""
+    own = driver is None
+    if own:
+        driver = _get_driver()
     tot = 0
-    for code, label in _PS_SERIES:
-        h, p = crawl_season(season, code, label)
-        tot += h + p
-        time.sleep(1)
+    try:
+        for code, label in _PS_SERIES:
+            tot += crawl_hitter_season(season, code, label, driver=driver) or 0
+            tot += crawl_pitcher_season(season, code, label, driver=driver) or 0
+            time.sleep(1)
+    finally:
+        if own:
+            driver.quit()
     print(f"[hist PS {season}] 총 {tot}행")
     return tot
 
@@ -688,10 +701,23 @@ if __name__ == '__main__':
         else:
             print("usage: ... ps <season> [end_season]")
             sys.exit(1)
-        for s in ps_seasons:
-            print(f"=== PS season {s} ===")
-            crawl_ps_season(s)
-            time.sleep(1.5)
+        driver = _get_driver()
+        try:
+            for i, s in enumerate(ps_seasons):
+                if i and i % 5 == 0:  # 주기 드라이버 재생성(장수명 크래시 방지)
+                    try:
+                        driver.quit()
+                    except Exception:
+                        pass
+                    driver = _get_driver()
+                print(f"=== PS season {s} ===")
+                crawl_ps_season(s, driver=driver)
+                time.sleep(1.5)
+        finally:
+            try:
+                driver.quit()
+            except Exception:
+                pass
         sys.exit(0)
     if args and args[0] == 'awards':
         if len(args) >= 3 and args[1] == 'id':
