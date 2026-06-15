@@ -41,3 +41,47 @@ def test_already_marked_no_dup():
         registered=set(),
         db_players=[{'name': '문동주', 'had_1gun': True, 'latest': '등록말소', 'days_since_last': 40}])
     assert out == []
+
+
+# ── C1: 2군(futures) 구분 ──
+def test_demoted_to_2gun():
+    # 1군 부재 + 2군 등록 → '2군'(강등, 부상 아님). staleness 불요(positive 증거)
+    out = classify_roster_diff(
+        registered=set(),
+        db_players=[{'name': '한선수', 'had_1gun': True, 'latest': None, 'days_since_last': 3}],
+        futures_registered={'한선수'})
+    assert ('한선수', '2군') in out
+
+
+def test_injured_not_in_either():
+    # 2군 크롤 성공했는데 어느 군에도 없음 + stale → 등록말소(이탈/부상)
+    out = classify_roster_diff(
+        registered=set(),
+        db_players=[{'name': '부상자', 'had_1gun': True, 'latest': None, 'days_since_last': 40}],
+        futures_registered={'다른선수'})
+    assert ('부상자', '등록말소') in out
+
+
+def test_2gun_no_dup():
+    out = classify_roster_diff(
+        registered=set(),
+        db_players=[{'name': '한선수', 'had_1gun': True, 'latest': '2군', 'days_since_last': 5}],
+        futures_registered={'한선수'})
+    assert out == []
+
+
+def test_return_from_2gun():
+    out = classify_roster_diff(
+        registered={'한선수'},
+        db_players=[{'name': '한선수', 'had_1gun': True, 'latest': '2군', 'days_since_last': 2}],
+        futures_registered=set())
+    assert ('한선수', '1군등록') in out
+
+
+def test_futures_fail_falls_back_to_stale():
+    # 2군 크롤 실패(빈 set)면 종전 거동(말소 추론) 유지 — 회귀 방어
+    out = classify_roster_diff(
+        registered=set(),
+        db_players=[{'name': '문동주', 'had_1gun': True, 'latest': None, 'days_since_last': 40}],
+        futures_registered=set())
+    assert ('문동주', '등록말소') in out
