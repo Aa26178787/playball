@@ -1354,68 +1354,53 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         child: Text('2026 시즌 타순별 누적 성적',
             style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
       ),
-      // 타순 리스트 카드
-      Container(
-        decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.lg)),
-        child: Column(children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
-            child: Row(children: [
-              const SizedBox(width: 32),
-              Expanded(flex: 4, child: Text('주요 타자', style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub))),
-              Expanded(flex: 2, child: Text('타율', textAlign: TextAlign.right, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub))),
-              Expanded(flex: 2, child: Text('출루율', textAlign: TextAlign.right, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub))),
-              Expanded(flex: 2, child: Text('HR', textAlign: TextAlign.right, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub))),
-              Expanded(flex: 2, child: Text('타점', textAlign: TextAlign.right, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub))),
-            ]),
-          ),
-          Divider(height: 1, color: cs.line),
-          ...stats.asMap().entries.map((e) {
-            final s = e.value;
-            final last = e.key == stats.length - 1;
-            final order = (s['batting_order'] as num?)?.toInt() ?? 0;
-            final avg = (s['avg'] as num?)?.toDouble() ?? 0;
-            final obp = (s['obp'] as num?)?.toDouble() ?? 0;
-            final hr = (s['home_runs'] as num?)?.toInt() ?? 0;
-            final rbi = (s['rbis'] as num?)?.toInt() ?? 0;
-            final topName = s['top_player'] as String? ?? '-';
-            final topId = s['top_player_id'] as int?;
-            final topImg = s['top_player_image'] as String?;
-            final t = maxAvg > minAvg ? (avg - minAvg) / (maxAvg - minAvg) : 0.5;
-            final rowBg = Color.lerp(Colors.transparent, tc.withValues(alpha: cs.dark ? 0.16 : 0.10), t);
-            return GestureDetector(
-              onTap: topId != null
-                  ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: topId)))
-                  : null,
-              child: Container(
-                decoration: BoxDecoration(color: rowBg, border: last ? null : Border(bottom: BorderSide(color: cs.line))),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Row(children: [
-                  Container(width: 26, height: 26,
-                    decoration: BoxDecoration(color: tc, shape: BoxShape.circle),
-                    alignment: Alignment.center,
-                    child: Text('$order', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white))),
-                  const SizedBox(width: 6),
-                  Expanded(flex: 4, child: Row(children: [
-                    netCircleAvatar(radius: 11, backgroundColor: tc.withValues(alpha: 0.15),
-                      url: topImg,
-                      child: Icon(Icons.person, size: 13, color: tc)),
-                    const SizedBox(width: 5),
-                    Expanded(child: Text(topName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 11, fontWeight: Typo.medium, color: cs.ink))),
-                  ])),
-                  Expanded(flex: 2, child: Text(fmt3(avg), textAlign: TextAlign.right,
-                      style: TextStyle(fontSize: 12, fontWeight: Typo.bold,
-                          color: avg >= 0.300 ? const Color(0xFF2563EB) : avg < 0.230 ? SemColor.live : cs.ink))),
-                  Expanded(flex: 2, child: Text(fmt3(obp), textAlign: TextAlign.right, style: TextStyle(fontSize: 12, color: cs.ink3))),
-                  Expanded(flex: 2, child: Text('$hr', textAlign: TextAlign.right,
-                      style: TextStyle(fontSize: 12, color: hr >= 5 ? const Color(0xFF9333EA) : cs.ink3))),
-                  Expanded(flex: 2, child: Text('$rbi', textAlign: TextAlign.right, style: TextStyle(fontSize: 12, color: cs.ink3))),
-                ]),
-              ),
-            );
-          }),
-        ]),
+      // 타순 라인업 카드 그리드 (3열 × 3행, 사진 중심)
+      GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 3,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 0.66,
+        children: stats.map((s) {
+          final order = (s['batting_order'] as num?)?.toInt() ?? 0;
+          final avg = (s['avg'] as num?)?.toDouble() ?? 0;
+          final hr = (s['home_runs'] as num?)?.toInt() ?? 0;
+          final rbi = (s['rbis'] as num?)?.toInt() ?? 0;
+          final topName = s['top_player'] as String? ?? '-';
+          final topId = s['top_player_id'] as int?;
+          final topImg = s['top_player_image'] as String?;
+          final t = maxAvg > minAvg ? (avg - minAvg) / (maxAvg - minAvg) : 0.5;
+          final cardBg = Color.lerp(cs.paper, tc.withValues(alpha: cs.dark ? 0.22 : 0.13), t);
+          final avgColor = avg >= 0.300 ? const Color(0xFF2563EB) : avg < 0.230 ? SemColor.live : cs.ink;
+          return GestureDetector(
+            onTap: topId != null
+                ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: topId)))
+                : null,
+            child: Container(
+              decoration: BoxDecoration(color: cardBg, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.lg)),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 11),
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Container(width: 22, height: 22,
+                  decoration: BoxDecoration(color: tc, shape: BoxShape.circle),
+                  alignment: Alignment.center,
+                  child: Text('$order', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white))),
+                const SizedBox(height: 9),
+                netCircleAvatar(radius: 20, backgroundColor: tc.withValues(alpha: 0.15),
+                  url: topImg, child: Icon(Icons.person, size: 20, color: tc)),
+                const SizedBox(height: 7),
+                Text(topName, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink)),
+                const SizedBox(height: 4),
+                Text(fmt3(avg), style: TextStyle(fontSize: 17, fontWeight: Typo.extra, color: avgColor,
+                    fontFeatures: const [FontFeature.tabularFigures()])),
+                const SizedBox(height: 2),
+                Text('HR $hr · 타점 $rbi', maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 10, color: cs.sub)),
+              ]),
+            ),
+          );
+        }).toList(),
       ),
       const SizedBox(height: 14),
       // 타순별 타율 막대 차트
