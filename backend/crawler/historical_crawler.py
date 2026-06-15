@@ -349,6 +349,117 @@ def crawl_season(season, series='0', series_label='정규'):
 # 포스트시즌 시리즈 (ddlSeries 코드)
 _PS_SERIES = [('4', '와일드카드'), ('3', '준플레이오프'), ('5', '플레이오프'), ('7', '한국시리즈')]
 
+# 스플릿 기본축 (ddlSituation 코드, 라벨) — situation2(값)는 동적으로 읽음
+_SPLIT_AXES = [('HOMEAYAY_SC', '홈원정'), ('OPPTEAM_SC', '상대팀'), ('MONTH_SC', '월별')]
+
+
+def crawl_splits_season(season, driver=None):
+    """타자 기본축 스플릿(홈원정/상대팀/월별) → historical_splits. HitterBasic/Basic1 ddlSituation+Detail."""
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import Select
+    own = driver is None
+    if own:
+        driver = _get_driver()
+    conn = get_connection()
+    if not conn:
+        if own:
+            driver.quit()
+        return 0
+    cur = conn.cursor()
+    saved = 0
+    try:
+        for axis_code, axis_label in _SPLIT_AXES:
+            try:
+                driver.get(_HIT_B1)
+                time.sleep(3)
+                Select(driver.find_element(By.CSS_SELECTOR, "select[id*='ddlSeason']")).select_by_value(str(season))
+                time.sleep(2)
+                Select(driver.find_element(By.CSS_SELECTOR, "select[id*='ddlSituation']")).select_by_value(axis_code)
+                time.sleep(2.5)
+                s2 = driver.find_element(By.CSS_SELECTOR, "select[id*='ddlSituationDetail']")
+                vals = [(o.get_attribute('value'), o.text.strip())
+                        for o in s2.find_elements(By.TAG_NAME, 'option') if o.get_attribute('value')]
+            except Exception as e:
+                print(f"[splits {season}/{axis_label}] 축 설정 오류: {e}")
+                continue
+            for v2, label2 in vals:
+                try:
+                    Select(driver.find_element(By.CSS_SELECTOR, "select[id*='ddlSituationDetail']")).select_by_value(v2)
+                    time.sleep(2.5)
+                except Exception:
+                    continue
+                # 페이지 순회 파싱 (이종테이블/중복 방어 동일)
+                headers = []
+                seen = set()
+                for _pg in range(1, 31):
+                    soup = BeautifulSoup(driver.page_source, 'html.parser')
+                    table = soup.find('table', class_='tData01')
+                    if not table:
+                        break
+                    if not headers:
+                        headers = [th.get_text(strip=True) for th in table.select('thead th')]
+                        a = _hidx(headers)
+                        idx = dict(avg=a('AVG'), g=a('G'), pa=a('PA'), ab=a('AB'), h=a('H'),
+                                   b2=a('2B'), b3=a('3B'), hr=a('HR'), tb=a('TB'), rbi=a('RBI'))
+                    ncol = len(headers)
+                    trs = table.select('tbody tr')
+                    if not trs:
+                        break
+                    new = 0
+                    for tr in trs:
+                        cells = [td.get_text(strip=True) for td in tr.find_all('td')]
+                        if len(cells) != ncol:
+                            continue
+                        pid = None
+                        ael = tr.find('a', href=_PLAYERID_RE)
+                        if ael:
+                            m = _PLAYERID_RE.search(ael.get('href', ''))
+                            if m:
+                                pid = int(m.group(1))
+                        if not pid:
+                            continue
+                        key = (pid, cells[2] if len(cells) > 2 else None)
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        new += 1
+
+                        def cc(k):
+                            i = idx[k]
+                            return cells[i] if i is not None and i < len(cells) else None
+                        ab = _safe_int(cc('ab'))
+                        tb = _safe_int(cc('tb'))
+                        slg = round(tb / ab, 3) if ab and tb is not None and ab > 0 else None
+                        cur.execute("""
+                            INSERT INTO historical_splits (
+                                kbo_player_id, season, player_type, split_axis, split_value,
+                                games, pa, at_bats, hits, doubles, triples, home_runs, rbis, avg, slg
+                            ) VALUES (%s,%s,'타자',%s,%s, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                            ON CONFLICT (kbo_player_id, season, player_type, split_axis, split_value)
+                            DO UPDATE SET games=EXCLUDED.games, pa=EXCLUDED.pa, at_bats=EXCLUDED.at_bats,
+                                hits=EXCLUDED.hits, doubles=EXCLUDED.doubles, triples=EXCLUDED.triples,
+                                home_runs=EXCLUDED.home_runs, rbis=EXCLUDED.rbis, avg=EXCLUDED.avg, slg=EXCLUDED.slg
+                        """, (pid, season, axis_label, label2,
+                              _safe_int(cc('g')), _safe_int(cc('pa')), ab, _safe_int(cc('h')),
+                              _safe_int(cc('b2')), _safe_int(cc('b3')), _safe_int(cc('hr')),
+                              _safe_int(cc('rbi')), _safe_float(cc('avg')), slg))
+                        saved += 1
+                    if new == 0:
+                        break
+                    try:
+                        driver.find_element('xpath', f'//a[normalize-space(.)="{_pg + 1}"]').click()
+                        time.sleep(2)
+                    except Exception:
+                        break
+                conn.commit()
+            print(f"[splits {season}/{axis_label}] 누적 {saved}행")
+    finally:
+        cur.close()
+        conn.close()
+        if own:
+            driver.quit()
+    return saved
+
 
 def crawl_ps_season(season, driver=None):
     """한 시즌 전 포스트시즌 시리즈 적재. driver 주면 재사용(드라이버 startup 8→1로 절감)."""
@@ -691,6 +802,33 @@ if __name__ == '__main__':
         sys.exit(0)
     if args and args[0] == 'fip':
         recompute_fip()
+        sys.exit(0)
+    if args and args[0] == 'splits':
+        # splits <season> [end_season]
+        if len(args) == 2:
+            sp_seasons = [int(args[1])]
+        elif len(args) == 3:
+            sp_seasons = list(range(int(args[1]), int(args[2]) + 1))
+        else:
+            print("usage: ... splits <season> [end_season]")
+            sys.exit(1)
+        drv = _get_driver()
+        try:
+            for i, s in enumerate(sp_seasons):
+                if i and i % 3 == 0:
+                    try:
+                        drv.quit()
+                    except Exception:
+                        pass
+                    drv = _get_driver()
+                print(f"=== splits season {s} ===")
+                crawl_splits_season(s, driver=drv)
+                time.sleep(1.5)
+        finally:
+            try:
+                drv.quit()
+            except Exception:
+                pass
         sys.exit(0)
     if args and args[0] == 'ps':
         # ps <season> [end_season]  — 포스트시즌 전 시리즈
