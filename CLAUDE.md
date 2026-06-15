@@ -361,6 +361,18 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
   - ⚠️⚠️ **자동 생성 roster_change는 reason `(자동)` 마커 + 모든 뉴스 surface서 제외 필수**: 알림(`_notify_roster_for_fans`)·홈 등록말소 배너(`get_today_roster_changes`)·팀상세 최근등록말소(`get_roster_changes`) 전부 `reason NOT LIKE '%(자동)%'`. **선수상세 roster_status 배지(`get_player_detail` 최신행 파생)만 노출**=의도 surface. 교훈: 자동데이터를 기존 뉴스 테이블에 넣으면 **전 소비처 노출정책 일괄 점검**(홈 172 도배 사고 — 알림가드만 하고 배너 2곳 놓침)
   - **backend pytest 확장**: roster_diff·narrative·season·auth rotation·points·badges·pa = scratch DB(`playball_test`) 검증, CI backend-test(postgres) job
   - **refresh_tokens bloat**: revoked 토큰 영구누적(92% dead) → create 시 per-user 정리 + scheduler 일일 전역 purge
+- **06-16 팀상세 UI + 디자인토큰 전면화**: (전부 웹+서버 라이브, **네이티브 APK 미반영**)
+  - **팀상세/경기탭 재구성**: ① 상대전적 강세/약세 재설계(승/패/무 분리 + **승률**(구 "2-4" 폐기) + 상대 로고, 강세→약세 순, 이모지 제거·데이터 가운데정렬·카드높이 축소) ② **타순별 서브탭 → 팀 리더**(`GET /teams/{id}/leaders` @cached(300), 부문별 TOP3 — 타자 avg/hr/rbi/sb/ops·투수 era/w/k/sv/hld, 규정 게이트 qual_pa/ip / 앱 = 타자·투수 **2열** 한화면) ③ 선수카드에 best_stat/best_rank(최고순위 부문) 표기·hr→홈런. `getTeamBattingOrder` 제거
+  - **타이포 스케일 토큰화** (`utils/design_tokens.dart` `Typo`): micro9/mini10/caption11/small12/body13/subtitle14/title16/lg18/h220/h124/display34. off-scale 매핑(8→micro·15→subtitle·17→title·19→lg·22→h2·26→h1). 전 화면 `fontSize` 정수리터럴 → `Typo.*`(12커밋). 소수(X.5)·초대형(28/32/150)은 raw 유지(의도)
+  - **디자인토큰 4종 전면화** (5커밋, sed 바이트안전 일괄 + git diff 한글오염 매단계 감시 0):
+    - `design_tokens` 확장: **`Typo.thin/semibold/black`**(w300/500/900) + **`Pal` 신설**(중성팔레트 ink/ink2/ink3/sub/paper/paper2/line/line2/track 9단계 다크/라이트 정준쌍 중앙화, `Pal.x(isDark)` bool 인자 — Theme 재조회 회피)
+    - **fontWeight** `FontWeight.wN/bold/normal` → `Typo.*` (~370, 1:1 무손실)
+    - **중성색** 화면별 `_C`헬퍼·인라인 삼항식 → `Pal.*` (278). 조건식 2형태(로컬 `isDark*` + 인라인 `Theme.of().brightness==dark`) 대응. ⚠️**정준 쌍만 매칭**(값 불일치·비정준쌍은 미변환 = 오변환 0). `_isDark` 밑줄 getter 엣지케이스 교정(`_Pal` 고아 4건)
+    - **Radii** `circular(4/8/12/16/20/999)` → `Radii.xs/sm/md/lg/xl/pill` (110). off-scale(10/14/5/3/2/6/13/22)는 raw(스냅=모서리 시각변경 회피)
+    - **Space** `EdgeInsets.all`·단일축 `SizedBox(width|height)` 스케일값 → `Space.*` (279). ⚠️`width:`/`height:`는 간격↔크기(로고/스피너)·Positioned 오프셋 구문구분 불가 → **명확한 간격 idiom만**(symmetric/only/fromLTRB·이중축 SizedBox·off-scale 6/10/14/18/20 = raw)
+  - ⚠️ **신규 코드 = 토큰 우선**: `Typo`(폰트·weight)·`Pal`(중성색)·`SemColor`(시맨틱/브랜드)·`Radii`·`Space`. 인라인 hex/리터럴 지양
+  - **제외(의도)**: `widgets/share_cards.dart`(골든 PNG 보호)·`utils/`(테마/토큰 정의층) = 전 토큰작업서 제외. 시맨틱/팀/결과칩/그라디언트 색 = 도메인색(중성팔레트 아님, 유지)
+  - **검증**: analyze lib 0(매 단계) · 골든 4종 통과(VisitShare/PlayerShare/AppErrorView 라·다 — 값 1:1이라 PNG 불변) · 웹 wasm 재빌드 → `/app/` 200
 
 ## 역대 데이터 수집 프로젝트 (KBO 1982~) — ✅ 핵심 완료 (2026-06-15 착수 ~ 06-16 A/C1/B/꼬리/검증 완료, C2만 장기보류)
 
