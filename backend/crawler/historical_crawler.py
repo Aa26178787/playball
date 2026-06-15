@@ -96,7 +96,7 @@ def _iter_season_rows(driver, url, season):
 
     headers = []
     out = []
-    prev_first = None
+    seen = set()
     for page_num in range(1, 31):
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         table = soup.find('table', class_='tData01')
@@ -104,17 +104,17 @@ def _iter_season_rows(driver, url, season):
             break
         if not headers:
             headers = [th.get_text(strip=True) for th in table.select('thead th')]
+        ncol = len(headers)
         trs = table.select('tbody tr')
         if not trs:
             break
-        first_text = trs[0].get_text(strip=True)
-        if first_text == prev_first:
-            break
-        prev_first = first_text
+        new = 0
         for tr in trs:
             tds = tr.find_all('td')
             cells = [td.get_text(strip=True) for td in tds]
-            if not cells:
+            # 페이저 스트레이 '다음' 클릭이 이종 테이블(열 수 상이)을 로드하는 케이스 방어
+            # (1페이지 시즌엔 진짜 page2가 없어 //a[.="2"]가 엉뚱한 링크를 물던 버그)
+            if len(cells) != ncol:
                 continue
             pid = None
             a = tr.find('a', href=_PLAYERID_RE)
@@ -122,7 +122,15 @@ def _iter_season_rows(driver, url, season):
                 m = _PLAYERID_RE.search(a.get('href', ''))
                 if m:
                     pid = int(m.group(1))
+            key = (pid, cells[2] if len(cells) > 2 else None)  # (선수, 팀) — 다팀 split 보존
+            if key in seen:
+                continue
+            seen.add(key)
             out.append((cells, pid))
+            new += 1
+        # 새 유효행 0 = 마지막 페이지/중복/이종 테이블 → 종료
+        if new == 0:
+            break
         # 다음 페이지 — 숫자 링크 우선 (5단위 블록 점프 회피)
         try:
             driver.find_element('xpath', f'//a[normalize-space(.)="{page_num + 1}"]').click()
