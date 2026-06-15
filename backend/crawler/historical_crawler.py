@@ -330,6 +330,52 @@ def crawl_season(season):
     return h, p
 
 
+# ── franchise 링크 + debut/final + primary team (순수 SQL, 재실행 안전, 배치 후 실행) ──
+def link_franchises():
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    # 1) 시즌행 team_name(MBC/OB/현대..) → team_franchises (시즌 범위로 era 구분)
+    cur.execute("""
+        UPDATE historical_season_stats s
+        SET team_franchise_id = tf.id
+        FROM team_franchises tf
+        WHERE s.team_franchise_id IS NULL AND s.team_name IS NOT NULL
+          AND s.season BETWEEN tf.start_year AND COALESCE(tf.end_year, 9999)
+          AND tf.team_name LIKE '%%' || s.team_name || '%%'
+    """)
+    n1 = cur.rowcount
+    # 2) 데뷔/마지막 시즌
+    cur.execute("""
+        UPDATE historical_players hp
+        SET debut_year = a.mn, final_year = a.mx
+        FROM (SELECT kbo_player_id, MIN(season) mn, MAX(season) mx
+              FROM historical_season_stats GROUP BY kbo_player_id) a
+        WHERE hp.kbo_player_id = a.kbo_player_id
+    """)
+    # 3) 대표팀 = 출전경기 최다 프랜차이즈의 현존 구단 (해체구단뿐이면 NULL 유지)
+    cur.execute("""
+        UPDATE historical_players hp
+        SET primary_team_id = x.current_team_id
+        FROM (
+            SELECT kbo_player_id, current_team_id FROM (
+                SELECT s.kbo_player_id, tf.current_team_id,
+                       ROW_NUMBER() OVER (PARTITION BY s.kbo_player_id
+                                          ORDER BY SUM(COALESCE(s.games,0)) DESC) rn
+                FROM historical_season_stats s
+                JOIN team_franchises tf ON tf.id = s.team_franchise_id
+                WHERE tf.current_team_id IS NOT NULL
+                GROUP BY s.kbo_player_id, tf.current_team_id
+            ) z WHERE rn = 1
+        ) x WHERE hp.kbo_player_id = x.kbo_player_id
+    """)
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[link] franchise {n1}행 링크 + debut/final + primary team 갱신")
+
+
 # ── 신상(bio) enrichment ── detail 페이지 div.player_info (서버 IP 도달 OK) ──
 import datetime
 
@@ -444,6 +490,9 @@ def enrich_bio(limit=None, only_id=None):
 
 if __name__ == '__main__':
     args = sys.argv[1:]
+    if args and args[0] == 'link':
+        link_franchises()
+        sys.exit(0)
     if args and args[0] == 'bio':
         # bio [limit]  |  bio id <kbo_id>
         if len(args) >= 3 and args[1] == 'id':
