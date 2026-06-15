@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../api/api_service.dart';
 import '../../widgets/common_widgets.dart';
+import '../../utils/design_tokens.dart';
 import '../../utils/local_cache.dart';
 import '../game/game_detail_screen.dart';
 
@@ -245,7 +246,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                           child: Text(
                                             n['title'] as String,
                                             style: TextStyle(
-                                              fontSize: 14,
+                                              fontSize: Typo.subtitle,
                                               fontWeight: unread
                                                   ? FontWeight.bold
                                                   : FontWeight.normal,
@@ -267,13 +268,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     Text(
                                       n['body'] as String? ?? '',
                                       style: TextStyle(
-                                          fontSize: 13, color: Colors.grey[600]),
+                                          fontSize: Typo.body, color: Colors.grey[600]),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       _relativeTime(n['created_at'] as String),
                                       style: TextStyle(
-                                          fontSize: 11, color: Colors.grey[600]),
+                                          fontSize: Typo.caption, color: Colors.grey[600]),
                                     ),
                                   ],
                                 ),

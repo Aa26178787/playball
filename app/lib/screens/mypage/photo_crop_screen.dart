@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:crop_your_image/crop_your_image.dart';
 import 'package:photo_manager/photo_manager.dart';
+import '../../utils/design_tokens.dart';
 
 /// 인스타그램식 이미지 선택 + 1:1 크롭 화면.
 /// 상단: 고정 1:1 크롭 뷰포트(이미지 pan/zoom) / 하단: 갤러리 썸네일 그리드.
@@ -95,7 +96,7 @@ class _PhotoCropScreenState extends State<PhotoCropScreen> {
               ),
               const Spacer(),
               const Text('사진 선택',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                  style: TextStyle(color: Colors.white, fontSize: Typo.title, fontWeight: FontWeight.w700)),
               const Spacer(),
               _cropping
                   ? const Padding(
@@ -107,7 +108,7 @@ class _PhotoCropScreenState extends State<PhotoCropScreen> {
                       child: Text('완료',
                           style: TextStyle(
                               color: _currentBytes == null ? Colors.white38 : const Color(0xFF3897F0),
-                              fontSize: 15, fontWeight: FontWeight.w800)),
+                              fontSize: Typo.subtitle, fontWeight: FontWeight.w800)),
                     ),
             ]),
           ),
@@ -153,7 +154,7 @@ class _PhotoCropScreenState extends State<PhotoCropScreen> {
       return Center(
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           const Text('사진 접근 권한이 필요합니다',
-              style: TextStyle(color: Colors.white70, fontSize: 13)),
+              style: TextStyle(color: Colors.white70, fontSize: Typo.body)),
           const SizedBox(height: 12),
           TextButton(
             onPressed: () => PhotoManager.openSetting(),
