@@ -287,16 +287,16 @@ def run_trade(days: int = 30):
 _REG_TEAM_CODES = ['LG', 'KT', 'SS', 'HT', 'OB', 'HH', 'SK', 'NC', 'LT', 'WO']
 
 
-def crawl_active_rosters() -> dict:
-    """Register.aspx 구단별 등록현황 → {team_id: set(선수명)} 현재 1군 등록.
-    팀 0명이면 제외(부분 크롤 가드)."""
+def _crawl_register_page(url: str, tag: str = 'ActiveRoster') -> dict:
+    """등록현황 페이지(1군 Player/Register 또는 2군 futures/player/register) → {team_id: set(선수명)}.
+    구조 동일(fnSearchChange 팀링크 + 테이블 hdr[1]=포지션그룹, 이름=cols[1]). 팀 0명=제외(부분크롤 가드)."""
     from selenium.webdriver.common.by import By
     import time
     team_id_map = _get_team_id_map()
     result = {}
     driver = _get_driver()
     try:
-        driver.get('https://www.koreabaseball.com/Player/Register.aspx')
+        driver.get(url)
         time.sleep(3)
         for code in _REG_TEAM_CODES:
             tid = team_id_map.get(code)
@@ -325,14 +325,24 @@ def crawl_active_rosters() -> dict:
                             names.add(cols[1])
                 if names:
                     result[tid] = names
-                    print(f'[ActiveRoster] {code}: {len(names)}명')
+                    print(f'[{tag}] {code}: {len(names)}명')
                 else:
-                    print(f'[ActiveRoster] {code}: 0명 — 스킵(부분크롤 가드)')
+                    print(f'[{tag}] {code}: 0명 — 스킵(부분크롤 가드)')
             except Exception as e:
-                print(f'[ActiveRoster] {code} 오류: {e}')
+                print(f'[{tag}] {code} 오류: {e}')
     finally:
         driver.quit()
     return result
+
+
+def crawl_active_rosters() -> dict:
+    """현재 1군 등록현황 → {team_id: set(선수명)}."""
+    return _crawl_register_page('https://www.koreabaseball.com/Player/Register.aspx', 'ActiveRoster')
+
+
+def crawl_active_futures() -> dict:
+    """현재 2군(퓨처스) 등록현황 → {team_id: set(선수명)}. (C1 — 부상≠2군 구분용)"""
+    return _crawl_register_page('https://www.koreabaseball.com/futures/player/register.aspx', 'ActiveFutures')
 
 
 def sync_active_roster():
@@ -344,6 +354,9 @@ def sync_active_roster():
     if not rosters:
         print('[ActiveRoster] 크롤 결과 없음 — 동기화 스킵')
         return
+    futures = crawl_active_futures()  # best-effort: 실패({})면 classify가 종전 말소-추론으로 폴백
+    if not futures:
+        print('[ActiveFutures] 2군 크롤 결과 없음 — 부상≠2군 구분 없이 진행')
     conn = get_connection()
     if not conn:
         return
@@ -370,9 +383,11 @@ def sync_active_roster():
             """, (team_id,))
             db_players = [{'name': r[0], 'had_1gun': bool(r[1]), 'latest': r[2],
                            'days_since_last': r[3]} for r in cur.fetchall()]
-            for name, ctype in classify_roster_diff(registered, db_players):
+            for name, ctype in classify_roster_diff(
+                    registered, db_players, futures_registered=futures.get(team_id, set())):
                 pid = _find_player_id(name, team_id)
-                reason = '1군 미등록(자동)' if ctype == '등록말소' else '복귀(자동)'
+                reason = {'등록말소': '1군 미등록(자동)', '1군등록': '복귀(자동)',
+                          '2군': '2군 강등(자동)'}.get(ctype, '(자동)')
                 cur.execute("""
                     INSERT INTO player_roster_changes
                         (player_name, team_id, player_id, change_type, reason, change_date)
