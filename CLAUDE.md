@@ -362,6 +362,71 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
   - **backend pytest 확장**: roster_diff·narrative·season·auth rotation·points·badges·pa = scratch DB(`playball_test`) 검증, CI backend-test(postgres) job
   - **refresh_tokens bloat**: revoked 토큰 영구누적(92% dead) → create 시 per-user 정리 + scheduler 일일 전역 purge
 
+## 역대 데이터 수집 프로젝트 (KBO 1982~) — 진행중 (2026-06-15 착수, 브레인스톰+스파이크 단계)
+
+### ⚡ 트리거 (재개 프로토콜)
+- **트리거 문구**: 사용자가 **`역대수집 진행`** 입력 시 = 이 섹션 재개.
+- **동작**: ① 이 섹션 **진행 체크리스트** 읽기 → ② 첫 `[ ]`(미완료) 단계 실행 → ③ 완료 시 `[x]` + **진행로그**에 한 줄 기록 → ④ **연속 진행**: 다음 `[ ]` 계속 실행 → ⑤ `⏸️ 의사결정 게이트` 만나면 멈추고 사용자에 질문 / 막히면 정직히 보고. 게이트 없으면 단계 소진까지 자율 연속.
+- **각 단계 끝 = CLAUDE.md 이 섹션 갱신**(체크박스+진행로그) → 세션 끊겨도 다음 트리거가 이어받음.
+- 멈춤: "역대수집 중단" / 게이트 도달 / 미완료 0개.
+
+### 목적
+- KBO 역대(1982~) 선수·팀 데이터로 **① 상세페이지 깊이(콘텐츠) ② 승리예측 정확도(모델)** 강화. 비시즌 DAU 방어·올드팬 자산.
+
+### ⚠️ 소스 정책 (확정)
+- **statiz(스탯티즈) 크롤 = 불법(ToS/저작권) → 전면 금지.** 절대 재도입 금지.
+- 합법 소스만: **KBO 공식(koreabaseball.com, 가장 방어가능) + Naver 통계 API(기존 `statiz_crawler.py`가 실제로 쓰는 `api-gw.sports.naver.com/statistics` — 이름만 statiz, 도메인은 naver)**.
+- ⚠️ `backend/crawler/statiz_crawler.py` = 오명. 실체는 Naver API. statiz.co.kr 안 건드림.
+
+### 확인된 소스맵 (2026-06-15 스파이크 결과)
+| 데이터 | 소스 | 깊이 | 방식 | 상태 |
+|---|---|---|---|---|
+| 1군 시즌스탯(타/투) | KBO `record/player/...basic1.aspx` | **1982~2026 44시즌** | ASP.NET `__doPostBack`+5단위페이저 | ✅확인 |
+| 퓨처스 스탯 | KBO `futures/player/hitter.aspx` | **2010~2026** | postback+팀필터 | ✅확인 |
+| 세이버(WAR/wOBA/wRC+/FIP) | — KBO 미제공 | — | 기존 `recompute_*_derived`로 자체계산 | ✅보유 |
+| 은퇴선수 bio(생일/키/체중) | KBO `Record/Player/{Hitter,Pitcher}Detail/Basic.aspx?playerId=` | **은퇴선수 포함** | detail 헤더(생년월일/신장체중/투타/포지션/경력출신교) | ✅확인(양준혁 검증 — 1969생·188/95·좌투좌타·외야수·남도초~LG) |
+| 수상경력 | KBO `History/Etc/{PlayerPrize,GoldenGlove}.aspx` + `Player/Awards/{playerprize,GoldenGlove,SeriesPrize}.aspx` | 역대 | ASP.NET(WebFetch는 list/history 에러 → selenium 필요) | ✅URL확인(구조 selenium서) |
+| 드래프트 | **`draft.koreabaseball.com`** (별도 subdomain) | ❓ | ❓ | ✅URL확인(구조 미확인) |
+| 연봉 | KBO 미제공 가능(공시/언론뿐) | ❓ | 합법성 회색 | ⬜보류후보 |
+- 퓨처스 팀 = 한화/LG/고양/SSG/두산/상무/롯데/KIA/NC/삼성/KT/울산 (독립·군팀 고양/상무/울산 포함 → C2 팀매핑 소스).
+- KBO = postback 무겁지만 레포 **이미 KBO postback 크롤 중**(`kbo_roster_crawler` fnSearchChange, `kbo_daily_crawler`) → 패턴 존재. selenium = ARM snap chromium `driver_util.arm_or_wdm_chrome` 경유 필수.
+
+### 트랙 구성 (목적별 분리 — 섞지 말 것)
+- **트랙 A 콘텐츠**(상세 깊이): 구단계보·선수신상·통산스탯·수상·PS·(꼬리)드래프트/연봉. ⚠️ statiz 빠져 신상/수상/연봉 소스 불확실 = bio 스파이크가 생사 결정.
+- **트랙 B 모델**(예측): 박스역대(~2015+ 실효, 분포이동 주의)·스플릿 기본축. ⚠️ 야구 본질 고분산 = 데이터로 안 깨지는 천장(per-PA AUC~.52, ingame .854). 무한정 정확해지지 않음.
+- **트랙 C1 근**(roster 시너지): 콜업/말소+2군 시즌스탯 → 기존 roster_diff "부상≠2군 구분 불가" 한계 해결. 가벼움.
+- **트랙 C2 장기**(보류): 퓨처스 경기단위·일정·박스 = 사실상 2군 리그 풀 파이프라인. 니치·무거움 → 장기 큐.
+
+### 견적 (statiz 드롭·꼬리 제거 후)
+- 저장: 코어 ~400MB / 스플릿세밀·C2 포함 ~2GB. 크롤: ~5~12시간 1회배치. **$0**.
+- 개발: 근기(A코어+C1+B+A꼬리) ~7~9세션. C2/스플릿세밀 = 장기.
+- **불변 병목**: ① 동명이인(44년치 이름중복, statiz_id 못 쓰니 KBO/Naver player_id 키 설계) ② 구단계보(삼미/청보/태평양/빙그레/쌍방울/해태/현대/OB 등 없어진 구단 team_id 확장).
+
+### ✅ 의사결정 (2026-06-15 게이트 통과 — 확정)
+1. ~~스키마~~ → **별도 역대테이블 확정**: `historical_players`+`historical_season_stats`. 현 players/현역 파이프 무손상(신규생성금지 가드 유지). 앱 = active(players) ∪ historical 병합조회.
+2. ~~동명이인 키~~ → **`kbo_player_id` UNIQUE 정규키 확정**: players + historical_players 둘 다 보유, 사람 1=id 1. naver_player_id=라이브 보조 브릿지. **이름조인 전면폐기**(PA naver_id 숙제와 연결 — 양현종/이태양 혼합 근본해결 경로).
+3. ~~기회비용~~ → **단계적 착수 확정**: 구단계보 1단계만 먼저 → 재평가(전체 7~9세션 몰빵 아님).
+4. ~~**bio/수상 소스**~~ → **✅해소(2026-06-15 스파이크2/3)**: KBO 은퇴선수 detail 페이지에 bio 풀세트(생년월일/신장체중/투타/포지션/경력) + 수상/드래프트 URL 확인. 트랙A 콘텐츠 축소 불요, 위키 대체소스 불요. statiz 드롭해도 트랙A 생존.
+
+### 진행 체크리스트 (트리거가 여기 따라 진행)
+- [x] 브레인스톰: 트랙/단계/견적 합의
+- [x] 스파이크: KBO 1군기록(1982~) + 퓨처스(2010~) 구조 확인, statiz 불법 판정·드롭
+- [x] **스파이크2**: KBO detail 페이지 은퇴선수 bio ✅존재(양준혁 검증) — 트랙A 생존, #4 해소
+- [x] **스파이크3**: 수상(History/Etc·Player/Awards) + 드래프트(draft.koreabaseball.com) URL ✅확인 (구조 selenium서)
+- [~] **스파이크4**: Naver api `{season}` free-form·min-season 가드無 확인. **실측 깊이 cutoff = 이 환경서 미측정**(WebFetch가 api-gw UA/Referer 못 실음) → impl서 1줄 curl(`get_hitter_stats(2001/1990)`). 전략 결론: KBO=1982~ 깊은 tail 확정소스, Naver=최근 깔끔(JSON 1콜)서 우선, 하이브리드
+- [x] ⏸️ **설계 게이트** (2026-06-15 사용자 결정): **#1 스키마=별도 역대테이블**(`historical_players`+`historical_season_stats`, 현 players 무손상, 앱 active∪historical 병합조회) / **#2 동명이인키=`kbo_player_id` UNIQUE 정규키**(naver_player_id=라이브보조, 이름조인 전면폐기) / **#3=단계적 착수**(구단계보 1단계만 하고 재평가)
+- [ ] 구단계보/팀역사 테이블 설계+시드 (토대 — 선수 team_id 매핑 받침) ← **현재 단계**
+- [ ] 트랙A코어 크롤러: 신상→통산스탯→수상→PS (KBO postback, recompute 연동)
+- [ ] 트랙C1: 콜업/말소+2군스탯 크롤러 → roster_status 정밀화
+- [ ] 트랙B: 박스역대(~2015+)+스플릿 기본축 → 예측 피처 편입·재학습
+- [ ] 트랙A꼬리: 드래프트·(가능시)연봉
+- [ ] 검증: 스팟체크(김도영 HR 정합류)+pytest scratch DB
+- [ ] (장기 큐) 트랙C2 퓨처스 경기단위 / 스플릿 세밀축
+
+### 진행로그
+- 2026-06-15: 착수. 브레인스톰 완료(3트랙+C1/C2 분할). 스파이크1 완료 — statiz 서버렌더지만 **크롤 불법 판정→드롭**. KBO 1군 1982~2026·퓨처스 2010~2026 postback 확인. 트리거 프로토콜·이 섹션 신설. 다음=스파이크2(KBO bio).
+- 2026-06-15b: 스파이크2/3/4 일괄. **스파이크2 ✅**: KBO `Record/Player/HitterDetail/Basic.aspx?playerId=` 은퇴선수(양준혁) detail에 bio 풀세트(생년월일/신장체중/투타/포지션/경력출신교) 렌더 확인 → 트랙A 콘텐츠 생존, #4 해소. **스파이크3 ✅**: 수상=`History/Etc/PlayerPrize·GoldenGlove.aspx`+`Player/Awards/*`, 드래프트=`draft.koreabaseball.com`(별 subdomain) URL 확인(WebFetch는 KBO list/history 에러라 구조 검증은 selenium impl서). **스파이크4 [~]**: naver api `{season}` free-form 확인하나 실측 깊이는 이 환경서 미측정(WebFetch api-gw 차단) → impl서 curl 1줄. 다음=⏸️ 설계 게이트(스키마#1·동명이인키#2·우선순위#3 사용자 결정).
+
 ## 해야할 것
 ### AI 경기 한줄평 알림 (2026-06-14 요청) — ✅ 구현완료 (06-15 메가E, 아래는 원 요청 기록)
 - 구현: 템플릿 기반(`api/narrative.py`), game_summary 본문 교체(별도 푸시·토글 신설 안 함), game_reviews 영속. LLM 업그레이드는 엔진 인터페이스만 교체하면 됨. 잔여 = 추후 LLM/3줄요약/다이제스트(메가E2)
