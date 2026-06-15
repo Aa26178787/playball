@@ -367,7 +367,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
               const SizedBox(width: 10),
               Expanded(child: Text(team['name'] ?? '',
                   maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5))),
+                  style: const TextStyle(fontSize: Typo.lg, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5))),
               _favLoading
                   ? const SizedBox(width: 32, height: 32,
                       child: Padding(padding: EdgeInsets.all(7),
@@ -450,7 +450,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                       Icon(selected ? activeIcons[i] : icons[i], size: 22, color: selected ? active : inactive),
                       const SizedBox(height: 2),
                       Text(labels[i], style: TextStyle(
-                        fontSize: 11,
+                        fontSize: Typo.caption,
                         fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
                         color: selected ? active : inactive,
                         fontFamily: 'Pretendard',
@@ -479,7 +479,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: color))))
       else if (rosters.isEmpty)
         _CardWrap(cs: cs, child: Padding(padding: const EdgeInsets.all(16),
-            child: Text('최근 30일 등록말소 내역이 없습니다', style: TextStyle(color: cs.sub, fontSize: 12))))
+            child: Text('최근 30일 등록말소 내역이 없습니다', style: TextStyle(color: cs.sub, fontSize: Typo.small))))
       else
         _CardWrap(cs: cs, child: Column(children: rosters.asMap().entries.map((e) =>
             _buildChangeItem(cs, Map<String, dynamic>.from(e.value as Map), e.key == rosters.length - 1)).toList())),
@@ -490,7 +490,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: color))))
       else if (newsList.isEmpty)
         _CardWrap(cs: cs, child: Padding(padding: const EdgeInsets.all(16),
-            child: Text('뉴스가 없습니다', style: TextStyle(color: cs.sub, fontSize: 12))))
+            child: Text('뉴스가 없습니다', style: TextStyle(color: cs.sub, fontSize: Typo.small))))
       else
         _CardWrap(cs: cs, child: Column(children: newsList.asMap().entries.map((e) =>
             _buildNewsItem(cs, e.value as Map, e.key == newsList.length - 1)).toList())),
@@ -537,16 +537,16 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: TextStyle(fontSize: 12, fontWeight: Typo.medium, color: cs.ink, height: 1.45),
+                      style: TextStyle(fontSize: Typo.small, fontWeight: Typo.medium, color: cs.ink, height: 1.45),
                       maxLines: 2, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 5),
                   Row(children: [
                     if (media.isNotEmpty) ...[
-                      Text(media, style: TextStyle(fontSize: 10, color: cs.sub)),
+                      Text(media, style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
                       const SizedBox(width: 6),
                     ],
                     if (dateStr.isNotEmpty)
-                      Text(dateStr, style: TextStyle(fontSize: 10, color: cs.sub)),
+                      Text(dateStr, style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
                   ]),
                 ],
               ),
@@ -578,7 +578,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
     Widget label(String s) => Padding(
         padding: const EdgeInsets.only(top: 6, bottom: 8, left: 2),
-        child: Text(s, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)));
+        child: Text(s, style: TextStyle(fontSize: Typo.body, fontWeight: Typo.extra, color: cs.ink)));
 
     // 강세/약세 하이라이트 셀 — 로고 + 팀명 + 승/패/무 + 승률(w/(w+l)), 가운데 정렬
     Widget hiliteCell(Map h, String tag) {
@@ -590,21 +590,21 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       final pctStr = '.${(frac * 1000).round().toString().padLeft(3, '0')}';
       final rec = d > 0 ? '$w승 $l패 $d무' : '$w승 $l패';
       return Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        Text(tag, style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: cs.sub)),
+        Text(tag, style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: cs.sub)),
         const SizedBox(height: 7),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           TeamLogo(teamCode: h['opp_code'] as String? ?? '', size: 20),
           const SizedBox(width: 6),
           Flexible(child: Text(h['opp_name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink))),
+              style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink))),
         ]),
         const SizedBox(height: 5),
         Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic, children: [
-          Text(rec, style: TextStyle(fontSize: 12, color: cs.ink2)),
+          Text(rec, style: TextStyle(fontSize: Typo.small, color: cs.ink2)),
           const SizedBox(width: 8),
-          Text(pctStr, style: TextStyle(fontSize: 13, fontWeight: Typo.extra,
+          Text(pctStr, style: TextStyle(fontSize: Typo.body, fontWeight: Typo.extra,
               color: frac >= 0.5 ? tc : cs.sub,
               fontFeatures: const [FontFeature.tabularFigures()])),
         ]),
@@ -616,7 +616,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       label('월별 성적'),
       if (ms.isEmpty)
         Padding(padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Text('월별 성적이 없습니다', style: TextStyle(color: cs.sub, fontSize: 12)))
+            child: Text('월별 성적이 없습니다', style: TextStyle(color: cs.sub, fontSize: Typo.small)))
       else
         Container(
           decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line),
@@ -628,7 +628,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             final l = (m['losses'] as num?)?.toInt() ?? 0;
             final mn = monthNames[(m['month'] as num?)?.toInt()] ?? '${m['month']}월';
             return _pctBarRow(cs, tc,
-                Text(mn, style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.ink)),
+                Text(mn, style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.bold, color: cs.ink)),
                 w, l, last: e.key == ms.length - 1);
           }).toList()),
         ),
@@ -657,7 +657,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         }),
       if (h2h.isEmpty)
         Padding(padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Text('상대 전적이 없습니다', style: TextStyle(color: cs.sub, fontSize: 12)))
+            child: Text('상대 전적이 없습니다', style: TextStyle(color: cs.sub, fontSize: Typo.small)))
       else
         Container(
           decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line),
@@ -671,7 +671,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
               TeamLogo(teamCode: h['opp_code'] as String? ?? '', size: 24),
               const SizedBox(width: 7),
               Flexible(child: Text(h['opp_name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink))),
+                  style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink))),
             ]), w, l, last: e.key == h2h.length - 1);
           }).toList()),
         ),
@@ -691,7 +691,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       child: Row(children: [
         SizedBox(width: 92, child: leading),
         SizedBox(width: 60, child: Text('$w승 $l패',
-            style: TextStyle(fontSize: 13, color: cs.ink2))),
+            style: TextStyle(fontSize: Typo.body, color: cs.ink2))),
         Expanded(child: ClipRRect(
           borderRadius: BorderRadius.circular(Radii.pill),
           child: Container(height: 12, color: cs.track,
@@ -703,7 +703,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         )),
         const SizedBox(width: 10),
         SizedBox(width: 40, child: Text(pctStr, textAlign: TextAlign.right,
-            style: TextStyle(fontSize: 12, fontWeight: Typo.bold,
+            style: TextStyle(fontSize: Typo.small, fontWeight: Typo.bold,
                 color: frac >= 0.5 ? tc : cs.sub,
                 fontFeatures: const [FontFeature.tabularFigures()]))),
       ]),
@@ -735,7 +735,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                         )),
                       ),
                       child: Text(subLabels[i], style: TextStyle(
-                        fontSize: 12,
+                        fontSize: Typo.small,
                         fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
                         color: selected
                             ? color
@@ -801,21 +801,21 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Flexible(child: Text(team['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 20, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5))),
+                  style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5))),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
-                child: Text('${team['rank'] ?? '-'}위', style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: fg)),
+                child: Text('${team['rank'] ?? '-'}위', style: TextStyle(fontSize: Typo.small, fontWeight: Typo.bold, color: fg)),
               ),
             ]),
             const SizedBox(height: 5),
             Text('$wins승 $losses패${draws > 0 ? ' $draws무' : ''} · 승률 ${(team['win_rate'] as num?)?.toStringAsFixed(3) ?? '-'} · $gbText',
-                style: TextStyle(fontSize: 13, color: cs.ink3)),
+                style: TextStyle(fontSize: Typo.body, color: cs.ink3)),
             const SizedBox(height: 3),
             Text('홈 ${hr['wins'] ?? 0}-${hr['losses'] ?? 0} · 원정 ${ar['wins'] ?? 0}-${ar['losses'] ?? 0}'
                 '${pythag != null ? ' · 피타고리안 $pythag' : ''}',
-                style: TextStyle(fontSize: 11, color: cs.sub)),
+                style: TextStyle(fontSize: Typo.caption, color: cs.sub)),
           ])),
         ]),
         if (_teamLinks[code] != null) ...[
@@ -861,7 +861,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 18, color: iconColor),
           const SizedBox(height: 3),
-          Text(label, style: TextStyle(fontSize: 10, color: cs.ink, fontWeight: FontWeight.w600)),
+          Text(label, style: TextStyle(fontSize: Typo.mini, color: cs.ink, fontWeight: FontWeight.w600)),
         ]),
       ),
     ));
@@ -944,7 +944,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           const SizedBox(width: 8),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(p['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink)),
+                style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink)),
             const SizedBox(height: 3),
             // 타자/투수 2번째 줄 동일 칩 구조 — 행 높이 일치(투수만 칩이면 열 높이 어긋남)
             Container(
@@ -954,7 +954,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 borderRadius: BorderRadius.circular(3),
               ),
               child: Text(isPitcher ? arm : (p['position'] ?? ''),
-                  style: TextStyle(fontSize: 9, fontWeight: Typo.bold,
+                  style: TextStyle(fontSize: Typo.micro, fontWeight: Typo.bold,
                       color: isPitcher ? armColor : cs.sub)),
             ),
           ])),
@@ -1062,7 +1062,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         child: Row(children: [
           Expanded(child: Container(height: 1, color: cs.line)),
           const SizedBox(width: 10),
-          Text(label, style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: cs.sub)),
+          Text(label, style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: cs.sub)),
           const SizedBox(width: 10),
           Expanded(child: Container(height: 1, color: cs.line)),
         ]),
@@ -1104,19 +1104,19 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Text(md(d), style: TextStyle(fontSize: 12, color: cs.sub)),
+                    Text(md(d), style: TextStyle(fontSize: Typo.small, color: cs.sub)),
                     const SizedBox(height: 6),
                     TeamLogo(teamCode: oppCode, size: 34),
                     const SizedBox(height: 6),
                     if (cancelled)
                       Text('취소',
-                          style: TextStyle(fontSize: 17, fontWeight: Typo.bold, color: cs.sub))
+                          style: TextStyle(fontSize: Typo.title, fontWeight: Typo.bold, color: cs.sub))
                     else ...[
                       Text('${g['home_score'] ?? 0} : ${g['away_score'] ?? 0}',
-                          style: TextStyle(fontSize: 20, fontWeight: Typo.extra, color: rc(r))),
+                          style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: rc(r))),
                       const SizedBox(height: 3),
                       Text(rLabel,
-                          style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: rc(r))),
+                          style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: rc(r))),
                     ],
                   ]),
                 ),
@@ -1157,16 +1157,16 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(color: typeColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(5)),
-            child: Text(changeType, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: typeColor)),
+            child: Text(changeType, style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: typeColor)),
           ),
           const SizedBox(width: 10),
           Expanded(child: Row(children: [
             Flexible(child: Text(playerName, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink))),
+                style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink))),
             if (position.isNotEmpty) ...[
               const SizedBox(width: 6),
               Flexible(child: Text(position, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 11, color: cs.sub))),
+                  style: TextStyle(fontSize: Typo.caption, color: cs.sub))),
             ],
           ])),
         ]),
@@ -1256,27 +1256,27 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                   ]),
                   const SizedBox(height: 7),
                   Text(title,
-                      style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink, height: 1.45),
+                      style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink, height: 1.45),
                       maxLines: 2, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 8),
                   Row(children: [
-                    Text(nickname, style: TextStyle(fontSize: 10, color: cs.sub)),
+                    Text(nickname, style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
                     if (dateStr.isNotEmpty) ...[
                       const SizedBox(width: 8),
-                      Text(dateStr, style: TextStyle(fontSize: 10, color: cs.sub)),
+                      Text(dateStr, style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
                     ],
                     const Spacer(),
                     Icon(Icons.visibility_outlined, size: 12, color: cs.sub),
                     const SizedBox(width: 2),
-                    Text('$views', style: TextStyle(fontSize: 10, color: cs.sub)),
+                    Text('$views', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
                     const SizedBox(width: 8),
                     Icon(Icons.favorite_border, size: 12, color: cs.sub),
                     const SizedBox(width: 2),
-                    Text('$likes', style: TextStyle(fontSize: 10, color: cs.sub)),
+                    Text('$likes', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
                     const SizedBox(width: 8),
                     Icon(Icons.mode_comment_outlined, size: 12, color: cs.sub),
                     const SizedBox(width: 2),
-                    Text('$comments', style: TextStyle(fontSize: 10, color: cs.sub)),
+                    Text('$comments', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
                   ]),
                 ],
               ),
@@ -1317,14 +1317,14 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
     Widget sectionLabel(String s) => Padding(
         padding: const EdgeInsets.only(top: 4, bottom: 8, left: 2),
-        child: Text(s, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)));
+        child: Text(s, style: TextStyle(fontSize: Typo.body, fontWeight: Typo.extra, color: cs.ink)));
 
     Widget leaderCard(String label, List rows, String Function(num) fmt) => Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.lg)),
       padding: const EdgeInsets.fromLTRB(11, 9, 11, 5),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.5)),
+        Text(label, style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.5)),
         const SizedBox(height: 8),
         ...rows.asMap().entries.map((e) {
           final i = e.key;
@@ -1345,16 +1345,16 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 Container(width: 16, height: 16,
                   decoration: BoxDecoration(color: isTop ? tcOn : cs.track, shape: BoxShape.circle),
                   alignment: Alignment.center,
-                  child: Text('${i + 1}', style: TextStyle(fontSize: 9, fontWeight: Typo.extra,
+                  child: Text('${i + 1}', style: TextStyle(fontSize: Typo.micro, fontWeight: Typo.extra,
                       color: isTop ? cs.bg : cs.ink3))),
                 const SizedBox(width: 6),
                 netCircleAvatar(radius: 11, backgroundColor: tc.withValues(alpha: 0.15), url: img,
                   child: Icon(Icons.person, size: 12, color: tcOn)),
                 const SizedBox(width: 6),
                 Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, fontWeight: isTop ? Typo.bold : Typo.medium, color: cs.ink))),
+                    style: TextStyle(fontSize: Typo.body, fontWeight: isTop ? Typo.bold : Typo.medium, color: cs.ink))),
                 const SizedBox(width: 4),
-                Text(fmt(val), style: TextStyle(fontSize: 14, fontWeight: Typo.extra,
+                Text(fmt(val), style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra,
                     color: isTop ? tcOn : cs.ink2, fontFeatures: const [FontFeature.tabularFigures()])),
               ]),
             ),
@@ -1434,7 +1434,7 @@ class _NumChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(8),
     ),
     child: Center(child: Text('#${no ?? '-'}',
-        style: TextStyle(fontSize: 10, fontWeight: Typo.extra, color: tc))),
+        style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.extra, color: tc))),
   );
 }
 
@@ -1454,7 +1454,7 @@ class _ColumnHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
       decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.line))),
       child: Row(children: [
-        Text(title, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)),
+        Text(title, style: TextStyle(fontSize: Typo.body, fontWeight: Typo.extra, color: cs.ink)),
         const Spacer(),
         PopupMenuButton<String>(
           initialValue: selected,
@@ -1468,7 +1468,7 @@ class _ColumnHeader extends StatelessWidget {
           ),
           itemBuilder: (_) => filters.map((f) => PopupMenuItem<String>(
             value: f, height: 40,
-            child: Text(f, style: TextStyle(fontSize: 12,
+            child: Text(f, style: TextStyle(fontSize: Typo.small,
                 fontWeight: f == selected ? Typo.bold : Typo.medium,
                 color: f == selected ? tc : cs.ink)),
           )).toList(),
@@ -1480,7 +1480,7 @@ class _ColumnHeader extends StatelessWidget {
               border: Border.all(color: active ? tc.withValues(alpha: 0.45) : cs.line),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Text(selected, style: TextStyle(fontSize: 11, fontWeight: Typo.bold,
+              Text(selected, style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold,
                   color: active ? tc : cs.ink3)),
               const SizedBox(width: 2),
               Icon(Icons.keyboard_arrow_down_rounded, size: 15,
@@ -1521,7 +1521,7 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
-    child: Text(label, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)),
+    child: Text(label, style: TextStyle(fontSize: Typo.body, fontWeight: Typo.extra, color: cs.ink)),
   );
 }
 
@@ -1550,9 +1550,9 @@ class _StatBlock extends StatelessWidget {
   Widget build(BuildContext context) => Expanded(child: Padding(
     padding: const EdgeInsets.symmetric(vertical: 10),
     child: Column(children: [
-      Text(value, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)),
+      Text(value, style: TextStyle(fontSize: Typo.body, fontWeight: Typo.extra, color: cs.ink)),
       const SizedBox(height: 4),
-      Text(label, style: TextStyle(fontSize: 9, color: cs.sub)),
+      Text(label, style: TextStyle(fontSize: Typo.micro, color: cs.sub)),
     ]),
   ));
 }
@@ -1569,7 +1569,7 @@ class _SmallChip extends StatelessWidget {
       color: bg, borderRadius: BorderRadius.circular(Radii.xs),
       border: border != null ? Border.all(color: border!) : null,
     ),
-    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: color)),
+    child: Text(label, style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: color)),
   );
 }
 
