@@ -96,7 +96,7 @@ class _PhotoCropScreenState extends State<PhotoCropScreen> {
               ),
               const Spacer(),
               const Text('사진 선택',
-                  style: TextStyle(color: Colors.white, fontSize: Typo.title, fontWeight: FontWeight.w700)),
+                  style: TextStyle(color: Colors.white, fontSize: Typo.title, fontWeight: Typo.bold)),
               const Spacer(),
               _cropping
                   ? const Padding(
@@ -108,7 +108,7 @@ class _PhotoCropScreenState extends State<PhotoCropScreen> {
                       child: Text('완료',
                           style: TextStyle(
                               color: _currentBytes == null ? Colors.white38 : const Color(0xFF3897F0),
-                              fontSize: Typo.subtitle, fontWeight: FontWeight.w800)),
+                              fontSize: Typo.subtitle, fontWeight: Typo.extra)),
                     ),
             ]),
           ),

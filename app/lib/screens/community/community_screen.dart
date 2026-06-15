@@ -782,7 +782,7 @@ class _FoodTile extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(color: SemColor.live.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(Radii.xs)),
-                  child: const Text('인증', style: TextStyle(fontSize: Typo.micro, fontWeight: FontWeight.w700, color: SemColor.live)),
+                  child: const Text('인증', style: TextStyle(fontSize: Typo.micro, fontWeight: Typo.bold, color: SemColor.live)),
                 ),
               ],
             ]),

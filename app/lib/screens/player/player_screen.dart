@@ -129,7 +129,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Container(width: 5, height: 5, decoration: BoxDecoration(color: tc, shape: BoxShape.circle)),
                   const SizedBox(width: 4),
-                  Text(p['name'] ?? '', style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600, color: ink)),
+                  Text(p['name'] ?? '', style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.medium, color: ink)),
                 ]),
               ),
             );
@@ -374,7 +374,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Text(currentLabel,
-              style: TextStyle(fontSize: Typo.small, fontWeight: FontWeight.w700,
+              style: TextStyle(fontSize: Typo.small, fontWeight: Typo.bold,
                   color: active ? onActive : ink)),
           const SizedBox(width: 3),
           Icon(Icons.keyboard_arrow_down_rounded, size: 16,
@@ -455,7 +455,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       child: Center(
         child: Text('#${p['number'] ?? '-'}',
             style: TextStyle(color: Colors.white, fontSize: size * 0.28,
-                fontWeight: FontWeight.w800, letterSpacing: 0)),
+                fontWeight: Typo.extra, letterSpacing: 0)),
       ),
     );
     return Hero(
@@ -492,7 +492,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                   ),
                   child: Text('#${p['number']}',
                       style: const TextStyle(color: Colors.white, fontSize: Typo.micro,
-                          fontWeight: FontWeight.w800)),
+                          fontWeight: Typo.extra)),
                 ),
               ),
           ],
@@ -525,7 +525,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             SizedBox(
               width: 28,
               child: Text('$rank', textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: isTop3 ? 18 : 14, fontWeight: FontWeight.w800,
+                  style: TextStyle(fontSize: isTop3 ? 18 : 14, fontWeight: Typo.extra,
                       color: isTop3 ? tc : sub,
                       fontFeatures: const [FontFeature.tabularFigures()])),
             ),
@@ -536,7 +536,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(p['name'] ?? '',
                     maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w800, color: ink)),
+                    style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra, color: ink)),
                 const SizedBox(height: 4),
                 Text('${teamDisplayName(code)} · $position',
                     style: TextStyle(fontSize: Typo.mini, color: ink2)),
@@ -544,7 +544,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             ),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
               Text(statVal,
-                  style: TextStyle(fontSize: Typo.h2, fontWeight: FontWeight.w800,
+                  style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra,
                       color: ink, letterSpacing: 0,
                       fontFeatures: const [FontFeature.tabularFigures()])),
               Text(statLabel, style: TextStyle(fontSize: Typo.micro, color: sub)),
@@ -593,7 +593,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                       borderRadius: BorderRadius.circular(5),
                     ),
                     child: Text('#$rank',
-                        style: const TextStyle(fontSize: Typo.micro, fontWeight: FontWeight.w800, color: Colors.white70)),
+                        style: const TextStyle(fontSize: Typo.micro, fontWeight: Typo.extra, color: Colors.white70)),
                   ),
                 ),
               Center(child: Column(children: [
@@ -609,15 +609,15 @@ class _PlayerScreenState extends State<PlayerScreen>
                       ? netImage(
                           p['profile_image'] as String, fit: BoxFit.cover,
                           error: () => Center(child: Text('#${p['number'] ?? '-'}',
-                              style: const TextStyle(fontSize: Typo.title, fontWeight: FontWeight.w800, color: Colors.white))),
+                              style: const TextStyle(fontSize: Typo.title, fontWeight: Typo.extra, color: Colors.white))),
                         )
                       : Center(child: Text('#${p['number'] ?? '-'}',
-                          style: const TextStyle(fontSize: Typo.title, fontWeight: FontWeight.w800, color: Colors.white))),
+                          style: const TextStyle(fontSize: Typo.title, fontWeight: Typo.extra, color: Colors.white))),
                 ),
                 const SizedBox(height: 7),
                 Text(p['name'] ?? '',
                     maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w800, color: Colors.white)),
+                    style: const TextStyle(fontSize: Typo.body, fontWeight: Typo.extra, color: Colors.white)),
               ])),
             ]),
           ),
@@ -629,7 +629,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                   Flexible(
                     child: Text(statVal,
                         maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: Typo.h1, fontWeight: FontWeight.w800, color: tcText,
+                        style: TextStyle(fontSize: Typo.h1, fontWeight: Typo.extra, color: tcText,
                             letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()])),
                   ),
                   const SizedBox(width: 4),
@@ -801,7 +801,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                   setState(() { _isSearching = false; _searchResults = []; });
                 },
                 child: Text('취소',
-                    style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w600, color: ink3)),
+                    style: TextStyle(fontSize: Typo.body, fontWeight: Typo.medium, color: ink3)),
               ),
             ]),
           ),
@@ -828,7 +828,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                 Expanded(
                                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                     Text(p['name'] ?? '',
-                                        style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w700, color: ink)),
+                                        style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: ink)),
                                     const SizedBox(height: 4),
                                     Text('${p['team'] ?? ''} · ${p['position'] ?? p['player_type'] ?? ''} · #${p['number'] ?? '-'}',
                                         style: TextStyle(fontSize: Typo.mini, color: ink3)),
@@ -891,8 +891,8 @@ class _PlayerScreenState extends State<PlayerScreen>
               TabBar(
                 controller: _tabController,
                 tabs: const [Tab(text: '타자'), Tab(text: '투수')],
-                labelStyle: const TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w800),
-                unselectedLabelStyle: const TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w600),
+                labelStyle: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra),
+                unselectedLabelStyle: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.medium),
                 labelColor: ink,
                 unselectedLabelColor: sub,
                 indicatorColor: ink,

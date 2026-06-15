@@ -248,8 +248,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                             style: TextStyle(
                                               fontSize: Typo.subtitle,
                                               fontWeight: unread
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
+                                                  ? Typo.bold
+                                                  : Typo.regular,
                                             ),
                                           ),
                                         ),

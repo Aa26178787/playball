@@ -247,10 +247,10 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
                     ),
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Text('${_start.month}월',
-                        style: const TextStyle(fontSize: Typo.micro, fontWeight: FontWeight.w600, color: Colors.white70)),
+                        style: const TextStyle(fontSize: Typo.micro, fontWeight: Typo.medium, color: Colors.white70)),
                       const SizedBox(height: 2),
                       Text('${_start.day}',
-                        style: const TextStyle(fontSize: Typo.h2, fontWeight: FontWeight.w800, color: Colors.white)),
+                        style: const TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: Colors.white)),
                     ]),
                   ),
                   const SizedBox(width: 14),

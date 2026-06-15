@@ -168,13 +168,13 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('투구 위치', style: TextStyle(fontSize: Typo.title, fontWeight: FontWeight.w800, color: _ink, letterSpacing: -0.3)),
+              Text('투구 위치', style: TextStyle(fontSize: Typo.title, fontWeight: Typo.extra, color: _ink, letterSpacing: -0.3)),
               if (widget.gameStatus == '진행') ...[
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(color: SemColor.live, borderRadius: BorderRadius.circular(4)),
-                  child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: Typo.caption, fontWeight: FontWeight.bold)),
+                  child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: Typo.caption, fontWeight: Typo.bold)),
                 ),
               ],
             ],
@@ -192,7 +192,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                 const SizedBox(height: 14),
                 Text(
                   widget.gameStatus == '예정' ? '경기가 아직 시작되지 않았습니다' : '투구 위치 데이터가 없습니다',
-                  style: TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w600, color: _ink),
+                  style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.medium, color: _ink),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -236,7 +236,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                         _legend('타격', _resultColors['hit']!),
                         _legendDash('끝면 상한', Colors.orange),
                         Text('· ${_filtered.length}구',
-                            style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600, color: _sub)),
+                            style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.medium, color: _sub)),
                       ],
                     ),
                   ),
@@ -263,7 +263,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
       padding: const EdgeInsets.only(left: 16, top: 6, bottom: 2),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Text(label, style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w700, color: _ink)),
+        child: Text(label, style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: _ink)),
       ),
     );
   }
@@ -293,7 +293,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                 color: _ink.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(teamLabel, style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.bold, color: _ink)),
+              child: Text(teamLabel, style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: _ink)),
             ),
             const SizedBox(width: 6),
           ],
@@ -413,7 +413,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
           fontSize: Typo.caption,
           // 선택 bg가 밝으면(_ink 다크모드=흰색) 검은 글씨로 대비 확보
           color: selected ? (color.computeLuminance() > 0.6 ? Colors.black : Colors.white) : _sub,
-          fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+          fontWeight: selected ? Typo.bold : Typo.regular,
         ),
       ),
     );
@@ -647,7 +647,7 @@ class _StrikeZonePainter extends CustomPainter {
           Paint()..color = Colors.white.withValues(alpha: 0.5)..style = PaintingStyle.stroke..strokeWidth = 1);
     }
 
-    final textStyle = TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600,
+    final textStyle = TextStyle(fontSize: Typo.caption, fontWeight: Typo.medium,
         color: isDark ? Colors.grey[400] : Colors.grey[700]);
     for (final z in [1.0, 2.0, 3.0, 4.0, 5.0]) {
       if (z > zMax) break;

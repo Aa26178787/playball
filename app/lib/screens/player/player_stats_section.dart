@@ -59,7 +59,7 @@ class PlayerStatsSection extends StatelessWidget {
           Text(
             '${stats['season'] ?? ''}시즌 기록',
             style: const TextStyle(
-              fontSize: Typo.subtitle, fontWeight: FontWeight.bold,
+              fontSize: Typo.subtitle, fontWeight: Typo.bold,
             ),
           ),
           GestureDetector(
@@ -74,7 +74,7 @@ class PlayerStatsSection extends StatelessWidget {
                 useEng ? 'ENG' : '한글',
                 style: TextStyle(
                   fontSize: Typo.small,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: Typo.bold,
                   color: useEng ? (isDark ? SemColor.panelDark : Colors.white) : (isDark ? Colors.grey[300] : Colors.black87),
                 ),
               ),
@@ -290,11 +290,11 @@ class PlayerStatsSection extends StatelessWidget {
                       Text(
                         item.$1,
                         style: TextStyle(
-                          fontSize: Typo.caption, color: Colors.grey[500], fontWeight: FontWeight.w500,
+                          fontSize: Typo.caption, color: Colors.grey[500], fontWeight: Typo.semibold,
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(item.$2, style: const TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.bold)),
+                      Text(item.$2, style: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.bold)),
                     ],
                   ),
           );
@@ -308,7 +308,7 @@ class PlayerStatsSection extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         title,
-        style: const TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w700),
+        style: const TextStyle(fontSize: Typo.body, fontWeight: Typo.bold),
       ),
     );
   }

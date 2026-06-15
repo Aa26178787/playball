@@ -300,7 +300,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               children: [
                 Text(
                   _post!['title'] ?? '',
-                  style: const TextStyle(fontSize: Typo.h2, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: Typo.h2, fontWeight: Typo.bold),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -333,7 +333,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     style: const TextStyle(color: Colors.red)),
                 const Divider(),
                 Text('댓글 ${comments.length}개',
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                    style: const TextStyle(fontWeight: Typo.bold)),
                 const SizedBox(height: 8),
                 ...comments.map((c) {
                   final isMyComment = myUserId != null && myUserId == c['user_id'];

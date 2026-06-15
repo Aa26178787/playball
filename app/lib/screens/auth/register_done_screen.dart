@@ -71,13 +71,13 @@ class _RegisterDoneScreenState extends State<RegisterDoneScreen>
                     Text('회원가입 완료!',
                         style: TextStyle(
                             fontSize: Typo.h1,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: Typo.extra,
                             color: ink)),
                     const SizedBox(height: 10),
                     Text('${widget.nickname}님, 환영합니다',
                         style: TextStyle(
                             fontSize: Typo.subtitle,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: Typo.medium,
                             color: sub)),
                     const SizedBox(height: 6),
                     Text('마이팀을 설정하면 맞춤 경기 알림을 받을 수 있어요',
@@ -103,7 +103,7 @@ class _RegisterDoneScreenState extends State<RegisterDoneScreen>
                           Navigator.of(context).popUntil((r) => r.isFirst),
                       child: const Text('시작하기',
                           style: TextStyle(
-                              fontSize: Typo.title, fontWeight: FontWeight.w800)),
+                              fontSize: Typo.title, fontWeight: Typo.extra)),
                     ),
                   ),
                 ),

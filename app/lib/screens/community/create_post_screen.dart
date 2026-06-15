@@ -366,7 +366,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               const SizedBox(width: 6),
               const Icon(Icons.check_circle, color: Colors.green, size: 16),
               const SizedBox(width: 2),
-              Text('${_uploadedUrls.length}', style: const TextStyle(fontSize: Typo.caption, color: Colors.green, fontWeight: FontWeight.w700)),
+              Text('${_uploadedUrls.length}', style: const TextStyle(fontSize: Typo.caption, color: Colors.green, fontWeight: Typo.bold)),
             ],
             const Spacer(),
             ValueListenableBuilder<TextEditingValue>(
@@ -497,7 +497,7 @@ class _MentionHelpRowState extends State<_MentionHelpRow> {
                     ),
                     const SizedBox(width: 8),
                     Text(e.$2, style: const TextStyle(
-                      fontSize: Typo.small, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+                      fontSize: Typo.small, fontWeight: Typo.bold, fontFamily: 'monospace')),
                     const SizedBox(width: 6),
                     Text('→ ${e.$3}', style: TextStyle(fontSize: Typo.caption, color: Colors.grey[600])),
                   ],

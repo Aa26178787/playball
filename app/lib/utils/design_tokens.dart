@@ -26,10 +26,13 @@ class Typo {
   static const double display  = 34;  // 스코어보드 메인
 
   // weight tokens
-  static const FontWeight regular = FontWeight.w400;
-  static const FontWeight medium  = FontWeight.w600;
-  static const FontWeight bold    = FontWeight.w700;
-  static const FontWeight extra   = FontWeight.w800;
+  static const FontWeight thin     = FontWeight.w300;
+  static const FontWeight regular  = FontWeight.w400;
+  static const FontWeight semibold = FontWeight.w500;
+  static const FontWeight medium   = FontWeight.w600;
+  static const FontWeight bold     = FontWeight.w700;
+  static const FontWeight extra    = FontWeight.w800;
+  static const FontWeight black    = FontWeight.w900;
 }
 
 class SemColor {
@@ -56,6 +59,21 @@ class SemColor {
 
   // dark panel/sheet bg (SnackBar, game header, player header)
   static const panelDark = Color(0xFF111113);
+}
+
+/// 중성 팔레트 (다크/라이트 쌍) — 화면별 `_C`/로컬 헬퍼가 반복 정의하던 9단계 중앙화.
+/// 인자 = isDark (각 빌드 스코프가 이미 계산한 값 전달, Theme 재조회 회피).
+/// ⚠️ 값은 기존 인라인 정준값과 1:1. 변경 시 전 화면 영향 — 다크 가시성 감사 동반.
+class Pal {
+  static Color ink(bool d)    => d ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+  static Color ink2(bool d)   => d ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
+  static Color ink3(bool d)   => d ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+  static Color sub(bool d)    => d ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
+  static Color paper(bool d)  => d ? const Color(0xFF18181C) : Colors.white;
+  static Color paper2(bool d) => d ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
+  static Color line(bool d)   => d ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+  static Color line2(bool d)  => d ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
+  static Color track(bool d)  => d ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);
 }
 
 class Space {

@@ -318,7 +318,7 @@ class _TeamScreenState extends State<TeamScreen>
           ),
           child: Text(label,
               style: TextStyle(
-                  fontSize: Typo.small, fontWeight: FontWeight.w600,
+                  fontSize: Typo.small, fontWeight: Typo.medium,
                   color: active ? (isDark ? Colors.black : Colors.white) : sub)),
         ),
       );
@@ -337,7 +337,7 @@ class _TeamScreenState extends State<TeamScreen>
           ),
           child: Text('PS 확률',
               style: TextStyle(
-                  fontSize: Typo.small, fontWeight: FontWeight.w600,
+                  fontSize: Typo.small, fontWeight: Typo.medium,
                   color: active ? (isDark ? Colors.black : Colors.white) : sub)),
         ),
       );
@@ -369,7 +369,7 @@ class _TeamScreenState extends State<TeamScreen>
         )),
         const SizedBox(width: 10),
         Text('가을야구 진출선',
-            style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w700, color: ink3)),
+            style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: ink3)),
         const SizedBox(width: 10),
         Expanded(child: CustomPaint(
           painter: _DashedLinePainter(color: c),
@@ -451,7 +451,7 @@ class _TeamScreenState extends State<TeamScreen>
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
                         Text('$rank',
                             style: TextStyle(
-                              fontSize: Typo.lg, fontWeight: FontWeight.w800, color: rankCol,
+                              fontSize: Typo.lg, fontWeight: Typo.extra, color: rankCol,
                               letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()],
                             )),
                         const SizedBox(height: 4),
@@ -470,7 +470,7 @@ class _TeamScreenState extends State<TeamScreen>
                             Flexible(
                               child: Text(team['name'] as String? ?? '',
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w800, color: ink, letterSpacing: 0)),
+                                  style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra, color: ink, letterSpacing: 0)),
                             ),
                             if (isFav) ...[
                               const SizedBox(width: 6),
@@ -486,15 +486,15 @@ class _TeamScreenState extends State<TeamScreen>
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                             Text('$wins승 $losses패${draws > 0 ? ' $draws무' : ''}',
-                                style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w500, color: ink3,
+                                style: TextStyle(fontSize: Typo.body, fontWeight: Typo.semibold, color: ink3,
                                     fontFeatures: const [FontFeature.tabularFigures()])),
                             Container(width: 1, height: 11, margin: const EdgeInsets.symmetric(horizontal: 8), color: line2),
                             Text('$totalGames경기',
-                                style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w500, color: ink3,
+                                style: TextStyle(fontSize: Typo.body, fontWeight: Typo.semibold, color: ink3,
                                     fontFeatures: const [FontFeature.tabularFigures()])),
                             Container(width: 1, height: 11, margin: const EdgeInsets.symmetric(horizontal: 8), color: line2),
                             Text(winRatePct,
-                                style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w700, color: ink,
+                                style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: ink,
                                     fontFeatures: const [FontFeature.tabularFigures()])),
                           ]),
                           // 홈구장 전체명 + 지도 진입 (좌측 정렬, 버튼)
@@ -517,7 +517,7 @@ class _TeamScreenState extends State<TeamScreen>
                                     Icon(Icons.place_outlined, size: 14, color: ink),
                                     const SizedBox(width: 5),
                                     Text(_kHomeStadium[code]!.$1,
-                                        style: TextStyle(fontSize: Typo.small, fontWeight: FontWeight.w600, color: ink)),
+                                        style: TextStyle(fontSize: Typo.small, fontWeight: Typo.medium, color: ink)),
                                     const SizedBox(width: 2),
                                     Icon(Icons.chevron_right, size: 15, color: ink3),
                                   ]),
@@ -539,12 +539,12 @@ class _TeamScreenState extends State<TeamScreen>
                         children: [
                           Text(gbText,
                               style: TextStyle(
-                                fontSize: Typo.title, fontWeight: FontWeight.w800,
+                                fontSize: Typo.title, fontWeight: Typo.extra,
                                 color: isLead ? ink : ink2, letterSpacing: 0,
                                 fontFeatures: const [FontFeature.tabularFigures()],
                               )),
                           const SizedBox(height: 4),
-                          Text('게임차', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: sub)),
+                          Text('게임차', style: TextStyle(fontSize: 9.5, fontWeight: Typo.medium, color: sub)),
                           const SizedBox(height: 6),
                           InkWell(
                             borderRadius: BorderRadius.circular(7),
@@ -631,10 +631,10 @@ class _TeamScreenState extends State<TeamScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600, color: sub)),
+          Text(label, style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.medium, color: sub)),
           const SizedBox(height: 5),
           Text(value,
-              style: TextStyle(fontSize: Typo.small, fontWeight: FontWeight.w700, color: ink2,
+              style: TextStyle(fontSize: Typo.small, fontWeight: Typo.bold, color: ink2,
                   fontFeatures: const [FontFeature.tabularFigures()])),
         ],
       );
@@ -645,7 +645,7 @@ class _TeamScreenState extends State<TeamScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('최근 10경기', style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600, color: sub)),
+          Text('최근 10경기', style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.medium, color: sub)),
           const SizedBox(height: 6),
           Row(children: List.generate(10, (i) {
             final r = i < recent10.length ? recent10[i] : '';
@@ -699,7 +699,7 @@ class _TeamScreenState extends State<TeamScreen>
                   child: Text('${team['name'] ?? ''} 팀 상세 보기 →',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: Typo.small, fontWeight: FontWeight.w700,
+                        fontSize: Typo.small, fontWeight: Typo.bold,
                         color: isDark && !isFav ? const Color(0xFF0F0F12) : Colors.white,
                       )),
                 ),
@@ -713,24 +713,24 @@ class _TeamScreenState extends State<TeamScreen>
 
   Widget _buildMoveIndicator(int? mv, Color ink2, Color sub, Color line2) {
     if (mv == null) {
-      return Text('—', style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w700, color: line2));
+      return Text('—', style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: line2));
     }
     if (mv > 0) {
       return Text('▲ $mv',
-          style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w700, color: ink2));
+          style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: ink2));
     }
     if (mv < 0) {
       return Text('▼ ${-mv}',
-          style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w700, color: sub));
+          style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: sub));
     }
-    return Text('—', style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w700, color: line2));
+    return Text('—', style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: line2));
   }
 
   Widget _badge(String text, {required Color bg, required Color fg}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(5)),
-      child: Text(text, style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w800, color: fg)),
+      child: Text(text, style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.extra, color: fg)),
     );
   }
   // 포스트시즌 stacked bar (Hero + Compact 공용)
@@ -764,7 +764,7 @@ class _TeamScreenState extends State<TeamScreen>
             width: 44,
             child: Text(
               'PS ${ps.toStringAsFixed(1)}%',
-              style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w800,
+              style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.extra,
                   color: ps >= 90 ? teamColor : (ps >= 50 ? teamColor.withValues(alpha: 0.8) : Colors.grey)),
               textAlign: TextAlign.right,
             ),
@@ -791,7 +791,7 @@ class _TeamScreenState extends State<TeamScreen>
 
     return [
           Text('포스트시즌 진출 확률 — Monte Carlo 100,000회',
-              style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600, color: ink3)),
+              style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.medium, color: ink3)),
           const SizedBox(height: 14),
           // PS 확률 뷰 시드 가중 정렬 — 단순 합(=PS 진출확률)으로 정렬하면
           // 상위팀이 모두 ~100%로 수렴해 동점→순서 무의미(06-14 보고).
@@ -842,16 +842,16 @@ class _TeamScreenState extends State<TeamScreen>
                     SizedBox(
                       width: 22,
                       child: Text('${team['rank'] ?? '-'}',
-                          style: TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w800, color: tc)),
+                          style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra, color: tc)),
                     ),
                     TeamLogo(teamCode: code, size: 26, logoUrl: team['logo_url'] as String?),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(team['name'] as String? ?? '',
-                          style: const TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w800)),
+                          style: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra)),
                     ),
                     Text('PS ${ps.toStringAsFixed(1)}%',
-                        style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w800,
+                        style: TextStyle(fontSize: Typo.body, fontWeight: Typo.extra,
                             color: ps >= 50 ? tc : ink3,
                             fontFeatures: const [FontFeature.tabularFigures()])),
                   ]),
@@ -883,7 +883,7 @@ class _TeamScreenState extends State<TeamScreen>
         Text('$label ${pct.toStringAsFixed(1)}%',
             style: TextStyle(
                 fontSize: 10.5,
-                fontWeight: FontWeight.w700,
+                fontWeight: Typo.bold,
                 color: Theme.of(context).brightness == Brightness.dark
                     ? const Color(0xFFC9C9D1) : const Color(0xFF5A5A62),
                 fontFeatures: const [FontFeature.tabularFigures()])),
@@ -970,7 +970,7 @@ Widget _buildSegmentControl(bool isDark, List<String> labels, TabController ctrl
                 style: TextStyle(
                   fontSize: Typo.body,
                   fontFamily: 'Pretendard',
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                  fontWeight: selected ? Typo.bold : Typo.regular,
                   color: selected
                       ? (isDark ? AppColors.primaryDark : SemColor.panelDark)
                       : (isDark ? Colors.grey[400] : Colors.grey),
@@ -1120,7 +1120,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
                 style: TextStyle(
                   fontSize: Typo.small,
                   color: sel ? (isDark ? Colors.black : Colors.white) : t.ink2,
-                  fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: sel ? Typo.bold : Typo.regular,
                 ),
               ),
             ),
@@ -1192,7 +1192,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
                   child: Text('$rank',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: Typo.title, fontWeight: FontWeight.w800, color: rankCol,
+                        fontSize: Typo.title, fontWeight: Typo.extra, color: rankCol,
                         letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()],
                       )),
                 ),
@@ -1205,7 +1205,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(t['name'] as String? ?? '',
-                          style: TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w800, color: tk.ink, letterSpacing: 0)),
+                          style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra, color: tk.ink, letterSpacing: 0)),
                       const SizedBox(height: 7),
                       LayoutBuilder(builder: (_, box) {
                         return ClipRRect(
@@ -1230,12 +1230,12 @@ class _TeamStatsTabState extends State<TeamStatsTab>
                   children: [
                     Text(displayVal,
                         style: TextStyle(
-                          fontSize: isBest ? 17 : 15, fontWeight: FontWeight.w800,
+                          fontSize: isBest ? 17 : 15, fontWeight: Typo.extra,
                           color: tk.ink, letterSpacing: 0,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         )),
                     const SizedBox(height: 2),
-                    Text(label, style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600, color: tk.sub)),
+                    Text(label, style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.medium, color: tk.sub)),
                   ],
                 ),
               ],
@@ -1481,7 +1481,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
               child: Text(
                 cat['label']!,
                 style: TextStyle(
-                  fontSize: Typo.small, fontWeight: FontWeight.w600,
+                  fontSize: Typo.small, fontWeight: Typo.medium,
                   color: isSelected ? (isDark ? Colors.black : Colors.white) : t.ink3,
                 ),
               ),
@@ -1533,20 +1533,20 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                       boxShadow: [BoxShadow(color: medalColor.withValues(alpha: 0.4), blurRadius: 3)],
                     ),
                     alignment: Alignment.center,
-                    child: Text('$rank', style: const TextStyle(color: Colors.white, fontSize: Typo.caption, fontWeight: FontWeight.bold)),
+                    child: Text('$rank', style: const TextStyle(color: Colors.white, fontSize: Typo.caption, fontWeight: Typo.bold)),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Text(p['name'] ?? '',
-                style: TextStyle(fontSize: rank == 1 ? 13 : 11, fontWeight: FontWeight.bold, color: nameColor),
+                style: TextStyle(fontSize: rank == 1 ? 13 : 11, fontWeight: Typo.bold, color: nameColor),
                 textAlign: TextAlign.center, overflow: TextOverflow.ellipsis),
             Text(p['team'] ?? '',
                 style: TextStyle(fontSize: Typo.caption, color: isDark ? const Color(0xFF9A9AA3) : Colors.grey[600]), textAlign: TextAlign.center),
             const SizedBox(height: 2),
             Text(statValue(p),
-                style: TextStyle(fontSize: rank == 1 ? 16 : 14, fontWeight: FontWeight.bold, color: txtColor),
+                style: TextStyle(fontSize: rank == 1 ? 16 : 14, fontWeight: Typo.bold, color: txtColor),
                 textAlign: TextAlign.center),
             const SizedBox(height: 6),
             Container(
@@ -1557,7 +1557,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
               ),
               alignment: Alignment.center,
-              child: Text('$rank위', style: TextStyle(fontSize: Typo.caption, color: txtColor, fontWeight: FontWeight.bold)),
+              child: Text('$rank위', style: TextStyle(fontSize: Typo.caption, color: txtColor, fontWeight: Typo.bold)),
             ),
           ],
         ),
@@ -1745,7 +1745,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                   child: Text('$rank',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: Typo.title, fontWeight: FontWeight.w800, color: rankCol,
+                        fontSize: Typo.title, fontWeight: Typo.extra, color: rankCol,
                         letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()],
                       )),
                 ),
@@ -1756,7 +1756,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                   url: profileImage,
                   child: Text(teamDisplayName(teamCode).substring(0,
                           teamDisplayName(teamCode).length.clamp(0, 2)),
-                      style: TextStyle(color: tc, fontSize: Typo.caption, fontWeight: FontWeight.w800)),
+                      style: TextStyle(color: tc, fontSize: Typo.caption, fontWeight: Typo.extra)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1765,11 +1765,11 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(name,
-                          style: TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w800,
+                          style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra,
                               color: t.ink, letterSpacing: 0)),
                       const SizedBox(height: 3),
                       Text(team,
-                          style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w500, color: t.ink3)),
+                          style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.semibold, color: t.ink3)),
                     ],
                   ),
                 ),
@@ -1779,13 +1779,13 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
                   children: [
                     Text(value,
                         style: TextStyle(
-                          fontSize: Typo.title, fontWeight: FontWeight.w800, color: t.ink,
+                          fontSize: Typo.title, fontWeight: Typo.extra, color: t.ink,
                           letterSpacing: 0,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         )),
                     const SizedBox(height: 2),
                     Text(label,
-                        style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600, color: t.sub)),
+                        style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.medium, color: t.sub)),
                   ],
                 ),
               ],

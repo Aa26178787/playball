@@ -142,7 +142,7 @@ class _SearchScreenState extends State<SearchScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('최근 검색', style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.bold, color: Colors.grey)),
+              const Text('최근 검색', style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: Colors.grey)),
               TextButton(onPressed: _clearHistory, child: const Text('전체 삭제', style: TextStyle(fontSize: Typo.small))),
             ],
           ),
@@ -174,7 +174,7 @@ class _SearchScreenState extends State<SearchScreen> {
         if (_teams.isNotEmpty) ...[
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Text('팀', style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.bold, color: Colors.grey)),
+            child: Text('팀', style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: Colors.grey)),
           ),
           ..._teams.map((t) => ListTile(
             leading: TeamLogo(teamCode: t['short_name'] ?? '', size: 36),
@@ -188,7 +188,7 @@ class _SearchScreenState extends State<SearchScreen> {
         if (_players.isNotEmpty) ...[
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 4, 16, 4),
-            child: Text('선수', style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.bold, color: Colors.grey)),
+            child: Text('선수', style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: Colors.grey)),
           ),
           ..._players.map((p) => ListTile(
             leading: netCircleAvatar(

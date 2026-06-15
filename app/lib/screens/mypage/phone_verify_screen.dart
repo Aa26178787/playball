@@ -111,7 +111,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                 keyboardType: TextInputType.number,
                 maxLength: 6,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: Typo.h1, letterSpacing: 8, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: Typo.h1, letterSpacing: 8, fontWeight: Typo.bold),
                 decoration: const InputDecoration(
                   hintText: '------',
                   border: OutlineInputBorder(),

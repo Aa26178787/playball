@@ -518,7 +518,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   padding: EdgeInsets.only(left: isFirst ? 5 : 0),
                   child: isFirst
                       ? Text(title,
-                          style: const TextStyle(fontSize: Typo.micro, fontWeight: FontWeight.w700, color: Colors.white),
+                          style: const TextStyle(fontSize: Typo.micro, fontWeight: Typo.bold, color: Colors.white),
                           overflow: TextOverflow.clip, softWrap: false)
                       : null,
                 ),
@@ -635,7 +635,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     margin: const EdgeInsets.only(right: 6),
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(color: tc, borderRadius: BorderRadius.circular(Radii.xs)),
-                    child: const Text('마이팀', style: TextStyle(fontSize: Typo.micro, fontWeight: FontWeight.w800, color: Colors.white)),
+                    child: const Text('마이팀', style: TextStyle(fontSize: Typo.micro, fontWeight: Typo.extra, color: Colors.white)),
                   ),
                 if (isUpcoming) ...[
                   Tooltip(
@@ -662,7 +662,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           Text('${game['home_score'] ?? 0}',
                               style: TextStyle(fontSize: 28, fontWeight: Typo.extra, color: cs.ink)),
                           Padding(padding: const EdgeInsets.symmetric(horizontal: 9),
-                            child: Text(':', style: TextStyle(fontSize: Typo.h1, fontWeight: FontWeight.w300, color: cs.line2))),
+                            child: Text(':', style: TextStyle(fontSize: Typo.h1, fontWeight: Typo.thin, color: cs.line2))),
                           Text('${game['away_score'] ?? 0}',
                               style: TextStyle(fontSize: 28, fontWeight: Typo.extra, color: cs.ink)),
                         ]),
@@ -827,13 +827,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
             ListTile(
               leading: CircleAvatar(backgroundColor: SemColor.brand(context), child: const Icon(Icons.event, color: Colors.white, size: 20)),
-              title: const Text('일정 추가', style: TextStyle(fontWeight: FontWeight.w600)),
+              title: const Text('일정 추가', style: TextStyle(fontWeight: Typo.medium)),
               subtitle: Text('${date.month}/${date.day} 개인 일정 등록'),
               onTap: () { Navigator.pop(context); _openAddEvent(date); },
             ),
             ListTile(
               leading: const CircleAvatar(backgroundColor: Color(0xFFE65100), child: Icon(Icons.stadium, color: Colors.white, size: 20)),
-              title: const Text('직관 기록', style: TextStyle(fontWeight: FontWeight.w600)),
+              title: const Text('직관 기록', style: TextStyle(fontWeight: Typo.medium)),
               subtitle: Text(selectedGames.isEmpty ? '이 날은 경기가 없습니다' : '${selectedGames.length}경기 중 선택'),
               enabled: selectedGames.isNotEmpty,
               onTap: selectedGames.isEmpty ? null : () {
@@ -891,7 +891,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 10),
-            child: Text('직관 기록할 경기 선택', style: TextStyle(fontWeight: FontWeight.bold, fontSize: Typo.subtitle)),
+            child: Text('직관 기록할 경기 선택', style: TextStyle(fontWeight: Typo.bold, fontSize: Typo.subtitle)),
           ),
           ...games.map((g) {
             final gm = g as Map;
@@ -1016,10 +1016,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
               ),
             ),
-            const Text('직관 통계', style: TextStyle(fontSize: Typo.title, fontWeight: FontWeight.bold)),
+            const Text('직관 통계', style: TextStyle(fontSize: Typo.title, fontWeight: Typo.bold)),
             const SizedBox(height: 16),
             if (byStadium.isNotEmpty) ...[
-              const Text('구장별', style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.bold, color: Colors.teal)),
+              const Text('구장별', style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: Colors.teal)),
               const SizedBox(height: 8),
               ...byStadium.map((s) {
                 final total = s['total'] as int;
@@ -1039,7 +1039,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         child: Text('$pct%',
                             style: TextStyle(
                               fontSize: Typo.body,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: Typo.bold,
                               color: wins > losses ? Colors.blue : wins < losses ? Colors.red : Colors.grey,
                             )),
                       ),
@@ -1050,7 +1050,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               const Divider(height: 24),
             ],
             if (byMonth.isNotEmpty) ...[
-              const Text('월별', style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.bold, color: Colors.teal)),
+              const Text('월별', style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: Colors.teal)),
               const SizedBox(height: 8),
               ...byMonth.map((m) {
                 final wins = m['wins'] as int;
@@ -1068,7 +1068,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       Text('$pct%',
                           style: TextStyle(
                             fontSize: Typo.body,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: Typo.bold,
                             color: wins > losses ? Colors.blue : wins < losses ? Colors.red : Colors.grey,
                           )),
                     ],
@@ -1147,7 +1147,7 @@ class _StatusBadge extends StatelessWidget {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Container(width: 5, height: 5, margin: const EdgeInsets.only(right: 5),
             decoration: const BoxDecoration(shape: BoxShape.circle, color: SemColor.live)),
-          const Text('LIVE', style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w800, color: SemColor.live)),
+          const Text('LIVE', style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.extra, color: SemColor.live)),
         ]),
       );
     }

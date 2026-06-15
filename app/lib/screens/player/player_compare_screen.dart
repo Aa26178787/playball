@@ -101,7 +101,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
             child: Text('VS',
                 style: TextStyle(
                     fontSize: Typo.title,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: Typo.bold,
                     color: Colors.grey[600])),
           ),
           Expanded(child: _buildSearchField(2, _ctrl2, _results2)),
@@ -158,7 +158,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
                     child: const Icon(Icons.person, size: 14),
                   ),
                   title: Text('${p['name']}',
-                      style: const TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w600)),
+                      style: const TextStyle(fontSize: Typo.body, fontWeight: Typo.medium)),
                   subtitle: Text('${p['team']} | ${p['player_type']}',
                       style: const TextStyle(fontSize: Typo.caption)),
                   onTap: () => _selectPlayer(slot, p),
@@ -203,7 +203,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
               children: [
                 Expanded(child: _buildPlayerHeader(p1, _loading1, 1)),
                 const Text('VS',
-                    style: TextStyle(color: Colors.white54, fontWeight: FontWeight.bold)),
+                    style: TextStyle(color: Colors.white54, fontWeight: Typo.bold)),
                 Expanded(child: _buildPlayerHeader(p2, _loading2, 2)),
               ],
             ),
@@ -254,7 +254,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
           const SizedBox(height: 6),
           Text('${p['name']}',
               style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold, fontSize: Typo.subtitle)),
+                  color: Colors.white, fontWeight: Typo.bold, fontSize: Typo.subtitle)),
           Text('${p['team']} | ${p['player_type']}',
               style: const TextStyle(color: Colors.white60, fontSize: Typo.caption)),
         ],
@@ -275,7 +275,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
 
     TextStyle boldStyle(bool highlight) => TextStyle(
           fontSize: Typo.subtitle,
-          fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
+          fontWeight: highlight ? Typo.bold : Typo.regular,
           color: highlight
               ? (isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark)
               : (isDark ? const Color(0xFFB7B7BE) : Colors.black87),
@@ -294,7 +294,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
                 style: TextStyle(
                     fontSize: Typo.small,
                     color: isDark ? Colors.grey[400] : Colors.grey[600],
-                    fontWeight: FontWeight.w500),
+                    fontWeight: Typo.semibold),
                 textAlign: TextAlign.center),
           ),
           Expanded(child: Text(v2, style: boldStyle(p2Better), textAlign: TextAlign.center)),

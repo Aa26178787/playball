@@ -252,7 +252,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('초기화', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text('초기화', style: TextStyle(fontWeight: Typo.bold)),
           ),
         ],
       ),
@@ -278,7 +278,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('탈퇴', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            child: const Text('탈퇴', style: TextStyle(color: Colors.red, fontWeight: Typo.bold)),
           ),
         ],
       ),
@@ -508,7 +508,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 child: const Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.check, size: 10, color: Color(0xFF22C55E)),
                   SizedBox(width: 4),
-                  Text('이메일 인증 완료', style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w700, color: Color(0xFF22C55E))),
+                  Text('이메일 인증 완료', style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: Color(0xFF22C55E))),
                 ]),
               )
             else
@@ -523,7 +523,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.error_outline, size: 10, color: SemColor.warning),
                     const SizedBox(width: 4),
-                    Text('이메일 인증하기', style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w700, color: SemColor.warning)),
+                    Text('이메일 인증하기', style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: SemColor.warning)),
                   ]),
                 ),
               ),

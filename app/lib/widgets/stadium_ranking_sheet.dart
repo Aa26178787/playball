@@ -30,7 +30,7 @@ class StadiumRankingSheet {
                 children: [
                   Icon(Icons.emoji_events, color: SemColor.brand(ctx), size: 18),
                   const SizedBox(width: 6),
-                  const Text('직관승률 랭킹', style: TextStyle(fontSize: Typo.title, fontWeight: FontWeight.bold)),
+                  const Text('직관승률 랭킹', style: TextStyle(fontSize: Typo.title, fontWeight: Typo.bold)),
                   const SizedBox(width: 6),
                   const Text('(최소 5회)', style: TextStyle(fontSize: Typo.small, color: Colors.grey)),
                 ],
@@ -66,17 +66,17 @@ class StadiumRankingSheet {
                             child: Text('$rank',
                                 style: TextStyle(
                                     fontSize: Typo.body,
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: Typo.bold,
                                     color: rank <= 3 ? medalColor : Colors.grey[600])),
                           ),
-                          title: Text(r['nickname'] ?? '', style: const TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w600)),
+                          title: Text(r['nickname'] ?? '', style: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.medium)),
                           subtitle: Text(
                               '${r['wins']}승 ${r['losses']}패${(r['draws'] as int) > 0 ? ' ${r['draws']}무' : ''} · 총 ${r['total']}회',
                               style: const TextStyle(fontSize: Typo.caption)),
                           trailing: Text('$winRate%',
                               style: TextStyle(
                                   fontSize: Typo.subtitle,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: Typo.bold,
                                   color: rank <= 3 ? medalColor : SemColor.brand(ctx))),
                         );
                       },

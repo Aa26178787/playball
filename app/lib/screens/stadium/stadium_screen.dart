@@ -294,7 +294,7 @@ function resetView() {
         const SizedBox(height: 8),
         Text(
           sel != null ? (sel['name'] as String) : '구장을 선택하면 지도를 볼 수 있어요',
-          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+          style: const TextStyle(fontSize: 13.5, fontWeight: Typo.bold),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 10),
@@ -380,7 +380,7 @@ function resetView() {
                     s['name'] as String,
                     style: TextStyle(
                       fontSize: Typo.subtitle,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: Typo.bold,
                       color: isSelected ? color : null,
                     ),
                   ),
@@ -576,7 +576,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                       child: Text(
                         '${widget.stadiumName} 맛집',
                         style: const TextStyle(
-                          color: Colors.white, fontSize: Typo.subtitle, fontWeight: FontWeight.bold),
+                          color: Colors.white, fontSize: Typo.subtitle, fontWeight: Typo.bold),
                       ),
                     ),
                     IconButton(
@@ -593,7 +593,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                   indicatorColor: Colors.white,
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white60,
-                  labelStyle: const TextStyle(fontSize: Typo.body, fontWeight: FontWeight.bold),
+                  labelStyle: const TextStyle(fontSize: Typo.body, fontWeight: Typo.bold),
                   tabs: const [Tab(text: '카카오 추천'), Tab(text: '팬 추천')],
                 ),
               ],
@@ -635,7 +635,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
             child: Icon(Icons.restaurant, color: color, size: 18),
           ),
           title: Text(p['name'] as String,
-              style: const TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.bold)),
+              style: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.bold)),
           subtitle: Text(
             '${p['category']} · $distStr${(p['phone'] as String).isNotEmpty ? '\n${p['phone']}' : ''}',
             style: TextStyle(fontSize: Typo.small, color: Colors.grey[600]),
@@ -694,7 +694,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                       children: [
                         Expanded(
                           child: Text(p['name'] as String,
-                              style: const TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.bold)),
+                              style: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.bold)),
                         ),
                         if (isApproved)
                           Container(
@@ -703,7 +703,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                               color: color.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: Text('인증', style: TextStyle(fontSize: Typo.caption, color: color, fontWeight: FontWeight.bold)),
+                            child: Text('인증', style: TextStyle(fontSize: Typo.caption, color: color, fontWeight: Typo.bold)),
                           ),
                       ],
                     ),
@@ -834,7 +834,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
           children: [
             Row(
               children: [
-                const Text('맛집 제안', style: TextStyle(fontSize: Typo.title, fontWeight: FontWeight.bold)),
+                const Text('맛집 제안', style: TextStyle(fontSize: Typo.title, fontWeight: Typo.bold)),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.close, size: 20),
@@ -891,7 +891,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(_selected!['name'] as String,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: Typo.subtitle)),
+                        style: const TextStyle(fontWeight: Typo.bold, fontSize: Typo.subtitle)),
                     Text('${_selected!['category']} · ${_selected!['address']}',
                         style: TextStyle(fontSize: Typo.small, color: Colors.grey[600])),
                   ],
@@ -938,7 +938,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
                     return ListTile(
                       dense: true,
                       title: Text(r['name'] as String,
-                          style: const TextStyle(fontSize: Typo.body, fontWeight: FontWeight.bold)),
+                          style: const TextStyle(fontSize: Typo.body, fontWeight: Typo.bold)),
                       subtitle: Text('${r['category']} · $distStr',
                           style: TextStyle(fontSize: Typo.caption, color: Colors.grey[600])),
                       trailing: const Icon(Icons.add_circle_outline, size: 20),

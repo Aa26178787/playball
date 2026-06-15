@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'api/api_service.dart';
 import 'utils/app_theme.dart';
 import 'utils/app_config.dart';
+import 'utils/design_tokens.dart';
 import 'utils/app_back.dart';
 // ⚠️ 조건 = js_interop (wasm 포함 웹 전체) — dart.library.html이면 wasm서 스텁 로드돼 죽음
 import 'utils/web_update/web_back_stub.dart'
@@ -357,7 +358,7 @@ class SplashScreen extends StatelessWidget {
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 36,
-                fontWeight: FontWeight.bold,
+                fontWeight: Typo.bold,
                 letterSpacing: 2,
               ),
             ),

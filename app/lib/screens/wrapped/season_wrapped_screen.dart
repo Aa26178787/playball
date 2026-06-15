@@ -108,7 +108,7 @@ class _SeasonWrappedScreenState extends State<SeasonWrappedScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('$year 시즌 나의 야구',
-              style: const TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w700, color: Colors.white70)),
+              style: const TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: Colors.white70)),
           const SizedBox(height: 14),
           _bigStat('직관', '$visitsTotal경기', '$wins승 $losses패${draws > 0 ? ' $draws무' : ''} · $stadiums개 구장'),
           const SizedBox(height: 14),
@@ -123,7 +123,7 @@ class _SeasonWrappedScreenState extends State<SeasonWrappedScreen> {
           ],
           const SizedBox(height: 16),
           const Text('PlayBall ⚾',
-              style: TextStyle(fontSize: Typo.small, fontWeight: FontWeight.w800, color: Colors.white60)),
+              style: TextStyle(fontSize: Typo.small, fontWeight: Typo.extra, color: Colors.white60)),
         ],
       ),
     );
@@ -133,11 +133,11 @@ class _SeasonWrappedScreenState extends State<SeasonWrappedScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w700, color: Colors.white54)),
+        Text(label, style: const TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: Colors.white54)),
         const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontSize: Typo.h1, fontWeight: FontWeight.w900, color: Colors.white)),
+        Text(value, style: const TextStyle(fontSize: Typo.h1, fontWeight: Typo.black, color: Colors.white)),
         if (sub.isNotEmpty)
-          Text(sub, style: const TextStyle(fontSize: Typo.small, fontWeight: FontWeight.w600, color: Colors.white70)),
+          Text(sub, style: const TextStyle(fontSize: Typo.small, fontWeight: Typo.medium, color: Colors.white70)),
       ],
     );
   }

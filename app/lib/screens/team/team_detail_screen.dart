@@ -367,7 +367,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
               const SizedBox(width: 10),
               Expanded(child: Text(team['name'] ?? '',
                   maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: Typo.lg, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5))),
+                  style: const TextStyle(fontSize: Typo.lg, fontWeight: Typo.extra, color: Colors.white, letterSpacing: -0.5))),
               _favLoading
                   ? const SizedBox(width: 32, height: 32,
                       child: Padding(padding: EdgeInsets.all(7),
@@ -451,7 +451,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                       const SizedBox(height: 2),
                       Text(labels[i], style: TextStyle(
                         fontSize: Typo.caption,
-                        fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                        fontWeight: selected ? Typo.bold : Typo.regular,
                         color: selected ? active : inactive,
                         fontFamily: 'Pretendard',
                       )),
@@ -736,7 +736,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                       ),
                       child: Text(subLabels[i], style: TextStyle(
                         fontSize: Typo.small,
-                        fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                        fontWeight: selected ? Typo.bold : Typo.regular,
                         color: selected
                             ? color
                             : (isDark ? Colors.grey[400] : Colors.grey),
@@ -861,7 +861,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 18, color: iconColor),
           const SizedBox(height: 3),
-          Text(label, style: TextStyle(fontSize: Typo.mini, color: cs.ink, fontWeight: FontWeight.w600)),
+          Text(label, style: TextStyle(fontSize: Typo.mini, color: cs.ink, fontWeight: Typo.medium)),
         ]),
       ),
     ));

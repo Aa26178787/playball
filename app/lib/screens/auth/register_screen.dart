@@ -160,7 +160,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
       const SizedBox(width: 8),
-      Text(labels[s], style: TextStyle(fontSize: Typo.caption, color: colors[s], fontWeight: FontWeight.bold)),
+      Text(labels[s], style: TextStyle(fontSize: Typo.caption, color: colors[s], fontWeight: Typo.bold)),
     ]);
   }
 

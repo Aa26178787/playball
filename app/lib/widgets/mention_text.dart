@@ -56,7 +56,7 @@ class MentionText extends StatelessWidget {
     final base = style ?? DefaultTextStyle.of(context).style;
     final mentionStyle = base.copyWith(
       color: mentionColor,
-      fontWeight: FontWeight.bold,
+      fontWeight: Typo.bold,
       decoration: TextDecoration.underline,
       decorationColor: mentionColor.withValues(alpha: 0.5),
     );
@@ -173,7 +173,7 @@ class MentionText extends StatelessWidget {
                   return ListTile(
                     dense: true,
                     title: Text(p['name'] as String,
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                        style: const TextStyle(fontWeight: Typo.bold)),
                     subtitle: Text('${p['team'] ?? ''} · ${p['position'] ?? ''}',
                         style: const TextStyle(fontSize: Typo.caption)),
                     onTap: () => Navigator.pop(ctx, p['id'] as int),

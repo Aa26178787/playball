@@ -435,7 +435,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('상대전적 — ${player['name']} vs ${isBatter ? '투수' : '타자'}',
-                      style: const TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.bold)),
+                      style: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.bold)),
                   const SizedBox(height: 12),
                   TextField(
                     controller: searchCtrl,
@@ -497,7 +497,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text('${batter['name']} vs ${pitcher['name']}',
-                style: const TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.bold)),
+                style: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.bold)),
           ),
           if (games == 0)
             const Expanded(child: Center(
@@ -540,7 +540,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   Widget _statBox(String label, String value) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(children: [
-      Text(value, style: TextStyle(fontSize: Typo.lg, fontWeight: FontWeight.bold,
+      Text(value, style: TextStyle(fontSize: Typo.lg, fontWeight: Typo.bold,
           color: isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark)),
       Text(label, style: const TextStyle(fontSize: Typo.caption, color: Colors.grey)),
     ]);
@@ -574,7 +574,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         child: Text(
           reason.isNotEmpty ? '$type · $reason' : type,
           maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: Typo.caption, color: color, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: Typo.caption, color: color, fontWeight: Typo.bold),
         ),
       ),
     ]);
@@ -612,7 +612,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             child: Opacity(
               opacity: 0.07,
               child: Text('$number',
-                  style: const TextStyle(fontSize: 150, fontWeight: FontWeight.w900,
+                  style: const TextStyle(fontSize: 150, fontWeight: Typo.black,
                       color: Colors.white, height: 1)),
             ),
           ),
@@ -663,7 +663,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     children: [
                       Text(name,
                           maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: Typo.h1, fontWeight: FontWeight.w800,
+                          style: const TextStyle(fontSize: Typo.h1, fontWeight: Typo.extra,
                               color: Colors.white, letterSpacing: 0, height: 1.15)),
                       const SizedBox(height: 6),
                       Row(children: [
@@ -719,7 +719,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                                   ),
                                   const SizedBox(width: 4),
                                   Text('@${player['insta_handle']}',
-                                      style: TextStyle(fontSize: Typo.micro, fontWeight: FontWeight.w700,
+                                      style: TextStyle(fontSize: Typo.micro, fontWeight: Typo.bold,
                                           color: Colors.white.withValues(alpha: 0.92))),
                                 ]),
                               ),
@@ -736,7 +736,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                                   border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
                                 ),
                                 child: const Center(child: Text('!',
-                                    style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w900,
+                                    style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.black,
                                         color: Colors.white, height: 1))),
                               ),
                             ),
@@ -921,7 +921,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           child: Text(label,
               style: TextStyle(
                   fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: Typo.bold,
                   color: sel ? paper : sub)),
         ),
       );
@@ -1075,7 +1075,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             Row(children: [
               Icon(Icons.info_outline, size: 18, color: SemColor.brand(context)),
               const SizedBox(width: 7),
-              Text(label, style: TextStyle(fontSize: Typo.title, fontWeight: FontWeight.w800, color: ink)),
+              Text(label, style: TextStyle(fontSize: Typo.title, fontWeight: Typo.extra, color: ink)),
             ]),
             const SizedBox(height: 12),
             Text(txt, style: TextStyle(fontSize: Typo.subtitle, height: 1.55, color: sub)),
@@ -1101,7 +1101,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
           TextButton(onPressed: () => Navigator.pop(context, true),
-              child: const Text('신고', style: TextStyle(fontWeight: FontWeight.bold))),
+              child: const Text('신고', style: TextStyle(fontWeight: Typo.bold))),
         ],
       ),
     );
@@ -1133,7 +1133,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       builder: (ctx) {
         Widget tile(IconData icon, String title, String desc, VoidCallback onTap) => ListTile(
           leading: Icon(icon, color: SemColor.brand(context)),
-          title: Text(title, style: TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w700, color: ink)),
+          title: Text(title, style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.bold, color: ink)),
           subtitle: Text(desc, style: TextStyle(fontSize: Typo.small, color: sub)),
           onTap: () { Navigator.pop(ctx); onTap(); },
         );
@@ -1237,7 +1237,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     const bw = 268.0;
     const tailH = 9.0;
     const gap = 6.0;
-    final sentStyle = TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, height: 1.4, color: mainCol);
+    final sentStyle = TextStyle(fontSize: 14.5, fontWeight: Typo.extra, height: 1.4, color: mainCol);
     final explainStyle = TextStyle(fontSize: Typo.small, height: 1.45, color: sub);
     final avgStyle = TextStyle(fontSize: Typo.small, color: sub);
     final explain = _statExplain(key, isPitcher); // 용어 설명도 함께
@@ -1341,7 +1341,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Flexible(child: Text(s.$1, style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w600, color: labelCol))),
+            Flexible(child: Text(s.$1, style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.medium, color: labelCol))),
             const SizedBox(width: 3),
             GestureDetector(
               behavior: HitTestBehavior.opaque,
@@ -1350,7 +1350,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             ),
           ]),
           const SizedBox(height: 6),
-          Text(s.$2, style: TextStyle(fontSize: Typo.h2, fontWeight: FontWeight.w800, color: ink,
+          Text(s.$2, style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: ink,
               fontFeatures: const [FontFeature.tabularFigures()])),
         ]),
       );
@@ -1359,7 +1359,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
+        Text(title, style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: sub, letterSpacing: 0.5)),
         const SizedBox(height: 12),
         GridView.count(
           crossAxisCount: 3, shrinkWrap: true,
@@ -1450,7 +1450,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         return Padding(
           padding: EdgeInsets.fromLTRB(20, 18, 20, 20 + MediaQuery.of(ctx).viewPadding.bottom),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('핵심 스탯 4개 선택', style: TextStyle(fontSize: Typo.title, fontWeight: FontWeight.w800, color: ink)),
+            Text('핵심 스탯 4개 선택', style: TextStyle(fontSize: Typo.title, fontWeight: Typo.extra, color: ink)),
             const SizedBox(height: 4),
             Text('${slots.where((e) => e != null).length}/4 · 순서대로 표시 (첫 항목 강조)', style: TextStyle(fontSize: Typo.small, color: sub)),
             const SizedBox(height: 14),
@@ -1472,7 +1472,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       color: on ? SemColor.brand(context) : (isDark ? const Color(0xFF26262C) : const Color(0xFFF1F1F4)),
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: Text(_statLabel(k, isPitcher), style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w600,
+                    child: Text(_statLabel(k, isPitcher), style: TextStyle(fontSize: Typo.body, fontWeight: Typo.medium,
                         color: on ? (isDark ? SemColor.panelDark : Colors.white) : ink)),
                   ),
                 );
@@ -1537,7 +1537,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             mainAxisAlignment: MainAxisAlignment.center, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Expanded(child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              Flexible(child: Text(it.$1, style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w600, color: labelCol))),
+              Flexible(child: Text(it.$1, style: TextStyle(fontSize: Typo.body, fontWeight: Typo.medium, color: labelCol))),
               const SizedBox(width: 3),
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
@@ -1554,11 +1554,11 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                       color: tc,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        child: Text(it.$2, style: TextStyle(fontSize: Typo.h1, fontWeight: FontWeight.w800,
+                        child: Text(it.$2, style: TextStyle(fontSize: Typo.h1, fontWeight: Typo.extra,
                             color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
                       ),
                     )
-                  : Text(it.$2, style: TextStyle(fontSize: Typo.h1, fontWeight: FontWeight.w800,
+                  : Text(it.$2, style: TextStyle(fontSize: Typo.h1, fontWeight: Typo.extra,
                       color: highlight ? tc : ink, fontFeatures: const [FontFeature.tabularFigures()])),
             ),
           ]),
@@ -1566,7 +1566,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             const SizedBox(height: 8),
             Row(children: [
               Text('리그 ${c['rank']}위',
-                  style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w700, color: tc)),
+                  style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: tc)),
               if (c['dom_rank'] != null)
                 Text('  ·  국내 ${c['dom_rank']}위',
                     style: TextStyle(fontSize: Typo.small, color: sub)),
@@ -1581,11 +1581,11 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             ),
             const SizedBox(height: 6),
             Text('리그 평균 ${_fmtStat(it.$3, (c['lg'] as num?) ?? 0)}',
-                style: TextStyle(fontSize: Typo.small, fontWeight: FontWeight.w600, color: sub)),
+                style: TextStyle(fontSize: Typo.small, fontWeight: Typo.medium, color: sub)),
           ] else if (_rateStats.contains(it.$3) && !qualified) ...[
             const SizedBox(height: 8),
             Text(isPitcher ? '규정이닝 미달' : '규정타석 미달',
-                style: TextStyle(fontSize: Typo.small, fontWeight: FontWeight.w600, color: sub)),
+                style: TextStyle(fontSize: Typo.small, fontWeight: Typo.medium, color: sub)),
           ],
         ]),
       );
@@ -1597,13 +1597,13 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         Row(children: [
           Expanded(child: Text(
               cur['season'] == null ? '통산 핵심 기록 (24시즌~)' : '${cur['season']} 시즌 핵심 기록',
-              style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5))),
+              style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: sub, letterSpacing: 0.5))),
           GestureDetector(
             onTap: () => _openCorePicker(isPitcher),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(Icons.tune, size: 13, color: sub),
               const SizedBox(width: 3),
-              Text('편집', style: TextStyle(fontSize: Typo.caption, color: sub, fontWeight: FontWeight.w600)),
+              Text('편집', style: TextStyle(fontSize: Typo.caption, color: sub, fontWeight: Typo.medium)),
             ]),
           ),
         ]),
@@ -1612,7 +1612,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             Icon(Icons.touch_app_outlined, size: 11, color: tc),
             const SizedBox(width: 3),
             Text('점선 숫자를 눌러 리그 평균·설명 보기',
-                style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w700, color: tc)),
+                style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: tc)),
           ]),
           const SizedBox(height: 6),
         ],
@@ -1692,7 +1692,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           border: Border.all(color: active ? ink : line),
         ),
         child: Text(label,
-            style: TextStyle(fontSize: Typo.caption, fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            style: TextStyle(fontSize: Typo.caption, fontWeight: active ? Typo.bold : Typo.semibold,
                 color: active ? (isDark ? Colors.black : Colors.white) : ink3)),
       ),
     );
@@ -1703,7 +1703,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('피칭 디자인 — 구종별 로케이션',
-              style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
+              style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: sub, letterSpacing: 0.5)),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -1765,7 +1765,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                                   alignment: Alignment.center,
                                   child: pct >= 2
                                       ? Text('${pct.round()}',
-                                          style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w800,
+                                          style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.extra,
                                               color: ratio > 0.55 ? Colors.white : ink,
                                               fontFeatures: const [FontFeature.tabularFigures()]))
                                       : null,
@@ -1832,7 +1832,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           border: Border.all(color: active ? ink : line),
         ),
         child: Text(label,
-            style: TextStyle(fontSize: Typo.caption, fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            style: TextStyle(fontSize: Typo.caption, fontWeight: active ? Typo.bold : Typo.semibold,
                 color: active ? (isDark ? Colors.black : Colors.white) : ink3)),
       ),
     );
@@ -1879,7 +1879,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('존 히트맵',
-              style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
+              style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: sub, letterSpacing: 0.5)),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -1937,7 +1937,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                                   child: label.isEmpty
                                       ? null
                                       : Text(label,
-                                          style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800,
+                                          style: TextStyle(fontSize: 9.5, fontWeight: Typo.extra,
                                               color: ink,
                                               fontFeatures: const [FontFeature.tabularFigures()])),
                                 );
@@ -2001,7 +2001,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           border: Border.all(color: active ? ink : line),
         ),
         child: Text(label,
-            style: TextStyle(fontSize: Typo.caption, fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            style: TextStyle(fontSize: Typo.caption, fontWeight: active ? Typo.bold : Typo.semibold,
                 color: active ? (isDark ? Colors.black : Colors.white) : ink3)),
       ),
     );
@@ -2035,7 +2035,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('피칭 존 히트맵',
-              style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
+              style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: sub, letterSpacing: 0.5)),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -2078,7 +2078,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                                   decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
                                   alignment: Alignment.center,
                                   child: label.isEmpty ? null : Text(label,
-                                      style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: ink,
+                                      style: TextStyle(fontSize: 9.5, fontWeight: Typo.extra, color: ink,
                                           fontFeatures: const [FontFeature.tabularFigures()])),
                                 );
                               })),
@@ -2229,7 +2229,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                             fontSize: Typo.caption,
                             // 선택 칩 bg(chartColor)가 밝으면(다크모드 타자=흰색) 검은 글씨로 대비 확보
                             color: sel ? (chartColor.computeLuminance() > 0.5 ? Colors.black : Colors.white) : null,
-                            fontWeight: sel ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: sel ? Typo.bold : Typo.regular,
                           ),
                         ),
                       ),
@@ -2399,7 +2399,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
     Widget summaryCell(String label, String value, String key) => Column(children: [
       Text(value,
-          style: TextStyle(fontSize: Typo.lg, fontWeight: FontWeight.w800, color: ink,
+          style: TextStyle(fontSize: Typo.lg, fontWeight: Typo.extra, color: ink,
               letterSpacing: 0, fontFeatures: const [FontFeature.tabularFigures()])),
       const SizedBox(height: 3),
       GestureDetector(
@@ -2421,7 +2421,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('최근 5경기',
-              style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w700, color: sub, letterSpacing: 0.5)),
+              style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: sub, letterSpacing: 0.5)),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -2572,7 +2572,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
               cells[i],
               style: TextStyle(
                 fontSize: isFirst ? 12 : 12,
-                fontWeight: isHeader ? FontWeight.w700 : FontWeight.normal,
+                fontWeight: isHeader ? Typo.bold : Typo.regular,
                 color: isHeader ? (isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark) : null,
               ),
               textAlign: isFirst ? TextAlign.left : TextAlign.center,
@@ -2623,7 +2623,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   child: Row(children: [
                     SizedBox(
                       width: 56,
-                      child: Text(type, style: const TextStyle(fontSize: Typo.small, fontWeight: FontWeight.w600)),
+                      child: Text(type, style: const TextStyle(fontSize: Typo.small, fontWeight: Typo.medium)),
                     ),
                     Expanded(
                       child: Stack(children: [
@@ -2654,7 +2654,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: Text(title, style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w700,
+      child: Text(title, style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold,
           color: isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark)),
     );
   }

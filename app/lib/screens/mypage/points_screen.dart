@@ -124,7 +124,7 @@ class _PointsScreenState extends State<PointsScreen> {
 
   Widget _buildSection(String label, Color sub) => Text(label,
       style: TextStyle(
-          fontSize: Typo.small, fontWeight: FontWeight.w800, color: sub, letterSpacing: 0.2));
+          fontSize: Typo.small, fontWeight: Typo.extra, color: sub, letterSpacing: 0.2));
 
   Widget _buildMyCard(Color cardColor, Color line, Color sub) {
     final total = (_mine?['total'] as num?)?.toInt() ?? 0;
@@ -144,7 +144,7 @@ class _PointsScreenState extends State<PointsScreen> {
             Text('내 포인트', style: TextStyle(fontSize: Typo.small, color: sub)),
             const SizedBox(height: 2),
             Text('${_comma(total)}P',
-                style: const TextStyle(fontSize: Typo.h1, fontWeight: FontWeight.w900)),
+                style: const TextStyle(fontSize: Typo.h1, fontWeight: Typo.black)),
           ]),
         ),
         if (rank != null)
@@ -156,7 +156,7 @@ class _PointsScreenState extends State<PointsScreen> {
             ),
             child: Text('전체 $rank위',
                 style: const TextStyle(
-                    fontSize: Typo.body, fontWeight: FontWeight.w800, color: Color(0xFFD97706))),
+                    fontSize: Typo.body, fontWeight: Typo.extra, color: Color(0xFFD97706))),
           ),
       ]),
     );
@@ -180,7 +180,7 @@ class _PointsScreenState extends State<PointsScreen> {
           child: top3
               ? Text(medal[rank - 1], style: const TextStyle(fontSize: Typo.title))
               : Text('$rank',
-                  style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w800, color: sub)),
+                  style: TextStyle(fontSize: Typo.body, fontWeight: Typo.extra, color: sub)),
         ),
         netCircleAvatar(
           url: (row['profile_image'] as String?) ?? '',
@@ -190,7 +190,7 @@ class _PointsScreenState extends State<PointsScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: Text(row['nickname'] as String? ?? '?',
-              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 13.5, fontWeight: Typo.bold),
               overflow: TextOverflow.ellipsis),
         ),
         if ((row['wins'] as num? ?? 0) > 0)
@@ -201,7 +201,7 @@ class _PointsScreenState extends State<PointsScreen> {
           ),
         Text('${_comma((row['total'] as num?)?.toInt() ?? 0)}P',
             style: const TextStyle(
-                fontSize: 13.5, fontWeight: FontWeight.w900, color: Color(0xFFD97706))),
+                fontSize: 13.5, fontWeight: Typo.black, color: Color(0xFFD97706))),
       ]),
     );
   }
@@ -235,7 +235,7 @@ class _PointsScreenState extends State<PointsScreen> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(_reasonLabel[reason] ?? reason,
-                  style: const TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w700)),
+                  style: const TextStyle(fontSize: Typo.body, fontWeight: Typo.bold)),
               const SizedBox(height: 2),
               Text(at.length >= 16 ? at.substring(0, 16) : at,
                   style: TextStyle(fontSize: Typo.caption, color: sub)),
@@ -243,7 +243,7 @@ class _PointsScreenState extends State<PointsScreen> {
           ),
           Text('+${m['points']}P',
               style: const TextStyle(
-                  fontSize: Typo.subtitle, fontWeight: FontWeight.w900, color: Color(0xFFD97706))),
+                  fontSize: Typo.subtitle, fontWeight: Typo.black, color: Color(0xFFD97706))),
         ]),
       );
     }).toList();
@@ -269,7 +269,7 @@ class _PointsScreenState extends State<PointsScreen> {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(m['name'] as String? ?? '',
-                style: const TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w700)),
+                style: const TextStyle(fontSize: Typo.body, fontWeight: Typo.bold)),
             const SizedBox(height: 4),
             ClipRRect(
               borderRadius: BorderRadius.circular(Radii.pill),
@@ -285,10 +285,10 @@ class _PointsScreenState extends State<PointsScreen> {
         const SizedBox(width: 10),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Text('$progress/$goal',
-              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: sub)),
+              style: TextStyle(fontSize: 11.5, fontWeight: Typo.bold, color: sub)),
           Text('+${m['reward']}P',
               style: const TextStyle(
-                  fontSize: Typo.small, fontWeight: FontWeight.w900, color: Color(0xFFD97706))),
+                  fontSize: Typo.small, fontWeight: Typo.black, color: Color(0xFFD97706))),
         ]),
       ]),
     );
@@ -323,13 +323,13 @@ class _PointsScreenState extends State<PointsScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    fontSize: Typo.mini, fontWeight: FontWeight.w700,
+                    fontSize: Typo.mini, fontWeight: Typo.bold,
                     color: earned ? null : sub)),
             const SizedBox(height: 2),
             Text(earned ? '획득!' : '${b['progress']}/${b['goal']}',
                 style: TextStyle(
                     fontSize: 9.5,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: Typo.medium,
                     color: earned ? const Color(0xFFD97706) : sub)),
           ]),
         );
