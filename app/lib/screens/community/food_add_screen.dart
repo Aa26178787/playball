@@ -94,7 +94,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
             _Btn32(border: cs.line2, onTap: () => Navigator.maybePop(context),
               child: Icon(Icons.chevron_left, size: 20, color: cs.ink2)),
             const SizedBox(width: 10),
-            Text('맛집 제안', style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4)),
+            Text('맛집 제안', style: TextStyle(fontSize: Typo.lg, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4)),
             const Spacer(),
             ElevatedButton(
               onPressed: _isValid ? _submit : null,
@@ -106,7 +106,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 elevation: 0,
-                textStyle: const TextStyle(fontSize: 13, fontWeight: Typo.extra),
+                textStyle: const TextStyle(fontSize: Typo.body, fontWeight: Typo.extra),
               ),
               child: const Text('제출'),
             ),
@@ -144,7 +144,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                         border: Border.all(color: act ? cs.ink : cs.line2),
                       ),
                       child: Text(s.name, style: TextStyle(
-                        fontSize: 12, fontWeight: act ? Typo.bold : Typo.medium,
+                        fontSize: Typo.small, fontWeight: act ? Typo.bold : Typo.medium,
                         color: act ? fg : cs.ink3,
                       )),
                     ),
@@ -167,11 +167,11 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                       controller: _searchCtrl,
                       onChanged: (_) => setState(() {}),
                       onSubmitted: (_) => _search(),
-                      style: TextStyle(fontSize: 14, color: cs.ink),
+                      style: TextStyle(fontSize: Typo.subtitle, color: cs.ink),
                       cursorColor: cs.ink,
                       decoration: InputDecoration(
                         hintText: '예) 잠실 왕족발',
-                        hintStyle: TextStyle(fontSize: 14, color: cs.sub),
+                        hintStyle: TextStyle(fontSize: Typo.subtitle, color: cs.sub),
                         border: InputBorder.none, isDense: true,
                         contentPadding: const EdgeInsets.symmetric(vertical: 10),
                       ),
@@ -195,7 +195,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                     child: _searching
                         ? SizedBox(width: 14, height: 14,
                             child: CircularProgressIndicator(strokeWidth: 2, color: fg))
-                        : Text('검색', style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: fg)),
+                        : Text('검색', style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: fg)),
                   ),
                 ),
               ]),
@@ -232,7 +232,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                           style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink)),
                       const SizedBox(height: 3),
                       Text(_selected!['category'] as String? ?? '',
-                          style: TextStyle(fontSize: 10, color: cs.ink3)),
+                          style: TextStyle(fontSize: Typo.mini, color: cs.ink3)),
                     ])),
                     IconButton(
                       icon: Icon(Icons.close, size: 16, color: cs.sub),
@@ -249,13 +249,13 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                 controller: _memoCtrl,
                 maxLines: 2,
                 maxLength: 60,
-                style: TextStyle(fontSize: 14, color: cs.ink, height: 1.6),
+                style: TextStyle(fontSize: Typo.subtitle, color: cs.ink, height: 1.6),
                 cursorColor: cs.ink,
                 decoration: InputDecoration(
                   hintText: '이 맛집의 매력을 한 문장으로 소개해주세요',
-                  hintStyle: TextStyle(fontSize: 14, color: cs.sub, height: 1.6),
+                  hintStyle: TextStyle(fontSize: Typo.subtitle, color: cs.sub, height: 1.6),
                   border: InputBorder.none, contentPadding: EdgeInsets.zero, isDense: true,
-                  counterStyle: TextStyle(fontSize: 10, color: cs.sub),
+                  counterStyle: TextStyle(fontSize: Typo.mini, color: cs.sub),
                 ),
               )),
             ] else if (_results.isNotEmpty) ...[
@@ -279,7 +279,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                               style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink)),
                           const SizedBox(height: 3),
                           Text(p['category'] as String? ?? '',
-                              style: TextStyle(fontSize: 10, color: cs.ink3)),
+                              style: TextStyle(fontSize: Typo.mini, color: cs.ink3)),
                         ])),
                         Icon(Icons.add, size: 18, color: cs.ink3),
                       ]),
@@ -303,7 +303,7 @@ class _FoodAddScreenState extends State<FoodAddScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.lg)),
                     elevation: 0,
-                    textStyle: const TextStyle(fontSize: 15, fontWeight: Typo.extra, letterSpacing: -0.3),
+                    textStyle: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra, letterSpacing: -0.3),
                   ),
                   child: _submitting
                       ? SizedBox(width: 18, height: 18,
@@ -342,7 +342,7 @@ class _FormLabel extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
     child: RichText(text: TextSpan(
       text: required ? label.replaceAll(' *', '') : label,
-      style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8),
+      style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8),
       children: required ? [const TextSpan(text: ' *', style: TextStyle(color: SemColor.live))] : [],
     )),
   );

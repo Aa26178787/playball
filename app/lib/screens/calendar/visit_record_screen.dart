@@ -131,7 +131,7 @@ class _VisitRecordScreenState extends State<VisitRecordScreen> {
             _Btn32(border: cs.line2, onTap: () => Navigator.maybePop(context),
               child: Icon(Icons.chevron_left, size: 20, color: cs.ink2)),
             const SizedBox(width: 10),
-            Text('직관 기록', style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4)),
+            Text('직관 기록', style: TextStyle(fontSize: Typo.lg, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4)),
             const Spacer(),
             ElevatedButton(
               onPressed: _saving ? null : _save,
@@ -143,7 +143,7 @@ class _VisitRecordScreenState extends State<VisitRecordScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 elevation: 0,
-                textStyle: const TextStyle(fontSize: 13, fontWeight: Typo.extra),
+                textStyle: const TextStyle(fontSize: Typo.body, fontWeight: Typo.extra),
               ),
               child: _saving
                   ? const SizedBox(width: 14, height: 14,
@@ -176,18 +176,18 @@ class _VisitRecordScreenState extends State<VisitRecordScreen> {
                     ),
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Text('${widget.date.month}월',
-                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white70)),
+                        style: const TextStyle(fontSize: Typo.micro, fontWeight: FontWeight.w600, color: Colors.white70)),
                       const SizedBox(height: 2),
                       Text('${widget.date.day}',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                        style: const TextStyle(fontSize: Typo.h2, fontWeight: FontWeight.w800, color: Colors.white)),
                     ]),
                   ),
                   const SizedBox(width: 14),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(_dateStr, style: TextStyle(fontSize: 16, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.3)),
+                    Text(_dateStr, style: TextStyle(fontSize: Typo.title, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.3)),
                     const SizedBox(height: 4),
                     Text('$_dowStr${stadium.isNotEmpty ? ' · $stadium' : ''}${startTime.isNotEmpty ? ' $startTime' : ''}',
-                        style: TextStyle(fontSize: 12, color: cs.ink3)),
+                        style: TextStyle(fontSize: Typo.small, color: cs.ink3)),
                   ])),
                 ]),
               ),
@@ -211,7 +211,7 @@ class _VisitRecordScreenState extends State<VisitRecordScreen> {
                         style: TextStyle(fontSize: Typo.body, fontWeight: Typo.extra, color: cs.ink),
                         textAlign: TextAlign.center),
                     const SizedBox(height: 2),
-                    Text('홈', style: TextStyle(fontSize: 10, color: cs.sub)),
+                    Text('홈', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
                   ])),
                   Text('VS', style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra, color: cs.sub)),
                   Expanded(child: Column(children: [
@@ -221,7 +221,7 @@ class _VisitRecordScreenState extends State<VisitRecordScreen> {
                         style: TextStyle(fontSize: Typo.body, fontWeight: Typo.extra, color: cs.ink),
                         textAlign: TextAlign.center),
                     const SizedBox(height: 2),
-                    Text('원정', style: TextStyle(fontSize: 10, color: cs.sub)),
+                    Text('원정', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
                   ])),
                 ]),
               ),
@@ -258,10 +258,10 @@ class _VisitRecordScreenState extends State<VisitRecordScreen> {
               controller: _memoCtrl,
               maxLines: 3,
               cursorColor: _accent,
-              style: TextStyle(fontSize: 14, color: cs.ink, height: 1.6),
+              style: TextStyle(fontSize: Typo.subtitle, color: cs.ink, height: 1.6),
               decoration: InputDecoration(
                 hintText: '직관 후기를 입력하세요',
-                hintStyle: TextStyle(fontSize: 14, color: cs.sub, height: 1.6),
+                hintStyle: TextStyle(fontSize: Typo.subtitle, color: cs.sub, height: 1.6),
                 border: InputBorder.none, contentPadding: EdgeInsets.zero, isDense: true,
               ),
             )),
@@ -297,7 +297,7 @@ class _VisitRecordScreenState extends State<VisitRecordScreen> {
                         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                           Icon(Icons.add_photo_alternate_outlined, size: 20, color: cs.sub),
                           const SizedBox(width: 8),
-                          Text('사진 추가 (선택)', style: TextStyle(fontSize: 12, color: cs.sub)),
+                          Text('사진 추가 (선택)', style: TextStyle(fontSize: Typo.small, color: cs.sub)),
                         ]),
                       ),
                     ),
@@ -318,7 +318,7 @@ class _FormLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
-    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
+    child: Text(label, style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
   );
 }
 
