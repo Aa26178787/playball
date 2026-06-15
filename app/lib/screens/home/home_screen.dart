@@ -331,7 +331,7 @@ class _FloatingNavBar extends StatelessWidget {
                           Text(
                             item.label,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: Typo.caption,
                               fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
                               color: selected ? activeColor : inactiveColor,
                               fontFamily: 'Pretendard',
@@ -391,11 +391,11 @@ class _FloatingNavBar extends StatelessWidget {
             TeamLogo(teamCode: code, size: 18),
             const SizedBox(width: 6),
             Text(name,
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: tk.ink)),
+                style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w800, color: tk.ink)),
             if (gameStr.isNotEmpty) ...[
               const SizedBox(width: 6),
               Text(gameStr,
-                  style: TextStyle(fontSize: 11, color: gameColor, fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontSize: Typo.caption, color: gameColor, fontWeight: FontWeight.w700)),
             ],
           ],
         ),
@@ -581,7 +581,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('야구, 얼마나 보세요?',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+            style: TextStyle(fontSize: Typo.title, fontWeight: FontWeight.w800)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           _modeOption(ctx, isDark, 'casual', '⚾ 가볍게 즐겨요',
               '간단한 카드 · 마이팀 알림만'),
@@ -590,7 +590,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
               '풀 카드 · 모든 경기 알림'),
           const SizedBox(height: 6),
           Text('마이페이지에서 언제든 바꿀 수 있어요',
-              style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF9A9AA0) : const Color(0xFF8E8E96))),
+              style: TextStyle(fontSize: Typo.caption, color: isDark ? const Color(0xFF9A9AA0) : const Color(0xFF8E8E96))),
         ]),
       ),
     );
@@ -634,7 +634,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           Text(title, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800)),
           const SizedBox(height: 3),
           Text(desc,
-              style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF9A9AA0) : const Color(0xFF707078))),
+              style: TextStyle(fontSize: Typo.small, color: isDark ? const Color(0xFF9A9AA0) : const Color(0xFF707078))),
         ]),
       ),
     );
@@ -1103,7 +1103,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Text('$y.${m.toString().padLeft(2, '0')}',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
+                    style: TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w800,
                         color: tk.ink, letterSpacing: 0.2,
                         fontFeatures: const [FontFeature.tabularFigures()])),
                 const SizedBox(width: 2),
@@ -1159,7 +1159,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                           borderRadius: BorderRadius.circular(99),
                         ),
                         child: Text('$yy',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
+                            style: TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w800,
                                 color: py == yy
                                     ? (isDark ? Colors.black : Colors.white)
                                     : tk.ink2)),
@@ -1197,7 +1197,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                           ),
                           child: Text('$mm월',
                               style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: Typo.body,
                                   fontWeight: FontWeight.w700,
                                   color: sel
                                       ? (isDark ? Colors.black : Colors.white)
@@ -1292,12 +1292,12 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(dayName,
-                      style: TextStyle(fontSize: 11, color: nameColor, fontWeight: FontWeight.w600)),
+                      style: TextStyle(fontSize: Typo.caption, color: nameColor, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(
                     '${date.day}',
                     style: TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: 0,
+                      fontSize: Typo.title, fontWeight: FontWeight.w800, letterSpacing: 0,
                       color: isSelected ? (isDark ? Colors.black : Colors.white) : tk.ink,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
@@ -1338,7 +1338,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   child: Text('오늘',
                       style: TextStyle(
                           color: isDark ? Colors.black : Colors.white,
-                          fontSize: 11, fontWeight: FontWeight.w800)),
+                          fontSize: Typo.caption, fontWeight: FontWeight.w800)),
                 );
               }),
             ),
@@ -1370,7 +1370,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
               const SizedBox(width: 4),
             ],
             Text(label, style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w700, color: fg,
+              fontSize: Typo.small, fontWeight: FontWeight.w700, color: fg,
             )),
           ],
         ),
@@ -1445,7 +1445,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                           child: Text(
                             _unreadNotifCount > 9 ? '9+' : '$_unreadNotifCount',
                             style: const TextStyle(
-                                color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold, height: 1.0),
+                                color: Colors.white, fontSize: Typo.micro, fontWeight: FontWeight.bold, height: 1.0),
                           ),
                         ),
                       ),
@@ -1500,7 +1500,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 const Spacer(),
                 // 간략 보기 온/오프 스위치 (마이팀 토글 옆)
                 Text('간략',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.ink3)),
+                    style: TextStyle(fontSize: Typo.small, fontWeight: FontWeight.w600, color: t.ink3)),
                 const SizedBox(width: 6),
                 GestureDetector(
                   onTap: _toggleCompactMode,
@@ -1634,11 +1634,11 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             Icon(Icons.ac_unit, size: 56, color: isDark ? Colors.grey[600] : Colors.grey[400]),
             const SizedBox(height: 14),
             Text('시즌 오프 기간이에요',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800,
+                style: TextStyle(fontSize: Typo.title, fontWeight: FontWeight.w800,
                     color: isDark ? Colors.white70 : Colors.black87)),
             const SizedBox(height: 6),
             Text('다음 시즌을 기다리며 올해를 돌아봐요',
-                style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+                style: TextStyle(fontSize: Typo.body, color: Colors.grey[500])),
             const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: () => Navigator.push(context,
@@ -1693,10 +1693,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   const SizedBox(height: 16),
                   Text(
                     '불러오기 실패',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54),
+                    style: TextStyle(fontSize: Typo.title, fontWeight: FontWeight.w600, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54),
                   ),
                   const SizedBox(height: 8),
-                  Text('네트워크를 확인하고 다시 시도해주세요', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+                  Text('네트워크를 확인하고 다시 시도해주세요', style: TextStyle(fontSize: Typo.body, color: Colors.grey[500])),
                   const SizedBox(height: 20),
                   OutlinedButton.icon(
                     onPressed: () {
@@ -1719,7 +1719,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   const SizedBox(height: 16),
                   Text(
                     _myTeamOnly ? '마이팀 경기가 없습니다' : '경기가 없는 날입니다',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54),
+                    style: TextStyle(fontSize: Typo.title, fontWeight: FontWeight.w600, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -1730,7 +1730,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                             : isPast
                                 ? '이 날은 경기가 없었습니다'
                                 : '이 날은 경기가 예정되어 있지 않습니다',
-                    style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                    style: TextStyle(fontSize: Typo.body, color: Colors.grey[500]),
                   ),
                   if (_myTeamOnly) ...[
                     const SizedBox(height: 20),
@@ -1883,7 +1883,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                 Icon(Icons.swap_horiz, size: 16, color: t.ink2),
                 const SizedBox(width: 6),
                 Text('오늘 등록말소',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: 0)),
+                    style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: 0)),
                 const SizedBox(width: 8),
                 if (registrations.isNotEmpty)
                   _rosterChip('${registrations.length}명 등록', const Color(0xFF1976D2), t),
@@ -1926,17 +1926,17 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                                   color: col.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: Text(type, style: TextStyle(fontSize: 11, color: col, fontWeight: FontWeight.w800)),
+                                child: Text(type, style: TextStyle(fontSize: Typo.caption, color: col, fontWeight: FontWeight.w800)),
                               ),
                               const SizedBox(width: 8),
-                              Text(c['team_name'] ?? '', style: TextStyle(fontSize: 11, color: t.ink3, fontWeight: FontWeight.w600)),
+                              Text(c['team_name'] ?? '', style: TextStyle(fontSize: Typo.caption, color: t.ink3, fontWeight: FontWeight.w600)),
                               const SizedBox(width: 4),
-                              Text(c['player_name'] ?? '', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: t.ink)),
+                              Text(c['player_name'] ?? '', style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w700, color: t.ink)),
                               if ((c['reason'] as String? ?? '').isNotEmpty) ...[
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text('(${c['reason']})',
-                                      style: TextStyle(fontSize: 11, color: t.sub),
+                                      style: TextStyle(fontSize: Typo.caption, color: t.sub),
                                       overflow: TextOverflow.ellipsis),
                                 ),
                               ],
@@ -1960,7 +1960,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       color: color.withValues(alpha: 0.12),
       borderRadius: BorderRadius.circular(Radii.pill),
     ),
-    child: Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w800)),
+    child: Text(label, style: TextStyle(fontSize: Typo.caption, color: color, fontWeight: FontWeight.w800)),
   );
 }
 
@@ -2011,7 +2011,7 @@ class GameCard extends StatelessWidget {
               width: 13, height: 13,
               alignment: Alignment.center,
               decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(4)),
-              child: Text(r, style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: fg)),
+              child: Text(r, style: TextStyle(fontSize: Typo.micro, fontWeight: FontWeight.w800, color: fg)),
             ),
             const SizedBox(height: 2),
             // 가장 최근 경기 — 결과색(승=팀컬러/패무=무채색) 선
@@ -2071,12 +2071,12 @@ class GameCard extends StatelessWidget {
         logo,
         const SizedBox(height: 7),
         Text(name,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: 0),
+            style: TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w800, color: t.ink, letterSpacing: 0),
             maxLines: 1, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 5),
         // 순위 + 홈/원정 병기 (rank 있을 때 홈/원정 정보 소실 방지)
         Text(rank != null ? '$rank위 · ${isHome ? '홈' : '원정'}' : (isHome ? '홈' : '원정'),
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
+            style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600, color: t.sub)),
         const SizedBox(height: 7),
         // 최근5: 가장 최근 경기가 중앙(스코어)쪽을 향하도록 — 홈(좌)=newest 우측끝, 어웨이(우)=reversed로 newest 좌측끝
         _buildMini5(isHome ? recent : recent.reversed.toList(),
@@ -2103,12 +2103,12 @@ class GameCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
             ),
             child: Text(pitcherLabel ?? '',
-                style: TextStyle(fontSize: 13, color: pitcherLabelColor ?? t.ink3, fontWeight: FontWeight.w800)),
+                style: TextStyle(fontSize: Typo.body, color: pitcherLabelColor ?? t.ink3, fontWeight: FontWeight.w800)),
           ),
           const SizedBox(width: 4),
           Flexible(
             child: Text(pitcher,
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: t.ink2),
+                style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w700, color: t.ink2),
                 overflow: TextOverflow.ellipsis, maxLines: 1),
           ),
         ],
@@ -2117,14 +2117,14 @@ class GameCard extends StatelessWidget {
     if (starter != null && starter.isNotEmpty) {
       return Text(starter,
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: t.ink2),
+          style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w700, color: t.ink2),
           overflow: TextOverflow.ellipsis, maxLines: 1);
     }
-    return Text('-', style: TextStyle(fontSize: 13, color: t.line2));
+    return Text('-', style: TextStyle(fontSize: Typo.body, color: t.line2));
   }
 
   Widget _centerNextSeriesCell(Map<String, String>? ns, _Tok t) {
-    if (ns == null) return Text('-', style: TextStyle(fontSize: 13, color: t.line2));
+    if (ns == null) return Text('-', style: TextStyle(fontSize: Typo.body, color: t.line2));
     // date "YYYY-MM-DD" → "M/D"
     String dateLabel = '';
     final ds = ns['date'] ?? '';
@@ -2147,7 +2147,7 @@ class GameCard extends StatelessWidget {
             const SizedBox(width: 4),
             Flexible(
               child: Text(ns['name'] ?? '',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: t.ink3),
+                  style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w600, color: t.ink3),
                   overflow: TextOverflow.ellipsis, maxLines: 1),
             ),
           ],
@@ -2156,7 +2156,7 @@ class GameCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 2),
             child: Text(dateLabel,
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: t.sub,
+                style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w600, color: t.sub,
                     fontFeatures: const [FontFeature.tabularFigures()])),
           ),
       ],
@@ -2187,15 +2187,15 @@ class GameCard extends StatelessWidget {
             const _LivePulseDot(size: 4),
             const SizedBox(width: 4),
             Text('${game.currentInning ?? 0}회 ${game.inningHalf ?? ''}',
-                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _kLiveRed)),
+                style: const TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w800, color: _kLiveRed)),
           ]),
         );
       }
       if (isCancelled) {
-        return Text('취소', style: TextStyle(fontSize: 11, color: t.ink3, fontWeight: FontWeight.w700));
+        return Text('취소', style: TextStyle(fontSize: Typo.caption, color: t.ink3, fontWeight: FontWeight.w700));
       }
       if (isFinished) {
-        return Text('종료', style: TextStyle(fontSize: 11, color: t.ink3, fontWeight: FontWeight.w700));
+        return Text('종료', style: TextStyle(fontSize: Typo.caption, color: t.ink3, fontWeight: FontWeight.w700));
       }
       // 예정: status 라벨 (시간은 1층 스코어 자리). 양 팀 선발 발표 시 '선발 확정'/'라인업 확정'
       final bothStarters = (game.homeStarter?.isNotEmpty ?? false) &&
@@ -2208,7 +2208,7 @@ class GameCard extends StatelessWidget {
               : (bothStarters ? '선발 확정' : (game.status.isEmpty ? '예정' : game.status));
       final amber = label.endsWith('확정');
       return Text(label,
-          style: TextStyle(fontSize: 11,
+          style: TextStyle(fontSize: Typo.caption,
               color: amber ? const Color(0xFFFFA000) : t.ink3,
               fontWeight: FontWeight.w700));
     }
@@ -2234,7 +2234,7 @@ class GameCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
             ),
             child: Text(isHomeSide ? '홈' : '원정',
-                style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: t.sub)),
+                style: TextStyle(fontSize: Typo.micro, fontWeight: FontWeight.w700, color: t.sub)),
           ),
         ],
       );
@@ -2288,20 +2288,20 @@ class GameCard extends StatelessWidget {
                                   children: [
                                     // 승팀 ink / 패팀 sub — 팀컬러 미적용 (풀카드 규칙 통일, 마이팀 강조는 외곽선만)
                                     Text('${game.homeScore}',
-                                        style: TextStyle(fontSize: 18,
+                                        style: TextStyle(fontSize: Typo.lg,
                                             fontWeight: FontWeight.w800,
                                             color: awayWon ? t.sub : t.ink,
                                             fontFeatures: const [FontFeature.tabularFigures()])),
-                                    Text(' : ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: t.ink3)),
+                                    Text(' : ', style: TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w700, color: t.ink3)),
                                     Text('${game.awayScore}',
-                                        style: TextStyle(fontSize: 18,
+                                        style: TextStyle(fontSize: Typo.lg,
                                             fontWeight: FontWeight.w800,
                                             color: homeWon ? t.sub : t.ink,
                                             fontFeatures: const [FontFeature.tabularFigures()])),
                                   ])
                               // 예정: 시간을 스코어 자리 — 종료 스코어와 동일 크기(18) 일관성
                               : Text(timeText.isEmpty ? 'vs' : timeText,
-                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: t.ink,
+                                  style: TextStyle(fontSize: Typo.lg, fontWeight: FontWeight.w800, color: t.ink,
                                       fontFeatures: const [FontFeature.tabularFigures()])),
                           // ── 2층: 상태 ──
                           const SizedBox(height: 5),
@@ -2312,7 +2312,7 @@ class GameCard extends StatelessWidget {
                             Text(subLine,
                                 textAlign: TextAlign.center,
                                 maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.ink3)),
+                                style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600, color: t.ink3)),
                           ],
                         ],
                       ),
@@ -2379,7 +2379,7 @@ class GameCard extends StatelessWidget {
             _LivePulseDot(size: 5),
             SizedBox(width: 5),
             Text('LIVE',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _kLiveRed)),
+                style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w800, color: _kLiveRed)),
           ]),
         );
       }
@@ -2397,7 +2397,7 @@ class GameCard extends StatelessWidget {
             Icon(Icons.cancel_outlined, size: 11, color: dangerOn),
             const SizedBox(width: 4),
             Text('취소',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: dangerOn,
+                style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w800, color: dangerOn,
                     decoration: TextDecoration.lineThrough, decorationColor: dangerOn)),
           ]),
         );
@@ -2408,7 +2408,7 @@ class GameCard extends StatelessWidget {
           decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(Radii.pill),
               border: Border.all(color: t.line2, width: 1)),
           child: Text('경기 종료',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink3)),
+              style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w700, color: t.ink3)),
         );
       }
       if (game.status == '라인업' || autoLineup) {
@@ -2426,7 +2426,7 @@ class GameCard extends StatelessWidget {
             border: Border.all(color: const Color(0xFFFFA000).withValues(alpha: 0.45), width: 1),
           ),
           child: Text(label,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFFFFA000))),
+              style: const TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w800, color: Color(0xFFFFA000))),
         );
       }
       // 예정 + 그 외 상태: 상태 텍스트만 (시작시간 X — 시간은 score 자리에 표시)
@@ -2435,7 +2435,7 @@ class GameCard extends StatelessWidget {
         decoration: BoxDecoration(color: t.paper2, borderRadius: BorderRadius.circular(Radii.pill),
             border: Border.all(color: t.line2, width: 1)),
         child: Text(game.status.isEmpty ? '예정' : game.status,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t.ink2)),
+            style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w700, color: t.ink2)),
       );
     }
 
@@ -2528,7 +2528,7 @@ class GameCard extends StatelessWidget {
                                 Icon(Icons.star_rounded, size: 11, color: myColor),
                                 const SizedBox(width: 3),
                                 Text('마이팀',
-                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: myColor)),
+                                    style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w800, color: myColor)),
                               ]),
                             ),
                             const SizedBox(width: 7),
@@ -2560,7 +2560,7 @@ class GameCard extends StatelessWidget {
                               isCancelled ? '취소' : (game.startTime ?? 'VS'),
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.w800,
+                                fontSize: Typo.lg, fontWeight: FontWeight.w800,
                                 color: t.ink, letterSpacing: 0,
                               ),
                             )
@@ -2583,7 +2583,7 @@ class GameCard extends StatelessWidget {
                                   child: Text(':',
                                       style: TextStyle(
                                         // line2 → ink3: 양 스코어 사이 구분자 가시성 (2026-06-06)
-                                        fontSize: 22, fontWeight: FontWeight.w600, color: t.ink3,
+                                        fontSize: Typo.h2, fontWeight: FontWeight.w600, color: t.ink3,
                                       )),
                                 ),
                                 Text('${game.awayScore}',
@@ -2633,7 +2633,7 @@ class GameCard extends StatelessWidget {
                     child: Text(parts.join('  ·  '),
                         textAlign: TextAlign.center,
                         maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.ink3)),
+                        style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600, color: t.ink3)),
                   );
                 }),
                 // ── divider + 선발 + 다음 시리즈 (opaque cardBg로 overlay 가림) ──
@@ -2666,7 +2666,7 @@ class GameCard extends StatelessWidget {
                             width: 78,
                             child: Text(hasPitchers ? '결과' : '선발',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
+                                style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600, color: t.sub)),
                           ),
                           Expanded(child: _centerPitcherCell(
                             starter: hasStarters ? game.awayStarter : null,
@@ -2689,7 +2689,7 @@ class GameCard extends StatelessWidget {
                           width: 78,
                           child: Text('다음 시리즈',
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
+                              style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600, color: t.sub)),
                         ),
                         Expanded(child: _centerNextSeriesCell(nextAwaySeries, t)),
                       ],
@@ -2923,10 +2923,10 @@ class _PredictionBarState extends State<_PredictionBar> {
           child: Row(
             children: [
               Text('AI 승리 예측',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: t.ink3, letterSpacing: 0.2)),
+                  style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w800, color: t.ink3, letterSpacing: 0.2)),
               const Spacer(),
               Text('ML 모델',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
+                  style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600, color: t.sub)),
             ],
           ),
         ),
@@ -2944,7 +2944,7 @@ class _PredictionBarState extends State<_PredictionBar> {
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Text('${teamDisplayName(widget.homeCode)} $homePctStr',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white,
+                        style: const TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w800, color: Colors.white,
                             fontFeatures: [FontFeature.tabularFigures()]),
                         overflow: TextOverflow.ellipsis),
                   ),
@@ -2957,7 +2957,7 @@ class _PredictionBarState extends State<_PredictionBar> {
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Text('${teamDisplayName(widget.awayCode)} $awayPctStr',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white,
+                        style: const TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w800, color: Colors.white,
                             fontFeatures: [FontFeature.tabularFigures()]),
                         overflow: TextOverflow.ellipsis),
                   ),
@@ -2969,7 +2969,7 @@ class _PredictionBarState extends State<_PredictionBar> {
         if (_homeStarter.isNotEmpty || _awayStarter.isNotEmpty) ...[
           const SizedBox(height: 5),
           Text('$_homeStarter vs $_awayStarter',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.sub)),
+              style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w600, color: t.sub)),
         ],
         if (AppConfig.enabled('points')) ...[
           const SizedBox(height: 10),
@@ -2992,7 +2992,7 @@ class _PredictionBarState extends State<_PredictionBar> {
       padding: const EdgeInsets.only(bottom: 7),
       child: Row(children: [
         Text('팬 승부예측',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: t.ink3, letterSpacing: 0.2)),
+            style: TextStyle(fontSize: Typo.caption, fontWeight: FontWeight.w800, color: t.ink3, letterSpacing: 0.2)),
         const Spacer(),
         Text(
           ds.label.isNotEmpty ? ds.label : (total > 0 ? '$total명 참여 · 적중 +50P' : '적중 +50P'),
@@ -3012,7 +3012,7 @@ class _PredictionBarState extends State<_PredictionBar> {
             alignment: Alignment.center,
             decoration: BoxDecoration(color: t.track, borderRadius: BorderRadius.circular(10)),
             child: Text('투표가 마감되었습니다',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: t.sub)),
+                style: TextStyle(fontSize: Typo.small, fontWeight: FontWeight.w700, color: t.sub)),
           ),
         ]);
       }
