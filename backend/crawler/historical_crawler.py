@@ -330,14 +330,133 @@ def crawl_season(season):
     return h, p
 
 
+# ── 신상(bio) enrichment ── detail 페이지 div.player_info (서버 IP 도달 OK) ──
+import datetime
+
+_DATE_RE = re.compile(r'(\d{4})\D+(\d{1,2})\D+(\d{1,2})')
+
+
+def _parse_bio(items):
+    """div.player_info li 텍스트들 → bio dict. '포지션: 외야수(좌투좌타)' 형태 파싱."""
+    kv = {}
+    for it in items:
+        if ':' in it:
+            k, v = it.split(':', 1)
+            kv[k.strip()] = v.strip()
+    out = {}
+    if kv.get('생년월일'):
+        m = _DATE_RE.search(kv['생년월일'])
+        if m:
+            try:
+                out['birth_date'] = datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+            except ValueError:
+                pass
+    pos = kv.get('포지션', '')
+    if pos:
+        out['position'] = pos.split('(')[0].strip() or None
+        mt = re.search(r'\(([^)]+)\)', pos)
+        if mt:
+            tt = mt.group(1)
+            t = re.search(r'(좌|우|양)투', tt)
+            b = re.search(r'(좌|우|양)타', tt)
+            if t:
+                out['throws'] = t.group(1)
+            if b:
+                out['bats'] = b.group(1)
+    hw = kv.get('신장/체중', '')
+    mh = re.search(r'(\d+)\s*cm', hw)
+    mw = re.search(r'(\d+)\s*kg', hw)
+    if mh:
+        out['height'] = int(mh.group(1))
+    if mw:
+        out['weight'] = int(mw.group(1))
+    if kv.get('경력'):
+        out['career'] = kv['경력']
+    return out
+
+
+def _detail_url(kbo_id, player_type):
+    seg = 'Pitcher' if player_type == '투수' else 'Hitter'
+    return f"https://www.koreabaseball.com/Record/Player/{seg}Detail/Basic.aspx?playerId={kbo_id}"
+
+
+def enrich_bio(limit=None, only_id=None):
+    """historical_players 중 bio 미수집(birth_date NULL) 선수 detail 크롤 → bio UPDATE."""
+    from selenium.webdriver.common.by import By
+    conn = get_connection()
+    if not conn:
+        return 0
+    cur = conn.cursor()
+    if only_id:
+        cur.execute("SELECT kbo_player_id, player_type FROM historical_players WHERE kbo_player_id=%s", (only_id,))
+    else:
+        q = "SELECT kbo_player_id, player_type FROM historical_players WHERE birth_date IS NULL ORDER BY kbo_player_id"
+        if limit:
+            q += f" LIMIT {int(limit)}"
+        cur.execute(q)
+    targets = cur.fetchall()
+    if not targets:
+        print("[bio] 대상 없음")
+        cur.close()
+        conn.close()
+        return 0
+
+    driver = _get_driver()
+    done = 0
+    try:
+        for kbo_id, ptype in targets:
+            try:
+                driver.get(_detail_url(kbo_id, ptype))
+                time.sleep(2)
+                soup = BeautifulSoup(driver.page_source, 'html.parser')
+                info = soup.find('div', class_='player_info')
+                if not info:
+                    continue
+                items = [li.get_text(' ', strip=True) for li in info.find_all('li')]
+                bio = _parse_bio(items)
+                if not bio:
+                    continue
+                cur.execute("""
+                    UPDATE historical_players SET
+                        birth_date = COALESCE(%s, birth_date),
+                        height     = COALESCE(%s, height),
+                        weight     = COALESCE(%s, weight),
+                        throws     = COALESCE(%s, throws),
+                        bats       = COALESCE(%s, bats),
+                        position   = COALESCE(%s, position),
+                        career     = COALESCE(%s, career)
+                    WHERE kbo_player_id=%s
+                """, (bio.get('birth_date'), bio.get('height'), bio.get('weight'),
+                      bio.get('throws'), bio.get('bats'), bio.get('position'),
+                      bio.get('career'), kbo_id))
+                conn.commit()
+                done += 1
+            except Exception as e:
+                print(f"[bio] {kbo_id} 오류: {e}")
+                continue
+    finally:
+        driver.quit()
+    cur.close()
+    conn.close()
+    print(f"[bio] {done}명 갱신")
+    return done
+
+
 if __name__ == '__main__':
     args = sys.argv[1:]
+    if args and args[0] == 'bio':
+        # bio [limit]  |  bio id <kbo_id>
+        if len(args) >= 3 and args[1] == 'id':
+            enrich_bio(only_id=int(args[2]))
+        else:
+            enrich_bio(limit=int(args[1]) if len(args) > 1 else None)
+        sys.exit(0)
     if len(args) == 1:
         seasons = [int(args[0])]
     elif len(args) == 2:
         seasons = list(range(int(args[0]), int(args[1]) + 1))
     else:
-        print("usage: python -m crawler.historical_crawler <season> [end_season]")
+        print("usage: python -m crawler.historical_crawler <season> [end] | bio [limit] | bio id <kbo_id>")
         sys.exit(1)
     for s in seasons:
         print(f"=== season {s} ===")
