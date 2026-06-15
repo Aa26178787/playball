@@ -569,16 +569,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final ms = _monthlyStats.cast<Map>();
     final h2h = _h2hRecords.cast<Map>();
 
-    // ① 시즌 종합
-    final t = widget.team;
-    final sw = (t['wins'] as num?)?.toInt() ?? 0;
-    final sl = (t['losses'] as num?)?.toInt() ?? 0;
-    final swr = (t['win_rate'] as num?)?.toStringAsFixed(3) ?? '-';
-    final rank = t['rank'];
-    final gb = _gamesBehind ?? t['games_behind'] as num?;
-    final gbText = (gb == null || gb == 0) ? '선두' : '${gb.toStringAsFixed(1)} 게임차';
-
-    // ② 천적/호구 (3경기+ , win% 기준)
+    // 천적/호구 (3경기+ , win% 기준)
     int gamesOf(Map h) => ((h['wins'] as num?)?.toInt() ?? 0) + ((h['losses'] as num?)?.toInt() ?? 0);
     double winPctOf(Map h) { final g = gamesOf(h); return g > 0 ? ((h['wins'] as num?)?.toInt() ?? 0) / g : 0; }
     final qual = h2h.where((h) => gamesOf(h) >= 3).toList()..sort((a, b) => winPctOf(a).compareTo(winPctOf(b)));
@@ -621,31 +612,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     }
 
     return ListView(padding: const EdgeInsets.all(18), children: [
-      // ① 시즌 종합요약 카드
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: tc.withValues(alpha: cs.dark ? 0.14 : 0.07),
-          borderRadius: BorderRadius.circular(Radii.lg),
-          border: Border.all(color: tc.withValues(alpha: 0.25)),
-        ),
-        child: Row(children: [
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('2026 시즌', style: TextStyle(fontSize: 11, color: cs.sub, fontWeight: Typo.bold)),
-            const SizedBox(height: 3),
-            Text('$sw승 $sl패  ·  $swr',
-                style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: cs.ink)),
-          ]),
-          const Spacer(),
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text(rank != null ? '$rank위' : '-',
-                style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: tc)),
-            const SizedBox(height: 3),
-            Text(gbText, style: TextStyle(fontSize: 11, color: cs.sub)),
-          ]),
-        ]),
-      ),
-      const SizedBox(height: 8),
       // 월별 성적
       label('월별 성적'),
       if (ms.isEmpty)
@@ -666,7 +632,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 w, l, last: e.key == ms.length - 1);
           }).toList()),
         ),
-      const SizedBox(height: 18),
+      const SizedBox(height: 16),
       // 상대 전적
       label('상대 전적'),
       // ② 강세 → 약세 (분할 카드)
@@ -679,7 +645,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-            decoration: BoxDecoration(color: cs.paper2, borderRadius: BorderRadius.circular(Radii.md)),
+            decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.lg)),
             child: cells.length == 2
                 ? IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Expanded(child: cells[0]),
@@ -910,7 +876,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
   Widget _buildPlayers() {
     final cs = _C(context);
-    final color = teamColor(widget.team['short_name'] as String? ?? '');
+    final color = teamColorOn(widget.team['short_name'] as String? ?? '', cs.dark);
     if (_playersLoading) return Center(child: CircularProgressIndicator(color: color, strokeWidth: 2.5));
     if (_players.isEmpty) {
       return RefreshIndicator(
@@ -1211,7 +1177,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
   Widget _buildCommunity() {
     final cs = _C(context);
-    final color = teamColor(widget.team['short_name'] as String? ?? '');
+    final color = teamColorOn(widget.team['short_name'] as String? ?? '', cs.dark);
     final teamShort = (widget.team['name'] as String? ?? '').split(' ').first;
     if (_communityLoading) return Center(child: CircularProgressIndicator(color: color, strokeWidth: 2.5));
     if (_communityPosts.isEmpty) {
@@ -1223,7 +1189,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             const SizedBox(height: 12),
             TextButton.icon(
               icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('새로고침'),
+              label: const Text('다시 시도'),
               onPressed: () {
                 setState(() => _communityPosts = []);
                 _loadCommunityPosts();
@@ -1279,7 +1245,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
               decoration: BoxDecoration(
                 color: cs.paper, border: Border.all(color: cs.line),
                 borderRadius: BorderRadius.circular(Radii.lg),
-                boxShadow: cs.dark ? null : [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 2, offset: const Offset(0, 1))],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
