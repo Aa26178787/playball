@@ -709,6 +709,8 @@ def _parse_bio(items):
         out['weight'] = int(mw.group(1))
     if kv.get('경력'):
         out['career'] = kv['경력']
+    if kv.get('지명순위'):
+        out['draft_info'] = kv['지명순위']   # 예: '93 삼성 1차'
     return out
 
 
@@ -727,7 +729,7 @@ def enrich_bio(limit=None, only_id=None):
     if only_id:
         cur.execute("SELECT kbo_player_id, player_type FROM historical_players WHERE kbo_player_id=%s", (only_id,))
     else:
-        q = "SELECT kbo_player_id, player_type FROM historical_players WHERE birth_date IS NULL ORDER BY kbo_player_id"
+        q = "SELECT kbo_player_id, player_type FROM historical_players WHERE birth_date IS NULL OR draft_info IS NULL ORDER BY kbo_player_id"
         if limit:
             q += f" LIMIT {int(limit)}"
         cur.execute(q)
@@ -783,11 +785,12 @@ def enrich_bio(limit=None, only_id=None):
                         throws     = COALESCE(%s, throws),
                         bats       = COALESCE(%s, bats),
                         position   = COALESCE(%s, position),
-                        career     = COALESCE(%s, career)
+                        career     = COALESCE(%s, career),
+                        draft_info = COALESCE(%s, draft_info)
                     WHERE kbo_player_id=%s
                 """, (bio.get('birth_date'), bio.get('height'), bio.get('weight'),
                       bio.get('throws'), bio.get('bats'), bio.get('position'),
-                      bio.get('career'), kbo_id))
+                      bio.get('career'), bio.get('draft_info'), kbo_id))
                 conn.commit()
                 done += 1
             except Exception as e:
