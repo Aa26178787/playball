@@ -589,6 +589,39 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         padding: const EdgeInsets.only(top: 6, bottom: 8, left: 2),
         child: Text(s, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)));
 
+    // 강세/약세 하이라이트 셀 — 로고 + 팀명 + 승/패/무 + 승률(w/(w+l))
+    Widget hiliteCell(Map h, String emoji, String tag) {
+      final w = (h['wins'] as num?)?.toInt() ?? 0;
+      final l = (h['losses'] as num?)?.toInt() ?? 0;
+      final d = (h['draws'] as num?)?.toInt() ?? 0;
+      final g = w + l;
+      final frac = (g > 0 ? w / g : 0.0).clamp(0.0, 1.0);
+      final pctStr = '.${(frac * 1000).round().toString().padLeft(3, '0')}';
+      final rec = d > 0 ? '$w승 $l패 $d무' : '$w승 $l패';
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Text(emoji, style: const TextStyle(fontSize: 13)),
+          const SizedBox(width: 4),
+          Text(tag, style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: cs.sub)),
+        ]),
+        const SizedBox(height: 7),
+        Row(children: [
+          TeamLogo(teamCode: h['opp_code'] as String? ?? '', size: 20),
+          const SizedBox(width: 6),
+          Flexible(child: Text(h['opp_name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink))),
+        ]),
+        const SizedBox(height: 5),
+        Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+          Text(rec, style: TextStyle(fontSize: 12, color: cs.ink2)),
+          const SizedBox(width: 8),
+          Text(pctStr, style: TextStyle(fontSize: 13, fontWeight: Typo.extra,
+              color: frac >= 0.5 ? tc : cs.sub,
+              fontFeatures: const [FontFeature.tabularFigures()])),
+        ]),
+      ]);
+    }
+
     return ListView(padding: const EdgeInsets.all(18), children: [
       // ① 시즌 종합요약 카드
       Container(
@@ -638,29 +671,26 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       const SizedBox(height: 18),
       // 상대 전적
       label('상대 전적'),
-      // ② 약세/강세
-      if (rival != null || patsy != null)
-        Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          decoration: BoxDecoration(color: cs.paper2, borderRadius: BorderRadius.circular(Radii.md)),
-          child: Row(children: [
-            if (rival != null) Expanded(child: Row(children: [
-              const Text('📉', style: TextStyle(fontSize: 15)),
-              const SizedBox(width: 5),
-              Flexible(child: Text('약세 ${rival['opp_name']} ${(rival['wins'] as num?)?.toInt() ?? 0}-${(rival['losses'] as num?)?.toInt() ?? 0}',
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink2))),
-            ])),
-            if (patsy != null) Expanded(child: Row(children: [
-              const Text('📈', style: TextStyle(fontSize: 15)),
-              const SizedBox(width: 5),
-              Flexible(child: Text('강세 ${patsy['opp_name']} ${(patsy['wins'] as num?)?.toInt() ?? 0}-${(patsy['losses'] as num?)?.toInt() ?? 0}',
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink2))),
-            ])),
-          ]),
-        ),
+      // ② 강세 → 약세 (분할 카드)
+      if (patsy != null || rival != null)
+        Builder(builder: (_) {
+          final cells = <Widget>[
+            if (patsy != null) hiliteCell(patsy, '📈', '강세'),
+            if (rival != null) hiliteCell(rival, '📉', '약세'),
+          ];
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            decoration: BoxDecoration(color: cs.paper2, borderRadius: BorderRadius.circular(Radii.md)),
+            child: cells.length == 2
+                ? IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Expanded(child: cells[0]),
+                    Container(width: 1, margin: const EdgeInsets.symmetric(horizontal: 14), color: cs.line),
+                    Expanded(child: cells[1]),
+                  ]))
+                : cells.first,
+          );
+        }),
       if (h2h.isEmpty)
         Padding(padding: const EdgeInsets.symmetric(vertical: 14),
             child: Text('상대 전적이 없습니다', style: TextStyle(color: cs.sub, fontSize: 12)))
