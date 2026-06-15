@@ -277,7 +277,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
           fontSize: Typo.subtitle,
           fontWeight: highlight ? Typo.bold : Typo.regular,
           color: highlight
-              ? (isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark)
+              ? (Pal.ink(isDark))
               : (isDark ? const Color(0xFFB7B7BE) : Colors.black87),
         );
 

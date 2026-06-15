@@ -38,7 +38,7 @@ class _RegisterDoneScreenState extends State<RegisterDoneScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final ink = Pal.ink(isDark);
     final sub = isDark ? const Color(0xFFA1A1AA) : const Color(0xFF6B6B73);
     final brand = isDark ? const Color(0xFFE5E5E7) : SemColor.panelDark;
 

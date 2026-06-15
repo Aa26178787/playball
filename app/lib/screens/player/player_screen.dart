@@ -349,11 +349,11 @@ class _PlayerScreenState extends State<PlayerScreen>
     required ValueChanged<T> onSelected,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final line = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
-    final paper2 = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
+    final ink = Pal.ink(isDark);
+    final line = Pal.line2(isDark);
+    final paper2 = Pal.paper2(isDark);
     final onActive = isDark ? Colors.black : Colors.white;
-    final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final sub = Pal.ink3(isDark);
     return PopupMenuButton<T>(
       initialValue: initial,
       onSelected: onSelected,
@@ -504,10 +504,10 @@ class _PlayerScreenState extends State<PlayerScreen>
   // ── 순위 리스트 행 (mockup _RankListRow) ──
   Widget _buildRankRow(int rank, Map p, String statVal, String statLabel) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final ink2 = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
-    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
-    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final ink = Pal.ink(isDark);
+    final ink2 = Pal.ink2(isDark);
+    final sub = Pal.sub(isDark);
+    final line = Pal.line(isDark);
     final code = p['team_code'] as String? ?? '';
     final raw = teamColor(code);
     final tc = isDark ? Color.lerp(raw, Colors.white, 0.25)! : raw;
@@ -558,10 +558,10 @@ class _PlayerScreenState extends State<PlayerScreen>
   // ── 카드 그리드 셀 (mockup _PlayerCard — 팀컬러 헤더 + 등번호) ──
   Widget _buildStatCard(int rank, Map p, String statVal, String statLabel) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
-    final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
-    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final sub = Pal.sub(isDark);
+    final ink3 = Pal.ink3(isDark);
+    final paper = Pal.paper(isDark);
+    final line = Pal.line(isDark);
     final code = p['team_code'] as String? ?? '';
     final raw = teamColor(code);
     final tcText = isDark ? Color.lerp(raw, Colors.white, 0.25)! : raw;
@@ -721,8 +721,8 @@ class _PlayerScreenState extends State<PlayerScreen>
   // ── 헤더 아이콘 버튼 (mockup 32×32 rounded10 border) ──
   Widget _headerIconBtn(IconData icon, String tip, VoidCallback onTap) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final line = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
-    final sub3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final line = Pal.line2(isDark);
+    final sub3 = Pal.ink3(isDark);
     return Tooltip(
       message: tip,
       child: GestureDetector(
@@ -742,13 +742,13 @@ class _PlayerScreenState extends State<PlayerScreen>
   // ── 검색 풀스크린 오버레이 (mockup _SearchOverlay) ──
   Widget _buildSearchOverlay() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
+    final ink = Pal.ink(isDark);
+    final ink3 = Pal.ink3(isDark);
+    final sub = Pal.sub(isDark);
     final bg = isDark ? const Color(0xFF111113) : const Color(0xFFFAFAFB);
-    final bar = isDark ? const Color(0xFF18181C) : Colors.white;
-    final paper2 = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
-    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final bar = Pal.paper(isDark);
+    final paper2 = Pal.paper2(isDark);
+    final line = Pal.line(isDark);
 
     return Material(
       color: bg,
@@ -848,10 +848,10 @@ class _PlayerScreenState extends State<PlayerScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final ink = Pal.ink(isDark);
     final sub = isDark ? const Color(0xFF9A9AA2) : const Color(0xFF9A9AA2);
-    final bar = isDark ? const Color(0xFF18181C) : Colors.white;
-    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final bar = Pal.paper(isDark);
+    final line = Pal.line(isDark);
     final themeProv = context.watch<ThemeProvider>();
 
     return Scaffold(

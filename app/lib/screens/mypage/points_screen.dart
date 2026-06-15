@@ -67,7 +67,7 @@ class _PointsScreenState extends State<PointsScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final sub = isDark ? const Color(0xFF9A9AA0) : const Color(0xFF707078);
-    final cardColor = isDark ? const Color(0xFF18181C) : Colors.white;
+    final cardColor = Pal.paper(isDark);
     final line = isDark ? const Color(0xFF26262C) : const Color(0xFFE8E8EC);
 
     return Scaffold(

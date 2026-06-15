@@ -40,15 +40,15 @@ class _Tok {
     required this.track,
   });
   factory _Tok.of(bool isDark) => _Tok(
-    paper:  isDark ? const Color(0xFF18181C) : Colors.white,
-    paper2: isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
-    line:   isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
-    line2:  isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4),
-    ink:    isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark,
-    ink2:   isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46),
-    ink3:   isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73),
-    sub:    isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2),
-    track:  isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC),
+    paper:  Pal.paper(isDark),
+    paper2: Pal.paper2(isDark),
+    line:   Pal.line(isDark),
+    line2:  Pal.line2(isDark),
+    ink:    Pal.ink(isDark),
+    ink2:   Pal.ink2(isDark),
+    ink3:   Pal.ink3(isDark),
+    sub:    Pal.sub(isDark),
+    track:  Pal.track(isDark),
   );
 }
 

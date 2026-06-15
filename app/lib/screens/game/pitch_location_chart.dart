@@ -144,10 +144,10 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
   }
 
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
-  Color get _ink => _isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
-  Color get _paper => _isDark ? const Color(0xFF18181C) : Colors.white;
-  Color get _paper2 => _isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
-  Color get _line => _isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+  Color get _ink => Pal.ink(_isDark);
+  Color get _paper => Pal.paper(_isDark);
+  Color get _paper2 => Pal.paper2(_isDark);
+  Color get _line => Pal.line(_isDark);
   Color get _sub => _isDark ? const Color(0xFF9A9AA3) : const Color(0xFF9A9AA2);
 
   @override

@@ -797,11 +797,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildSameDayStrip() {
     // mockup MiniGames — 2-col grid
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final sub   = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
-    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
-    final paper2= isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
-    final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final ink   = Pal.ink(isDark);
+    final sub   = Pal.sub(isDark);
+    final paper = Pal.paper(isDark);
+    final paper2= Pal.paper2(isDark);
+    final line  = Pal.line(isDark);
     const live  = Color(0xFFE53935);
 
     return Container(
@@ -1007,12 +1007,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
 
     // ── 토큰 ──────────────────────────────
-    final ink    = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final ink3   = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub    = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
-    final paper  = isDark ? const Color(0xFF18181C) : Colors.white;
-    final line   = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
-    final line2  = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
+    final ink    = Pal.ink(isDark);
+    final ink3   = Pal.ink3(isDark);
+    final sub    = Pal.sub(isDark);
+    final paper  = Pal.paper(isDark);
+    final line   = Pal.line(isDark);
+    final line2  = Pal.line2(isDark);
     const live   = Color(0xFFE53935);
 
     String shortName(String n) => n.length > 3 ? n.substring(0, 3) : n;
@@ -1334,9 +1334,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildWinRatePill(double rate) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink2  = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
-    final sub   = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
-    final paper2= isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
+    final ink2  = Pal.ink2(isDark);
+    final sub   = Pal.sub(isDark);
+    final paper2= Pal.paper2(isDark);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
@@ -1463,8 +1463,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _pitcherBadge(String name, Color color, String label) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final ink = Pal.ink(isDark);
+    final sub = Pal.ink3(isDark);
     final stats = _pitcherDayStats(name);
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -1495,11 +1495,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildRecentBar(List<String> recent, bool isHome) {
     if (recent.isEmpty) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub   = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
-    final line2 = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
-    final track = isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);
+    final ink   = Pal.ink(isDark);
+    final ink3  = Pal.ink3(isDark);
+    final sub   = Pal.sub(isDark);
+    final line2 = Pal.line2(isDark);
+    final track = Pal.track(isDark);
     final displayed = isHome ? recent.reversed.toList() : recent;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -1564,8 +1564,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   // 핀 활성화 시 sticky panel — 필드뷰 + 다른 경기 strip만 (BSO는 필드뷰 안 overlay)
   Widget _buildPinnedPanel(Map<String, dynamic> game) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final paper  = isDark ? const Color(0xFF18181C) : Colors.white;
-    final line2  = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
+    final paper  = Pal.paper(isDark);
+    final line2  = Pal.line2(isDark);
     const live   = Color(0xFFE53935);
 
     Widget? fieldWidget;
@@ -1609,7 +1609,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     final awayTeam = game['away_team'] as String? ?? '';
     final homeScore = _liveScore(game, 'home_score');
     final awayScore = _liveScore(game, 'away_score');
-    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
+    final ink = Pal.ink(isDark);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -1764,19 +1764,19 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
+                      color: Pal.line(isDark),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       if (!_stripExpanded) ...[
                         Text('다른 구장 경기',
                             style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold,
-                                color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73))),
+                                color: Pal.ink3(isDark))),
                         const SizedBox(width: 4),
                       ],
                       Icon(_stripExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
                           size: 16,
-                          color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73)),
+                          color: Pal.ink3(isDark)),
                     ]),
                   ),
                 ),
@@ -1790,7 +1790,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   // 필드 고정/해제 토글 핸들 (하단 컨트롤 행 + 비핀 gameHeader 공용)
   Widget _fieldPinHandle(bool isDark) {
-    final fg = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final fg = Pal.ink3(isDark);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
@@ -1800,7 +1800,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
+          color: Pal.line(isDark),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1818,10 +1818,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildNarrativeBanner() {
     if (!AppConfig.enabled('narrative')) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
-    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
-    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final paper = Pal.paper(isDark);
+    final line = Pal.line(isDark);
+    final ink = Pal.ink(isDark);
+    final sub = Pal.ink3(isDark);
     const amber = Color(0xFFFFA000);
 
     final cap = (_relayData?['current_state']?['situation_caption'] as String?) ?? '';
@@ -1972,7 +1972,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           // 메가E 내러티브 배너 (종료=한줄평+MVP / 진행=라이브 캡션)
           _buildNarrativeBanner(),
           // mockup divider (헤더와 ScoringSummary 사이)
-          Container(height: 1, color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0)),
+          Container(height: 1, color: Pal.line(Theme.of(context).brightness == Brightness.dark)),
           const SizedBox(height: 16),
           // 통합 카드 — 핀: 라인스코어(상단=미니스코어뿐)+득점요약 / 비핀: 득점요약만(상단에 라인스코어)
           if (innings.isNotEmpty && (_fieldPinned || _relayAllData != null)) ...[
@@ -1981,10 +1981,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               return Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: isDarkC ? const Color(0xFF18181C) : Colors.white,
+                  color: Pal.paper(isDarkC),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                      color: isDarkC ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
+                      color: Pal.line(isDarkC),
                       width: 1),
                 ),
                 clipBehavior: Clip.antiAlias,
@@ -2007,10 +2007,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           else ...[
             Builder(builder: (ctx) {
               final isDark = Theme.of(ctx).brightness == Brightness.dark;
-              final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-              final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-              final paper = isDark ? const Color(0xFF18181C) : Colors.white;
-              final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+              final ink   = Pal.ink(isDark);
+              final ink3  = Pal.ink3(isDark);
+              final paper = Pal.paper(isDark);
+              final line  = Pal.line(isDark);
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -2207,13 +2207,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildBatterRelayTile(Map<String, dynamic> entry) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final ink2  = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
-    final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub   = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
-    final paper2= isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
-    final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
-    final line2 = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
+    final ink   = Pal.ink(isDark);
+    final ink2  = Pal.ink2(isDark);
+    final ink3  = Pal.ink3(isDark);
+    final sub   = Pal.sub(isDark);
+    final paper2= Pal.paper2(isDark);
+    final line  = Pal.line(isDark);
+    final line2 = Pal.line2(isDark);
 
     final batterName = entry['batter'] as String? ?? '';
     final pitcherName = entry['pitcher'] as String?;
@@ -2391,7 +2391,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               default: dotFg = ink3;
             }
             final dotBg = pitchResult == null
-                ? (isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0))
+                ? (Pal.line(isDark))
                 : dotFg.withValues(alpha: isDark ? 0.20 : 0.12);
 
             return Padding(
@@ -2439,9 +2439,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   // ── 라인스코어 (이닝별 + R/H/B/E, 균등분배) — 핀 모드 통합카드용 (상단은 미니스코어뿐이라) ──
   Widget _buildLineScore(List innings, String awayTeam, String homeTeam) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final sub = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final ink = Pal.ink(isDark);
+    final sub = Pal.ink3(isDark);
+    final line = Pal.line(isDark);
     final g = (_gameData?['game'] as Map?) ?? const {};
 
     final byInning = <int, Map>{};
@@ -2694,11 +2694,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       final halfLabel = half == 'top' ? '초' : '말';
 
       final isDarkS = Theme.of(context).brightness == Brightness.dark;
-      final inkS  = isDarkS ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-      final ink2S = isDarkS ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
-      final ink3S = isDarkS ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-      final paper2S = isDarkS ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
-      final lineRow = isDarkS ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+      final inkS  = Pal.ink(isDarkS);
+      final ink2S = Pal.ink2(isDarkS);
+      final ink3S = Pal.ink3(isDarkS);
+      final paper2S = Pal.paper2(isDarkS);
+      final lineRow = Pal.line(isDarkS);
 
       final inningChip = Container(
         width: 28, height: 22,
@@ -2812,7 +2812,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }).toList();
 
     final isDarkS = Theme.of(context).brightness == Brightness.dark;
-    final lineS  = isDarkS ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final lineS  = Pal.line(isDarkS);
 
     // 통합 카드 내부 콘텐츠 (06-13 병합) — 토글 헤더 제거(심미 보고), 구분선+rows 상시
     return Column(
@@ -2850,10 +2850,10 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildGameFloatingNav() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final idx = _tabController.index;
-    final activeColor = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final inactiveColor = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
-    final pillBg = isDark ? const Color(0xFF18181C) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final activeColor = Pal.ink(isDark);
+    final inactiveColor = Pal.sub(isDark);
+    final pillBg = Pal.paper(isDark);
+    final borderColor = Pal.line(isDark);
 
     BoxDecoration pillDeco() => BoxDecoration(
       color: pillBg,
@@ -3048,13 +3048,13 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildStarterCard(Map<String, dynamic>? starter, String teamName) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final ink2  = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
-    final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub   = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
-    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
-    final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
-    final track = isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);
+    final ink   = Pal.ink(isDark);
+    final ink2  = Pal.ink2(isDark);
+    final ink3  = Pal.ink3(isDark);
+    final sub   = Pal.sub(isDark);
+    final paper = Pal.paper(isDark);
+    final line  = Pal.line(isDark);
+    final track = Pal.track(isDark);
 
     if (starter == null) {
       return Container(
@@ -3171,12 +3171,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildTopPlayerCard(Map<String, dynamic>? top, String teamName) {
     if (top == null) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final ink2  = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
-    final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub   = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
-    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
-    final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final ink   = Pal.ink(isDark);
+    final ink2  = Pal.ink2(isDark);
+    final ink3  = Pal.ink3(isDark);
+    final sub   = Pal.sub(isDark);
+    final paper = Pal.paper(isDark);
+    final line  = Pal.line(isDark);
 
     final season = top['season_stats'] as Map<String, dynamic>? ?? {};
     final game = top['game_stats'] as Map<String, dynamic>? ?? {};
@@ -3274,8 +3274,8 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _statChip(String label, String value) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
+    final ink = Pal.ink(isDark);
+    final sub = Pal.sub(isDark);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -3290,11 +3290,11 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   // 간소화 로스터 (2026-06-07): 팀 서브탭 제거 — 한 화면 좌우 2열, 이미지 없이 타순+이름+포지션
   Widget _buildRosterTab() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
-    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
-    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final ink = Pal.ink(isDark);
+    final ink3 = Pal.ink3(isDark);
+    final sub = Pal.sub(isDark);
+    final paper = Pal.paper(isDark);
+    final line = Pal.line(isDark);
     if (_rosterData == null) {
       return Center(child: CircularProgressIndicator(color: ink, strokeWidth: 2.5));
     }
@@ -4002,14 +4002,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
+                        color: Pal.paper2(Theme.of(context).brightness == Brightness.dark),
                         borderRadius: BorderRadius.circular(Radii.pill),
                       ),
                       child: Text(type,
                           style: TextStyle(
                               fontSize: Typo.caption,
                               fontWeight: Typo.extra,
-                              color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFF4F4F5) : SemColor.panelDark)),
+                              color: Pal.ink(Theme.of(context).brightness == Brightness.dark))),
                     ),
                     const SizedBox(width: 12),
                     Expanded(child: Text(desc, style: const TextStyle(fontSize: Typo.body))),
@@ -4076,12 +4076,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   Widget _buildHighlightsTab() {
     final isDarkT = Theme.of(context).brightness == Brightness.dark;
-    final ink   = isDarkT ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final ink3  = isDarkT ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub   = isDarkT ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
-    final paper = isDarkT ? const Color(0xFF18181C) : Colors.white;
-    final paper2= isDarkT ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
-    final line  = isDarkT ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final ink   = Pal.ink(isDarkT);
+    final ink3  = Pal.ink3(isDarkT);
+    final sub   = Pal.sub(isDarkT);
+    final paper = Pal.paper(isDarkT);
+    final paper2= Pal.paper2(isDarkT);
+    final line  = Pal.line(isDarkT);
     if (!AppConfig.enabled('highlights')) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.movie_outlined, size: 48, color: sub),
@@ -4681,7 +4681,7 @@ class _FullFieldView extends StatelessWidget {
     final hasRunner = p != null && (p['name'] as String? ?? '').isNotEmpty;
     showModalBottomSheet(
       context: ctx,
-      backgroundColor: isDark ? const Color(0xFF18181C) : Colors.white,
+      backgroundColor: Pal.paper(isDark),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -5380,10 +5380,10 @@ class _WinProbChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
-    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
-    final ink = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
-    final sub = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
+    final paper = Pal.paper(isDark);
+    final line = Pal.line(isDark);
+    final ink = Pal.ink(isDark);
+    final sub = Pal.sub(isDark);
     final hc = isDark ? Color.lerp(homeColor, Colors.white, 0.25)! : homeColor;
 
     final spots = <FlSpot>[];

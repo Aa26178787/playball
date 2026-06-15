@@ -359,13 +359,13 @@ class _C {
   _C(BuildContext ctx)
     : dark   = Theme.of(ctx).brightness == Brightness.dark,
       bg     = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF0F0F12) : const Color(0xFFFAFAFB),
-      paper  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF18181C) : Colors.white,
-      paper2 = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
-      ink    = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFFF4F4F5) : const Color(0xFF111113),
-      ink2   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46),
-      ink3   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73),
-      sub    = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2),
-      line   = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
-      line2  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4),
-      track  = Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);
+      paper  = Pal.paper(Theme.of(ctx).brightness == Brightness.dark),
+      paper2 = Pal.paper2(Theme.of(ctx).brightness == Brightness.dark),
+      ink    = Pal.ink(Theme.of(ctx).brightness == Brightness.dark),
+      ink2   = Pal.ink2(Theme.of(ctx).brightness == Brightness.dark),
+      ink3   = Pal.ink3(Theme.of(ctx).brightness == Brightness.dark),
+      sub    = Pal.sub(Theme.of(ctx).brightness == Brightness.dark),
+      line   = Pal.line(Theme.of(ctx).brightness == Brightness.dark),
+      line2  = Pal.line2(Theme.of(ctx).brightness == Brightness.dark),
+      track  = Pal.track(Theme.of(ctx).brightness == Brightness.dark);
 }

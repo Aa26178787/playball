@@ -126,12 +126,12 @@ class _TeamScreenState extends State<TeamScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
-    final ink   = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final ink3  = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub   = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
-    final line  = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
-    final line2 = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
+    final paper = Pal.paper(isDark);
+    final ink   = Pal.ink(isDark);
+    final ink3  = Pal.ink3(isDark);
+    final sub   = Pal.sub(isDark);
+    final line  = Pal.line(isDark);
+    final line2 = Pal.line2(isDark);
     Widget hdrBtn({required IconData icon, required String tip, required VoidCallback onTap}) =>
         Tooltip(
           message: tip,
@@ -406,15 +406,15 @@ class _TeamScreenState extends State<TeamScreen>
     // (PS 확률 계산 제거 — 'PS 확률' 별도 탭으로 분리, 2026-06-06)
 
     // 컬러 팔레트 (mockup tokens)
-    final paper  = isDark ? const Color(0xFF18181C) : Colors.white;
-    final paper2 = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6);
-    final line   = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
-    final line2  = isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4);
-    final ink    = isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark;
-    final ink2   = isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46);
-    final ink3   = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final sub    = isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2);
-    final track  = isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC);
+    final paper  = Pal.paper(isDark);
+    final paper2 = Pal.paper2(isDark);
+    final line   = Pal.line(isDark);
+    final line2  = Pal.line2(isDark);
+    final ink    = Pal.ink(isDark);
+    final ink2   = Pal.ink2(isDark);
+    final ink3   = Pal.ink3(isDark);
+    final sub    = Pal.sub(isDark);
+    final track  = Pal.track(isDark);
 
     final tc = teamColorOn(code, isDark); // 다크 대비 보정 — 순위숫자/테두리 전경
     final cardBg = isFav ? tc.withValues(alpha: isDark ? 0.18 : 0.07) : paper;
@@ -785,9 +785,9 @@ class _TeamScreenState extends State<TeamScreen>
       ];
     }
     final oddsById = <int, Map>{for (final o in _odds) (o['id'] as int? ?? -1): o};
-    final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
-    final paper = isDark ? const Color(0xFF18181C) : Colors.white;
-    final line = isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0);
+    final ink3 = Pal.ink3(isDark);
+    final paper = Pal.paper(isDark);
+    final line = Pal.line(isDark);
 
     return [
           Text('포스트시즌 진출 확률 — Monte Carlo 100,000회',
@@ -904,15 +904,15 @@ class _Tok {
     required this.track,
   });
   factory _Tok.of(bool isDark) => _Tok(
-    paper:  isDark ? const Color(0xFF18181C) : Colors.white,
-    paper2: isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F6),
-    line:   isDark ? const Color(0xFF26262C) : const Color(0xFFEDEDF0),
-    line2:  isDark ? const Color(0xFF33333A) : const Color(0xFFE0E0E4),
-    ink:    isDark ? const Color(0xFFF4F4F5) : SemColor.panelDark,
-    ink2:   isDark ? const Color(0xFFC9C9D1) : const Color(0xFF3F3F46),
-    ink3:   isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73),
-    sub:    isDark ? const Color(0xFF8E8E98) : const Color(0xFF9A9AA2),
-    track:  isDark ? const Color(0xFF2C2C33) : const Color(0xFFE8E8EC),
+    paper:  Pal.paper(isDark),
+    paper2: Pal.paper2(isDark),
+    line:   Pal.line(isDark),
+    line2:  Pal.line2(isDark),
+    ink:    Pal.ink(isDark),
+    ink2:   Pal.ink2(isDark),
+    ink3:   Pal.ink3(isDark),
+    sub:    Pal.sub(isDark),
+    track:  Pal.track(isDark),
   );
 }
 
@@ -1503,7 +1503,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
       final isDark = Theme.of(context).brightness == Brightness.dark;
       // 금/은색은 라이트 배경서 저대비 → 텍스트는 어둡게(라이트)/그대로(다크)
       final txtColor = isDark ? medalColor : Color.lerp(medalColor, Colors.black, 0.42)!;
-      final nameColor = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF111113);
+      final nameColor = Pal.ink(isDark);
       return GestureDetector(
         onTap: () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => PlayerDetailScreen(

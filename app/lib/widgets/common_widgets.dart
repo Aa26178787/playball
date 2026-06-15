@@ -72,7 +72,7 @@ class AppErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink3 = isDark ? const Color(0xFF9A9AA3) : const Color(0xFF6B6B73);
+    final ink3 = Pal.ink3(isDark);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(Space.xl),
