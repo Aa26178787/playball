@@ -295,11 +295,11 @@ class _PostListTabState extends State<_PostListTab>
             const SizedBox(width: 9),
             Expanded(child: TextField(
               controller: _searchCtrl,
-              style: TextStyle(fontSize: 13, color: cs.ink),
+              style: TextStyle(fontSize: Typo.body, color: cs.ink),
               cursorColor: cs.ink,
               decoration: InputDecoration(
                 hintText: '게시글 검색',
-                hintStyle: TextStyle(fontSize: 13, color: cs.sub),
+                hintStyle: TextStyle(fontSize: Typo.body, color: cs.sub),
                 border: InputBorder.none, isDense: true,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
               ),
@@ -340,7 +340,7 @@ class _PostListTabState extends State<_PostListTab>
                     borderRadius: BorderRadius.circular(Radii.pill),
                     border: Border.all(color: act ? cs.ink : cs.line2),
                   ),
-                  child: Text(_categories[i], style: TextStyle(fontSize: 12,
+                  child: Text(_categories[i], style: TextStyle(fontSize: Typo.small,
                       fontWeight: act ? Typo.bold : Typo.medium,
                       color: act ? (cs.dark ? const Color(0xFF0F0F12) : Colors.white) : cs.ink3)),
                 ),
@@ -375,7 +375,7 @@ class _PostListTabState extends State<_PostListTab>
                                 padding: const EdgeInsets.symmetric(vertical: 24),
                                 child: Center(
                                   child: Text('— 마지막 글입니다 —',
-                                      style: TextStyle(fontSize: 12, color: cs.sub)),
+                                      style: TextStyle(fontSize: Typo.small, color: cs.sub)),
                                 ),
                               );
                             }
@@ -438,7 +438,7 @@ class _TeamTabState extends State<_TeamTab> {
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 TeamLogo(teamCode: t.code, size: 14),
                 const SizedBox(width: 5),
-                Text(t.name, style: TextStyle(fontSize: 11,
+                Text(t.name, style: TextStyle(fontSize: Typo.caption,
                     fontWeight: active ? Typo.bold : Typo.medium,
                     color: active ? c : cs.ink2)),
               ]),
@@ -461,11 +461,11 @@ class _PostCard extends StatelessWidget {
   Widget _meta(IconData icon, dynamic value) => Row(mainAxisSize: MainAxisSize.min, children: [
     Icon(icon, size: 12, color: cs.sub),
     const SizedBox(width: 3),
-    Text('${value ?? 0}', style: TextStyle(fontSize: 10, color: cs.sub)),
+    Text('${value ?? 0}', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
   ]);
 
   Widget _bottomRow() => Row(children: [
-    Text(post['author'] as String? ?? '', style: TextStyle(fontSize: 10, color: cs.sub)),
+    Text(post['author'] as String? ?? '', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
     const Spacer(),
     _meta(Icons.favorite_border, post['likes']),
     const SizedBox(width: 10),
@@ -533,7 +533,7 @@ class _PostCard extends StatelessWidget {
                 if (!hasImage && content != null && content.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(content,
-                      style: TextStyle(fontSize: 12, color: cs.ink3),
+                      style: TextStyle(fontSize: Typo.small, color: cs.ink3),
                       maxLines: 2, overflow: TextOverflow.ellipsis),
                 ],
                 const SizedBox(height: 9),
@@ -561,7 +561,7 @@ class _Tag extends StatelessWidget {
       borderRadius: BorderRadius.circular(Radii.xs),
       border: muted ? Border.all(color: cs.line) : null,
     ),
-    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.bold,
+    child: Text(label, style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold,
         color: muted ? cs.ink3 : color)),
   );
 }
@@ -684,7 +684,7 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
                     borderRadius: BorderRadius.circular(Radii.pill),
                     border: Border.all(color: act ? cs.ink : cs.line),
                   ),
-                  child: Text(s.name, style: TextStyle(fontSize: 12,
+                  child: Text(s.name, style: TextStyle(fontSize: Typo.small,
                       fontWeight: act ? Typo.bold : Typo.medium,
                       color: act ? (cs.dark ? const Color(0xFF0F0F12) : Colors.white) : cs.ink3)),
                 ),
@@ -707,7 +707,7 @@ class _FoodTabState extends State<_FoodTab> with AutomaticKeepAliveClientMixin {
                       const SizedBox(height: 12),
                       Text('아직 팬 추천 맛집이 없습니다\n첫 번째로 추천해보세요!',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: cs.sub, fontSize: 13)),
+                          style: TextStyle(color: cs.sub, fontSize: Typo.body)),
                     ],
                   ),
                 )
@@ -782,7 +782,7 @@ class _FoodTile extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(color: SemColor.live.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(Radii.xs)),
-                  child: const Text('인증', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: SemColor.live)),
+                  child: const Text('인증', style: TextStyle(fontSize: Typo.micro, fontWeight: FontWeight.w700, color: SemColor.live)),
                 ),
               ],
             ]),

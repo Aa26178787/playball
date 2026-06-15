@@ -105,7 +105,7 @@ class _PointsScreenState extends State<PointsScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 24),
                           child: Center(
                               child: Text('아직 랭킹 데이터가 없어요',
-                                  style: TextStyle(fontSize: 13, color: sub))),
+                                  style: TextStyle(fontSize: Typo.body, color: sub))),
                         ),
                       const SizedBox(height: 20),
                       _buildSection('최근 적립 내역', sub),
@@ -114,7 +114,7 @@ class _PointsScreenState extends State<PointsScreen> {
                       const SizedBox(height: 16),
                       Text(
                         '적립: 승부예측 적중 +50 · 참여 +10 · 출석 +5 · 직관 기록 +20',
-                        style: TextStyle(fontSize: 11, color: sub),
+                        style: TextStyle(fontSize: Typo.caption, color: sub),
                       ),
                     ],
                   ),
@@ -124,7 +124,7 @@ class _PointsScreenState extends State<PointsScreen> {
 
   Widget _buildSection(String label, Color sub) => Text(label,
       style: TextStyle(
-          fontSize: 12, fontWeight: FontWeight.w800, color: sub, letterSpacing: 0.2));
+          fontSize: Typo.small, fontWeight: FontWeight.w800, color: sub, letterSpacing: 0.2));
 
   Widget _buildMyCard(Color cardColor, Color line, Color sub) {
     final total = (_mine?['total'] as num?)?.toInt() ?? 0;
@@ -141,10 +141,10 @@ class _PointsScreenState extends State<PointsScreen> {
         const SizedBox(width: 14),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('내 포인트', style: TextStyle(fontSize: 12, color: sub)),
+            Text('내 포인트', style: TextStyle(fontSize: Typo.small, color: sub)),
             const SizedBox(height: 2),
             Text('${_comma(total)}P',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                style: const TextStyle(fontSize: Typo.h1, fontWeight: FontWeight.w900)),
           ]),
         ),
         if (rank != null)
@@ -156,7 +156,7 @@ class _PointsScreenState extends State<PointsScreen> {
             ),
             child: Text('전체 $rank위',
                 style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFFD97706))),
+                    fontSize: Typo.body, fontWeight: FontWeight.w800, color: Color(0xFFD97706))),
           ),
       ]),
     );
@@ -178,9 +178,9 @@ class _PointsScreenState extends State<PointsScreen> {
         SizedBox(
           width: 30,
           child: top3
-              ? Text(medal[rank - 1], style: const TextStyle(fontSize: 16))
+              ? Text(medal[rank - 1], style: const TextStyle(fontSize: Typo.title))
               : Text('$rank',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: sub)),
+                  style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w800, color: sub)),
         ),
         netCircleAvatar(
           url: (row['profile_image'] as String?) ?? '',
@@ -197,7 +197,7 @@ class _PointsScreenState extends State<PointsScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: Text('적중 ${row['wins']}',
-                style: TextStyle(fontSize: 11, color: sub)),
+                style: TextStyle(fontSize: Typo.caption, color: sub)),
           ),
         Text('${_comma((row['total'] as num?)?.toInt() ?? 0)}P',
             style: const TextStyle(
@@ -215,7 +215,7 @@ class _PointsScreenState extends State<PointsScreen> {
           child: Center(
               child: Text('아직 적립 내역이 없어요\n경기 예측·출석·직관 기록으로 포인트를 모아보세요',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: sub, height: 1.5))),
+                  style: TextStyle(fontSize: Typo.body, color: sub, height: 1.5))),
         ),
       ];
     }
@@ -235,15 +235,15 @@ class _PointsScreenState extends State<PointsScreen> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(_reasonLabel[reason] ?? reason,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                  style: const TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w700)),
               const SizedBox(height: 2),
               Text(at.length >= 16 ? at.substring(0, 16) : at,
-                  style: TextStyle(fontSize: 11, color: sub)),
+                  style: TextStyle(fontSize: Typo.caption, color: sub)),
             ]),
           ),
           Text('+${m['points']}P',
               style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFFD97706))),
+                  fontSize: Typo.subtitle, fontWeight: FontWeight.w900, color: Color(0xFFD97706))),
         ]),
       );
     }).toList();
@@ -269,7 +269,7 @@ class _PointsScreenState extends State<PointsScreen> {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(m['name'] as String? ?? '',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                style: const TextStyle(fontSize: Typo.body, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             ClipRRect(
               borderRadius: BorderRadius.circular(Radii.pill),
@@ -288,7 +288,7 @@ class _PointsScreenState extends State<PointsScreen> {
               style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: sub)),
           Text('+${m['reward']}P',
               style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFFD97706))),
+                  fontSize: Typo.small, fontWeight: FontWeight.w900, color: Color(0xFFD97706))),
         ]),
       ]),
     );
@@ -316,14 +316,14 @@ class _PointsScreenState extends State<PointsScreen> {
             Opacity(
               opacity: earned ? 1 : 0.3,
               child: Text(b['emoji'] as String? ?? '🏅',
-                  style: const TextStyle(fontSize: 22)),
+                  style: const TextStyle(fontSize: Typo.h2)),
             ),
             const SizedBox(height: 4),
             Text(b['name'] as String? ?? '',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    fontSize: 10, fontWeight: FontWeight.w700,
+                    fontSize: Typo.mini, fontWeight: FontWeight.w700,
                     color: earned ? null : sub)),
             const SizedBox(height: 2),
             Text(earned ? '획득!' : '${b['progress']}/${b['goal']}',
