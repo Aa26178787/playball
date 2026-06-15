@@ -497,6 +497,46 @@ def link_franchises():
     print(f"[link] franchise {n1}행 링크 + debut/final + primary team 갱신")
 
 
+# ── 세이버 FIP recompute (정규시즌, 시즌별 리그상수) ── KBO 미제공 → raw서 계산 ──
+# FIP = (13*HR + 3*(BB+HBP) - 2*K)/IP + cFIP. cFIP = lgERA - (13*lgHR+3*(lgBB+lgHBP)-2*lgK)/lgIP.
+# IP는 6.1=6⅓ 표기 → 진짜이닝 floor+frac*10/3 변환. WAR/wOBA/wRC+는 infeasible(미계산).
+def recompute_fip():
+    conn = get_connection()
+    if not conn:
+        return
+    cur = conn.cursor()
+    cur.execute("""
+        WITH ic AS (
+            SELECT id, season,
+                   (floor(innings_pitched) + (innings_pitched - floor(innings_pitched))*10/3.0) AS tip,
+                   home_runs_allowed hr, walks_allowed bb, COALESCE(hbp_allowed,0) hbp,
+                   strikeouts_pitched k, earned_runs er
+            FROM historical_season_stats
+            WHERE player_type='투수' AND series_type='정규' AND innings_pitched > 0
+        ),
+        lg AS (
+            SELECT season, SUM(tip) lgip, SUM(er) lger, SUM(hr) lghr,
+                   SUM(bb) lgbb, SUM(hbp) lghbp, SUM(k) lgk
+            FROM ic GROUP BY season
+        ),
+        cf AS (
+            SELECT season,
+                   (9.0*lger/NULLIF(lgip,0))
+                   - (13.0*lghr + 3.0*(lgbb+lghbp) - 2.0*lgk)/NULLIF(lgip,0) AS c
+            FROM lg
+        )
+        UPDATE historical_season_stats s
+        SET fip = ROUND( ((13.0*ic.hr + 3.0*(ic.bb+ic.hbp) - 2.0*ic.k)/NULLIF(ic.tip,0)) + cf.c , 2)
+        FROM ic JOIN cf ON cf.season = ic.season
+        WHERE s.id = ic.id AND ic.tip > 0
+    """)
+    n = cur.rowcount
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[fip] {n}행 FIP 계산")
+
+
 # ── 신상(bio) enrichment ── detail 페이지 div.player_info (서버 IP 도달 OK) ──
 import datetime
 
@@ -635,6 +675,9 @@ if __name__ == '__main__':
     args = sys.argv[1:]
     if args and args[0] == 'link':
         link_franchises()
+        sys.exit(0)
+    if args and args[0] == 'fip':
+        recompute_fip()
         sys.exit(0)
     if args and args[0] == 'ps':
         # ps <season> [end_season]  — 포스트시즌 전 시리즈
