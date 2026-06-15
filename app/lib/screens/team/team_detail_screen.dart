@@ -1356,14 +1356,14 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
       ),
       // 타순 라인업 카드 그리드 (3열 × 3행, 사진 중심)
-      GridView.count(
+      GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        crossAxisCount: 3,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        childAspectRatio: 0.60,
-        children: stats.map((s) {
+        itemCount: stats.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3, mainAxisSpacing: 8, crossAxisSpacing: 8, mainAxisExtent: 186),
+        itemBuilder: (context, idx) {
+          final s = stats[idx];
           final order = (s['batting_order'] as num?)?.toInt() ?? 0;
           final avg = (s['avg'] as num?)?.toDouble() ?? 0;
           final hr = (s['home_runs'] as num?)?.toInt() ?? 0;
@@ -1383,41 +1383,41 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 : null,
             child: Container(
               decoration: BoxDecoration(color: cardBg, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.lg)),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 11),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Container(width: 22, height: 22,
+                Container(width: 20, height: 20,
                   decoration: BoxDecoration(color: tc, shape: BoxShape.circle),
                   alignment: Alignment.center,
                   child: Text('$order', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white))),
-                const SizedBox(height: 9),
-                netCircleAvatar(radius: 20, backgroundColor: tc.withValues(alpha: 0.15),
-                  url: topImg, child: Icon(Icons.person, size: 20, color: tc)),
-                const SizedBox(height: 7),
+                const SizedBox(height: 6),
+                netCircleAvatar(radius: 16, backgroundColor: tc.withValues(alpha: 0.15),
+                  url: topImg, child: Icon(Icons.person, size: 18, color: tc)),
+                const SizedBox(height: 6),
                 Text(topName, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink)),
-                const SizedBox(height: 4),
+                    style: TextStyle(fontSize: 17, fontWeight: Typo.bold, color: cs.ink)),
+                const SizedBox(height: 3),
                 Text(fmt3(avg), style: TextStyle(fontSize: 17, fontWeight: Typo.extra, color: avgColor,
                     fontFeatures: const [FontFeature.tabularFigures()])),
                 const SizedBox(height: 2),
-                Text('HR $hr · 타점 $rbi', maxLines: 1, overflow: TextOverflow.ellipsis,
+                Text('홈런 $hr · 타점 $rbi', maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 10, color: cs.sub)),
                 if (showBadge) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 5),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: bestRank == 1 ? tc : tc.withValues(alpha: cs.dark ? 0.22 : 0.12),
                       borderRadius: BorderRadius.circular(Radii.pill),
                     ),
                     child: Text('$bestStat $bestRank위', maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 10, fontWeight: Typo.extra,
+                        style: TextStyle(fontSize: 17, fontWeight: Typo.extra,
                             color: bestRank == 1 ? Colors.white : tcOn)),
                   ),
                 ],
               ]),
             ),
           );
-        }).toList(),
+        },
       ),
       const SizedBox(height: 14),
       // 타순별 타율 막대 차트
