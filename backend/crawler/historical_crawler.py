@@ -428,8 +428,12 @@ def crawl_splits_season(season, driver=None):
                             i = idx[k]
                             return cells[i] if i is not None and i < len(cells) else None
                         ab = _safe_int(cc('ab'))
-                        tb = _safe_int(cc('tb'))
-                        slg = round(tb / ab, 3) if ab and tb is not None and ab > 0 else None
+                        # slg = TB/AB. 스플릿 뷰엔 TB 컬럼 없어 구성요소서 계산(H+2B+2*3B+3*HR)
+                        _h = _safe_int(cc('h')) or 0
+                        _d2 = _safe_int(cc('b2')) or 0
+                        _d3 = _safe_int(cc('b3')) or 0
+                        _hr = _safe_int(cc('hr')) or 0
+                        slg = round((_h + _d2 + 2 * _d3 + 3 * _hr) / ab, 3) if ab and ab > 0 else None
                         nm = cells[1] if len(cells) > 1 else None  # 선수명
                         _upsert_player(cur, pid, nm, '타자')  # FK 보장 (스플릿엔 비규정 선수도 등장)
                         cur.execute("""
