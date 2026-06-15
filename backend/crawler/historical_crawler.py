@@ -84,9 +84,9 @@ def _parse_ip(s):
 _PLAYERID_RE = re.compile(r'playerId=(\d+)')
 
 
-def _iter_season_rows(driver, url, season):
+def _iter_season_rows(driver, url, season, series='0'):
     """KBO 시즌기록 리스트 전 페이지 순회. (headers, [(cells, kbo_player_id), ...]) 반환.
-    선수명 앵커 href의 playerId 추출 (text-only 파싱과 달리 id 보존)."""
+    선수명 앵커 href의 playerId 추출. series='0'정규/4와일드카드/3준PO/5PO/7한국시리즈(ddlSeries)."""
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import Select
     driver.get(url)
@@ -95,6 +95,14 @@ def _iter_season_rows(driver, url, season):
     if sel.get_attribute('value') != str(season):
         Select(sel).select_by_value(str(season))
         time.sleep(3)
+    if series and str(series) != '0':  # 포스트시즌: ddlSeries 선택 (season 선택 후 default 0으로 리셋되므로 뒤에)
+        try:
+            ssel = driver.find_element(By.CSS_SELECTOR, "select[id*='ddlSeries']")
+            if ssel.get_attribute('value') != str(series):
+                Select(ssel).select_by_value(str(series))
+                time.sleep(3)
+        except Exception:
+            return [], []
 
     headers = []
     out = []
@@ -167,16 +175,16 @@ def _upsert_player(cur, kbo_id, name, ptype):
     """, (kbo_id, name, ptype))
 
 
-def crawl_hitter_season(season):
-    """타자 시즌스탯 (Basic1 + Basic2) → historical_*. 반환: 적재 행수."""
+def crawl_hitter_season(season, series='0', series_label='정규'):
+    """타자 시즌스탯 (Basic1 + Basic2) → historical_*. series=ddlSeries(정규/PS). 반환: 적재 행수."""
     driver = _get_driver()
     try:
-        h1, rows1 = _iter_season_rows(driver, _HIT_B1, season)
-        h2, rows2 = _iter_season_rows(driver, _HIT_B2, season)
+        h1, rows1 = _iter_season_rows(driver, _HIT_B1, season, series)
+        h2, rows2 = _iter_season_rows(driver, _HIT_B2, season, series)
     finally:
         driver.quit()
     if not rows1:
-        print(f"[hist hitter {season}] Basic1 데이터 없음")
+        print(f"[hist hitter {season}/{series_label}] 데이터 없음")
         return 0
 
     a = _hidx(h1)
@@ -214,12 +222,12 @@ def crawl_hitter_season(season):
         _upsert_player(cur, pid, name, '타자')
         cur.execute("""
             INSERT INTO historical_season_stats (
-                kbo_player_id, season, team_name, player_type, games,
+                kbo_player_id, season, team_name, series_type, player_type, games,
                 pa, at_bats, runs, hits, doubles, triples, home_runs, rbis,
                 sac_hits, sac_flies, walks, intentional_walks, hbp, strikeouts,
                 gdp, stolen_bases, caught_stealing, avg, obp, slg, ops
-            ) VALUES (%s,%s,%s,'타자',%s, %s,%s,%s,%s,%s,%s,%s,%s, %s,%s,%s,%s,%s,%s, %s,%s,%s, %s,%s,%s,%s)
-            ON CONFLICT (kbo_player_id, season, team_name) DO UPDATE SET
+            ) VALUES (%s,%s,%s,%s,'타자',%s, %s,%s,%s,%s,%s,%s,%s,%s, %s,%s,%s,%s,%s,%s, %s,%s,%s, %s,%s,%s,%s)
+            ON CONFLICT (kbo_player_id, season, team_name, series_type) DO UPDATE SET
                 games=EXCLUDED.games, pa=EXCLUDED.pa, at_bats=EXCLUDED.at_bats,
                 runs=EXCLUDED.runs, hits=EXCLUDED.hits, doubles=EXCLUDED.doubles,
                 triples=EXCLUDED.triples, home_runs=EXCLUDED.home_runs, rbis=EXCLUDED.rbis,
@@ -229,7 +237,7 @@ def crawl_hitter_season(season):
                 stolen_bases=EXCLUDED.stolen_bases, caught_stealing=EXCLUDED.caught_stealing,
                 avg=EXCLUDED.avg, obp=EXCLUDED.obp, slg=EXCLUDED.slg, ops=EXCLUDED.ops
         """, (
-            pid, season, team, g,
+            pid, season, team, series_label, g,
             _safe_int(c1('pa')), _safe_int(c1('ab')), _safe_int(c1('r')), _safe_int(c1('h')),
             _safe_int(c1('b2')), _safe_int(c1('b3')), _safe_int(c1('hr')), _safe_int(c1('rbi')),
             _safe_int(c1('sac')), _safe_int(c1('sf')),
@@ -245,16 +253,16 @@ def crawl_hitter_season(season):
     return saved
 
 
-def crawl_pitcher_season(season):
-    """투수 시즌스탯 (Basic1 + Basic2) → historical_*. 반환: 적재 행수."""
+def crawl_pitcher_season(season, series='0', series_label='정규'):
+    """투수 시즌스탯 (Basic1 + Basic2) → historical_*. series=ddlSeries(정규/PS). 반환: 적재 행수."""
     driver = _get_driver()
     try:
-        h1, rows1 = _iter_season_rows(driver, _PIT_B1, season)
-        h2, rows2 = _iter_season_rows(driver, _PIT_B2, season)
+        h1, rows1 = _iter_season_rows(driver, _PIT_B1, season, series)
+        h2, rows2 = _iter_season_rows(driver, _PIT_B2, season, series)
     finally:
         driver.quit()
     if not rows1:
-        print(f"[hist pitcher {season}] Basic1 데이터 없음")
+        print(f"[hist pitcher {season}/{series_label}] 데이터 없음")
         return 0
 
     a = _hidx(h1)
@@ -296,12 +304,12 @@ def crawl_pitcher_season(season):
         _upsert_player(cur, pid, name, '투수')
         cur.execute("""
             INSERT INTO historical_season_stats (
-                kbo_player_id, season, team_name, player_type, games,
+                kbo_player_id, season, team_name, series_type, player_type, games,
                 wins, losses, saves, holds, innings_pitched, hits_allowed,
                 home_runs_allowed, walks_allowed, hbp_allowed, strikeouts_pitched,
                 runs_allowed, earned_runs, era, whip, complete_games, shutouts, qs
-            ) VALUES (%s,%s,%s,'투수',%s, %s,%s,%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s,%s,%s,%s,%s)
-            ON CONFLICT (kbo_player_id, season, team_name) DO UPDATE SET
+            ) VALUES (%s,%s,%s,%s,'투수',%s, %s,%s,%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s,%s,%s,%s,%s)
+            ON CONFLICT (kbo_player_id, season, team_name, series_type) DO UPDATE SET
                 games=EXCLUDED.games, wins=EXCLUDED.wins, losses=EXCLUDED.losses,
                 saves=EXCLUDED.saves, holds=EXCLUDED.holds,
                 innings_pitched=EXCLUDED.innings_pitched, hits_allowed=EXCLUDED.hits_allowed,
@@ -311,7 +319,7 @@ def crawl_pitcher_season(season):
                 era=EXCLUDED.era, whip=EXCLUDED.whip, complete_games=EXCLUDED.complete_games,
                 shutouts=EXCLUDED.shutouts, qs=EXCLUDED.qs
         """, (
-            pid, season, team, g,
+            pid, season, team, series_label, g,
             _safe_int(c1('w')), _safe_int(c1('l')), sv, hld,
             _parse_ip(c1('ip')), _safe_int(c1('h')),
             _safe_int(c1('hr')), _safe_int(c1('bb')), _safe_int(c1('hbp')), _safe_int(c1('so')),
@@ -326,10 +334,25 @@ def crawl_pitcher_season(season):
     return saved
 
 
-def crawl_season(season):
-    h = crawl_hitter_season(season)
-    p = crawl_pitcher_season(season)
+def crawl_season(season, series='0', series_label='정규'):
+    h = crawl_hitter_season(season, series, series_label)
+    p = crawl_pitcher_season(season, series, series_label)
     return h, p
+
+
+# 포스트시즌 시리즈 (ddlSeries 코드)
+_PS_SERIES = [('4', '와일드카드'), ('3', '준플레이오프'), ('5', '플레이오프'), ('7', '한국시리즈')]
+
+
+def crawl_ps_season(season):
+    """한 시즌 전 포스트시즌 시리즈 적재 (열리지 않은 시리즈는 데이터 없음으로 자동 스킵)."""
+    tot = 0
+    for code, label in _PS_SERIES:
+        h, p = crawl_season(season, code, label)
+        tot += h + p
+        time.sleep(1)
+    print(f"[hist PS {season}] 총 {tot}행")
+    return tot
 
 
 # ── 수상(awards) enrichment ── detail Award.aspx (서버 IP 도달 OK) ──
@@ -612,6 +635,20 @@ if __name__ == '__main__':
     args = sys.argv[1:]
     if args and args[0] == 'link':
         link_franchises()
+        sys.exit(0)
+    if args and args[0] == 'ps':
+        # ps <season> [end_season]  — 포스트시즌 전 시리즈
+        if len(args) == 2:
+            ps_seasons = [int(args[1])]
+        elif len(args) == 3:
+            ps_seasons = list(range(int(args[1]), int(args[2]) + 1))
+        else:
+            print("usage: ... ps <season> [end_season]")
+            sys.exit(1)
+        for s in ps_seasons:
+            print(f"=== PS season {s} ===")
+            crawl_ps_season(s)
+            time.sleep(1.5)
         sys.exit(0)
     if args and args[0] == 'awards':
         if len(args) >= 3 and args[1] == 'id':
