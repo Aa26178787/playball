@@ -794,6 +794,74 @@ def get_batting_order_stats(team_id: int, season: int = 2026):
     return {"team_id": team_id, "season": season, "stats": stats}
 
 
+@router.get("/{team_id}/leaders")
+@cached(300)
+def get_team_leaders(team_id: int, season: int = 2026):
+    """부문별 팀내 TOP3 (타자 5부문 + 투수 5부문). rate스탯은 소표본 배제."""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT p.id, p.name, p.profile_image, p.number,
+               bs.games, COALESCE(bs.pa, 0), bs.avg, bs.ops,
+               bs.home_runs, bs.rbis, bs.stolen_bases
+        FROM batter_stats bs JOIN players p ON p.id = bs.player_id
+        WHERE bs.season = %s AND p.team_id = %s
+    """, (season, team_id))
+    hr_rows = [{
+        'id': r[0], 'name': r[1], 'image': r[2], 'number': r[3],
+        'games': r[4] or 0, 'pa': float(r[5] or 0),
+        'avg': float(r[6] or 0), 'ops': float(r[7] or 0),
+        'home_runs': r[8] or 0, 'rbis': r[9] or 0, 'stolen_bases': r[10] or 0,
+    } for r in cur.fetchall()]
+
+    cur.execute("""
+        SELECT p.id, p.name, p.profile_image, p.number,
+               ps.games, COALESCE(ps.innings_pitched, 0), ps.era,
+               ps.wins, ps.strikeouts, ps.saves, ps.holds
+        FROM pitcher_stats ps JOIN players p ON p.id = ps.player_id
+        WHERE ps.season = %s AND p.team_id = %s
+    """, (season, team_id))
+    p_rows = [{
+        'id': r[0], 'name': r[1], 'image': r[2], 'number': r[3],
+        'games': r[4] or 0, 'ip': float(r[5] or 0), 'era': float(r[6] or 0),
+        'wins': r[7] or 0, 'strikeouts': r[8] or 0, 'saves': r[9] or 0, 'holds': r[10] or 0,
+    } for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+
+    g = max((r['games'] for r in hr_rows), default=0)
+    qual_pa = g * 1.5
+    qual_ip = g * 0.4
+
+    def top3(rows, key, asc=False, mf=None):
+        pool = [r for r in rows if (mf is None or mf(r))]
+        if not asc:
+            pool = [r for r in pool if (r[key] or 0) > 0]
+        ordered = sorted(pool, key=lambda x: x[key] or 0, reverse=not asc)
+        return [{'id': r['id'], 'name': r['name'], 'profile_image': r['image'],
+                 'number': r['number'], 'value': r[key]} for r in ordered[:3]]
+
+    return {
+        "team_id": team_id, "season": season,
+        "hitters": {
+            "avg":          top3(hr_rows, 'avg', mf=lambda r: r['pa'] >= qual_pa),
+            "home_runs":    top3(hr_rows, 'home_runs'),
+            "rbis":         top3(hr_rows, 'rbis'),
+            "stolen_bases": top3(hr_rows, 'stolen_bases'),
+            "ops":          top3(hr_rows, 'ops', mf=lambda r: r['pa'] >= qual_pa),
+        },
+        "pitchers": {
+            "era":          top3(p_rows, 'era', asc=True, mf=lambda r: r['ip'] >= qual_ip),
+            "wins":         top3(p_rows, 'wins'),
+            "strikeouts":   top3(p_rows, 'strikeouts'),
+            "saves":        top3(p_rows, 'saves'),
+            "holds":        top3(p_rows, 'holds'),
+        },
+    }
+
+
 @router.get("/{team_id}/head-to-head")
 def get_head_to_head(team_id: int, season: int = 2026):
     conn = get_connection()

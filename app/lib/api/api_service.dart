@@ -863,8 +863,8 @@ class ApiService {
     return res.data;
   }
 
-  static Future<Map<String, dynamic>> getTeamBattingOrder(int teamId, {int season = 2026}) async {
-    final res = await _dio.get('/teams/$teamId/batting-order', queryParameters: {'season': season});
+  static Future<Map<String, dynamic>> getTeamLeaders(int teamId, {int season = 2026}) async {
+    final res = await _dio.get('/teams/$teamId/leaders', queryParameters: {'season': season});
     return res.data;
   }
 
