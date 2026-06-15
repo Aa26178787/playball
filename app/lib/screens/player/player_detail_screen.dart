@@ -176,7 +176,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final hi = isDark ? Colors.grey[700]! : Colors.grey[100]!;
     box(double w, double h) => Container(
           width: w, height: h,
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(Radii.sm)),
         );
     return Scaffold(
       appBar: AppBar(),
@@ -359,7 +359,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     final hi = isDark ? Colors.grey[700]! : Colors.grey[100]!;
     box(double w, double h) => Container(
           width: w, height: h,
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(Radii.sm)),
         );
     return Shimmer.fromColors(
       baseColor: base, highlightColor: hi,
@@ -393,7 +393,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModal) {
           Future<void> doSearch(String q) async {
@@ -915,7 +915,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
           decoration: BoxDecoration(
             color: sel ? ink : paper,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(Radii.pill),
             border: Border.all(color: sel ? ink : line),
           ),
           child: Text(label,
@@ -1065,7 +1065,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Pal.paper(isDark),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl))),
       builder: (ctx) {
         final ink = Pal.ink(isDark);
         final sub = isDark ? const Color(0xFFC4C4CC) : const Color(0xFF52525B);
@@ -1129,7 +1129,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Pal.paper(isDark),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl))),
       builder: (ctx) {
         Widget tile(IconData icon, String title, String desc, VoidCallback onTap) => ListTile(
           leading: Icon(icon, color: SemColor.brand(context)),
@@ -1335,7 +1335,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
         padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
           color: paper,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(Radii.md),
           border: Border.all(color: line),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.05), blurRadius: 4, offset: const Offset(0, 1))],
         ),
@@ -1443,7 +1443,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Pal.paper(isDark),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl))),
       builder: (ctx) => StatefulBuilder(builder: (ctx, setSheet) {
         final ink = Pal.ink(isDark);
         final sub = Pal.ink3(isDark);
@@ -1470,7 +1470,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                     decoration: BoxDecoration(
                       color: on ? SemColor.brand(context) : (isDark ? const Color(0xFF26262C) : const Color(0xFFF1F1F4)),
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(Radii.pill),
                     ),
                     child: Text(_statLabel(k, isPitcher), style: TextStyle(fontSize: Typo.body, fontWeight: Typo.medium,
                         color: on ? (isDark ? SemColor.panelDark : Colors.white) : ink)),
@@ -1573,7 +1573,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             ]),
             const SizedBox(height: 6),
             ClipRRect(
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(Radii.pill),
               child: SizedBox(height: 7, child: Stack(children: [
                 Container(width: double.infinity, color: line),
                 FractionallySizedBox(widthFactor: fill, child: Container(color: tc)),
@@ -1781,7 +1781,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                           child: Container(
                             decoration: BoxDecoration(
                               border: Border.all(color: ink.withValues(alpha: 0.85), width: 2.2),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(Radii.xs),
                             ),
                           ),
                         ),
@@ -1952,7 +1952,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                           child: Container(
                             decoration: BoxDecoration(
                               border: Border.all(color: ink.withValues(alpha: 0.85), width: 2.2),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(Radii.xs),
                             ),
                           ),
                         ),
@@ -2091,7 +2091,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                         child: IgnorePointer(child: Container(
                           decoration: BoxDecoration(
                             border: Border.all(color: ink.withValues(alpha: 0.85), width: 2.2),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(Radii.xs),
                           ),
                         )),
                       ),
@@ -2221,7 +2221,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: sel ? chartColor : Colors.grey.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(Radii.md),
                         ),
                         child: Text(
                           opt['label'] as String,
@@ -2627,10 +2627,10 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                     ),
                     Expanded(
                       child: Stack(children: [
-                        Container(height: 14, decoration: BoxDecoration(color: track, borderRadius: BorderRadius.circular(4))),
+                        Container(height: 14, decoration: BoxDecoration(color: track, borderRadius: BorderRadius.circular(Radii.xs))),
                         FractionallySizedBox(
                           widthFactor: pct / 100,
-                          child: Container(height: 14, decoration: BoxDecoration(color: color.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(4))),
+                          child: Container(height: 14, decoration: BoxDecoration(color: color.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(Radii.xs))),
                         ),
                       ]),
                     ),

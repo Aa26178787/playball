@@ -222,7 +222,7 @@ class _TeamScreenState extends State<TeamScreen>
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(Radii.md),
           ),
           child: Row(
             children: [
@@ -424,7 +424,7 @@ class _TeamScreenState extends State<TeamScreen>
     return Container(
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(Radii.lg),
         border: Border.all(color: cardBd, width: 1),
         boxShadow: (!isFav && !isDark) ? [
           BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 2, offset: const Offset(0, 1)),
@@ -510,7 +510,7 @@ class _TeamScreenState extends State<TeamScreen>
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(
                                     color: paper2,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(Radii.sm),
                                     border: Border.all(color: line),
                                   ),
                                   child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -741,7 +741,7 @@ class _TeamScreenState extends State<TeamScreen>
       children: [
         Expanded(
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(Radii.xs),
             child: SizedBox(
               height: height,
               child: Row(
@@ -959,7 +959,7 @@ Widget _buildSegmentControl(bool isDark, List<String> labels, TabController ctrl
                 color: selected
                     ? (isDark ? const Color(0xFF3A3A3C) : Colors.white)
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(Radii.sm),
                 boxShadow: selected
                     ? [const BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 1))]
                     : [],
@@ -1179,7 +1179,7 @@ class _TeamStatsTabState extends State<TeamStatsTab>
             padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
             decoration: BoxDecoration(
               color: cardBg,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(Radii.lg),
               border: Border.all(color: cardBd, width: 1),
               boxShadow: (!isFav && !isDark) ? [
                 BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 2, offset: const Offset(0, 1)),
@@ -1676,7 +1676,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
           margin: const EdgeInsets.only(bottom: 4),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(Radii.sm),
           ),
           child: Row(
             children: [
@@ -1725,14 +1725,14 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(Radii.lg),
           onTap: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId))),
           child: Container(
             padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
             decoration: BoxDecoration(
               color: t.paper,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(Radii.lg),
               border: Border.all(color: t.line, width: 1),
               boxShadow: !isDark ? [
                 BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 2, offset: const Offset(0, 1)),

@@ -618,7 +618,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             width: 44, height: 44,
                             decoration: BoxDecoration(
                               color: c.withValues(alpha: cs.dark ? 0.18 : 0.1),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(Radii.md),
                               border: Border.all(color: c.withValues(alpha: 0.25)),
                             ),
                             clipBehavior: Clip.antiAlias,
@@ -779,7 +779,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       isScrollControlled: true,
       backgroundColor: cs.paper,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl))),
       builder: (ctx) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.6,
@@ -1133,7 +1133,7 @@ class _AppToggle extends StatelessWidget {
     child: AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       width: 40, height: 24,
-      decoration: BoxDecoration(color: on ? color : track, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: on ? color : track, borderRadius: BorderRadius.circular(Radii.md)),
       child: AnimatedAlign(
         duration: const Duration(milliseconds: 200),
         alignment: on ? Alignment.centerRight : Alignment.centerLeft,

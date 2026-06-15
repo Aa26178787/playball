@@ -602,7 +602,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           height: 52,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(Radii.sm),
           ),
         )),
       ),
@@ -719,7 +719,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               context: context,
               isScrollControlled: true,
               shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl)),
               ),
               builder: (_) => _GameShareSheet(game: game),
             ),
@@ -1030,7 +1030,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(Radii.lg),
                   child: _buildFieldScoreOverlay(innings, game),
                 ),
               ),
@@ -1217,7 +1217,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 child: CustomPaint(
                   painter: _DashedRectPainter(color: line2, radius: 16, dashLength: 6, gap: 4),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(Radii.lg),
                     child: Stack(
                       children: [
                         const Positioned.fill(
@@ -1408,7 +1408,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: sbBg,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(Radii.lg),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1474,7 +1474,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(Radii.xs),
           ),
           child: Text(label, style: TextStyle(color: color, fontSize: Typo.caption, fontWeight: Typo.extra)),
         ),
@@ -1619,7 +1619,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       height: _currentPanelH(),
       decoration: BoxDecoration(
         color: paper,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(Radii.lg)),
         boxShadow: [
           BoxShadow(color: Colors.black.withValues(alpha: 0.10), blurRadius: 8, offset: const Offset(0, 3)),
         ],
@@ -1668,7 +1668,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             child: CustomPaint(
               painter: _DashedRectPainter(color: line2, radius: 16, dashLength: 6, gap: 4),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(Radii.lg),
                 child: Stack(
                   children: [
                     const Positioned.fill(child: CustomPaint(painter: _GrassExtensionPainter())),
@@ -1765,7 +1765,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
                     decoration: BoxDecoration(
                       color: Pal.line(isDark),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(Radii.sm),
                     ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       if (!_stripExpanded) ...[
@@ -1801,7 +1801,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
         decoration: BoxDecoration(
           color: Pal.line(isDark),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(Radii.sm),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(_fieldPinned ? Icons.push_pin : Icons.push_pin_outlined, size: 13, color: fg),
@@ -1866,7 +1866,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: amber.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(Radii.xs),
                 ),
                 child: const Text('오늘의 MVP',
                     style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.extra, color: amber)),
@@ -2291,7 +2291,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       context: context,
                       isScrollControlled: true,
                       shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg))),
                       builder: (_) => PitchLocationSheet(
                         gameId: widget.gameId,
                         gameStatus: _gameData?['game']['status'] as String? ?? '종료',
@@ -2919,7 +2919,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   left: subIdx * slotW + 4,
                   top: 4, bottom: 4, width: slotW - 8,
                   child: Container(decoration: BoxDecoration(
-                    color: activeColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20))),
+                    color: activeColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(Radii.xl))),
                 ),
                 Row(children: List.generate(sl.length, (i) {
                   final sel = i == subIdx;
@@ -3365,7 +3365,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                   decoration: BoxDecoration(
                     color: const Color(0xFF1976D2).withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(Radii.xs),
                   ),
                   child: const Text('선발',
                       style: TextStyle(fontSize: Typo.micro, fontWeight: Typo.extra, color: Color(0xFF1976D2))),
@@ -3556,7 +3556,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
               context: context,
               isScrollControlled: true,
               shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg))),
               builder: (_) => PitchLocationSheet(
                 gameId: widget.gameId,
                 gameStatus: _gameData?['game']['status'] as String? ?? '종료',
@@ -3614,7 +3614,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: resultColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(Radii.xs),
                   border: Border.all(color: resultColor.withValues(alpha: 0.5)),
                 ),
                 child: Text(result,
@@ -3649,7 +3649,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(Radii.xs),
                       child: SizedBox(
                         height: 10,
                         child: Row(
@@ -3698,7 +3698,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(Radii.xs),
                         child: SizedBox(
                           height: 12,
                           child: Row(
@@ -4134,7 +4134,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
             color: isYT ? const Color(0xFFE53935).withValues(alpha: 0.12) : paper2,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(Radii.xs),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(isYT ? Icons.play_circle_fill : Icons.article_outlined,
@@ -4236,7 +4236,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             margin: const EdgeInsets.only(bottom: 8),
             decoration: BoxDecoration(
               color: paper,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(Radii.md),
               border: Border.all(color: line, width: 1),
             ),
             clipBehavior: Clip.antiAlias,
@@ -4452,7 +4452,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(Radii.lg),
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -4470,7 +4470,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(Radii.xs),
                   border: Border.all(color: statusColor.withValues(alpha: 0.5)),
                 ),
                 child: Text(statusLabel, style: TextStyle(color: statusColor, fontSize: Typo.caption, fontWeight: Typo.bold)),
@@ -4526,7 +4526,7 @@ class _GameShareSheetState extends State<_GameShareSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(Radii.sm),
             ),
             child: Text(
               '📅 $date${stadium.isNotEmpty ? '  •  $stadium' : ''}',
@@ -4683,7 +4683,7 @@ class _FullFieldView extends StatelessWidget {
       context: ctx,
       backgroundColor: Pal.paper(isDark),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
       ),
       builder: (_) => Padding(
         padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + MediaQuery.of(ctx).viewPadding.bottom),
@@ -4703,7 +4703,7 @@ class _FullFieldView extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: isOccupied ? const Color(0xFFFCD34D) : (isDark ? Colors.white12 : Colors.black12),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(Radii.xs),
                 ),
                 child: Text(baseName,
                     style: TextStyle(fontSize: Typo.small, fontWeight: Typo.extra,
@@ -4900,7 +4900,7 @@ class _FullFieldView extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(Radii.sm),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -4925,7 +4925,7 @@ class _FullFieldView extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(Radii.sm),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -5437,7 +5437,7 @@ class _WinProbChart extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: (homeLeading ? hc : sub).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(Radii.pill),
                 ),
                 child: Text(headLabel,
                     style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.extra,

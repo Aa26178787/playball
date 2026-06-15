@@ -475,7 +475,7 @@ class _MentionHelpRowState extends State<_MentionHelpRow> {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: SemColor.brand(context).withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(Radii.sm),
               border: Border.all(color: SemColor.brand(context).withValues(alpha: 0.15)),
             ),
             child: Column(
@@ -491,7 +491,7 @@ class _MentionHelpRowState extends State<_MentionHelpRow> {
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
                         color: SemColor.brand(context).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(Radii.xs),
                       ),
                       child: Text(e.$1, style: TextStyle(fontSize: Typo.caption, color: SemColor.brand(context))),
                     ),

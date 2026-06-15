@@ -68,7 +68,7 @@ class PlayerStatsSection extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
                 color: useEng ? SemColor.brand(context) : (isDark ? Colors.grey[800] : Colors.grey[200]),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(Radii.lg),
               ),
               child: Text(
                 useEng ? 'ENG' : '한글',

@@ -150,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Row(children: [
       Expanded(
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(Radii.xs),
           child: LinearProgressIndicator(
             value: (s + 1) / 3,
             backgroundColor: Colors.grey[200],

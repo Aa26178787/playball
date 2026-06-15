@@ -133,7 +133,7 @@ class _PointsScreenState extends State<PointsScreen> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(Radii.lg),
         border: Border.all(color: line),
       ),
       child: Row(children: [
@@ -171,7 +171,7 @@ class _PointsScreenState extends State<PointsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(Radii.md),
         border: Border.all(color: top3 ? const Color(0xFFD97706).withValues(alpha: 0.4) : line),
       ),
       child: Row(children: [
@@ -228,7 +228,7 @@ class _PointsScreenState extends State<PointsScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
           color: cardColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(Radii.md),
           border: Border.all(color: line),
         ),
         child: Row(children: [
@@ -258,7 +258,7 @@ class _PointsScreenState extends State<PointsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(Radii.md),
         border: Border.all(
             color: done ? const Color(0xFF16A34A).withValues(alpha: 0.45) : line),
       ),
@@ -308,7 +308,7 @@ class _PointsScreenState extends State<PointsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           decoration: BoxDecoration(
             color: cardColor,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(Radii.md),
             border: Border.all(
                 color: earned ? const Color(0xFFD97706).withValues(alpha: 0.5) : line),
           ),

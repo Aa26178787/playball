@@ -286,7 +286,7 @@ function resetView() {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF18181C) : const Color(0xFFF4F4F6),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(Radii.lg),
       ),
       child: Column(children: [
         Icon(Icons.map_outlined, size: 30,
@@ -323,7 +323,7 @@ function resetView() {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
       ),
       builder: (_) => _NearbyFoodSheet(
         stadiumIndex: i,
@@ -535,7 +535,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
       ),
       builder: (_) => _SubmitFoodSheet(
         stadiumId: widget.stadiumIndex + 1,
@@ -555,14 +555,14 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
       height: MediaQuery.of(context).size.height * 0.78,
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg)),
       ),
       child: Column(
         children: [
           Container(
             decoration: BoxDecoration(
               color: color,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
             ),
             padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
             child: Column(
@@ -630,7 +630,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
             width: 38, height: 38,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(Radii.sm),
             ),
             child: Icon(Icons.restaurant, color: color, size: 18),
           ),
@@ -682,7 +682,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                         color: isApproved
                             ? color.withValues(alpha: 0.15)
                             : Colors.grey.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(Radii.sm),
                       ),
                       child: Icon(
                         isApproved ? Icons.verified : Icons.restaurant,
@@ -701,7 +701,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: color.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(Radii.xs),
                             ),
                             child: Text('인증', style: TextStyle(fontSize: Typo.caption, color: color, fontWeight: Typo.bold)),
                           ),
@@ -857,7 +857,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
                     decoration: InputDecoration(
                       hintText: '가게 이름 검색',
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.sm)),
                       isDense: true,
                     ),
                     onSubmitted: (_) => _search(),
@@ -884,7 +884,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: widget.color.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(Radii.sm),
                   border: Border.all(color: widget.color.withValues(alpha: 0.3)),
                 ),
                 child: Column(
@@ -903,7 +903,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
                 decoration: InputDecoration(
                   hintText: '추천 이유 (선택)',
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.sm)),
                   isDense: true,
                 ),
                 maxLength: 50,

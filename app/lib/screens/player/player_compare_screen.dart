@@ -120,7 +120,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
             hintText: '선수 검색',
             isDense: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(Radii.sm)),
             suffixIcon: ctrl.text.isNotEmpty
                 ? IconButton(
                     icon: const Icon(Icons.clear, size: 16),
@@ -142,7 +142,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen> {
             decoration: BoxDecoration(
               color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceDark : Colors.white,
               border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? AppColors.borderDark : Colors.grey[300]!),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(Radii.sm),
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)],
             ),
             child: ListView.builder(

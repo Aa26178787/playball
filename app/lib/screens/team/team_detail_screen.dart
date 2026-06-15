@@ -433,7 +433,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             child: Container(
               decoration: BoxDecoration(
                 color: active.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(Radii.xl),
               ),
             ),
           ),
@@ -521,7 +521,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           children: [
             if (thumbnail.isNotEmpty) ...[
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(Radii.sm),
                 child: netImage(
                   thumbnail,
                   width: 72, height: 54, fit: BoxFit.cover,
@@ -1431,7 +1431,7 @@ class _NumChip extends StatelessWidget {
     decoration: BoxDecoration(
       color: tc.withValues(alpha: cs.dark ? 0.18 : 0.08),
       border: Border.all(color: tc.withValues(alpha: 0.2)),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(Radii.sm),
     ),
     child: Center(child: Text('#${no ?? '-'}',
         style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.extra, color: tc))),

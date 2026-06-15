@@ -11,7 +11,7 @@ class StadiumRankingSheet {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg))),
       builder: (_) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.6,

@@ -303,7 +303,7 @@ class _FloatingNavBar extends StatelessWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     color: activeColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(Radii.xl),
                   ),
                 ),
               ),
@@ -579,7 +579,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       context: context,
       barrierDismissible: true,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.xl)),
         title: const Text('야구, 얼마나 보세요?',
             style: TextStyle(fontSize: Typo.title, fontWeight: Typo.extra)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1592,7 +1592,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(Radii.md),
             ),
             child: Column(
               children: [
@@ -1708,7 +1708,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                     style: OutlinedButton.styleFrom(
                       foregroundColor: SemColor.brand(context),
                       side: BorderSide(color: SemColor.brand(context)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.xl)),
                     ),
                   ),
                 ] else ...[
@@ -1741,7 +1741,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                       style: OutlinedButton.styleFrom(
                         foregroundColor: SemColor.brand(context),
                         side: BorderSide(color: SemColor.brand(context)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.xl)),
                       ),
                     ),
                   ],
@@ -1827,13 +1827,13 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           onTap: (url != null && url.isNotEmpty)
               ? () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)
               : null,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(Radii.lg),
           child: Container(
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(
               color: bg,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(Radii.lg),
             ),
             child: Row(
               children: [
@@ -1867,12 +1867,12 @@ class _TodayGamesTabState extends State<TodayGamesTab>
 
     return InkWell(
       onTap: () => setState(() => _rosterBannerExpanded = !_rosterBannerExpanded),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(Radii.lg),
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         decoration: BoxDecoration(
           color: t.paper,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(Radii.lg),
           border: Border.all(color: t.line, width: 1),
         ),
         child: Column(
@@ -1924,7 +1924,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: col.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(4),
+                                  borderRadius: BorderRadius.circular(Radii.xs),
                                 ),
                                 child: Text(type, style: TextStyle(fontSize: Typo.caption, color: col, fontWeight: Typo.extra)),
                               ),
@@ -2010,7 +2010,7 @@ class GameCard extends StatelessWidget {
             Container(
               width: 13, height: 13,
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(4)),
+              decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(Radii.xs)),
               child: Text(r, style: TextStyle(fontSize: Typo.micro, fontWeight: Typo.extra, color: fg)),
             ),
             const SizedBox(height: 2),
@@ -2180,7 +2180,7 @@ class GameCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
             color: _kLiveRed.withValues(alpha: isDark ? 0.20 : 0.10),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(Radii.xs),
             border: Border.all(color: _kLiveRed.withValues(alpha: 0.45)),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -2247,7 +2247,7 @@ class GameCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: t.paper,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(Radii.md),
           border: Border.all(color: cardBd, width: isMyTeam ? 2 : 1),
         ),
         clipBehavior: Clip.antiAlias,

@@ -321,7 +321,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     ...imgs.map((u) => Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(Radii.sm),
                         child: netImage(u, fit: BoxFit.cover, width: double.infinity,
                           error: () => const SizedBox.shrink()),
                       ),

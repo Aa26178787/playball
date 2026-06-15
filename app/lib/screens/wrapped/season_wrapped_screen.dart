@@ -101,7 +101,7 @@ class _SeasonWrappedScreenState extends State<SeasonWrappedScreen> {
           begin: Alignment.topLeft, end: Alignment.bottomRight,
           colors: [Color(0xFF1B2A4A), Color(0xFF2D6A4F)],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(Radii.xl),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

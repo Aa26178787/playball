@@ -156,7 +156,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
       height: MediaQuery.of(context).size.height * 0.9,
       decoration: BoxDecoration(
         color: _paper,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(Radii.lg)),
       ),
       child: Column(
         children: [
@@ -173,7 +173,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: SemColor.live, borderRadius: BorderRadius.circular(4)),
+                  decoration: BoxDecoration(color: SemColor.live, borderRadius: BorderRadius.circular(Radii.xs)),
                   child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: Typo.caption, fontWeight: Typo.bold)),
                 ),
               ],
@@ -291,7 +291,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: _ink.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(Radii.xs),
               ),
               child: Text(teamLabel, style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: _ink)),
             ),
@@ -404,7 +404,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: selected ? color : _paper2,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(Radii.lg),
         border: Border.all(color: selected ? color : _line, width: 1),
       ),
       child: Text(

@@ -763,7 +763,7 @@ class _FoodTile extends StatelessWidget {
             width: 40, height: 40,
             decoration: BoxDecoration(
               color: approved ? SemColor.live.withValues(alpha: 0.1) : cs.paper2,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(Radii.md),
               border: Border.all(color: approved ? SemColor.live.withValues(alpha: 0.25) : cs.line),
             ),
             child: Icon(

@@ -123,7 +123,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: tc.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(Radii.pill),
                   border: Border.all(color: tc.withValues(alpha: 0.30)),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -362,7 +362,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       offset: const Offset(0, 4),
       color: isDark ? const Color(0xFF1F1F24) : Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(Radii.md),
         side: BorderSide(color: line),
       ),
       child: Container(
@@ -572,7 +572,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       child: Container(
         decoration: BoxDecoration(
           color: paper,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(Radii.lg),
           border: Border.all(color: line),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04), blurRadius: 4, offset: const Offset(0, 1))],
         ),

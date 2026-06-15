@@ -345,7 +345,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 margin: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(Radii.sm),
                 ),
               ),
             )),
@@ -813,7 +813,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final selectedGames = _gamesByDate[_dateKey(date)] ?? [];
     await showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg))),
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: EdgeInsets.only(bottom: webBottomGuard(ctx)),
@@ -876,7 +876,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Future<void> _showPickGameForVisit(DateTime date, List games) async {
     await showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg))),
       // SafeArea+guard: iOS 사파리 탭바(env=0)/홈인디케이터에 하단 항목 잘림 방지 (06-12)
       builder: (ctx) => SafeArea(
           child: Padding(
@@ -949,7 +949,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 if (imageUrl != null && imageUrl.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(Radii.sm),
                     child: netImage(
                       imageUrl,
                       fit: BoxFit.cover,
@@ -999,7 +999,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.lg))),
       builder: (_) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.65,
