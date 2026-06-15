@@ -1355,7 +1355,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         child: Text(s, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)));
 
     Widget leaderCard(String label, List rows, String Function(num) fmt) => Container(
-      margin: const EdgeInsets.only(bottom: 9),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.lg)),
       padding: const EdgeInsets.fromLTRB(11, 9, 11, 5),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1417,7 +1417,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     ]);
 
     final twoCol = hCards.isNotEmpty && pCards.isNotEmpty;
-    return ListView(padding: const EdgeInsets.all(14), children: [
+    return ListView(padding: const EdgeInsets.all(18), children: [
       if (twoCol)
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
