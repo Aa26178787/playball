@@ -175,7 +175,7 @@ class MentionText extends StatelessWidget {
                     title: Text(p['name'] as String,
                         style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text('${p['team'] ?? ''} · ${p['position'] ?? ''}',
-                        style: const TextStyle(fontSize: 11)),
+                        style: const TextStyle(fontSize: Typo.caption)),
                     onTap: () => Navigator.pop(ctx, p['id'] as int),
                   );
                 },

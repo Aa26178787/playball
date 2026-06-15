@@ -70,19 +70,19 @@ class _RegisterDoneScreenState extends State<RegisterDoneScreen>
                   child: Column(children: [
                     Text('회원가입 완료!',
                         style: TextStyle(
-                            fontSize: 24,
+                            fontSize: Typo.h1,
                             fontWeight: FontWeight.w800,
                             color: ink)),
                     const SizedBox(height: 10),
                     Text('${widget.nickname}님, 환영합니다',
                         style: TextStyle(
-                            fontSize: 15,
+                            fontSize: Typo.subtitle,
                             fontWeight: FontWeight.w600,
                             color: sub)),
                     const SizedBox(height: 6),
                     Text('마이팀을 설정하면 맞춤 경기 알림을 받을 수 있어요',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 13, color: sub)),
+                        style: TextStyle(fontSize: Typo.body, color: sub)),
                   ]),
                 ),
                 const Spacer(flex: 4),
@@ -103,7 +103,7 @@ class _RegisterDoneScreenState extends State<RegisterDoneScreen>
                           Navigator.of(context).popUntil((r) => r.isFirst),
                       child: const Text('시작하기',
                           style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w800)),
+                              fontSize: Typo.title, fontWeight: FontWeight.w800)),
                     ),
                   ),
                 ),

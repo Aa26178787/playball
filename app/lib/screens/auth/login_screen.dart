@@ -131,7 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onChanged: (v) => setState(() => _autoLogin = v ?? false),
                     activeColor: SemColor.brand(context),
                   ),
-                  const Text('자동 로그인', style: TextStyle(fontSize: 14)),
+                  const Text('자동 로그인', style: TextStyle(fontSize: Typo.subtitle)),
                   if (_hasSavedCredentials) ...[
                     const Spacer(),
                     TextButton(
@@ -139,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         await ApiService.clearAutoLoginCredentials();
                         if (mounted) setState(() { _hasSavedCredentials = false; _autoLogin = false; });
                       },
-                      child: const Text('저장 해제', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      child: const Text('저장 해제', style: TextStyle(fontSize: Typo.small, color: Colors.grey)),
                     ),
                   ],
                 ],
@@ -149,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+                  child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: Typo.body)),
                 ),
 
               // 로그인 버튼
@@ -163,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ? CircularProgressIndicator(
                           color: Theme.of(context).brightness == Brightness.dark
                               ? SemColor.panelDark : Colors.white)
-                      : const Text('로그인', style: TextStyle(fontSize: 16)),
+                      : const Text('로그인', style: TextStyle(fontSize: Typo.title)),
                 ),
               ),
               const SizedBox(height: 16),

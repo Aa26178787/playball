@@ -30,9 +30,9 @@ class StadiumRankingSheet {
                 children: [
                   Icon(Icons.emoji_events, color: SemColor.brand(ctx), size: 18),
                   const SizedBox(width: 6),
-                  const Text('직관승률 랭킹', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text('직관승률 랭킹', style: TextStyle(fontSize: Typo.title, fontWeight: FontWeight.bold)),
                   const SizedBox(width: 6),
-                  const Text('(최소 5회)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const Text('(최소 5회)', style: TextStyle(fontSize: Typo.small, color: Colors.grey)),
                 ],
               ),
             ),
@@ -65,17 +65,17 @@ class StadiumRankingSheet {
                             alignment: Alignment.center,
                             child: Text('$rank',
                                 style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: Typo.body,
                                     fontWeight: FontWeight.bold,
                                     color: rank <= 3 ? medalColor : Colors.grey[600])),
                           ),
-                          title: Text(r['nickname'] ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                          title: Text(r['nickname'] ?? '', style: const TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.w600)),
                           subtitle: Text(
                               '${r['wins']}승 ${r['losses']}패${(r['draws'] as int) > 0 ? ' ${r['draws']}무' : ''} · 총 ${r['total']}회',
-                              style: const TextStyle(fontSize: 11)),
+                              style: const TextStyle(fontSize: Typo.caption)),
                           trailing: Text('$winRate%',
                               style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: Typo.subtitle,
                                   fontWeight: FontWeight.bold,
                                   color: rank <= 3 ? medalColor : SemColor.brand(ctx))),
                         );

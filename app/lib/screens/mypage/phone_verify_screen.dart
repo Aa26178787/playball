@@ -82,7 +82,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
             const Text(
               '가입한 이메일로 인증번호를 발송합니다.\n인증 후 커뮤니티 글쓰기가 가능합니다.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.6),
+              style: TextStyle(color: Colors.grey, fontSize: Typo.body, height: 1.6),
             ),
             const SizedBox(height: 32),
             if (_sentToEmail == null) ...[
@@ -104,14 +104,14 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
             ] else ...[
               Text('인증번호 발송: $_sentToEmail',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                  style: const TextStyle(fontSize: Typo.body, color: Colors.grey)),
               const SizedBox(height: 16),
               TextField(
                 controller: _codeCtrl,
                 keyboardType: TextInputType.number,
                 maxLength: 6,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 24, letterSpacing: 8, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: Typo.h1, letterSpacing: 8, fontWeight: FontWeight.bold),
                 decoration: const InputDecoration(
                   hintText: '------',
                   border: OutlineInputBorder(),
@@ -129,7 +129,7 @@ class _PhoneVerifyScreenState extends State<PhoneVerifyScreen> {
                 child: _verifying
                     ? const SizedBox(width: 18, height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('인증 확인', style: TextStyle(fontSize: 16)),
+                    : const Text('인증 확인', style: TextStyle(fontSize: Typo.title)),
               ),
               const SizedBox(height: 8),
               TextButton(
