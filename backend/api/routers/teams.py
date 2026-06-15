@@ -654,7 +654,49 @@ def get_team_monthly_stats(team_id: int, season: int = 2026):
     }
 
 
+def _hitter_best_ranks(cur, season, player_ids):
+    """주요타자별 리그 최고(최저 숫자) 순위 스탯.
+    rate(타율/출루율/OPS)=규정타석 풀, counting(홈런/타점/안타/득점/도루/WAR)=전체 풀."""
+    ids = {pid for pid in player_ids if pid}
+    if not ids:
+        return {}
+    cur.execute("SELECT MAX(games) FROM batter_stats WHERE season = %s", (season,))
+    max_games = cur.fetchone()[0] or 0
+    qual_pa = max_games * 3.1
+    cur.execute("""
+        SELECT player_id, COALESCE(pa, 0), avg, obp, ops,
+               home_runs, rbis, hits, runs, stolen_bases, war
+        FROM batter_stats WHERE season = %s
+    """, (season,))
+    players = [{
+        'id': r[0], 'pa': float(r[1] or 0),
+        'avg': float(r[2] or 0), 'obp': float(r[3] or 0), 'ops': float(r[4] or 0),
+        'home_runs': r[5] or 0, 'rbis': r[6] or 0, 'hits': r[7] or 0,
+        'runs': r[8] or 0, 'stolen_bases': r[9] or 0, 'war': float(r[10] or 0),
+    } for r in cur.fetchall()]
+    # (key, label, is_rate) — 동률 시 cats 순서가 우선(타율>출루율>... )
+    cats = [
+        ('avg', '타율', True), ('obp', '출루율', True), ('ops', 'OPS', True),
+        ('home_runs', '홈런', False), ('rbis', '타점', False), ('hits', '안타', False),
+        ('runs', '득점', False), ('stolen_bases', '도루', False), ('war', 'WAR', False),
+    ]
+    best = {}  # pid -> (label, rank)
+    for key, label, is_rate in cats:
+        pool = players if not is_rate else (
+            [p for p in players if p['pa'] >= qual_pa] if qual_pa > 0 else players)
+        ordered = sorted(pool, key=lambda x: x[key], reverse=True)
+        for i, p in enumerate(ordered):
+            pid = p['id']
+            if pid in ids and p[key] > 0:
+                rank = i + 1
+                cur_best = best.get(pid)
+                if cur_best is None or rank < cur_best[1]:
+                    best[pid] = (label, rank)
+    return best
+
+
 @router.get("/{team_id}/batting-order")
+@cached(300)
 def get_batting_order_stats(team_id: int, season: int = 2026):
     conn = get_connection()
     if not conn:
@@ -719,6 +761,8 @@ def get_batting_order_stats(team_id: int, season: int = 2026):
     """, (team_id, team_id, season))
     top_players = {r[0]: (r[1], r[2], r[3]) for r in cur.fetchall()}  # order → (id, name, image)
 
+    best_ranks = _hitter_best_ranks(cur, season, [v[0] for v in top_players.values()])
+
     cur.close()
     conn.close()
 
@@ -744,6 +788,8 @@ def get_batting_order_stats(team_id: int, season: int = 2026):
             "top_player":       tp[1],
             "top_player_id":    tp[0],
             "top_player_image": tp[2],
+            "best_stat":        (best_ranks.get(tp[0]) or (None, None))[0],
+            "best_rank":        (best_ranks.get(tp[0]) or (None, None))[1],
         })
     return {"team_id": team_id, "season": season, "stats": stats}
 

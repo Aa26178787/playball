@@ -1334,6 +1334,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   Widget _buildBattingOrder() {
     final cs = _C(context);
     final tc = teamColor(widget.team['short_name'] as String? ?? '');
+    final tcOn = teamColorOn(widget.team['short_name'] as String? ?? '', cs.dark);
     if (_battingOrderLoading) return Center(child: CircularProgressIndicator(color: tc, strokeWidth: 2.5));
     if (_battingOrderStats.isEmpty) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1361,7 +1362,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         crossAxisCount: 3,
         mainAxisSpacing: 8,
         crossAxisSpacing: 8,
-        childAspectRatio: 0.66,
+        childAspectRatio: 0.60,
         children: stats.map((s) {
           final order = (s['batting_order'] as num?)?.toInt() ?? 0;
           final avg = (s['avg'] as num?)?.toDouble() ?? 0;
@@ -1370,6 +1371,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           final topName = s['top_player'] as String? ?? '-';
           final topId = s['top_player_id'] as int?;
           final topImg = s['top_player_image'] as String?;
+          final bestStat = s['best_stat'] as String?;
+          final bestRank = (s['best_rank'] as num?)?.toInt();
+          final showBadge = bestStat != null && bestRank != null && bestRank <= 30;
           final t = maxAvg > minAvg ? (avg - minAvg) / (maxAvg - minAvg) : 0.5;
           final cardBg = Color.lerp(cs.paper, tc.withValues(alpha: cs.dark ? 0.22 : 0.13), t);
           final avgColor = avg >= 0.300 ? const Color(0xFF2563EB) : avg < 0.230 ? SemColor.live : cs.ink;
@@ -1397,6 +1401,19 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 const SizedBox(height: 2),
                 Text('HR $hr · 타점 $rbi', maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 10, color: cs.sub)),
+                if (showBadge) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: bestRank == 1 ? tc : tc.withValues(alpha: cs.dark ? 0.22 : 0.12),
+                      borderRadius: BorderRadius.circular(Radii.pill),
+                    ),
+                    child: Text('$bestStat $bestRank위', maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 10, fontWeight: Typo.extra,
+                            color: bestRank == 1 ? Colors.white : tcOn)),
+                  ),
+                ],
               ]),
             ),
           );
