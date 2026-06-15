@@ -1556,7 +1556,7 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
-    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
+    child: Text(label, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)),
   );
 }
 
@@ -1571,7 +1571,6 @@ class _CardWrap extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.paper, border: Border.all(color: cs.line),
         borderRadius: BorderRadius.circular(Radii.lg),
-        boxShadow: cs.dark ? null : [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 2, offset: const Offset(0, 1))],
       ),
       child: child,
     ),
