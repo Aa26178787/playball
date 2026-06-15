@@ -168,7 +168,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             _Btn32(onTap: () => Navigator.maybePop(context), border: cs.line2,
               child: Icon(Icons.chevron_left, size: 20, color: cs.ink2)),
             const SizedBox(width: 10),
-            Text('글 작성', style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4)),
+            Text('글 작성', style: TextStyle(fontSize: Typo.lg, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4)),
             const Spacer(),
             ElevatedButton(
               onPressed: _isLoading ? null : _submit,
@@ -179,7 +179,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 elevation: 0,
-                textStyle: const TextStyle(fontSize: 13, fontWeight: Typo.extra),
+                textStyle: const TextStyle(fontSize: Typo.body, fontWeight: Typo.extra),
               ),
               child: _isLoading
                   ? SizedBox(width: 14, height: 14,
@@ -211,7 +211,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       border: Border.all(color: act ? cs.ink : cs.line2),
                     ),
                     child: Text(c, style: TextStyle(
-                      fontSize: 12, fontWeight: act ? Typo.bold : Typo.medium,
+                      fontSize: Typo.small, fontWeight: act ? Typo.bold : Typo.medium,
                       color: act ? (cs.dark ? const Color(0xFF0F0F12) : Colors.white) : cs.ink3,
                     )),
                   ),
@@ -245,7 +245,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
                           TeamLogo(teamCode: t.code, size: 15),
                           const SizedBox(width: 5),
-                          Text(t.name, style: TextStyle(fontSize: 12,
+                          Text(t.name, style: TextStyle(fontSize: Typo.small,
                             fontWeight: act ? Typo.bold : Typo.medium,
                             color: act ? c : cs.ink3)),
                         ]),
@@ -264,13 +264,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               child: TextField(
                 controller: _titleController,
                 maxLength: 60,
-                style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: cs.ink),
+                style: TextStyle(fontSize: Typo.lg, fontWeight: Typo.extra, color: cs.ink),
                 cursorColor: accent,
                 decoration: InputDecoration(
                   hintText: '제목을 입력하세요',
-                  hintStyle: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: cs.sub),
+                  hintStyle: TextStyle(fontSize: Typo.lg, fontWeight: Typo.extra, color: cs.sub),
                   border: InputBorder.none,
-                  counterStyle: TextStyle(fontSize: 10, color: cs.sub),
+                  counterStyle: TextStyle(fontSize: Typo.mini, color: cs.sub),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -286,11 +286,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 minLines: 8,
                 // 커서가 키보드/툴바에 가리지 않게 자동 스크롤 여유 (06-13)
                 scrollPadding: const EdgeInsets.only(bottom: 140),
-                style: TextStyle(fontSize: 14, color: cs.ink, height: 1.7),
+                style: TextStyle(fontSize: Typo.subtitle, color: cs.ink, height: 1.7),
                 cursorColor: accent,
                 decoration: InputDecoration(
                   hintText: '야구 팬 여러분과 이야기 나눠보세요…',
-                  hintStyle: TextStyle(fontSize: 14, color: cs.sub, height: 1.7),
+                  hintStyle: TextStyle(fontSize: Typo.subtitle, color: cs.sub, height: 1.7),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -338,7 +338,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                                 Icon(Icons.add_photo_alternate_outlined, size: 20, color: cs.sub),
                                 const SizedBox(height: 4),
-                                Text('${_imageFiles.length}/$_maxImages', style: TextStyle(fontSize: 10, color: cs.sub)),
+                                Text('${_imageFiles.length}/$_maxImages', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
                               ]),
                       ),
                     ),
@@ -366,7 +366,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               const SizedBox(width: 6),
               const Icon(Icons.check_circle, color: Colors.green, size: 16),
               const SizedBox(width: 2),
-              Text('${_uploadedUrls.length}', style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.w700)),
+              Text('${_uploadedUrls.length}', style: const TextStyle(fontSize: Typo.caption, color: Colors.green, fontWeight: FontWeight.w700)),
             ],
             const Spacer(),
             ValueListenableBuilder<TextEditingValue>(
@@ -417,7 +417,7 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
-    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
+    child: Text(label, style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
   );
 }
 
@@ -463,7 +463,7 @@ class _MentionHelpRowState extends State<_MentionHelpRow> {
             children: [
               Icon(Icons.alternate_email, size: 14, color: SemColor.brand(context)),
               const SizedBox(width: 4),
-              Text('@ 링크 명령어 보기', style: TextStyle(fontSize: 12, color: SemColor.brand(context))),
+              Text('@ 링크 명령어 보기', style: TextStyle(fontSize: Typo.small, color: SemColor.brand(context))),
               Icon(_expanded ? Icons.expand_less : Icons.expand_more,
                   size: 14, color: SemColor.brand(context)),
             ],
@@ -493,13 +493,13 @@ class _MentionHelpRowState extends State<_MentionHelpRow> {
                         color: SemColor.brand(context).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Text(e.$1, style: TextStyle(fontSize: 11, color: SemColor.brand(context))),
+                      child: Text(e.$1, style: TextStyle(fontSize: Typo.caption, color: SemColor.brand(context))),
                     ),
                     const SizedBox(width: 8),
                     Text(e.$2, style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+                      fontSize: Typo.small, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
                     const SizedBox(width: 6),
-                    Text('→ ${e.$3}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                    Text('→ ${e.$3}', style: TextStyle(fontSize: Typo.caption, color: Colors.grey[600])),
                   ],
                 ),
               )).toList(),

@@ -196,7 +196,7 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
             _Btn32(border: cs.line2, onTap: () => Navigator.maybePop(context),
               child: Icon(Icons.chevron_left, size: 20, color: cs.ink2)),
             const SizedBox(width: 10),
-            Text(_isEdit ? '일정 수정' : '일정 추가', style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4)),
+            Text(_isEdit ? '일정 수정' : '일정 추가', style: TextStyle(fontSize: Typo.lg, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4)),
             const Spacer(),
             ValueListenableBuilder<TextEditingValue>(
               valueListenable: _titleCtrl,
@@ -212,7 +212,7 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     elevation: 0,
-                    textStyle: const TextStyle(fontSize: 13, fontWeight: Typo.extra),
+                    textStyle: const TextStyle(fontSize: Typo.body, fontWeight: Typo.extra),
                   ),
                   child: _saving
                       ? const SizedBox(width: 14, height: 14,
@@ -247,19 +247,19 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
                     ),
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Text('${_start.month}월',
-                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white70)),
+                        style: const TextStyle(fontSize: Typo.micro, fontWeight: FontWeight.w600, color: Colors.white70)),
                       const SizedBox(height: 2),
                       Text('${_start.day}',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                        style: const TextStyle(fontSize: Typo.h2, fontWeight: FontWeight.w800, color: Colors.white)),
                     ]),
                   ),
                   const SizedBox(width: 14),
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(_dateStr, style: TextStyle(fontSize: 16, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.3)),
+                    Text(_dateStr, style: TextStyle(fontSize: Typo.title, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.3)),
                     const SizedBox(height: 4),
                     Text(
                       widget.gameCount > 0 ? '$_dowStr · KBO ${widget.gameCount}경기' : _dowStr,
-                      style: TextStyle(fontSize: 12, color: cs.ink3)),
+                      style: TextStyle(fontSize: Typo.small, color: cs.ink3)),
                   ]),
                 ]),
               ),
@@ -272,9 +272,9 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
               Expanded(child: TextField(
                 controller: _titleCtrl,
                 cursorColor: _accent,
-                style: TextStyle(fontSize: 14, color: cs.ink),
+                style: TextStyle(fontSize: Typo.subtitle, color: cs.ink),
                 decoration: InputDecoration(
-                  hintText: '일정 제목', hintStyle: TextStyle(fontSize: 14, color: cs.sub),
+                  hintText: '일정 제목', hintStyle: TextStyle(fontSize: Typo.subtitle, color: cs.sub),
                   border: InputBorder.none, contentPadding: EdgeInsets.zero, isDense: true,
                 ),
               )),
@@ -331,7 +331,7 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
                       Text('시간 설정', style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink)),
                       const SizedBox(height: 3),
                       Text(_hasTime ? '${_fmtTime(_startTime)} → ${_fmtTime(_endTime)}' : '종일 일정',
-                        style: TextStyle(fontSize: 10, color: cs.ink3)),
+                        style: TextStyle(fontSize: Typo.mini, color: cs.ink3)),
                     ])),
                     _Toggle(on: _hasTime, color: _accent, cs: cs),
                   ]),
@@ -386,10 +386,10 @@ class _CalEventAddScreenState extends State<CalEventAddScreen> {
               controller: _memoCtrl,
               maxLines: 3,
               cursorColor: _accent,
-              style: TextStyle(fontSize: 14, color: cs.ink, height: 1.6),
+              style: TextStyle(fontSize: Typo.subtitle, color: cs.ink, height: 1.6),
               decoration: InputDecoration(
                 hintText: '메모를 입력하세요',
-                hintStyle: TextStyle(fontSize: 14, color: cs.sub, height: 1.6),
+                hintStyle: TextStyle(fontSize: Typo.subtitle, color: cs.sub, height: 1.6),
                 border: InputBorder.none, contentPadding: EdgeInsets.zero, isDense: true,
               ),
             )),
@@ -420,7 +420,7 @@ class _TimeBox extends StatelessWidget {
       child: Row(children: [
         Icon(Icons.access_time_outlined, size: 14, color: cs.sub),
         const SizedBox(width: 8),
-        Text(_fmt, style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.ink)),
+        Text(_fmt, style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.bold, color: cs.ink)),
       ]),
     ),
   );
@@ -467,7 +467,7 @@ class _DateBox extends StatelessWidget {
       child: Row(children: [
         Icon(Icons.calendar_today_outlined, size: 14, color: cs.sub),
         const SizedBox(width: 8),
-        Text(_fmt, style: TextStyle(fontSize: 14, fontWeight: Typo.bold, color: cs.ink)),
+        Text(_fmt, style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.bold, color: cs.ink)),
       ]),
     ),
   );
@@ -480,7 +480,7 @@ class _FormLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
-    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
+    child: Text(label, style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
   );
 }
 
