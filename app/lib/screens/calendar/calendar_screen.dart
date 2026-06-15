@@ -518,7 +518,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   padding: EdgeInsets.only(left: isFirst ? 5 : 0),
                   child: isFirst
                       ? Text(title,
-                          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white),
+                          style: const TextStyle(fontSize: Typo.micro, fontWeight: FontWeight.w700, color: Colors.white),
                           overflow: TextOverflow.clip, softWrap: false)
                       : null,
                 ),
@@ -627,7 +627,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   Container(width: 5, height: 5, decoration: BoxDecoration(shape: BoxShape.circle, color: cs.line2)),
                   const SizedBox(width: 5),
                   Text(game['stadium'] as String? ?? '',
-                      style: TextStyle(fontSize: 10, fontWeight: Typo.medium, color: cs.ink3)),
+                      style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.medium, color: cs.ink3)),
                 ])),
                 const Spacer(),
                 if (tc != null)
@@ -635,7 +635,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     margin: const EdgeInsets.only(right: 6),
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(color: tc, borderRadius: BorderRadius.circular(Radii.xs)),
-                    child: const Text('마이팀', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white)),
+                    child: const Text('마이팀', style: TextStyle(fontSize: Typo.micro, fontWeight: FontWeight.w800, color: Colors.white)),
                   ),
                 if (isUpcoming) ...[
                   Tooltip(
@@ -662,17 +662,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           Text('${game['home_score'] ?? 0}',
                               style: TextStyle(fontSize: 28, fontWeight: Typo.extra, color: cs.ink)),
                           Padding(padding: const EdgeInsets.symmetric(horizontal: 9),
-                            child: Text(':', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w300, color: cs.line2))),
+                            child: Text(':', style: TextStyle(fontSize: Typo.h1, fontWeight: FontWeight.w300, color: cs.line2))),
                           Text('${game['away_score'] ?? 0}',
                               style: TextStyle(fontSize: 28, fontWeight: Typo.extra, color: cs.ink)),
                         ]),
                         if (isLive)
                           Text('${game['current_inning'] ?? ''}회 ${game['inning_half'] ?? ''}',
-                              style: const TextStyle(fontSize: 10, fontWeight: Typo.bold, color: SemColor.live)),
+                              style: const TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: SemColor.live)),
                       ])
                     : Text(
                         isCancel ? '취소' : (game['start_time'] as String? ?? '예정'),
-                        style: TextStyle(fontSize: 18, fontWeight: Typo.extra,
+                        style: TextStyle(fontSize: Typo.lg, fontWeight: Typo.extra,
                             color: isCancel ? SemColor.live : cs.ink3)),
                 )),
                 Expanded(child: _TeamCol(code: awayCode, name: game['away_team'] as String? ?? '', role: '원정', cs: cs)),
@@ -690,7 +690,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     Expanded(child: Center(child: Text(
                         winPitcher != null ? '승 $winPitcher' : '',
                         style: const TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: SemColor.success)))),
-                    Text('승·패', style: TextStyle(fontSize: 9, color: cs.sub)),
+                    Text('승·패', style: TextStyle(fontSize: Typo.micro, color: cs.sub)),
                     Expanded(child: Center(child: Text(
                         losePitcher != null ? '패 $losePitcher' : '',
                         style: const TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: SemColor.live)))),
@@ -699,7 +699,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   Row(children: [
                     Expanded(child: Center(child: Text(homeStarter ?? '',
                         style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: cs.ink3)))),
-                    Text('선발', style: TextStyle(fontSize: 9, color: cs.sub)),
+                    Text('선발', style: TextStyle(fontSize: Typo.micro, color: cs.sub)),
                     Expanded(child: Center(child: Text(awayStarter ?? '',
                         style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: cs.ink3)))),
                   ]),
@@ -761,7 +761,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   overflow: TextOverflow.ellipsis)),
               if (timeLabel != null) ...[
                 const SizedBox(width: 6),
-                Text(timeLabel, style: TextStyle(fontSize: 10, fontWeight: Typo.medium, color: color)),
+                Text(timeLabel, style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.medium, color: color)),
               ],
             ]),
             if (description != null && description.isNotEmpty) ...[
@@ -891,7 +891,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 10),
-            child: Text('직관 기록할 경기 선택', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            child: Text('직관 기록할 경기 선택', style: TextStyle(fontWeight: FontWeight.bold, fontSize: Typo.subtitle)),
           ),
           ...games.map((g) {
             final gm = g as Map;
@@ -1016,10 +1016,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
               ),
             ),
-            const Text('직관 통계', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const Text('직관 통계', style: TextStyle(fontSize: Typo.title, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             if (byStadium.isNotEmpty) ...[
-              const Text('구장별', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.teal)),
+              const Text('구장별', style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.bold, color: Colors.teal)),
               const SizedBox(height: 8),
               ...byStadium.map((s) {
                 final total = s['total'] as int;
@@ -1030,15 +1030,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                     children: [
-                      Expanded(child: Text(s['name'] as String, style: const TextStyle(fontSize: 13))),
-                      Text('$wins승 $losses패', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      Expanded(child: Text(s['name'] as String, style: const TextStyle(fontSize: Typo.body))),
+                      Text('$wins승 $losses패', style: const TextStyle(fontSize: Typo.small, color: Colors.grey)),
                       const SizedBox(width: 8),
                       Container(
                         width: 44,
                         alignment: Alignment.centerRight,
                         child: Text('$pct%',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: Typo.body,
                               fontWeight: FontWeight.bold,
                               color: wins > losses ? Colors.blue : wins < losses ? Colors.red : Colors.grey,
                             )),
@@ -1050,7 +1050,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               const Divider(height: 24),
             ],
             if (byMonth.isNotEmpty) ...[
-              const Text('월별', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.teal)),
+              const Text('월별', style: TextStyle(fontSize: Typo.body, fontWeight: FontWeight.bold, color: Colors.teal)),
               const SizedBox(height: 8),
               ...byMonth.map((m) {
                 final wins = m['wins'] as int;
@@ -1061,13 +1061,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                     children: [
-                      Text('${m['year']}년 ${m['month']}월', style: const TextStyle(fontSize: 13)),
+                      Text('${m['year']}년 ${m['month']}월', style: const TextStyle(fontSize: Typo.body)),
                       const Spacer(),
-                      Text('$total회 ($wins승 $losses패)', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      Text('$total회 ($wins승 $losses패)', style: const TextStyle(fontSize: Typo.small, color: Colors.grey)),
                       const SizedBox(width: 8),
                       Text('$pct%',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: Typo.body,
                             fontWeight: FontWeight.bold,
                             color: wins > losses ? Colors.blue : wins < losses ? Colors.red : Colors.grey,
                           )),
@@ -1127,10 +1127,10 @@ class _TeamCol extends StatelessWidget {
   Widget build(BuildContext context) => Column(children: [
     TeamLogo(teamCode: code, size: 44),
     const SizedBox(height: 7),
-    Text(name, style: TextStyle(fontSize: 14, fontWeight: Typo.extra, color: cs.ink),
+    Text(name, style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra, color: cs.ink),
         textAlign: TextAlign.center),
     const SizedBox(height: 3),
-    Text(role, style: TextStyle(fontSize: 10, color: cs.sub)),
+    Text(role, style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
   ]);
 }
 
@@ -1147,20 +1147,20 @@ class _StatusBadge extends StatelessWidget {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Container(width: 5, height: 5, margin: const EdgeInsets.only(right: 5),
             decoration: const BoxDecoration(shape: BoxShape.circle, color: SemColor.live)),
-          const Text('LIVE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: SemColor.live)),
+          const Text('LIVE', style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w800, color: SemColor.live)),
         ]),
       );
     }
     if (isCancel) {
       return _Capsule(
         bg: SemColor.live.withValues(alpha: 0.08),
-        child: const Text('취소', style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: SemColor.live)),
+        child: const Text('취소', style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: SemColor.live)),
       );
     }
     return _Capsule(
       bg: cs.paper2,
       child: Text(isDone ? '종료' : (time ?? '예정'),
-        style: TextStyle(fontSize: 10, fontWeight: Typo.bold,
+        style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold,
           color: isDone ? cs.ink3 : const Color(0xFF2563EB))),
     );
   }
@@ -1221,7 +1221,7 @@ class _StatChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(Radii.xs)),
-    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.medium, color: color)),
+    child: Text(label, style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.medium, color: color)),
   );
 }
 
@@ -1249,7 +1249,7 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) => Align(
     alignment: Alignment.centerLeft,
     child: Text(label,
-        style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
+        style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
   );
 }
 
