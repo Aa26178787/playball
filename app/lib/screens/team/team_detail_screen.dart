@@ -1410,7 +1410,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                       borderRadius: BorderRadius.circular(Radii.pill),
                     ),
                     child: Text('$bestStat $bestRank위', maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 17, fontWeight: Typo.extra,
+                        style: TextStyle(fontSize: 14, fontWeight: Typo.extra,
                             color: bestRank == 1 ? Colors.white : tcOn)),
                   ),
                 ],
