@@ -330,6 +330,80 @@ def crawl_season(season):
     return h, p
 
 
+# ── 수상(awards) enrichment ── detail Award.aspx (서버 IP 도달 OK) ──
+def _award_url(kbo_id, player_type):
+    seg = 'Pitcher' if player_type == '투수' else 'Hitter'
+    return f"https://www.koreabaseball.com/Record/Player/{seg}Detail/Award.aspx?playerId={kbo_id}"
+
+
+def enrich_awards(limit=None, only_id=None):
+    """historical_players 수상경력 detail Award.aspx 크롤 → historical_awards (table 연도|수상)."""
+    conn = get_connection()
+    if not conn:
+        return 0
+    cur = conn.cursor()
+    if only_id:
+        cur.execute("SELECT kbo_player_id, player_type FROM historical_players WHERE kbo_player_id=%s", (only_id,))
+    else:
+        # 이미 수상 크롤한 선수 스킵(awards_done 마커 대신 historical_awards 존재 여부로 판단하면
+        # 무수상 선수가 매번 재크롤됨 → 간단히 전체 또는 limit)
+        q = "SELECT kbo_player_id, player_type FROM historical_players ORDER BY kbo_player_id"
+        if limit:
+            q += f" LIMIT {int(limit)}"
+        cur.execute(q)
+    targets = cur.fetchall()
+    if not targets:
+        cur.close()
+        conn.close()
+        return 0
+
+    driver = _get_driver()
+    rows_in = 0
+    players_with = 0
+    try:
+        for kbo_id, ptype in targets:
+            try:
+                driver.get(_award_url(kbo_id, ptype))
+                time.sleep(1.5)
+                soup = BeautifulSoup(driver.page_source, 'html.parser')
+                table = None
+                for t in soup.find_all('table'):
+                    ths = [x.get_text(strip=True) for x in t.select('thead th')]
+                    if '수상' in ths and '연도' in ths:
+                        table = t
+                        break
+                if not table:
+                    continue
+                got = 0
+                for tr in table.select('tbody tr'):
+                    tds = [c.get_text(strip=True) for c in tr.find_all('td')]
+                    if len(tds) < 2:
+                        continue
+                    yr = _safe_int(tds[0])
+                    award = tds[1].strip()
+                    if not award:
+                        continue
+                    cur.execute("""
+                        INSERT INTO historical_awards (kbo_player_id, season, award)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (kbo_player_id, season, award) DO NOTHING
+                    """, (kbo_id, yr, award))
+                    got += 1
+                if got:
+                    players_with += 1
+                    rows_in += got
+                    conn.commit()
+            except Exception as e:
+                print(f"[awards] {kbo_id} 오류: {e}")
+                continue
+    finally:
+        driver.quit()
+    cur.close()
+    conn.close()
+    print(f"[awards] {players_with}명 수상 {rows_in}건 적재")
+    return rows_in
+
+
 # ── franchise 링크 + debut/final + primary team (순수 SQL, 재실행 안전, 배치 후 실행) ──
 def link_franchises():
     conn = get_connection()
@@ -492,6 +566,12 @@ if __name__ == '__main__':
     args = sys.argv[1:]
     if args and args[0] == 'link':
         link_franchises()
+        sys.exit(0)
+    if args and args[0] == 'awards':
+        if len(args) >= 3 and args[1] == 'id':
+            enrich_awards(only_id=int(args[2]))
+        else:
+            enrich_awards(limit=int(args[1]) if len(args) > 1 else None)
         sys.exit(0)
     if args and args[0] == 'bio':
         # bio [limit]  |  bio id <kbo_id>
