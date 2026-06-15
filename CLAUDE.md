@@ -365,10 +365,13 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 ## 역대 데이터 수집 프로젝트 (KBO 1982~) — ✅ 핵심 완료 (2026-06-15 착수 ~ 06-16 A/C1/B/꼬리/검증 완료, C2만 장기보류)
 
 ### ⚡ 트리거 (재개 프로토콜)
-- **트리거 문구**: 사용자가 **`역대수집 진행`** 입력 시 = 이 섹션 재개.
-- **동작**: ① 이 섹션 **진행 체크리스트** 읽기 → ② 첫 `[ ]`(미완료) 단계 실행 → ③ 완료 시 `[x]` + **진행로그**에 한 줄 기록 → ④ **연속 진행**: 다음 `[ ]` 계속 실행 → ⑤ `⏸️ 의사결정 게이트` 만나면 멈추고 사용자에 질문 / 막히면 정직히 보고. 게이트 없으면 단계 소진까지 자율 연속.
-- **각 단계 끝 = CLAUDE.md 이 섹션 갱신**(체크박스+진행로그) → 세션 끊겨도 다음 트리거가 이어받음.
-- 멈춤: "역대수집 중단" / 게이트 도달 / 미완료 0개.
+- ✅ **이 섹션(역대수집 핵심)은 완료** (A/C1/B/꼬리/검증). `역대수집 진행`은 이제 C2(장기 큐)만 남음 → 사실상 **아래 두 후속 트리거로 분기**:
+  - **`역대UI 진행`** → 역대 데이터 앱/API 노출 (실사용자 가치, 데이터 준비됨) — 별도 섹션 「역대 데이터 UI 노출」
+  - **`역대C2 진행`** → 퓨처스 경기단위·스플릿 세밀축 (장기·니치·무거움) — 별도 섹션 「역대 C2」
+- **공통 동작 프로토콜**(세 트리거 동일): ① 해당 섹션 **진행 체크리스트** 읽기 → ② 첫 `[ ]` 실행 → ③ `[x]`+**진행로그** 한 줄 → ④ **연속**: 다음 `[ ]` → ⑤ `⏸️ 게이트` 만나면 멈추고 질문 / 막히면 정직 보고. 게이트 없으면 소진까지 자율.
+- **각 단계 끝 = CLAUDE.md 해당 섹션 갱신**(체크박스+진행로그) → 세션 끊겨도 이어받음.
+- 멈춤: "<트리거> 중단" / 게이트 / 미완료 0개.
+- `역대수집 진행`(구 트리거) = C2 장기 큐 가리킴 (아래 「역대 C2」 = `역대C2 진행`과 동일 취급).
 
 ### 목적
 - KBO 역대(1982~) 선수·팀 데이터로 **① 상세페이지 깊이(콘텐츠) ② 승리예측 정확도(모델)** 강화. 비시즌 DAU 방어·올드팬 자산.
@@ -441,6 +444,43 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - 2026-06-15d: 트랙A코어 통산스탯 크롤러 완료(배치 진행중). **스파이크4 실측 종결**: naver stat api = **2007~만**(2006=0, 2007✅) → 역대는 KBO 단일 spine 확정. **스키마 적용**: historical_players+historical_season_stats 프로덕션 생성. **크롤러**: `historical_crawler.py` — KBO `{Hitter,Pitcher}Basic/Basic1·Basic2.aspx`(⚠️ `Basic.aspx`(no"1")는 에러페이지 — `Basic1`/`Basic2`가 실 리스트, repo kbo_daily_crawler 패턴), ddlSeason 1982~9999, 선수명 앵커 `/Record/Retire/...playerId=` 추출=kbo_player_id. ⚠️**서버 IP는 detail+list("Basic1")만 도달, Main/search/History/PlayerPrize 등 aggregation은 에러**(WebFetch도 동일 — JS세션 필요. 단 우리 용도엔 Basic1으로 충분). ⚠️KBO 리스트=**규정충족자만**(2005 타43/투15, 비규정은 미노출 — 완전성은 후속 과제). **버그수정**: 1페이지 시즌서 `//a[.="2"]` 스트레이 클릭→18열 이종테이블 로드→ON CONFLICT 정상행 덮어씀(손민한 W18→0) → headers 열수 가드+(선수,팀)dedup+새행0종료. 검증=이병규2005(.337/9HR/.843)·손민한2005(18W/168.1IP)·백인천1982(.412)·박철순1982(24W/1.84). 1982~2025 배치 nohup 실행중(PID 185718). 다음=bio/수상/PS enrichment.
 - 2026-06-15c: 구단계보 단계 완료. `team_franchises`(current_team_id NULL=단절, team_name/code/start_year/end_year/is_continuous/note, UNIQUE(team_name,start_year)) 마이그레이션+22행 시드 → 프로덕션 적용·검증(17 mapped/5 defunct). 개명·인수=현구단 연속, 현대(삼미→청보→태평양→현대)·쌍방울=KBO 관례대로 단절. 다음=트랙A코어 크롤러(#3 재평가 지점, GO 확인 후).
 - 2026-06-15b: 스파이크2/3/4 일괄. **스파이크2 ✅**: KBO `Record/Player/HitterDetail/Basic.aspx?playerId=` 은퇴선수(양준혁) detail에 bio 풀세트(생년월일/신장체중/투타/포지션/경력출신교) 렌더 확인 → 트랙A 콘텐츠 생존, #4 해소. **스파이크3 ✅**: 수상=`History/Etc/PlayerPrize·GoldenGlove.aspx`+`Player/Awards/*`, 드래프트=`draft.koreabaseball.com`(별 subdomain) URL 확인(WebFetch는 KBO list/history 에러라 구조 검증은 selenium impl서). **스파이크4 [~]**: naver api `{season}` free-form 확인하나 실측 깊이는 이 환경서 미측정(WebFetch api-gw 차단) → impl서 curl 1줄. 다음=⏸️ 설계 게이트(스키마#1·동명이인키#2·우선순위#3 사용자 결정).
+
+### 📦 현재 데이터 스냅샷 (2026-06-16 — UI/C2 세션 참조용)
+적재 완료 (프로덕션 DB, 크롤러=`backend/crawler/historical_crawler.py` 서브커맨드 `<시즌범위>`/`bio`/`awards`/`link`/`fip`/`ps`/`splits`):
+- `team_franchises` 22행 — 구단계보 (current_team_id NULL=해체구단 삼미/청보/태평양/현대/쌍방울)
+- `historical_players` ~1100명 — **kbo_player_id 정규키** + bio/throws/bats/position/career/draft_info/debut_year/final_year/primary_team_id + naver_player_id·player_id 브릿지 (838 규정 + ~262 스플릿추가분 bio 보강중)
+- `historical_season_stats` ~2880 정규행 + PS 부분 — series_type(정규/와일드카드/준PO/PO/한국시리즈), UNIQUE(kbo_player_id,season,team_name,series_type), FIP 1003행
+- `historical_awards` 541건/208명 — MVP/골글/타이틀 (연도|수상)
+- `historical_splits` 6750행 — 2023~2025 타자 기본축(홈원정/상대팀/월별), avg/slg
+- 앱 노출 정책(설계 확정): **active(players) ∪ historical_players 병합조회, kbo_player_id 정규키, 이름조인 폐기**
+- ⚠️ 잔여: PS 2006~ 결손(low-pri, `ps 2006 2025` 재개) / 스플릿 분할값당 ~80%커버 / 투수스플릿·OPS·세밀축 미수집 / WAR·wOBA·wRC+ infeasible
+
+## 역대 데이터 UI 노출 (앱/API) — 트리거 대기 (미착수)
+### ⚡ 트리거: 사용자가 **`역대UI 진행`** 입력 시 = 이 섹션 재개.
+- **동작**: 역대수집과 동일 프로토콜 — 첫 `[ ]` 실행 → `[x]`+진행로그 → 연속, ⏸️게이트서 멈춤/질문. 각 단계 끝 CLAUDE.md 갱신.
+- **목적**: 적재된 역대 데이터(위 스냅샷)를 앱/웹서 노출 = 올드팬 자산·비시즌 DAU. **데이터 준비됨 → 크롤 불요, 순수 백엔드+프론트라 PS/크롤 충돌 없음**(역대수집/C2와 독립 진행 가능).
+### 진행 체크리스트
+- [ ] 브레인스톰/스파이크: 노출 범위·진입점 (선수검색에 역대선수 포함? 별도 '역대' 탭? 선수상세 통산/수상/스플릿 섹션?) — 기존 `player_screen`/`player_detail_screen`/`api/routers/players.py` 구조 파악
+- [ ] ⏸️ 설계 게이트: active∪historical 병합 방식(API union vs 별도 엔드포인트)·동명이인 표시·검색키 (사용자 확인)
+- [ ] API: 역대선수 검색+상세 (career=historical_season_stats 집계·수상=historical_awards·스플릿=historical_splits·franchise 계보) — players.py 확장 or 신규 라우터, @cached
+- [ ] 앱: 검색/목록에 역대선수 + 선수상세 역대 섹션(통산/시즌별/수상/스플릿/franchise) — ⚠️웹이미지 3규칙·netImage 준수
+- [ ] 웹 동반 빌드+배포 (앱 수정=웹 필수, 사용자 지시) + 검증(이승엽/선동열 상세 스팟체크)·CI
+### 진행로그
+- (미착수 — `역대UI 진행`으로 시작)
+
+## 역대 C2 (퓨처스 경기단위 · 스플릿 세밀축) — 장기 큐, 트리거 대기 (미착수)
+### ⚡ 트리거: 사용자가 **`역대C2 진행`** 입력 시 = 이 섹션 재개.
+- **동작**: 동일 프로토콜.
+- **목적/스코프**: ① 퓨처스(2군) 경기단위·일정·박스 = 사실상 2군 리그 풀 파이프라인 ② 스플릿 세밀축(7축 전체×역대시즌·투수스플릿·OPS/OBP)
+- ⚠️ **무거움·니치·일부 비현실**: KBO 크롤 sleep-bound(~9s/page-sweep) → 역대 전체 스플릿/2군 경기단위 = **수일~**. 착수 전 스코프 강하게 바운드 필수. 니치(2군 게임데이터=좁은 수요). **UI 노출보다 후순위 권장.**
+### 진행 체크리스트
+- [ ] 스파이크: 퓨처스 경기일정/박스 소스(`futures/schedule/FuturesList.aspx`, futures relay 유무) + 비용 산정
+- [ ] ⏸️ 게이트: 스코프 결정(2군 시즌스탯 역대화? 경기단위? 스플릿 어느 축/시즌?) — 비현실 구간 배제
+- [ ] (스코프 확정분) 크롤러+스키마+적재
+- [ ] 스플릿 세밀축(투수/추가축/OPS, 바운드 내)
+- [ ] 검증
+### 진행로그
+- (미착수 — `역대C2 진행`으로 시작)
 
 ## 해야할 것
 ### AI 경기 한줄평 알림 (2026-06-14 요청) — ✅ 구현완료 (06-15 메가E, 아래는 원 요청 기록)
