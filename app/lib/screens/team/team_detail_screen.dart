@@ -589,8 +589,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         padding: const EdgeInsets.only(top: 6, bottom: 8, left: 2),
         child: Text(s, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)));
 
-    // 강세/약세 하이라이트 셀 — 로고 + 팀명 + 승/패/무 + 승률(w/(w+l))
-    Widget hiliteCell(Map h, String emoji, String tag) {
+    // 강세/약세 하이라이트 셀 — 로고 + 팀명 + 승/패/무 + 승률(w/(w+l)), 가운데 정렬
+    Widget hiliteCell(Map h, String tag) {
       final w = (h['wins'] as num?)?.toInt() ?? 0;
       final l = (h['losses'] as num?)?.toInt() ?? 0;
       final d = (h['draws'] as num?)?.toInt() ?? 0;
@@ -598,21 +598,19 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       final frac = (g > 0 ? w / g : 0.0).clamp(0.0, 1.0);
       final pctStr = '.${(frac * 1000).round().toString().padLeft(3, '0')}';
       final rec = d > 0 ? '$w승 $l패 $d무' : '$w승 $l패';
-      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Text(emoji, style: const TextStyle(fontSize: 13)),
-          const SizedBox(width: 4),
-          Text(tag, style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: cs.sub)),
-        ]),
+      return Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        Text(tag, style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: cs.sub)),
         const SizedBox(height: 7),
-        Row(children: [
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           TeamLogo(teamCode: h['opp_code'] as String? ?? '', size: 20),
           const SizedBox(width: 6),
           Flexible(child: Text(h['opp_name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink))),
         ]),
         const SizedBox(height: 5),
-        Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic, children: [
           Text(rec, style: TextStyle(fontSize: 12, color: cs.ink2)),
           const SizedBox(width: 8),
           Text(pctStr, style: TextStyle(fontSize: 13, fontWeight: Typo.extra,
@@ -675,8 +673,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       if (patsy != null || rival != null)
         Builder(builder: (_) {
           final cells = <Widget>[
-            if (patsy != null) hiliteCell(patsy, '📈', '강세'),
-            if (rival != null) hiliteCell(rival, '📉', '약세'),
+            if (patsy != null) hiliteCell(patsy, '강세'),
+            if (rival != null) hiliteCell(rival, '약세'),
           ];
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
