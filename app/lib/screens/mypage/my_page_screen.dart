@@ -417,7 +417,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       Center(child: TextButton(
                         onPressed: _deleteAccount,
                         child: Text('회원탈퇴',
-                            style: TextStyle(color: SemColor.live.withValues(alpha: 0.7), fontSize: 12)),
+                            style: TextStyle(color: SemColor.live.withValues(alpha: 0.7), fontSize: Typo.small)),
                       )),
                       const SizedBox(height: 24),
                     ]),
@@ -437,12 +437,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Widget _sectionLabel(_C cs, String label, {String? action, VoidCallback? onAction}) => Padding(
     padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
     child: Row(children: [
-      Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
+      Text(label, style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.8)),
       if (action != null) ...[
         const Spacer(),
         GestureDetector(
           onTap: onAction,
-          child: Text(action, style: TextStyle(fontSize: 11, color: cs.ink3)),
+          child: Text(action, style: TextStyle(fontSize: Typo.caption, color: cs.ink3)),
         ),
       ],
     ]),
@@ -493,13 +493,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
               onTap: _editNickname,
               child: Row(children: [
                 Flexible(child: Text(_user?['nickname'] ?? '-', maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5))),
+                    style: TextStyle(fontSize: Typo.lg, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.5))),
                 const SizedBox(width: 7),
                 Icon(Icons.edit_outlined, size: 14, color: cs.sub),
               ]),
             ),
             const SizedBox(height: 5),
-            Text(_user?['email'] ?? '', style: TextStyle(fontSize: 12, color: cs.ink3)),
+            Text(_user?['email'] ?? '', style: TextStyle(fontSize: Typo.small, color: cs.ink3)),
             const SizedBox(height: 7),
             if (verified)
               Container(
@@ -508,7 +508,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 child: const Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.check, size: 10, color: Color(0xFF22C55E)),
                   SizedBox(width: 4),
-                  Text('이메일 인증 완료', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF22C55E))),
+                  Text('이메일 인증 완료', style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w700, color: Color(0xFF22C55E))),
                 ]),
               )
             else
@@ -523,7 +523,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.error_outline, size: 10, color: SemColor.warning),
                     const SizedBox(width: 4),
-                    Text('이메일 인증하기', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: SemColor.warning)),
+                    Text('이메일 인증하기', style: TextStyle(fontSize: Typo.mini, fontWeight: FontWeight.w700, color: SemColor.warning)),
                   ]),
                 ),
               ),
@@ -560,23 +560,23 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   Positioned(top: -4, right: -4, child: Container(
                     width: 18, height: 18,
                     decoration: BoxDecoration(color: tColor, shape: BoxShape.circle, border: Border.all(color: cs.paper, width: 1.5)),
-                    child: const Center(child: Text('★', style: TextStyle(fontSize: 9, color: Colors.white, height: 1))),
+                    child: const Center(child: Text('★', style: TextStyle(fontSize: Typo.micro, color: Colors.white, height: 1))),
                   )),
                 ]),
                 const SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     Flexible(child: Text(t['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 16, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4))),
+                        style: TextStyle(fontSize: Typo.title, fontWeight: Typo.extra, color: cs.ink, letterSpacing: -0.4))),
                     const SizedBox(width: 7),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(color: tColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(5)),
-                      child: Text('$rank위', style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: tColor)),
+                      child: Text('$rank위', style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: tColor)),
                     ),
                   ]),
                   const SizedBox(height: 5),
-                  Text('$wins승 $losses패 · 승률 $winRate%', style: TextStyle(fontSize: 12, color: cs.ink3)),
+                  Text('$wins승 $losses패 · 승률 $winRate%', style: TextStyle(fontSize: Typo.small, color: cs.ink3)),
                 ])),
                 Icon(Icons.chevron_right, size: 18, color: cs.sub),
               ]),
@@ -597,7 +597,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           decoration: _cardDeco(cs),
           child: _favoritePlayers.isEmpty
               ? Padding(padding: const EdgeInsets.all(20),
-                  child: Center(child: Text('즐겨찾기한 선수가 없습니다', style: TextStyle(fontSize: 12, color: cs.sub))))
+                  child: Center(child: Text('즐겨찾기한 선수가 없습니다', style: TextStyle(fontSize: Typo.small, color: cs.sub))))
               : SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.all(14),
@@ -629,10 +629,10 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           ),
                           const SizedBox(height: 6),
                           Text(p['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: cs.ink)),
+                              style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold, color: cs.ink)),
                           const SizedBox(height: 3),
                           Text(p['position'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 9, color: cs.sub)),
+                              style: TextStyle(fontSize: Typo.micro, color: cs.sub)),
                         ])),
                       ),
                     );
@@ -669,7 +669,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ])),
             if (shown.isEmpty)
               Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                  child: Text('캘린더에서 직관 기록을 추가해보세요', style: TextStyle(fontSize: 11, color: cs.sub)))
+                  child: Text('캘린더에서 직관 기록을 추가해보세요', style: TextStyle(fontSize: Typo.caption, color: cs.sub)))
             else ...[
               Divider(height: 1, color: cs.line),
               ...shown.asMap().entries.map((e) => _visitTile(cs, e.value as Map, e.key == shown.length - 1)),
@@ -683,9 +683,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Widget _visitStat(_C cs, String value, String label, Color color) => Expanded(child: Padding(
     padding: const EdgeInsets.symmetric(vertical: 14),
     child: Column(children: [
-      Text(value, style: TextStyle(fontSize: 18, fontWeight: Typo.extra, color: color)),
+      Text(value, style: TextStyle(fontSize: Typo.lg, fontWeight: Typo.extra, color: color)),
       const SizedBox(height: 5),
-      Text(label, style: TextStyle(fontSize: 10, color: cs.sub)),
+      Text(label, style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
     ]),
   ));
 
@@ -707,16 +707,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
         Container(
           width: 28, height: 28,
           decoration: BoxDecoration(color: c.withValues(alpha: 0.12), shape: BoxShape.circle),
-          child: Center(child: Text(lb, style: TextStyle(fontSize: 12, fontWeight: Typo.extra, color: c))),
+          child: Center(child: Text(lb, style: TextStyle(fontSize: Typo.small, fontWeight: Typo.extra, color: c))),
         ),
         const SizedBox(width: 10),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('$away $as_ : $hs $home',
-              style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink, height: 1.4)),
+              style: TextStyle(fontSize: Typo.small, fontWeight: Typo.bold, color: cs.ink, height: 1.4)),
           if (memo != null && memo.isNotEmpty)
-            Text(memo, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10, color: cs.sub)),
+            Text(memo, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
         ])),
-        Text(date, style: TextStyle(fontSize: 10, color: cs.sub)),
+        Text(date, style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
       ]),
     );
   }
@@ -760,7 +760,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           if (count != null && count > 0)
             Padding(
               padding: const EdgeInsets.only(right: 6),
-              child: Text('$count', style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink3)),
+              child: Text('$count', style: TextStyle(fontSize: Typo.small, fontWeight: Typo.bold, color: cs.ink3)),
             ),
           Icon(Icons.chevron_right, size: 17, color: cs.sub),
         ]),
@@ -789,15 +789,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
             child: Row(children: [
-              Text(title, style: TextStyle(fontSize: 15, fontWeight: Typo.extra, color: cs.ink)),
+              Text(title, style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra, color: cs.ink)),
               const SizedBox(width: 6),
-              Text('${items.length}', style: TextStyle(fontSize: 13, color: cs.sub)),
+              Text('${items.length}', style: TextStyle(fontSize: Typo.body, color: cs.sub)),
             ]),
           ),
           Divider(height: 1, color: cs.line),
           Expanded(
             child: items.isEmpty
-                ? Center(child: Text('아직 없습니다', style: TextStyle(fontSize: 13, color: cs.sub)))
+                ? Center(child: Text('아직 없습니다', style: TextStyle(fontSize: Typo.body, color: cs.sub)))
                 : ListView.builder(
                     controller: scrollCtrl,
                     itemCount: items.length,
@@ -836,13 +836,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
         decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(c['content'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 12, color: cs.ink, height: 1.45)),
+              style: TextStyle(fontSize: Typo.small, color: cs.ink, height: 1.45)),
           const SizedBox(height: 6),
           Row(children: [
             Expanded(child: Text(c['post_title'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 10, color: cs.sub))),
+                style: TextStyle(fontSize: Typo.mini, color: cs.sub))),
             const SizedBox(width: 8),
-            Text(_shortDate(c['created_at']), style: TextStyle(fontSize: 10, color: cs.sub)),
+            Text(_shortDate(c['created_at']), style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
           ]),
         ]),
       ),
@@ -895,7 +895,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               const SizedBox(width: 6),
             ],
             Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, fontWeight: Typo.bold, color: cs.ink, height: 1.45))),
+                style: TextStyle(fontSize: Typo.small, fontWeight: Typo.bold, color: cs.ink, height: 1.45))),
           ]),
           const SizedBox(height: 6),
           Row(children: [
@@ -903,11 +903,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
               _SmallChip(label: chip, color: cs.ink3, bg: cs.paper2, border: cs.line),
               const SizedBox(width: 8),
             ],
-            Text('♡ $likes', style: TextStyle(fontSize: 10, color: cs.sub)),
+            Text('♡ $likes', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
             const SizedBox(width: 8),
-            Text('💬 $comments', style: TextStyle(fontSize: 10, color: cs.sub)),
+            Text('💬 $comments', style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
             const Spacer(),
-            Text(date, style: TextStyle(fontSize: 10, color: cs.sub)),
+            Text(date, style: TextStyle(fontSize: Typo.mini, color: cs.sub)),
           ]),
         ]),
       ),
@@ -990,15 +990,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     border: (!isLast || expanded) ? Border(bottom: BorderSide(color: cs.line)) : null,
                   ),
                   child: Row(children: [
-                    Text(cat['icon'] as String, style: const TextStyle(fontSize: 16)),
+                    Text(cat['icon'] as String, style: const TextStyle(fontSize: Typo.title)),
                     const SizedBox(width: 10),
-                    Text(cat['label'] as String, style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink)),
+                    Text(cat['label'] as String, style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink)),
                     const Spacer(),
                     // 접힌 상태에서도 켜짐 현황 보이게 (중구난방 정리 06-12)
                     Builder(builder: (_) {
                       final onCnt = items.where((it) => it['value'] == true).length;
                       return Text('$onCnt/${items.length}',
-                          style: TextStyle(fontSize: 11, fontWeight: Typo.bold,
+                          style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.bold,
                               color: onCnt == 0 ? cs.sub : myColor));
                     }),
                     const SizedBox(width: 6),
@@ -1024,9 +1024,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       ),
                       child: Row(children: [
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(item['label'] as String, style: TextStyle(fontSize: 13, fontWeight: Typo.medium, color: cs.ink)),
+                          Text(item['label'] as String, style: TextStyle(fontSize: Typo.body, fontWeight: Typo.medium, color: cs.ink)),
                           const SizedBox(height: 3),
-                          Text(item['desc'] as String, style: TextStyle(fontSize: 10, color: cs.sub, height: 1.4)),
+                          Text(item['desc'] as String, style: TextStyle(fontSize: Typo.mini, color: cs.sub, height: 1.4)),
                         ])),
                         const SizedBox(width: 12),
                         _AppToggle(
@@ -1061,7 +1061,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             borderRadius: BorderRadius.circular(7),
             border: Border.all(color: sel ? myColor : cs.line),
           ),
-          child: Text(label, style: TextStyle(fontSize: 11, fontWeight: sel ? Typo.bold : Typo.medium,
+          child: Text(label, style: TextStyle(fontSize: Typo.caption, fontWeight: sel ? Typo.bold : Typo.medium,
               color: sel ? Colors.white : cs.sub)),
         ),
       );
@@ -1070,7 +1070,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
       padding: const EdgeInsets.only(left: 44, right: 16, top: 4, bottom: 12),
       decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: cs.line))),
       child: Row(children: [
-        Text('알림 시간', style: TextStyle(fontSize: 12, color: cs.ink3)),
+        Text('알림 시간', style: TextStyle(fontSize: Typo.small, color: cs.ink3)),
         const Spacer(),
         chip(30, '30분'), const SizedBox(width: 6),
         chip(60, '1시간'), const SizedBox(width: 6),
@@ -1096,7 +1096,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               child: Icon(tp.isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined, size: 17, color: cs.ink3),
             ),
             const SizedBox(width: 10),
-            Expanded(child: Text('다크 모드', style: TextStyle(fontSize: 13, fontWeight: Typo.bold, color: cs.ink))),
+            Expanded(child: Text('다크 모드', style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink))),
             _AppToggle(on: tp.isDark, color: myColor, track: cs.track, onChanged: (_) => tp.toggle()),
           ]),
         ),
@@ -1118,7 +1118,7 @@ class _SmallChip extends StatelessWidget {
       color: bg, borderRadius: BorderRadius.circular(Radii.xs),
       border: border != null ? Border.all(color: border!) : null,
     ),
-    child: Text(label, style: TextStyle(fontSize: 10, fontWeight: Typo.medium, color: color)),
+    child: Text(label, style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.medium, color: color)),
   );
 }
 

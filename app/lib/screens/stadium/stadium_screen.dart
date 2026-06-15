@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/team_theme.dart';
+import '../../utils/design_tokens.dart';
 import '../../api/api_service.dart';
 
 class StadiumScreen extends StatefulWidget {
@@ -249,7 +250,7 @@ function resetView() {
                       children: [
                         CircularProgressIndicator(strokeWidth: 2),
                         SizedBox(height: 12),
-                        Text('지도 불러오는 중...', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        Text('지도 불러오는 중...', style: TextStyle(fontSize: Typo.small, color: Colors.grey)),
                       ],
                     ),
                   ),
@@ -378,7 +379,7 @@ function resetView() {
                   Text(
                     s['name'] as String,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: Typo.subtitle,
                       fontWeight: FontWeight.bold,
                       color: isSelected ? color : null,
                     ),
@@ -386,13 +387,13 @@ function resetView() {
                   const SizedBox(height: 2),
                   Text(
                     '${s['city']} · ${s['teamNames']}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(fontSize: Typo.small, color: Colors.grey[600]),
                   ),
                   if (isSelected) ...[
                     const SizedBox(height: 2),
                     Text(
                       s['address'] as String,
-                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: Typo.caption, color: Colors.grey[500]),
                     ),
                   ],
                 ],
@@ -575,7 +576,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                       child: Text(
                         '${widget.stadiumName} 맛집',
                         style: const TextStyle(
-                          color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                          color: Colors.white, fontSize: Typo.subtitle, fontWeight: FontWeight.bold),
                       ),
                     ),
                     IconButton(
@@ -592,7 +593,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                   indicatorColor: Colors.white,
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white60,
-                  labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  labelStyle: const TextStyle(fontSize: Typo.body, fontWeight: FontWeight.bold),
                   tabs: const [Tab(text: '카카오 추천'), Tab(text: '팬 추천')],
                 ),
               ],
@@ -634,10 +635,10 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
             child: Icon(Icons.restaurant, color: color, size: 18),
           ),
           title: Text(p['name'] as String,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              style: const TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.bold)),
           subtitle: Text(
             '${p['category']} · $distStr${(p['phone'] as String).isNotEmpty ? '\n${p['phone']}' : ''}',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            style: TextStyle(fontSize: Typo.small, color: Colors.grey[600]),
           ),
           isThreeLine: (p['phone'] as String).isNotEmpty,
           trailing: const Icon(Icons.open_in_new, size: 16, color: Colors.grey),
@@ -660,7 +661,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                     const SizedBox(height: 12),
                     Text('아직 팬 추천 맛집이 없습니다\n첫 번째로 추천해보세요!',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                        style: TextStyle(color: Colors.grey[500], fontSize: Typo.body)),
                   ],
                 ),
               )
@@ -693,7 +694,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                       children: [
                         Expanded(
                           child: Text(p['name'] as String,
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                              style: const TextStyle(fontSize: Typo.subtitle, fontWeight: FontWeight.bold)),
                         ),
                         if (isApproved)
                           Container(
@@ -702,7 +703,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                               color: color.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: Text('인증', style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
+                            child: Text('인증', style: TextStyle(fontSize: Typo.caption, color: color, fontWeight: FontWeight.bold)),
                           ),
                       ],
                     ),
@@ -710,10 +711,10 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('${p['category']} · ${p['submitted_by']} 추천',
-                            style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                            style: TextStyle(fontSize: Typo.caption, color: Colors.grey[600])),
                         if ((p['memo'] as String).isNotEmpty)
                           Text('"${p['memo']}"',
-                              style: TextStyle(fontSize: 11, color: Colors.grey[500],
+                              style: TextStyle(fontSize: Typo.caption, color: Colors.grey[500],
                                   fontStyle: FontStyle.italic)),
                       ],
                     ),
@@ -724,7 +725,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
                         children: [
                           Icon(voted ? Icons.thumb_up : Icons.thumb_up_outlined,
                               size: 18, color: voted ? color : Colors.grey),
-                          Text('$votes', style: TextStyle(fontSize: 11, color: voted ? color : Colors.grey)),
+                          Text('$votes', style: TextStyle(fontSize: Typo.caption, color: voted ? color : Colors.grey)),
                         ],
                       ),
                     ),
@@ -740,7 +741,7 @@ class _NearbyFoodSheetState extends State<_NearbyFoodSheet>
             backgroundColor: color,
             foregroundColor: Colors.white,
             icon: const Icon(Icons.add, size: 18),
-            label: const Text('맛집 제안', style: TextStyle(fontSize: 13)),
+            label: const Text('맛집 제안', style: TextStyle(fontSize: Typo.body)),
           ),
         ),
       ],
@@ -833,7 +834,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
           children: [
             Row(
               children: [
-                const Text('맛집 제안', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text('맛집 제안', style: TextStyle(fontSize: Typo.title, fontWeight: FontWeight.bold)),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.close, size: 20),
@@ -846,7 +847,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
             ),
             const SizedBox(height: 4),
             Text('구장 2km 이내 음식점만 등록 가능합니다',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                style: TextStyle(fontSize: Typo.small, color: Colors.grey[500])),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -890,9 +891,9 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(_selected!['name'] as String,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: Typo.subtitle)),
                     Text('${_selected!['category']} · ${_selected!['address']}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                        style: TextStyle(fontSize: Typo.small, color: Colors.grey[600])),
                   ],
                 ),
               ),
@@ -937,9 +938,9 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
                     return ListTile(
                       dense: true,
                       title: Text(r['name'] as String,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                          style: const TextStyle(fontSize: Typo.body, fontWeight: FontWeight.bold)),
                       subtitle: Text('${r['category']} · $distStr',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                          style: TextStyle(fontSize: Typo.caption, color: Colors.grey[600])),
                       trailing: const Icon(Icons.add_circle_outline, size: 20),
                       onTap: () => setState(() { _selected = r; _results = []; }),
                     );
@@ -952,7 +953,7 @@ class _SubmitFoodSheetState extends State<_SubmitFoodSheet> {
                 child: Center(
                   child: Text('검색 결과가 없습니다. 구장 2km 이내 음식점만 검색됩니다.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                      style: TextStyle(fontSize: Typo.small, color: Colors.grey[500])),
                 ),
               ),
             ],
