@@ -1355,12 +1355,12 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         child: Text(s, style: TextStyle(fontSize: 13, fontWeight: Typo.extra, color: cs.ink)));
 
     Widget leaderCard(String label, List rows, String Function(num) fmt) => Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 9),
       decoration: BoxDecoration(color: cs.paper, border: Border.all(color: cs.line), borderRadius: BorderRadius.circular(Radii.lg)),
-      padding: const EdgeInsets.fromLTRB(14, 11, 14, 6),
+      padding: const EdgeInsets.fromLTRB(11, 9, 11, 5),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: TextStyle(fontSize: 11, fontWeight: Typo.bold, color: cs.sub, letterSpacing: 0.5)),
-        const SizedBox(height: 9),
+        const SizedBox(height: 8),
         ...rows.asMap().entries.map((e) {
           final i = e.key;
           final r = e.value as Map;
@@ -1370,25 +1370,26 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           final num val = (r['value'] as num?) ?? 0;
           final isTop = i == 0;
           return Padding(
-            padding: EdgeInsets.only(bottom: i == rows.length - 1 ? 5 : 10),
+            padding: EdgeInsets.only(bottom: i == rows.length - 1 ? 4 : 9),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: id != null
                   ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: id)))
                   : null,
               child: Row(children: [
-                Container(width: 18, height: 18,
+                Container(width: 16, height: 16,
                   decoration: BoxDecoration(color: isTop ? tcOn : cs.track, shape: BoxShape.circle),
                   alignment: Alignment.center,
-                  child: Text('${i + 1}', style: TextStyle(fontSize: 10, fontWeight: Typo.extra,
+                  child: Text('${i + 1}', style: TextStyle(fontSize: 9, fontWeight: Typo.extra,
                       color: isTop ? cs.bg : cs.ink3))),
-                const SizedBox(width: 9),
-                netCircleAvatar(radius: 13, backgroundColor: tc.withValues(alpha: 0.15), url: img,
-                  child: Icon(Icons.person, size: 14, color: tcOn)),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
+                netCircleAvatar(radius: 11, backgroundColor: tc.withValues(alpha: 0.15), url: img,
+                  child: Icon(Icons.person, size: 12, color: tcOn)),
+                const SizedBox(width: 6),
                 Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 14, fontWeight: isTop ? Typo.bold : Typo.medium, color: cs.ink))),
-                Text(fmt(val), style: TextStyle(fontSize: 15, fontWeight: Typo.extra,
+                    style: TextStyle(fontSize: 13, fontWeight: isTop ? Typo.bold : Typo.medium, color: cs.ink))),
+                const SizedBox(width: 4),
+                Text(fmt(val), style: TextStyle(fontSize: 14, fontWeight: Typo.extra,
                     color: isTop ? tcOn : cs.ink2, fontFeatures: const [FontFeature.tabularFigures()])),
               ]),
             ),
@@ -1415,9 +1416,20 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       ['saves', '세이브', fmtInt], ['holds', '홀드', fmtInt],
     ]);
 
-    return ListView(padding: const EdgeInsets.all(18), children: [
-      if (hCards.isNotEmpty) ...[sectionLabel('타자'), ...hCards],
-      if (pCards.isNotEmpty) ...[const SizedBox(height: 6), sectionLabel('투수'), ...pCards],
+    final twoCol = hCards.isNotEmpty && pCards.isNotEmpty;
+    return ListView(padding: const EdgeInsets.all(14), children: [
+      if (twoCol)
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [sectionLabel('타자'), ...hCards])),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [sectionLabel('투수'), ...pCards])),
+        ])
+      else ...[
+        if (hCards.isNotEmpty) ...[sectionLabel('타자'), ...hCards],
+        if (pCards.isNotEmpty) ...[const SizedBox(height: 6), sectionLabel('투수'), ...pCards],
+      ],
       const SizedBox(height: 8),
     ]);
   }
