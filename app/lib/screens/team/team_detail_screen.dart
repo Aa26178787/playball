@@ -731,7 +731,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           child: Container(height: 12, color: cs.track,
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft, widthFactor: frac,
-              child: Container(color: frac >= 0.5 ? tc : const Color(0xFF9A9AA3)),
+              child: Container(color: frac >= 0.5 ? tc : cs.ink3),
             ),
           ),
         )),
@@ -1107,7 +1107,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final first = games.first;
     final firstIsHome = first['home_team'] == teamName;
     final oppCode = (firstIsHome ? first['away_code'] : first['home_code']) as String? ?? '';
-    Color rc(String r) => r == 'win' ? tc : r == 'draw' ? const Color(0xFFA1A1AA) : const Color(0xFF71717A);
+    Color rc(String r) => r == 'win' ? tc : cs.ink3; // 승=팀컬러, 무·패=중립회색(라벨로 구분)
     String md(String d) => d.length >= 10 ? '${d.substring(5, 7)}.${d.substring(8, 10)}' : d;
 
     return Container(
