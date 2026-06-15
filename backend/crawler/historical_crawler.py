@@ -21,6 +21,8 @@ _HIT_B2 = "https://www.koreabaseball.com/Record/Player/HitterBasic/Basic2.aspx"
 _PIT_B1 = "https://www.koreabaseball.com/Record/Player/PitcherBasic/Basic1.aspx"
 _PIT_B2 = "https://www.koreabaseball.com/Record/Player/PitcherBasic/Basic2.aspx"
 
+_RESTART_EVERY = 70  # 단일 드라이버 장수명 크래시 방지 (800+ 네비게이션서 chromium 사망 — Connection refused)
+
 
 def _get_driver():
     from selenium.webdriver.chrome.options import Options
@@ -361,11 +363,33 @@ def enrich_awards(limit=None, only_id=None):
     rows_in = 0
     players_with = 0
     try:
-        for kbo_id, ptype in targets:
+        for i, (kbo_id, ptype) in enumerate(targets):
+            if i and i % _RESTART_EVERY == 0:
+                try:
+                    driver.quit()
+                except Exception:
+                    pass
+                driver = _get_driver()
+            src = None
+            for attempt in (1, 2):
+                try:
+                    driver.get(_award_url(kbo_id, ptype))
+                    time.sleep(1.5)
+                    src = driver.page_source
+                    break
+                except Exception as e:
+                    if attempt == 2:
+                        print(f"[awards] {kbo_id} 오류: {e}")
+                    else:
+                        try:
+                            driver.quit()
+                        except Exception:
+                            pass
+                        driver = _get_driver()
+            if not src:
+                continue
             try:
-                driver.get(_award_url(kbo_id, ptype))
-                time.sleep(1.5)
-                soup = BeautifulSoup(driver.page_source, 'html.parser')
+                soup = BeautifulSoup(src, 'html.parser')
                 table = None
                 for t in soup.find_all('table'):
                     ths = [x.get_text(strip=True) for x in t.select('thead th')]
@@ -524,11 +548,33 @@ def enrich_bio(limit=None, only_id=None):
     driver = _get_driver()
     done = 0
     try:
-        for kbo_id, ptype in targets:
+        for i, (kbo_id, ptype) in enumerate(targets):
+            if i and i % _RESTART_EVERY == 0:  # 주기적 드라이버 재생성(크래시 방지)
+                try:
+                    driver.quit()
+                except Exception:
+                    pass
+                driver = _get_driver()
+            src = None
+            for attempt in (1, 2):  # 크래시 시 respawn 후 1회 재시도
+                try:
+                    driver.get(_detail_url(kbo_id, ptype))
+                    time.sleep(2)
+                    src = driver.page_source
+                    break
+                except Exception as e:
+                    if attempt == 2:
+                        print(f"[bio] {kbo_id} 오류: {e}")
+                    else:
+                        try:
+                            driver.quit()
+                        except Exception:
+                            pass
+                        driver = _get_driver()
+            if not src:
+                continue
             try:
-                driver.get(_detail_url(kbo_id, ptype))
-                time.sleep(2)
-                soup = BeautifulSoup(driver.page_source, 'html.parser')
+                soup = BeautifulSoup(src, 'html.parser')
                 info = soup.find('div', class_='player_info')
                 if not info:
                     continue
