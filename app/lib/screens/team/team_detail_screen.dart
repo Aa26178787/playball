@@ -1026,6 +1026,19 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     final shown = display.where((s) =>
         s.any((g) => g['status'] != '취소')).toList();
 
+    // 가장 최근 경기(최대 game_date, 종료) gid — 셀에 '최근' 표기용
+    int? recentGid;
+    String recentDate = '';
+    for (final s in shown) {
+      for (final g in s.cast<Map>()) {
+        final d = g['game_date'] as String? ?? '';
+        if ((g['status'] as String? ?? '') != '취소' && d.compareTo(recentDate) > 0) {
+          recentDate = d;
+          recentGid = g['id'] as int?;
+        }
+      }
+    }
+
     // 주차("N월 M주차") 구분선 — 진출선 스타일. 시리즈 첫 경기 날짜 기준, 바뀔 때만 삽입
     final children = <Widget>[];
     String? lastWeek;
@@ -1035,7 +1048,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         children.add(_weekDivider(cs, wk));
         lastWeek = wk;
       }
-      children.add(_seriesCard(cs, tc, teamName, s));
+      children.add(_seriesCard(cs, tc, teamName, s, recentGid));
     }
 
     return ListView(
@@ -1068,7 +1081,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         ]),
       );
 
-  Widget _seriesCard(_C cs, Color tc, String teamName, List s) {
+  Widget _seriesCard(_C cs, Color tc, String teamName, List s, int? recentGid) {
     final games = s.cast<Map>();
     final first = games.first;
     final firstIsHome = first['home_team'] == teamName;
@@ -1104,6 +1117,18 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    // '최근' 배지 슬롯(고정높이 — 셀 정렬 유지, 최근경기만 표시)
+                    SizedBox(
+                      height: 15,
+                      child: gid != null && gid == recentGid
+                          ? Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(color: tc, borderRadius: BorderRadius.circular(Radii.pill)),
+                              child: Text('최근',
+                                  style: TextStyle(fontSize: Typo.micro, color: Colors.white, fontWeight: Typo.bold)))
+                          : null,
+                    ),
+                    const SizedBox(height: 4),
                     Text(md(d), style: TextStyle(fontSize: Typo.small, color: cs.sub)),
                     const SizedBox(height: 6),
                     TeamLogo(teamCode: oppCode, size: 34),

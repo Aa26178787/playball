@@ -932,8 +932,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(children: [
-          for (final s in seasons) ...[chip('$s', s), const SizedBox(width: 7)],
           chip('통산', null),
+          for (final s in seasons) ...[const SizedBox(width: 7), chip('$s', s)],
         ]),
       ),
     );

@@ -2008,16 +2008,17 @@ class GameCard extends StatelessWidget {
           padding: const EdgeInsets.only(right: 2.5),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
-              width: 13, height: 13,
+              width: 14, height: 14,
               alignment: Alignment.center,
               decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(Radii.xs)),
               child: Text(r, textAlign: TextAlign.center,
+                  strutStyle: const StrutStyle(forceStrutHeight: true, height: 1.0, fontSize: Typo.micro),
                   style: TextStyle(fontSize: Typo.micro, fontWeight: Typo.extra, color: fg, height: 1.0)),
             ),
             const SizedBox(height: 2),
             // 가장 최근 경기 — 결과색(승=팀컬러/패무=무채색) 선
             Container(
-              width: 13, height: 2,
+              width: 14, height: 2,
               decoration: BoxDecoration(
                 color: isRecent ? fill : Colors.transparent,
                 borderRadius: BorderRadius.circular(1),
@@ -2265,9 +2266,8 @@ class GameCard extends StatelessWidget {
                 List<InlineSpan>? starterSpans;
                 if (!isFinished && !isCancelled &&
                     ((game.homeStarter?.isNotEmpty ?? false) || (game.awayStarter?.isNotEmpty ?? false))) {
-                  // 선발 = 앞 회색 라벨(풀카드 라벨과 동일 t.sub) + vs(좌=홈/우=원정, 로고위치 일치)
+                  // 선발투수 = 'X vs Y' 가운데정렬 (좌=홈/우=원정, 로고위치 일치). '선발' 라벨 제거
                   starterSpans = [
-                    TextSpan(text: '선발 ', style: TextStyle(color: t.sub)),
                     TextSpan(text: game.homeStarter ?? '-'),
                     TextSpan(text: ' vs ', style: TextStyle(color: t.sub)),
                     TextSpan(text: game.awayStarter ?? '-'),
