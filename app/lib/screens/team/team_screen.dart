@@ -9,6 +9,7 @@ import '../../widgets/common_widgets.dart';
 import '../../utils/team_theme.dart';
 import '../../utils/local_cache.dart';
 import '../player/player_detail_screen.dart';
+import '../player/historical_player_detail_screen.dart';
 import '../mypage/my_page_screen.dart';
 import '../stadium/stadium_screen.dart';
 import 'team_detail_screen.dart';
@@ -48,7 +49,7 @@ class _TeamScreenState extends State<TeamScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     ApiService.favoriteTeamsChanged.addListener(_loadFavoriteTeams);
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadTeams();
     _loadFavoriteTeams();
     _loadOdds();
@@ -185,10 +186,13 @@ class _TeamScreenState extends State<TeamScreen>
                 dividerColor: line,
                 labelStyle: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.extra),
                 unselectedLabelStyle: const TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.medium),
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
                 tabs: const [
                   Tab(text: '팀 순위'),
-                  Tab(text: '부문별 순위'),
                   Tab(text: '팀 기록'),
+                  Tab(text: '부문별 순위'),
+                  Tab(text: '역대 기록실'),
                 ],
               ),
             ]),
@@ -198,8 +202,9 @@ class _TeamScreenState extends State<TeamScreen>
               controller: _tabController,
               children: [
                 _buildTeamRankings(),
-                const PlayerRankingsTab(),
                 const TeamStatsTab(),
+                const PlayerRankingsTab(),
+                const PlayerRankingsTab(historical: true),
               ],
             ),
           ),
@@ -1309,7 +1314,9 @@ class _TeamStatsTabState extends State<TeamStatsTab>
 // ===== 부문별 선수 순위 탭 =====
 
 class PlayerRankingsTab extends StatefulWidget {
-  const PlayerRankingsTab({super.key});
+  /// historical=true → 역대 기록실(통산 리더, /historical/rankings). UI는 동일.
+  final bool historical;
+  const PlayerRankingsTab({super.key, this.historical = false});
 
   @override
   State<PlayerRankingsTab> createState() => _PlayerRankingsTabState();
@@ -1339,8 +1346,26 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     {'value': 'war',        'label': 'WAR'},
   ];
 
-  String _hitterSort = 'avg';
-  String _pitcherSort = 'era';
+  // 역대 기록실 카테고리 (통산 카운팅 — /historical/rankings 키와 일치)
+  static const List<Map<String, String>> _histHitterCategories = [
+    {'value': 'home_runs',    'label': '홈런'},
+    {'value': 'hits',         'label': '안타'},
+    {'value': 'rbis',         'label': '타점'},
+    {'value': 'stolen_bases', 'label': '도루'},
+  ];
+  static const List<Map<String, String>> _histPitcherCategories = [
+    {'value': 'wins',       'label': '승'},
+    {'value': 'strikeouts', 'label': '탈삼진'},
+    {'value': 'saves',      'label': '세이브'},
+  ];
+
+  List<Map<String, String>> get _hCats =>
+      widget.historical ? _histHitterCategories : _hitterCategories;
+  List<Map<String, String>> get _pCats =>
+      widget.historical ? _histPitcherCategories : _pitcherCategories;
+
+  late String _hitterSort = widget.historical ? 'home_runs' : 'avg';
+  late String _pitcherSort = widget.historical ? 'wins' : 'era';
 
   final Map<String, List> _hitterCache = {};
   final Map<String, List> _pitcherCache = {};
@@ -1363,16 +1388,17 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
 
   Future<void> _loadAll() async {
     if (mounted) setState(() => _error = false);
+    final cacheKey = widget.historical ? 'historical_rankings' : 'player_rankings';
     // Phase 1: 캐시에서 즉시 표시
-    final cached = await LocalCache.get('player_rankings') as Map?;
+    final cached = await LocalCache.get(cacheKey) as Map?;
     if (cached != null && mounted) {
       final h = (cached['hitters'] as Map?) ?? {};
       final p = (cached['pitchers'] as Map?) ?? {};
       setState(() {
-        for (final c in _hitterCategories) {
+        for (final c in _hCats) {
           _hitterCache[c['value']!] = (h[c['value']!] as List?) ?? [];
         }
-        for (final c in _pitcherCategories) {
+        for (final c in _pCats) {
           _pitcherCache[c['value']!] = (p[c['value']!] as List?) ?? [];
         }
         _loading = false;
@@ -1382,16 +1408,18 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     }
     // Phase 2: 백그라운드 갱신
     try {
-      final data = await ApiService.getPlayerRankings();
+      final data = widget.historical
+          ? await ApiService.getHistoricalRankings()
+          : await ApiService.getPlayerRankings();
       if (!mounted) return;
-      await LocalCache.set('player_rankings', data);
+      await LocalCache.set(cacheKey, data);
       final h = (data['hitters'] as Map?) ?? {};
       final p = (data['pitchers'] as Map?) ?? {};
       setState(() {
-        for (final c in _hitterCategories) {
+        for (final c in _hCats) {
           _hitterCache[c['value']!] = (h[c['value']!] as List?) ?? [];
         }
-        for (final c in _pitcherCategories) {
+        for (final c in _pCats) {
           _pitcherCache[c['value']!] = (p[c['value']!] as List?) ?? [];
         }
         _loading = false;
@@ -1409,6 +1437,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   }
 
   String _hitterStatValue(Map p) {
+    if (widget.historical) return '${p['value'] ?? '-'}';
     switch (_hitterSort) {
       case 'avg':          return (p['avg'] as num?)?.toStringAsFixed(3) ?? '-';
       case 'home_runs':    return '${p['home_runs'] ?? '-'}';
@@ -1422,6 +1451,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   }
 
   String _pitcherStatValue(Map p) {
+    if (widget.historical) return '${p['value'] ?? '-'}';
     switch (_pitcherSort) {
       case 'era':        return (p['era'] as num?)?.toStringAsFixed(2) ?? '-';
       case 'wins':       return '${p['wins'] ?? '-'}';
@@ -1505,11 +1535,13 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
       final txtColor = isDark ? medalColor : Color.lerp(medalColor, Colors.black, 0.42)!;
       final nameColor = Pal.ink(isDark);
       return GestureDetector(
-        onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => PlayerDetailScreen(
-              playerId: p['id'],
-              initialData: {'name': p['name'], 'team': p['team_name'], 'profile_image': p['profile_image'], 'position': p['position'], 'player_type': p['player_type']},
-            ))),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) =>
+            widget.historical
+                ? HistoricalPlayerDetailScreen(kboPlayerId: p['kbo_player_id'], initialName: p['name'])
+                : PlayerDetailScreen(
+                    playerId: p['id'],
+                    initialData: {'name': p['name'], 'team': p['team_name'], 'profile_image': p['profile_image'], 'position': p['position'], 'player_type': p['player_type']},
+                  ))),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
@@ -1605,7 +1637,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
             final p = e.value as Map;
             return _buildRankRow(
               rank: e.key + 4,
-              playerId: p['id'],
+              playerId: widget.historical ? p['kbo_player_id'] : p['id'],
               name: p['name'] ?? '',
               team: p['team'] ?? '',
               teamCode: p['team_code'] ?? '',
@@ -1620,11 +1652,11 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   }
 
   Widget _buildHitterRankings() {
-    final label = _hitterCategories.firstWhere((c) => c['value'] == _hitterSort)['label']!;
+    final label = _hCats.firstWhere((c) => c['value'] == _hitterSort)['label']!;
     final rankings = _hitterCache[_hitterSort] ?? [];
     return Column(
       children: [
-        _buildCategoryChips(_hitterCategories, _hitterSort,
+        _buildCategoryChips(_hCats, _hitterSort,
             (val) => setState(() => _hitterSort = val)),
         const SizedBox(height: Space.xs),
         Expanded(
@@ -1641,11 +1673,11 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
   }
 
   Widget _buildPitcherRankings() {
-    final label = _pitcherCategories.firstWhere((c) => c['value'] == _pitcherSort)['label']!;
+    final label = _pCats.firstWhere((c) => c['value'] == _pitcherSort)['label']!;
     final rankings = _pitcherCache[_pitcherSort] ?? [];
     return Column(
       children: [
-        _buildCategoryChips(_pitcherCategories, _pitcherSort,
+        _buildCategoryChips(_pCats, _pitcherSort,
             (val) => setState(() => _pitcherSort = val)),
         const SizedBox(height: Space.xs),
         Expanded(
@@ -1726,8 +1758,10 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(Radii.lg),
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => PlayerDetailScreen(playerId: playerId))),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) =>
+              widget.historical
+                  ? HistoricalPlayerDetailScreen(kboPlayerId: playerId, initialName: name)
+                  : PlayerDetailScreen(playerId: playerId))),
           child: Container(
             padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
             decoration: BoxDecoration(

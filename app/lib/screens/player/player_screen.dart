@@ -9,7 +9,6 @@ import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import 'player_detail_screen.dart';
 import 'historical_player_detail_screen.dart';
-import 'historical_leaders_screen.dart';
 import '../mypage/my_page_screen.dart';
 import '../../utils/web_image.dart';
 import '../../utils/web_safe_area.dart';
@@ -912,10 +911,6 @@ class _PlayerScreenState extends State<PlayerScreen>
                       isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                       isDark ? '라이트 모드' : '다크 모드',
                       () => themeProv.toggle()),
-                  const SizedBox(width: 7),
-                  _headerIconBtn(Icons.emoji_events_outlined, '역대 기록실',
-                      () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const HistoricalLeadersScreen()))),
                   const SizedBox(width: 7),
                   _headerIconBtn(Icons.person_outline, '마이페이지',
                       () => Navigator.push(context,

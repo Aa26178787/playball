@@ -553,6 +553,11 @@ class ApiService {
     return res.data;
   }
 
+  static Future<Map<String, dynamic>> getHistoricalRankings({int limit = 50}) async {
+    final res = await _dio.get('/historical/rankings', queryParameters: {'limit': limit});
+    return res.data;
+  }
+
   // ===== 팀 API =====
   static Future<Map<String, dynamic>> getTeams() async {
     final res = await _dedupGet('/teams/');
