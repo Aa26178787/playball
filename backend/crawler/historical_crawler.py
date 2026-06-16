@@ -84,9 +84,10 @@ def _parse_ip(s):
 _PLAYERID_RE = re.compile(r'playerId=(\d+)')
 
 
-def _iter_season_rows(driver, url, season, series='0'):
+def _iter_season_rows(driver, url, season, series='0', team=''):
     """KBO 시즌기록 리스트 전 페이지 순회. (headers, [(cells, kbo_player_id), ...]) 반환.
-    선수명 앵커 href의 playerId 추출. series='0'정규/4와일드카드/3준PO/5PO/7한국시리즈(ddlSeries)."""
+    선수명 앵커 href의 playerId 추출. series='0'정규/4와일드카드/3준PO/5PO/7한국시리즈(ddlSeries).
+    team=ddlTeam 코드(HT/SS/..) 주면 그 팀만 → **비규정 선수 포함**(미지정=규정충족자만)."""
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import Select
     driver.get(url)
@@ -101,6 +102,17 @@ def _iter_season_rows(driver, url, season, series='0'):
             if ssel.get_attribute('value') != str(series):
                 Select(ssel).select_by_value(str(series))
                 time.sleep(3)
+        except Exception:
+            return [], []
+    if team:  # 팀필터 = 비규정 포함 (season 선택 후. 옵션 없으면=그 시즌 그 팀 없음 → 빈 반환)
+        try:
+            tsel = driver.find_element(By.CSS_SELECTOR, "select[id*='ddlTeam']")
+            vals = [o.get_attribute('value') for o in Select(tsel).options]
+            if team not in vals:
+                return [], []  # 그 시즌에 없는 팀(신생/해체)
+            if tsel.get_attribute('value') != team:
+                Select(tsel).select_by_value(team)
+                time.sleep(2.5)
         except Exception:
             return [], []
 
@@ -175,14 +187,15 @@ def _upsert_player(cur, kbo_id, name, ptype):
     """, (kbo_id, name, ptype))
 
 
-def crawl_hitter_season(season, series='0', series_label='정규', driver=None):
-    """타자 시즌스탯 (Basic1 + Basic2) → historical_*. series=ddlSeries(정규/PS). driver 주면 재사용. 반환: 적재 행수."""
+def crawl_hitter_season(season, series='0', series_label='정규', driver=None, team=''):
+    """타자 시즌스탯 (Basic1 + Basic2) → historical_*. series=ddlSeries(정규/PS).
+    team=ddlTeam 코드 주면 비규정 포함. driver 주면 재사용. 반환: 적재 행수."""
     own = driver is None
     if own:
         driver = _get_driver()
     try:
-        h1, rows1 = _iter_season_rows(driver, _HIT_B1, season, series)
-        h2, rows2 = _iter_season_rows(driver, _HIT_B2, season, series)
+        h1, rows1 = _iter_season_rows(driver, _HIT_B1, season, series, team)
+        h2, rows2 = _iter_season_rows(driver, _HIT_B2, season, series, team)
     finally:
         if own:
             driver.quit()
@@ -256,14 +269,15 @@ def crawl_hitter_season(season, series='0', series_label='정규', driver=None):
     return saved
 
 
-def crawl_pitcher_season(season, series='0', series_label='정규', driver=None):
-    """투수 시즌스탯 (Basic1 + Basic2) → historical_*. series=ddlSeries(정규/PS). driver 주면 재사용. 반환: 적재 행수."""
+def crawl_pitcher_season(season, series='0', series_label='정규', driver=None, team=''):
+    """투수 시즌스탯 (Basic1 + Basic2) → historical_*. series=ddlSeries(정규/PS).
+    team=ddlTeam 코드 주면 비규정 포함. driver 주면 재사용. 반환: 적재 행수."""
     own = driver is None
     if own:
         driver = _get_driver()
     try:
-        h1, rows1 = _iter_season_rows(driver, _PIT_B1, season, series)
-        h2, rows2 = _iter_season_rows(driver, _PIT_B2, season, series)
+        h1, rows1 = _iter_season_rows(driver, _PIT_B1, season, series, team)
+        h2, rows2 = _iter_season_rows(driver, _PIT_B2, season, series, team)
     finally:
         if own:
             driver.quit()
@@ -344,6 +358,32 @@ def crawl_season(season, series='0', series_label='정규'):
     h = crawl_hitter_season(season, series, series_label)
     p = crawl_pitcher_season(season, series, series_label)
     return h, p
+
+
+# 현 10구단 ddlTeam 코드 (KBO 기록페이지). 해체구단(삼미/현대/쌍방울 등)은 드롭다운 부재 →
+# 그 시즌 미존재 팀은 _iter_season_rows가 빈 반환(스킵). 해체팀 비규정은 미수집(규정자는 기존 적재분에 有).
+_TEAM_CODES = ['HT', 'SS', 'LG', 'OB', 'KT', 'SK', 'LT', 'HH', 'NC', 'WO']
+
+
+def crawl_season_allteams(season, driver=None):
+    """비규정 포함 전체 크롤 — 시즌×10팀 ddlTeam 필터로 팀 전 로스터 적재(정규).
+    기존 규정자 ON CONFLICT 업데이트, 비규정 신규 INSERT(멱등). driver 재사용."""
+    own = driver is None
+    if own:
+        driver = _get_driver()
+    th = tp = 0
+    try:
+        for code in _TEAM_CODES:
+            try:
+                th += crawl_hitter_season(season, driver=driver, team=code)
+                tp += crawl_pitcher_season(season, driver=driver, team=code)
+            except Exception as e:
+                print(f"[allteams {season}/{code}] 오류 {e}")
+    finally:
+        if own:
+            driver.quit()
+    print(f"[allteams {season}] 타자 {th} + 투수 {tp}행 (비규정 포함)")
+    return th, tp
 
 
 # 포스트시즌 시리즈 (ddlSeries 코드)
@@ -868,6 +908,33 @@ if __name__ == '__main__':
                     driver = _get_driver()
                 print(f"=== PS season {s} ===")
                 crawl_ps_season(s, driver=driver)
+                time.sleep(1.5)
+        finally:
+            try:
+                driver.quit()
+            except Exception:
+                pass
+        sys.exit(0)
+    if args and args[0] == 'allteams':
+        # allteams <season> [end_season] — 비규정 포함 전체(시즌×10팀 ddlTeam)
+        if len(args) == 2:
+            at_seasons = [int(args[1])]
+        elif len(args) == 3:
+            at_seasons = list(range(int(args[1]), int(args[2]) + 1))
+        else:
+            print("usage: ... allteams <season> [end_season]")
+            sys.exit(1)
+        driver = _get_driver()
+        try:
+            for i, s in enumerate(at_seasons):
+                if i and i % 3 == 0:  # 드라이버 주기 재생성(장수명 크래시 방지)
+                    try:
+                        driver.quit()
+                    except Exception:
+                        pass
+                    driver = _get_driver()
+                print(f"=== allteams season {s} ===")
+                crawl_season_allteams(s, driver=driver)
                 time.sleep(1.5)
         finally:
             try:
