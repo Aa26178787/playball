@@ -863,8 +863,76 @@ def enrich_bio(limit=None, only_id=None):
     return done
 
 
+# ── Naver 세이버 백필 ── KBO 미제공 woba/war/wrc+ 채움 (Naver=2007~, requests, 매칭 UPDATE) ──
+# Naver는 카운팅/기본은 KBO와 겹치나 woba(2007~)·war/wrc+(최근~)는 고유 → 그것만 백필.
+_NAVER_API = "https://api-gw.sports.naver.com/statistics/categories/kbo/seasons"
+_NAVER_HDR = {"User-Agent": "Mozilla/5.0", "Referer": "https://sports.naver.com/"}
+
+
+def _naver_fetch(season, ptype):
+    import requests
+    sf = 'hitterHra' if ptype == 'HITTER' else 'pitcherEra'
+    url = f"{_NAVER_API}/{season}/players?sortField={sf}&sortDirection=desc&playerType={ptype}&pageSize=500"
+    res = requests.get(url, headers=_NAVER_HDR, timeout=15)
+    return (res.json().get("result") or {}).get("seasonPlayerStats") or []
+
+
+def backfill_naver_saber(season):
+    """Naver 세이버(woba/war/wrc+) → historical_season_stats. 매칭=(시즌+이름+팀prefix).
+    woba/war/wrc+ 각각 >0일 때만 덮음(0=Naver 미계산 → 기존 유지). KBO 미제공 공백 보충."""
+    conn = get_connection()
+    if not conn:
+        return 0
+    cur = conn.cursor()
+    upd = 0
+    for ptype, pre in [('HITTER', 'hitter'), ('PITCHER', 'pitcher')]:
+        try:
+            rows = _naver_fetch(season, ptype)
+        except Exception as e:
+            print(f"[naver {season}/{ptype}] fetch 오류 {e}")
+            continue
+        for p in rows:
+            name = p.get('playerName')
+            team = p.get('teamName')
+            if not name or not team:
+                continue
+            woba = float(p.get(f'{pre}Woba') or 0)
+            war = float(p.get(f'{pre}War') or 0)
+            wrc = int(p.get('hitterWrcPlus') or 0) if ptype == 'HITTER' else 0
+            cur.execute("""
+                UPDATE historical_season_stats hss SET
+                    woba = CASE WHEN %s > 0 THEN %s ELSE hss.woba END,
+                    war  = CASE WHEN %s <> 0 THEN %s ELSE hss.war END,
+                    wrc_plus = CASE WHEN %s <> 0 THEN %s ELSE hss.wrc_plus END
+                FROM historical_players hp
+                WHERE hp.kbo_player_id = hss.kbo_player_id
+                  AND hss.season = %s AND hp.name = %s
+                  AND hss.team_name LIKE %s
+            """, (woba, woba, war, war, wrc, wrc, season, name, team + '%'))
+            upd += cur.rowcount
+    conn.commit()
+    cur.close()
+    conn.close()
+    print(f"[naver {season}] 세이버 {upd}행 갱신")
+    return upd
+
+
 if __name__ == '__main__':
     args = sys.argv[1:]
+    if args and args[0] == 'naver':
+        # naver <season> [end] — Naver 세이버(woba/war/wrc+) 백필 (2007~)
+        if len(args) == 2:
+            nv = [int(args[1])]
+        elif len(args) == 3:
+            nv = list(range(int(args[1]), int(args[2]) + 1))
+        else:
+            print("usage: ... naver <season> [end]")
+            sys.exit(1)
+        for s in nv:
+            print(f"=== naver saber {s} ===")
+            backfill_naver_saber(s)
+            time.sleep(1)
+        sys.exit(0)
     if args and args[0] == 'link':
         link_franchises()
         sys.exit(0)
