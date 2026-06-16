@@ -72,17 +72,38 @@ _RANK_HIT = {"home_runs": "home_runs", "hits": "hits", "rbis": "rbis", "stolen_b
 _RANK_PIT = {"wins": "wins", "strikeouts": "strikeouts_pitched", "saves": "saves"}
 
 
+# historical 컬럼 → 현역 batter/pitcher_stats 컬럼명 차이(다른 것만 매핑, 나머지 동일)
+_CUR_COL = {"strikeouts_pitched": "strikeouts"}
+
+
 def _leader_query(cur, ptype, col, limit):
+    """통산 리더 = historical(정규, 1982~) + 현역 current시즌(batter/pitcher_stats 중
+    historical에 없는 시즌만 — 멱등 NOT EXISTS) 합산. 활성선수 current 누락(최정 2026 등) 보정.
+    col은 화이트리스트(_RANK_*/_LEADER_CATS)라 주입 안전."""
+    cur_table = "batter_stats" if ptype == "타자" else "pitcher_stats"
+    cur_col = _CUR_COL.get(col, col)
     cur.execute(f"""
+        WITH allstat AS (
+            SELECT hss.kbo_player_id AS kid, COALESCE(hss.{col}, 0) AS v
+            FROM historical_season_stats hss
+            WHERE hss.series_type = '정규' AND hss.player_type = %s
+            UNION ALL
+            SELECT hp.kbo_player_id AS kid, COALESCE(cs.{cur_col}, 0) AS v
+            FROM {cur_table} cs
+            JOIN historical_players hp ON hp.player_id = cs.player_id
+            WHERE NOT EXISTS (
+                SELECT 1 FROM historical_season_stats h
+                WHERE h.kbo_player_id = hp.kbo_player_id
+                  AND h.season = cs.season AND h.series_type = '정규'
+            )
+        )
         SELECT hp.kbo_player_id, hp.name, hp.player_id,
-               t.short_name AS team_code, t.name AS team,
-               SUM(COALESCE(hss.{col}, 0)) AS total
-        FROM historical_season_stats hss
-        JOIN historical_players hp ON hp.kbo_player_id = hss.kbo_player_id
+               t.short_name AS team_code, t.name AS team, SUM(a.v) AS total
+        FROM allstat a
+        JOIN historical_players hp ON hp.kbo_player_id = a.kid
         LEFT JOIN teams t ON t.id = hp.primary_team_id
-        WHERE hss.series_type = '정규' AND hss.player_type = %s
         GROUP BY hp.kbo_player_id, hp.name, hp.player_id, t.short_name, t.name
-        HAVING SUM(COALESCE(hss.{col}, 0)) > 0
+        HAVING SUM(a.v) > 0
         ORDER BY total DESC
         LIMIT %s
     """, (ptype, limit))
