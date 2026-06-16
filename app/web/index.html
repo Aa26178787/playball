@@ -30,10 +30,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="PlayBall">
   <meta name="theme-color" content="#111113">
-  <!-- ⚠️ color-scheme 선언 필수: 미선언 시 Chrome Auto Dark Theme(시스템 다크모드)가
-       페이지 콘텐츠를 강제 darkening → 팀로고/선수이미지가 어두워짐(앱은 자체 다크테마라
-       UI는 티 안 나고 밝은 이미지만 어두워짐). light dark 선언 = 다크 대응 사이트로 인식,
-       강제 darkening opt-out (06-14 다크모드 이미지 어두움 사고 — 진짜 원인). -->
+  <!-- ⚠️ color-scheme: 초기 페인트용 정적값(Flutter 마운트 전 OS 추종). 미선언 시 Chrome
+       Auto Dark Theme가 콘텐츠 강제 darkening → 팀로고/선수이미지 어두워짐(06-14 사고).
+       ⚠️ Flutter 마운트 후 main.dart `setWebColorScheme`이 **resolved 앱테마**로 override
+       (앱=라이트→'light', 앱=다크→'dark'). 정적 'light dark'만 두면 OS 다크 시 브라우저가
+       다크 적용해 **라이트모드 앱서도 이미지 어두워짐** — 그래서 동적 추종 필수. -->
   <meta name="color-scheme" content="light dark">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 

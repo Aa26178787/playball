@@ -2011,7 +2011,8 @@ class GameCard extends StatelessWidget {
               width: 13, height: 13,
               alignment: Alignment.center,
               decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(Radii.xs)),
-              child: Text(r, style: TextStyle(fontSize: Typo.micro, fontWeight: Typo.extra, color: fg)),
+              child: Text(r, textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: Typo.micro, fontWeight: Typo.extra, color: fg, height: 1.0)),
             ),
             const SizedBox(height: 2),
             // 가장 최근 경기 — 결과색(승=팀컬러/패무=무채색) 선
@@ -2263,7 +2264,7 @@ class GameCard extends StatelessWidget {
                 String? subLine;
                 if (!isFinished && !isCancelled &&
                     ((game.homeStarter?.isNotEmpty ?? false) || (game.awayStarter?.isNotEmpty ?? false))) {
-                  subLine = '선발  ${game.homeStarter ?? '-'} vs ${game.awayStarter ?? '-'}';
+                  subLine = '홈 선발 ${game.homeStarter ?? '-'} · 어웨이 선발 ${game.awayStarter ?? '-'}';
                 } else if (isFinished &&
                     (game.winPitcher != null || game.losePitcher != null)) {
                   subLine = [

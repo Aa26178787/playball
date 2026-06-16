@@ -195,6 +195,8 @@ class PlayBallApp extends StatelessWidget {
           final dark = themeProvider.themeMode == ThemeMode.dark ||
               (themeProvider.themeMode == ThemeMode.system && mq == Brightness.dark);
           setWebThemeColor(dark ? '#111113' : '#FAFAFB');
+          // color-scheme도 resolved 앱테마 추종 — 라이트모드+OS다크서 이미지 어두워짐 차단
+          setWebColorScheme(dark ? 'dark' : 'light');
           return MaterialApp(
           title: 'PlayBall',
           navigatorKey: appNavigatorKey,
