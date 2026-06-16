@@ -540,6 +540,19 @@ class ApiService {
     return res.data;
   }
 
+  // ===== 역대(historical) API =====
+  static Future<Map<String, dynamic>> getHistoricalPlayer(int kboPlayerId) async {
+    final res = await _dio.get('/historical/$kboPlayerId');
+    return res.data;
+  }
+
+  static Future<Map<String, dynamic>> getHistoricalLeaders(
+      {String category = 'home_runs', int limit = 20}) async {
+    final res = await _dio.get('/historical/leaders',
+        queryParameters: {'category': category, 'limit': limit});
+    return res.data;
+  }
+
   // ===== 팀 API =====
   static Future<Map<String, dynamic>> getTeams() async {
     final res = await _dedupGet('/teams/');

@@ -1657,7 +1657,33 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       if (detail.isNotEmpty) _seasonGridSection('세부 기록', detail, isPitcher: isPitcher),
       if (advanced.isNotEmpty) _seasonGridSection('고급 지표', advanced, isPitcher: isPitcher),
       if (hasDefense) _seasonGridSection('수비', defense, isPitcher: isPitcher),
+      if ((player['awards'] as List?)?.isNotEmpty ?? false)
+        _awardsSection((player['awards'] as List).cast<Map>()),
     ]);
+  }
+
+  // 수상 경력 (역대 머지 — historical_awards). awards 있을 때만 렌더.
+  Widget _awardsSection(List<Map> awards) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Space.lg, Space.sm, Space.lg, Space.sm),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _sectionLabel('수상 경력'),
+        const SizedBox(height: Space.sm),
+        Wrap(spacing: Space.sm, runSpacing: Space.sm, children: [
+          for (final a in awards)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                  color: Pal.paper2(isDark),
+                  borderRadius: BorderRadius.circular(Radii.sm)),
+              child: Text('${a['season'] ?? ''} ${a['award'] ?? ''}'.trim(),
+                  style: TextStyle(
+                      fontSize: Typo.small, color: Pal.ink(isDark), fontWeight: Typo.semibold)),
+            ),
+        ]),
+      ]),
+    );
   }
 
   // ── 피칭 디자인 카드 — 구종별 로케이션 5x5 히트맵 (2026-06-07) ──

@@ -8,6 +8,8 @@ import '../../utils/team_theme.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import 'player_detail_screen.dart';
+import 'historical_player_detail_screen.dart';
+import 'historical_leaders_screen.dart';
 import '../mypage/my_page_screen.dart';
 import '../../utils/web_image.dart';
 import '../../utils/web_safe_area.dart';
@@ -435,6 +437,13 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   void _openDetail(Map p) {
+    if (p['is_historical'] == true) {
+      Navigator.push(context, MaterialPageRoute(
+        builder: (_) => HistoricalPlayerDetailScreen(
+          kboPlayerId: p['id'], initialName: p['name']),
+      )).then((_) { if (mounted) _loadRecent(); });
+      return;
+    }
     final code = p['team_code'] as String? ?? '';
     Navigator.push(
       context,
@@ -453,7 +462,10 @@ class _PlayerScreenState extends State<PlayerScreen>
     Widget fallback = Container(
       color: c.withValues(alpha: 0.88),
       child: Center(
-        child: Text('#${p['number'] ?? '-'}',
+        child: Text(
+            p['number'] != null
+                ? '#${p['number']}'
+                : ((p['name'] as String?)?.isNotEmpty ?? false ? (p['name'] as String)[0] : '?'),
             style: TextStyle(color: Colors.white, fontSize: size * 0.28,
                 fontWeight: Typo.extra, letterSpacing: 0)),
       ),
@@ -827,10 +839,29 @@ class _PlayerScreenState extends State<PlayerScreen>
                                 const SizedBox(width: Space.md),
                                 Expanded(
                                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                    Text(p['name'] ?? '',
-                                        style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: ink)),
+                                    Row(children: [
+                                      Flexible(
+                                        child: Text(p['name'] ?? '',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: ink)),
+                                      ),
+                                      if (p['is_historical'] == true) ...[
+                                        const SizedBox(width: Space.xs),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                          decoration: BoxDecoration(
+                                              color: sub.withValues(alpha: 0.15),
+                                              borderRadius: BorderRadius.circular(Radii.xs)),
+                                          child: Text('역대',
+                                              style: TextStyle(fontSize: Typo.micro, color: sub, fontWeight: Typo.bold)),
+                                        ),
+                                      ],
+                                    ]),
                                     const SizedBox(height: Space.xs),
-                                    Text('${p['team'] ?? ''} · ${p['position'] ?? p['player_type'] ?? ''} · #${p['number'] ?? '-'}',
+                                    Text(
+                                        p['is_historical'] == true
+                                            ? '${p['team'] ?? '역대'} · ${p['position'] ?? ''}${p['years'] != null ? ' · ${p['years']}' : ''}'
+                                            : '${p['team'] ?? ''} · ${p['position'] ?? p['player_type'] ?? ''} · #${p['number'] ?? '-'}',
                                         style: TextStyle(fontSize: Typo.mini, color: ink3)),
                                   ]),
                                 ),
@@ -881,6 +912,10 @@ class _PlayerScreenState extends State<PlayerScreen>
                       isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                       isDark ? '라이트 모드' : '다크 모드',
                       () => themeProv.toggle()),
+                  const SizedBox(width: 7),
+                  _headerIconBtn(Icons.emoji_events_outlined, '역대 기록실',
+                      () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const HistoricalLeadersScreen()))),
                   const SizedBox(width: 7),
                   _headerIconBtn(Icons.person_outline, '마이페이지',
                       () => Navigator.push(context,
