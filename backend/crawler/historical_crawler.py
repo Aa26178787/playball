@@ -621,10 +621,19 @@ def link_franchises():
             ) z WHERE rn = 1
         ) x WHERE hp.kbo_player_id = x.kbo_player_id
     """)
+    # 4) 현역 players 브릿지 (이름+생일 = 동명이인 안전. 라이브 상세 역대시즌 머지 + leaders 현역식별)
+    cur.execute("""
+        UPDATE historical_players hp
+        SET player_id = p.id
+        FROM players p
+        WHERE p.name = hp.name AND p.birth_date = hp.birth_date
+          AND hp.player_id IS DISTINCT FROM p.id
+    """)
+    n4 = cur.rowcount
     conn.commit()
     cur.close()
     conn.close()
-    print(f"[link] franchise {n1}행 링크 + debut/final + primary team 갱신")
+    print(f"[link] franchise {n1}행 링크 + debut/final + primary team + 현역브릿지 {n4}명 갱신")
 
 
 # ── 세이버 FIP recompute (정규시즌, 시즌별 리그상수) ── KBO 미제공 → raw서 계산 ──
