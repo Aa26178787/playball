@@ -467,18 +467,19 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - 앱 노출 정책(설계 확정): **active(players) ∪ historical_players 병합조회, kbo_player_id 정규키, 이름조인 폐기**
 - ⚠️ 잔여: PS 2006~ 결손(low-pri, `ps 2006 2025` 재개) / 스플릿 분할값당 ~80%커버 / 투수스플릿·OPS·세밀축 미수집 / WAR·wOBA·wRC+ infeasible
 
-## 역대 데이터 UI 노출 (앱/API) — 진행중 (스펙+구현플랜 완료, 실행 대기 — 유저 다른작업 픽봇)
+## 역대 데이터 UI 노출 (앱/API) — ✅ 완료 (2026-06-16, P1~P4 배포·live검증)
 ### ⚡ 트리거: 사용자가 **`역대UI 진행`** 입력 시 = 이 섹션 재개.
 - **동작**: 역대수집과 동일 프로토콜 — 첫 `[ ]` 실행 → `[x]`+진행로그 → 연속, ⏸️게이트서 멈춤/질문. 각 단계 끝 CLAUDE.md 갱신.
 - **목적**: 적재된 역대 데이터(위 스냅샷)를 앱/웹서 노출 = 올드팬 자산·비시즌 DAU. **데이터 준비됨 → 크롤 불요, 순수 백엔드+프론트라 PS/크롤 충돌 없음**(역대수집/C2와 독립 진행 가능).
 ### 진행 체크리스트
 - [x] 브레인스톰/스파이크: 노출 범위·진입점 + 구조 파악 (2026-06-16) — players.py(검색/상세=players만, 역대 API 없음=그린필드)·player_screen(검색 탭2)·player_detail_screen(시즌칩=stats 기반) 파악. historical_* 스키마 4종 확인(series_type DEFAULT '정규', player_id 현역 브릿지, draft_info TEXT)
 - [x] ⏸️ 설계 게이트 통과 (2026-06-16 사용자 결정): **범위=풀**(현역통산+은퇴검색/상세+스플릿+역대탭) / **검색=통합**(/players/search가 현역+은퇴 반환) / **은퇴상세=신규화면**(historical_player_detail_screen) / **검색키=kbo_player_id**(수집게이트 기확정) / 동명이인=primary_team+debut~final 구분. 스펙=`docs/superpowers/specs/2026-06-16-historical-data-ui-design.md`
-- [ ] API: 역대선수 검색+상세 (career=historical_season_stats 집계·수상=historical_awards·스플릿=historical_splits·franchise 계보) — players.py 확장 or 신규 라우터, @cached
-- [ ] 앱: 검색/목록에 역대선수 + 선수상세 역대 섹션(통산/시즌별/수상/스플릿/franchise) — ⚠️웹이미지 3규칙·netImage 준수
-- [ ] 웹 동반 빌드+배포 (앱 수정=웹 필수, 사용자 지시) + 검증(이승엽/선동열 상세 스팟체크)·CI
+- [x] API (2026-06-16, P1 배포+live검증): 신규 `api/routers/historical.py` — `GET /historical/{kbo_player_id}`(bio/통산집계/시즌별/PS/수상/스플릿/franchise, @cached 600) + `GET /historical/leaders`(통산 명예의전당, /{id}보다 먼저 선언, @cached 3600). 기존 `/players/search` UNION(historical_players 브릿지없는 은퇴만, key_type/is_historical/years 부여) + `/players/{id}` 머지(현역 브릿지 시 series_type='정규' AND season<2024 역대시즌+수상, 키매핑 walks_allowed→walks). 헬퍼 `_aggregate_career`/`_ip_to_outs`(순수테스트 3종 local PASS). **live: 이승엽 career HR 467·시즌15·수상15, leaders HR=467 top, search key_type=historical 정합**. ⚠️ local py(3.14)는 backend deps 없음 → 모듈테스트는 서버/CI
+- [x] 앱 (2026-06-16, P2~P4, analyze lib=0): `api_service` getHistoricalPlayer/getHistoricalLeaders · `player_screen` 통합검색 '역대' 배지+활동연도+라우팅분기(is_historical→은퇴상세)+_numAvatar 이름폴백+헤더 '역대 기록실' 진입 · 신규 `historical_player_detail_screen`(bio/통산/시즌별표/PS/수상/스플릿/franchise, 라이브섹션 없음=이미지 미사용이라 웹규칙 무관) · 신규 `historical_leaders_screen`(명예의전당 카테고리칩+TOP25) · 현역 `player_detail_screen` 수상 섹션 머지. 토큰 교정(Pal.paper·BorderRadius.circular(Radii)·Typo.regular)
+- [x] 웹 동반 빌드+배포 (2026-06-16): wasm 재빌드 → rsync `/var/www/playball_web/`, `/app/` 200. live검증 = 이승엽 career HR 467·선동열 search historical 1985~1993·leaders 승 송진우 185 정합. 골든 회귀 통과.
 ### 진행로그
-- 2026-06-16: 착수. 브레인스톰+구조파악 완료(players.py/player_screen/player_detail_screen + historical_* 4스키마). 설계 게이트 통과(범위=풀·검색통합·은퇴상세신규·kbo_player_id키). 설계 스펙 작성+셀프리뷰(series_type='정규' 머지필터·컬럼키매핑 정정) → `docs/superpowers/specs/2026-06-16-historical-data-ui-design.md`. **유저 스펙 승인** → 구현플랜 작성+셀프리뷰 완료 → `docs/superpowers/plans/2026-06-16-historical-data-ui.md`(Task1~10, P1 backend TDD → P2 현역통산 → P3 은퇴상세 → P4 역대탭). **다음 = 플랜 실행(subagent-driven 권장)**. ⏸️ 유저가 다른 UI작업으로 픽봇 — 실행 대기.
+- 2026-06-16: 착수. 브레인스톰+구조파악 완료(players.py/player_screen/player_detail_screen + historical_* 4스키마). 설계 게이트 통과(범위=풀·검색통합·은퇴상세신규·kbo_player_id키). 설계 스펙 작성+셀프리뷰(series_type='정규' 머지필터·컬럼키매핑 정정) → `docs/superpowers/specs/2026-06-16-historical-data-ui-design.md`. **유저 스펙 승인** → 구현플랜 작성+셀프리뷰 완료 → `docs/superpowers/plans/2026-06-16-historical-data-ui.md`(Task1~10, P1 backend TDD → P2 현역통산 → P3 은퇴상세 → P4 역대탭). 플랜 실행(인라인) → **P1~P4 전부 완료·배포**.
+- 2026-06-16b: **역대UI 전체 완료**. P1 백엔드(historical.py 상세+leaders·/search UNION·/{id} 머지, series_type='정규'·키매핑, 헬퍼 순수테스트 local PASS) 배포+live(이승엽 467HR·leaders·search 정합). P2~P4 앱(통합검색 '역대'배지+라우팅·신규 historical_player_detail_screen·신규 historical_leaders_screen 명예의전당·현역상세 수상섹션, analyze lib=0). 웹 wasm 재빌드+rsync(`/app/` 200), 골든 4 PASS. ⚠️**네이티브 APK 미반영**(웹+서버만 — 기존 관행). 잔여=역대선수 인기투표/비교/공유=비목표(추후), PS 2006~ 결손(데이터).
 
 ## 역대 C2 (퓨처스 경기단위 · 스플릿 세밀축) — 장기 큐, 트리거 대기 (미착수)
 ### ⚡ 트리거: 사용자가 **`역대C2 진행`** 입력 시 = 이 섹션 재개.
