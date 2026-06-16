@@ -8,42 +8,52 @@ router = APIRouter()
 
 @router.get("/search")
 def search_players(q: str, player_type: str = None):
+    """통합 검색 — 현역(players) + 은퇴(historical_players, 현역 브릿지 없는 사람만).
+    각 결과에 key_type(active|historical)·is_historical 부여 → 앱이 상세 라우팅."""
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
     cur = conn.cursor()
-    if player_type:
-        cur.execute("""
-            SELECT p.id, p.name, t.name AS team, p.player_type, 
-                   p.position, p.number, p.profile_image, p.throws, p.bats
-            FROM players p
-            JOIN teams t ON p.team_id = t.id
-            WHERE p.name LIKE %s AND p.player_type = %s
-            ORDER BY p.name LIMIT 20
-        """, (f"%{q}%", player_type))
-    else:
-        cur.execute("""
-            SELECT p.id, p.name, t.name AS team, p.player_type,
-                   p.position, p.number, p.profile_image, p.throws, p.bats
-            FROM players p
-            JOIN teams t ON p.team_id = t.id
-            WHERE p.name LIKE %s
-            ORDER BY p.name LIMIT 20
-        """, (f"%{q}%",))
-    rows = cur.fetchall()
+    # ── 현역 (players) ──
+    pt_sql = " AND p.player_type = %s" if player_type else ""
+    pt_params = [player_type] if player_type else []
+    cur.execute(f"""
+        SELECT p.id, p.name, t.name AS team, p.player_type,
+               p.position, p.number, p.profile_image, p.throws, p.bats,
+               t.short_name AS team_code
+        FROM players p JOIN teams t ON p.team_id = t.id
+        WHERE p.name LIKE %s{pt_sql}
+        ORDER BY p.name LIMIT 20
+    """, [f"%{q}%"] + pt_params)
+    active = [
+        {"id": r[0], "name": r[1], "team": r[2], "player_type": r[3],
+         "position": r[4], "number": r[5], "profile_image": r[6],
+         "throws": r[7], "bats": r[8], "team_code": r[9],
+         "key_type": "active", "is_historical": False}
+        for r in cur.fetchall()
+    ]
+    # ── 은퇴 (historical_players, 현역 브릿지 없는 사람만) ──
+    hpt_sql = " AND hp.player_type = %s" if player_type else ""
+    cur.execute(f"""
+        SELECT hp.kbo_player_id, hp.name, t.name AS team, hp.player_type,
+               hp.position, hp.profile_image, hp.debut_year, hp.final_year,
+               t.short_name AS team_code
+        FROM historical_players hp
+        LEFT JOIN teams t ON t.id = hp.primary_team_id
+        WHERE hp.name LIKE %s AND hp.player_id IS NULL{hpt_sql}
+        ORDER BY hp.final_year DESC NULLS LAST, hp.name LIMIT 20
+    """, [f"%{q}%"] + pt_params)
+    historical = [
+        {"id": r[0], "name": r[1], "team": r[2] or "역대", "player_type": r[3],
+         "position": r[4], "number": None, "profile_image": r[5],
+         "debut_year": r[6], "final_year": r[7],
+         "years": (f"{r[6]}~{r[7]}" if r[6] and r[7] else None),
+         "team_code": r[8], "key_type": "historical", "is_historical": True}
+        for r in cur.fetchall()
+    ]
     cur.close()
     conn.close()
-    return {
-        "players": [
-            {
-                "id": r[0], "name": r[1], "team": r[2],
-                "player_type": r[3], "position": r[4],
-                "number": r[5], "profile_image": r[6],
-                "throws": r[7], "bats": r[8],
-            }
-            for r in rows
-        ]
-    }
+    return {"players": active + historical}
 
 
 @router.get("/hitters")
@@ -1162,6 +1172,60 @@ def get_player_detail(player_id: int):
                 result["core_compare"] = cc
     except Exception:
         pass
+
+    # ── 역대(2023↓) 시즌 + 수상 머지 (현역 브릿지 있을 때) ──
+    # series_type='정규' AND season<2024 = batter/pitcher_stats(24~26)와 중복 회피
+    cur.execute("SELECT kbo_player_id FROM historical_players WHERE player_id = %s", (player_id,))
+    hp = cur.fetchone()
+    if hp:
+        kid = hp[0]
+        if player[2] == "타자":
+            cur.execute("""
+                SELECT season, games, at_bats, runs, hits, doubles, triples,
+                    home_runs, rbis, walks, strikeouts, stolen_bases,
+                    avg, obp, slg, ops, war, woba, wrc_plus, pa, hbp
+                FROM historical_season_stats
+                WHERE kbo_player_id = %s AND series_type = '정규' AND season < 2024
+                ORDER BY season DESC
+            """, (kid,))
+            for r in cur.fetchall():
+                result["stats"].append({
+                    "season": r[0], "games": r[1], "at_bats": r[2], "runs": r[3],
+                    "hits": r[4], "doubles": r[5], "triples": r[6], "home_runs": r[7],
+                    "rbis": r[8], "walks": r[9], "strikeouts": r[10], "stolen_bases": r[11],
+                    "avg": float(r[12]) if r[12] else 0, "obp": float(r[13]) if r[13] else 0,
+                    "slg": float(r[14]) if r[14] else 0, "ops": float(r[15]) if r[15] else 0,
+                    "war": float(r[16]) if r[16] else 0, "woba": float(r[17]) if r[17] else 0,
+                    "wrc_plus": r[18], "pa": r[19], "hbp": r[20], "historical": True,
+                })
+        else:
+            cur.execute("""
+                SELECT season, games, wins, losses, saves, holds,
+                    innings_pitched, hits_allowed, runs_allowed, earned_runs,
+                    walks_allowed, strikeouts_pitched, home_runs_allowed,
+                    era, whip, war, fip, qs, complete_games, shutouts
+                FROM historical_season_stats
+                WHERE kbo_player_id = %s AND series_type = '정규' AND season < 2024
+                ORDER BY season DESC
+            """, (kid,))
+            for r in cur.fetchall():
+                result["stats"].append({
+                    "season": r[0], "games": r[1], "wins": r[2], "losses": r[3],
+                    "saves": r[4], "holds": r[5],
+                    "innings_pitched": float(r[6]) if r[6] else 0,
+                    "hits_allowed": r[7], "runs_allowed": r[8], "earned_runs": r[9],
+                    "walks": r[10], "strikeouts": r[11], "home_runs_allowed": r[12],
+                    "era": float(r[13]) if r[13] else 0, "whip": float(r[14]) if r[14] else 0,
+                    "war": float(r[15]) if r[15] else 0, "fip": float(r[16]) if r[16] else 0,
+                    "qs": r[17], "cg": r[18], "sho": r[19], "historical": True,
+                })
+        # 현역 24~26 + 역대 ~23 혼합 → season DESC 재정렬
+        result["stats"].sort(key=lambda s: -(s["season"] or 0))
+        cur.execute("""
+            SELECT season, award FROM historical_awards
+            WHERE kbo_player_id = %s ORDER BY season DESC NULLS LAST, award
+        """, (kid,))
+        result["awards"] = [{"season": a[0], "award": a[1]} for a in cur.fetchall()]
 
     # 로스터 상태 (최근 변경 이력)
     cur.execute("""
