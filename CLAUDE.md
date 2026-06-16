@@ -467,18 +467,18 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - 앱 노출 정책(설계 확정): **active(players) ∪ historical_players 병합조회, kbo_player_id 정규키, 이름조인 폐기**
 - ⚠️ 잔여: PS 2006~ 결손(low-pri, `ps 2006 2025` 재개) / 스플릿 분할값당 ~80%커버 / 투수스플릿·OPS·세밀축 미수집 / WAR·wOBA·wRC+ infeasible
 
-## 역대 데이터 UI 노출 (앱/API) — 트리거 대기 (미착수)
+## 역대 데이터 UI 노출 (앱/API) — 진행중 (브레인스톰/설계 게이트 완료, 스펙 작성 → 유저 리뷰 대기)
 ### ⚡ 트리거: 사용자가 **`역대UI 진행`** 입력 시 = 이 섹션 재개.
 - **동작**: 역대수집과 동일 프로토콜 — 첫 `[ ]` 실행 → `[x]`+진행로그 → 연속, ⏸️게이트서 멈춤/질문. 각 단계 끝 CLAUDE.md 갱신.
 - **목적**: 적재된 역대 데이터(위 스냅샷)를 앱/웹서 노출 = 올드팬 자산·비시즌 DAU. **데이터 준비됨 → 크롤 불요, 순수 백엔드+프론트라 PS/크롤 충돌 없음**(역대수집/C2와 독립 진행 가능).
 ### 진행 체크리스트
-- [ ] 브레인스톰/스파이크: 노출 범위·진입점 (선수검색에 역대선수 포함? 별도 '역대' 탭? 선수상세 통산/수상/스플릿 섹션?) — 기존 `player_screen`/`player_detail_screen`/`api/routers/players.py` 구조 파악
-- [ ] ⏸️ 설계 게이트: active∪historical 병합 방식(API union vs 별도 엔드포인트)·동명이인 표시·검색키 (사용자 확인)
+- [x] 브레인스톰/스파이크: 노출 범위·진입점 + 구조 파악 (2026-06-16) — players.py(검색/상세=players만, 역대 API 없음=그린필드)·player_screen(검색 탭2)·player_detail_screen(시즌칩=stats 기반) 파악. historical_* 스키마 4종 확인(series_type DEFAULT '정규', player_id 현역 브릿지, draft_info TEXT)
+- [x] ⏸️ 설계 게이트 통과 (2026-06-16 사용자 결정): **범위=풀**(현역통산+은퇴검색/상세+스플릿+역대탭) / **검색=통합**(/players/search가 현역+은퇴 반환) / **은퇴상세=신규화면**(historical_player_detail_screen) / **검색키=kbo_player_id**(수집게이트 기확정) / 동명이인=primary_team+debut~final 구분. 스펙=`docs/superpowers/specs/2026-06-16-historical-data-ui-design.md`
 - [ ] API: 역대선수 검색+상세 (career=historical_season_stats 집계·수상=historical_awards·스플릿=historical_splits·franchise 계보) — players.py 확장 or 신규 라우터, @cached
 - [ ] 앱: 검색/목록에 역대선수 + 선수상세 역대 섹션(통산/시즌별/수상/스플릿/franchise) — ⚠️웹이미지 3규칙·netImage 준수
 - [ ] 웹 동반 빌드+배포 (앱 수정=웹 필수, 사용자 지시) + 검증(이승엽/선동열 상세 스팟체크)·CI
 ### 진행로그
-- (미착수 — `역대UI 진행`으로 시작)
+- 2026-06-16: 착수. 브레인스톰+구조파악 완료(players.py/player_screen/player_detail_screen + historical_* 4스키마). 설계 게이트 통과(범위=풀·검색통합·은퇴상세신규·kbo_player_id키). 설계 스펙 작성+셀프리뷰(series_type='정규' 머지필터·컬럼키매핑 정정) → `docs/superpowers/specs/2026-06-16-historical-data-ui-design.md`. **다음 = 유저 스펙 리뷰 → writing-plans → P1(API)~P4(역대탭) 구현**.
 
 ## 역대 C2 (퓨처스 경기단위 · 스플릿 세밀축) — 장기 큐, 트리거 대기 (미착수)
 ### ⚡ 트리거: 사용자가 **`역대C2 진행`** 입력 시 = 이 섹션 재개.
