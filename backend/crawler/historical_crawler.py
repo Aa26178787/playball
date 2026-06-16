@@ -877,15 +877,25 @@ def _naver_fetch(season, ptype):
     return (res.json().get("result") or {}).get("seasonPlayerStats") or []
 
 
+def _nf(p, key):
+    """Naver 값 → float (None/0/'' 안전)."""
+    try:
+        return float(p.get(key) or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def backfill_naver_saber(season):
-    """Naver 세이버(woba/war/wrc+) → historical_season_stats. 매칭=(시즌+이름+팀prefix).
-    woba/war/wrc+ 각각 >0일 때만 덮음(0=Naver 미계산 → 기존 유지). KBO 미제공 공백 보충."""
+    """Naver stat API 고유 지표 → historical. KBO 미제공 보충. 매칭=(시즌+이름+팀prefix).
+    타자: woba/war/wrc+/babip/iso/wpa. 투수: war/k_per_9/bb_per_9/k_bb/k_pct/bb_pct/wpct/wpa/np.
+    각 값 0/None이면 기존 유지(덮지 않음). + historical_players 사진·naver_id 보충(NULL만)."""
     conn = get_connection()
     if not conn:
         return 0
     cur = conn.cursor()
     upd = 0
-    for ptype, pre in [('HITTER', 'hitter'), ('PITCHER', 'pitcher')]:
+    pmeta = 0
+    for ptype in ('HITTER', 'PITCHER'):
         try:
             rows = _naver_fetch(season, ptype)
         except Exception as e:
@@ -896,24 +906,65 @@ def backfill_naver_saber(season):
             team = p.get('teamName')
             if not name or not team:
                 continue
-            woba = float(p.get(f'{pre}Woba') or 0)
-            war = float(p.get(f'{pre}War') or 0)
-            wrc = int(p.get('hitterWrcPlus') or 0) if ptype == 'HITTER' else 0
-            cur.execute("""
-                UPDATE historical_season_stats hss SET
-                    woba = CASE WHEN %s > 0 THEN %s ELSE hss.woba END,
-                    war  = CASE WHEN %s <> 0 THEN %s ELSE hss.war END,
-                    wrc_plus = CASE WHEN %s <> 0 THEN %s ELSE hss.wrc_plus END
-                FROM historical_players hp
-                WHERE hp.kbo_player_id = hss.kbo_player_id
-                  AND hss.season = %s AND hp.name = %s
-                  AND hss.team_name LIKE %s
-            """, (woba, woba, war, war, wrc, wrc, season, name, team + '%'))
+            like = team + '%'
+            # ① 시즌 스탯 세이버/레이트 (지표별 >0/<>0 가드로 0 미덮음)
+            if ptype == 'HITTER':
+                woba, war, wrc = _nf(p, 'hitterWoba'), _nf(p, 'hitterWar'), int(_nf(p, 'hitterWrcPlus'))
+                babip, iso, wpa = _nf(p, 'hitterBabip'), _nf(p, 'hitterIsop'), _nf(p, 'hitterWpa')
+                cur.execute("""
+                    UPDATE historical_season_stats hss SET
+                        woba = CASE WHEN %s>0 THEN %s ELSE hss.woba END,
+                        war  = CASE WHEN %s<>0 THEN %s ELSE hss.war END,
+                        wrc_plus = CASE WHEN %s<>0 THEN %s ELSE hss.wrc_plus END,
+                        babip = CASE WHEN %s>0 THEN %s ELSE hss.babip END,
+                        iso  = CASE WHEN %s>0 THEN %s ELSE hss.iso END,
+                        wpa  = CASE WHEN %s<>0 THEN %s ELSE hss.wpa END
+                    FROM historical_players hp
+                    WHERE hp.kbo_player_id=hss.kbo_player_id
+                      AND hss.season=%s AND hp.name=%s AND hss.team_name LIKE %s
+                """, (woba, woba, war, war, wrc, wrc, babip, babip, iso, iso, wpa, wpa,
+                      season, name, like))
+            else:
+                war = _nf(p, 'pitcherWar')
+                k9, bb9, kbb = _nf(p, 'pitcherInningKk'), _nf(p, 'pitcherInningBb'), _nf(p, 'pitcherKkBbRate')
+                kpct, bbpct = _nf(p, 'pitcherPaKkRate'), _nf(p, 'pitcherPaBbRate')
+                wpct, wpa = _nf(p, 'pitcherWra'), _nf(p, 'pitcherWpa')
+                np_ = int(_nf(p, 'pitcherPitchCount'))
+                cur.execute("""
+                    UPDATE historical_season_stats hss SET
+                        war = CASE WHEN %s<>0 THEN %s ELSE hss.war END,
+                        k_per_9 = CASE WHEN %s>0 THEN %s ELSE hss.k_per_9 END,
+                        bb_per_9 = CASE WHEN %s>0 THEN %s ELSE hss.bb_per_9 END,
+                        k_bb = CASE WHEN %s>0 THEN %s ELSE hss.k_bb END,
+                        k_pct = CASE WHEN %s>0 THEN %s ELSE hss.k_pct END,
+                        bb_pct = CASE WHEN %s>0 THEN %s ELSE hss.bb_pct END,
+                        wpct = CASE WHEN %s>0 THEN %s ELSE hss.wpct END,
+                        wpa = CASE WHEN %s<>0 THEN %s ELSE hss.wpa END,
+                        np = CASE WHEN %s>0 THEN %s ELSE hss.np END
+                    FROM historical_players hp
+                    WHERE hp.kbo_player_id=hss.kbo_player_id
+                      AND hss.season=%s AND hp.name=%s AND hss.team_name LIKE %s
+                """, (war, war, k9, k9, bb9, bb9, kbb, kbb, kpct, kpct, bbpct, bbpct,
+                      wpct, wpct, wpa, wpa, np_, np_, season, name, like))
             upd += cur.rowcount
+            # ② historical_players 사진·naver_id 보충 (NULL만 — 덮지 않음)
+            nid = p.get('playerId')
+            img = p.get('playerImageUrl')
+            if nid or img:
+                cur.execute("""
+                    UPDATE historical_players hp SET
+                        naver_player_id = COALESCE(hp.naver_player_id, %s),
+                        profile_image = COALESCE(hp.profile_image, %s)
+                    FROM historical_season_stats hss
+                    WHERE hss.kbo_player_id=hp.kbo_player_id
+                      AND hss.season=%s AND hp.name=%s AND hss.team_name LIKE %s
+                      AND (hp.naver_player_id IS NULL OR hp.profile_image IS NULL)
+                """, (nid, img, season, name, like))
+                pmeta += cur.rowcount
     conn.commit()
     cur.close()
     conn.close()
-    print(f"[naver {season}] 세이버 {upd}행 갱신")
+    print(f"[naver {season}] 스탯 {upd}행 + 사진/naver_id {pmeta}명 갱신")
     return upd
 
 
