@@ -670,10 +670,20 @@ def link_franchises():
           AND hp.player_id IS DISTINCT FROM p.id
     """)
     n4 = cur.rowcount
+    # 5) 시즌행 player_type 정규화 = historical_players 권위값 (타자 팀필터 페이지에 투수도
+    #    등장 → hitter crawl이 '타자'로 선INSERT, ON CONFLICT가 player_type 미갱신해 오염.
+    #    leader가 player_type='투수' 필터라 투수 세이브/성적 누락됨 → 권위값으로 통일.)
+    cur.execute("""
+        UPDATE historical_season_stats hss SET player_type = hp.player_type
+        FROM historical_players hp
+        WHERE hp.kbo_player_id = hss.kbo_player_id
+          AND hss.player_type IS DISTINCT FROM hp.player_type
+    """)
+    n5 = cur.rowcount
     conn.commit()
     cur.close()
     conn.close()
-    print(f"[link] franchise {n1}행 링크 + debut/final + primary team + 현역브릿지 {n4}명 갱신")
+    print(f"[link] franchise {n1}행 + debut/final + primary team + 현역브릿지 {n4}명 + player_type정규화 {n5}행")
 
 
 # ── 세이버 FIP recompute (정규시즌, 시즌별 리그상수) ── KBO 미제공 → raw서 계산 ──
