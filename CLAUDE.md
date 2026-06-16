@@ -467,7 +467,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - 앱 노출 정책(설계 확정): **active(players) ∪ historical_players 병합조회, kbo_player_id 정규키, 이름조인 폐기**
 - ⚠️ 잔여: PS 2006~ 결손(low-pri, `ps 2006 2025` 재개) / 스플릿 분할값당 ~80%커버 / 투수스플릿·OPS·세밀축 미수집 / WAR·wOBA·wRC+ infeasible
 
-## 역대 데이터 UI 노출 (앱/API) — 진행중 (브레인스톰/설계 게이트 완료, 스펙 작성 → 유저 리뷰 대기)
+## 역대 데이터 UI 노출 (앱/API) — 진행중 (스펙+구현플랜 완료, 실행 대기 — 유저 다른작업 픽봇)
 ### ⚡ 트리거: 사용자가 **`역대UI 진행`** 입력 시 = 이 섹션 재개.
 - **동작**: 역대수집과 동일 프로토콜 — 첫 `[ ]` 실행 → `[x]`+진행로그 → 연속, ⏸️게이트서 멈춤/질문. 각 단계 끝 CLAUDE.md 갱신.
 - **목적**: 적재된 역대 데이터(위 스냅샷)를 앱/웹서 노출 = 올드팬 자산·비시즌 DAU. **데이터 준비됨 → 크롤 불요, 순수 백엔드+프론트라 PS/크롤 충돌 없음**(역대수집/C2와 독립 진행 가능).
@@ -478,7 +478,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - [ ] 앱: 검색/목록에 역대선수 + 선수상세 역대 섹션(통산/시즌별/수상/스플릿/franchise) — ⚠️웹이미지 3규칙·netImage 준수
 - [ ] 웹 동반 빌드+배포 (앱 수정=웹 필수, 사용자 지시) + 검증(이승엽/선동열 상세 스팟체크)·CI
 ### 진행로그
-- 2026-06-16: 착수. 브레인스톰+구조파악 완료(players.py/player_screen/player_detail_screen + historical_* 4스키마). 설계 게이트 통과(범위=풀·검색통합·은퇴상세신규·kbo_player_id키). 설계 스펙 작성+셀프리뷰(series_type='정규' 머지필터·컬럼키매핑 정정) → `docs/superpowers/specs/2026-06-16-historical-data-ui-design.md`. **다음 = 유저 스펙 리뷰 → writing-plans → P1(API)~P4(역대탭) 구현**.
+- 2026-06-16: 착수. 브레인스톰+구조파악 완료(players.py/player_screen/player_detail_screen + historical_* 4스키마). 설계 게이트 통과(범위=풀·검색통합·은퇴상세신규·kbo_player_id키). 설계 스펙 작성+셀프리뷰(series_type='정규' 머지필터·컬럼키매핑 정정) → `docs/superpowers/specs/2026-06-16-historical-data-ui-design.md`. **유저 스펙 승인** → 구현플랜 작성+셀프리뷰 완료 → `docs/superpowers/plans/2026-06-16-historical-data-ui.md`(Task1~10, P1 backend TDD → P2 현역통산 → P3 은퇴상세 → P4 역대탭). **다음 = 플랜 실행(subagent-driven 권장)**. ⏸️ 유저가 다른 UI작업으로 픽봇 — 실행 대기.
 
 ## 역대 C2 (퓨처스 경기단위 · 스플릿 세밀축) — 장기 큐, 트리거 대기 (미착수)
 ### ⚡ 트리거: 사용자가 **`역대C2 진행`** 입력 시 = 이 섹션 재개.
