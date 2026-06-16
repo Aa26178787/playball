@@ -2262,9 +2262,15 @@ class GameCard extends StatelessWidget {
               child: Builder(builder: (_) {
                 // 보조 줄: 선발투수 (예정/진행) 또는 승/패투수 (종료) — "선발투수 정도까지만"
                 String? subLine;
+                List<InlineSpan>? starterSpans;
                 if (!isFinished && !isCancelled &&
                     ((game.homeStarter?.isNotEmpty ?? false) || (game.awayStarter?.isNotEmpty ?? false))) {
-                  subLine = '${game.homeStarter ?? '-'} 선발 ${game.awayStarter ?? '-'}';
+                  // "선발" 단어만 풀카드(2668) 라벨과 동일(Typo.caption·medium·t.sub) — 이름은 t.ink3 유지
+                  starterSpans = [
+                    TextSpan(text: game.homeStarter ?? '-'),
+                    TextSpan(text: ' 선발 ', style: TextStyle(color: t.sub)),
+                    TextSpan(text: game.awayStarter ?? '-'),
+                  ];
                 } else if (isFinished &&
                     (game.winPitcher != null || game.losePitcher != null)) {
                   subLine = [
@@ -2308,7 +2314,14 @@ class GameCard extends StatelessWidget {
                           const SizedBox(height: 5),
                           statusBadge(),
                           // ── 3층: 승패투수 또는 선발 ──
-                          if (subLine != null) ...[
+                          if (starterSpans != null) ...[
+                            const SizedBox(height: Space.xs),
+                            Text.rich(
+                                TextSpan(children: starterSpans,
+                                    style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.medium, color: t.ink3)),
+                                textAlign: TextAlign.center,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ] else if (subLine != null) ...[
                             const SizedBox(height: Space.xs),
                             Text(subLine,
                                 textAlign: TextAlign.center,
