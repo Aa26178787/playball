@@ -13,8 +13,8 @@ class Typo {
   // 점진 마이그레이션: off-scale 리터럴 → 가장 가까운 토큰. **화면 단위로 육안검증과 함께** 전환.
   //   off-scale 매핑:  8→micro(9) · 15→subtitle(14) · 17→title(16) · 19→lg(18) · 22→h2(20) · 26→h1(24)
   //   실사용 빈도(2026-06): 11(176)·12(120)·13(112)·10(85)·14(54)·9(34)·16(31) = 소형 단계 다층(의도)
-  static const double micro    = 9;   // dot, mini badge
-  static const double mini     = 10;  // 타임스탬프·카운트 등 최소 메타
+  static const double micro    = 10;  // dot, mini badge (06-17 가시성: 9→10)
+  static const double mini     = 11;  // 타임스탬프·카운트 등 최소 메타 (06-17: 10→11)
   static const double caption  = 11;  // chip, label
   static const double small    = 12;  // 보조 정보
   static const double body     = 13;  // 본문, 일반 정보

@@ -2265,10 +2265,11 @@ class GameCard extends StatelessWidget {
                 List<InlineSpan>? starterSpans;
                 if (!isFinished && !isCancelled &&
                     ((game.homeStarter?.isNotEmpty ?? false) || (game.awayStarter?.isNotEmpty ?? false))) {
-                  // "선발" 단어만 풀카드(2668) 라벨과 동일(Typo.caption·medium·t.sub) — 이름은 t.ink3 유지
+                  // 선발 = 앞 회색 라벨(풀카드 라벨과 동일 t.sub) + vs(좌=홈/우=원정, 로고위치 일치)
                   starterSpans = [
+                    TextSpan(text: '선발 ', style: TextStyle(color: t.sub)),
                     TextSpan(text: game.homeStarter ?? '-'),
-                    TextSpan(text: ' 선발 ', style: TextStyle(color: t.sub)),
+                    TextSpan(text: ' vs ', style: TextStyle(color: t.sub)),
                     TextSpan(text: game.awayStarter ?? '-'),
                   ];
                 } else if (isFinished &&
