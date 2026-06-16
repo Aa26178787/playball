@@ -67,7 +67,48 @@ _LEADER_CATS = {
 }
 
 
-# ⚠️ /leaders 는 /{kbo_player_id} 보다 먼저 선언 (정수경로 오매칭 방지 — FastAPI 선언순)
+# 부문별 순위 탭과 동일 UI용 — 전 카테고리 번들 (앱 카테고리 value ↔ 컬럼)
+_RANK_HIT = {"home_runs": "home_runs", "hits": "hits", "rbis": "rbis", "stolen_bases": "stolen_bases"}
+_RANK_PIT = {"wins": "wins", "strikeouts": "strikeouts_pitched", "saves": "saves"}
+
+
+def _leader_query(cur, ptype, col, limit):
+    cur.execute(f"""
+        SELECT hp.kbo_player_id, hp.name, hp.player_id,
+               t.short_name AS team_code, t.name AS team,
+               SUM(COALESCE(hss.{col}, 0)) AS total
+        FROM historical_season_stats hss
+        JOIN historical_players hp ON hp.kbo_player_id = hss.kbo_player_id
+        LEFT JOIN teams t ON t.id = hp.primary_team_id
+        WHERE hss.series_type = '정규' AND hss.player_type = %s
+        GROUP BY hp.kbo_player_id, hp.name, hp.player_id, t.short_name, t.name
+        HAVING SUM(COALESCE(hss.{col}, 0)) > 0
+        ORDER BY total DESC
+        LIMIT %s
+    """, (ptype, limit))
+    return [
+        {"kbo_player_id": r[0], "name": r[1], "is_active": r[2] is not None,
+         "team_code": r[3], "team": r[4] or "역대", "profile_image": None,
+         "value": int(r[5] or 0)}
+        for r in cur.fetchall()
+    ]
+
+
+# ⚠️ /rankings·/leaders 는 /{kbo_player_id} 보다 먼저 선언 (정수경로 오매칭 방지)
+@router.get("/rankings")
+@cached(3600)
+def get_historical_rankings(limit: int = 50):
+    """부문별 순위 탭과 동일 구조 — 통산 리더 전 카테고리 일괄 (정규시즌 합산)."""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    hitters = {k: _leader_query(cur, "타자", col, limit) for k, col in _RANK_HIT.items()}
+    pitchers = {k: _leader_query(cur, "투수", col, limit) for k, col in _RANK_PIT.items()}
+    cur.close(); conn.close()
+    return {"hitters": hitters, "pitchers": pitchers}
+
+
 @router.get("/leaders")
 @cached(3600)
 def get_historical_leaders(category: str = "home_runs", limit: int = 20):
