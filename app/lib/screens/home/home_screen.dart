@@ -2264,7 +2264,7 @@ class GameCard extends StatelessWidget {
                 String? subLine;
                 if (!isFinished && !isCancelled &&
                     ((game.homeStarter?.isNotEmpty ?? false) || (game.awayStarter?.isNotEmpty ?? false))) {
-                  subLine = '홈 선발 ${game.homeStarter ?? '-'} · 어웨이 선발 ${game.awayStarter ?? '-'}';
+                  subLine = '${game.homeStarter ?? '-'} 선발 ${game.awayStarter ?? '-'}';
                 } else if (isFinished &&
                     (game.winPitcher != null || game.losePitcher != null)) {
                   subLine = [
