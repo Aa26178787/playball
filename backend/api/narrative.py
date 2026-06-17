@@ -20,8 +20,8 @@ def mvp_line(mvp: dict) -> str:
     return " ".join(parts)
 
 
-def game_review(facts: dict) -> str:
-    """종료 한줄평. 분기 우선순위: 무승부 > 끝내기 > 연장 > 대승 > 접전 > 평이."""
+def _template_review(facts: dict) -> str:
+    """종료 한줄평 (템플릿 폴백). 분기 우선순위: 무승부 > 끝내기 > 연장 > 대승 > 접전 > 평이."""
     h = facts.get("home_team", "")
     a = facts.get("away_team", "")
     hs = facts.get("home_score", 0) or 0
@@ -92,3 +92,65 @@ def live_caption(state: dict) -> str:
     else:
         tone = f"{diff}점차 리드"
     return f"{situation}, {tone}"
+
+
+# ── LLM 백엔드 (Gemini 무료 API) — 실패/키없음 시 _template_review 폴백 ──
+# env GEMINI_API_KEY(Google AI Studio 무료), GEMINI_MODEL(기본 gemini-2.5-flash).
+# 검증된 facts만 프롬프트에 — 스탯/사실 환각 금지. 1~2문장 한국어 평문.
+def _gemini_review(facts: dict) -> str:
+    import os
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        return ""
+    from google import genai
+    from google.genai import types
+
+    h = facts.get("home_team", "")
+    a = facts.get("away_team", "")
+    hs = facts.get("home_score", 0) or 0
+    as_ = facts.get("away_score", 0) or 0
+    lines = [f"{h} {hs} : {as_} {a} (홈 {h} / 원정 {a})"]
+    if hs != as_:
+        lines.append(f"승팀: {h if hs > as_ else a}")
+    if facts.get("walkoff"):
+        lines.append("끝내기 승리")
+    if facts.get("extra_innings"):
+        lines.append("연장 경기")
+    if facts.get("win_pitcher"):
+        lines.append(f"승리투수: {facts['win_pitcher']}")
+    if facts.get("save_pitcher"):
+        lines.append(f"세이브: {facts['save_pitcher']}")
+    if facts.get("mvp_name"):
+        ml = facts.get("mvp_line", "")
+        lines.append(f"수훈선수: {facts['mvp_name']}" + (f" ({ml})" if ml else ""))
+    fact_block = "\n".join(f"- {x}" for x in lines)
+
+    prompt = (
+        "다음 KBO 프로야구 경기 결과로 한국어 한줄평을 1~2문장으로 작성해라.\n"
+        "규칙: 아래 '사실'만 사용한다. 점수·선수·기록을 지어내거나 과장하지 않는다. "
+        "야구 중계 자막처럼 자연스럽고 담백한 팬 친화 톤. 마크다운·따옴표·줄바꿈 없이 평문 한 줄.\n\n"
+        f"사실:\n{fact_block}\n\n한줄평:"
+    )
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+    client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=8000))  # 8s
+    resp = client.models.generate_content(
+        model=model, contents=prompt,
+        config=types.GenerateContentConfig(temperature=0.8, max_output_tokens=256),
+    )
+    text = (resp.text or "").strip().strip('"').strip("'").replace("\n", " ").strip()
+    # 안전: 비었거나 비정상 길이면 폴백
+    if not text or len(text) > 200:
+        return ""
+    return text
+
+
+def game_review(facts: dict) -> str:
+    """종료 한줄평. Gemini(무료) 우선 → 실패/키없음 시 템플릿 폴백(절대 안 죽음)."""
+    try:
+        g = _gemini_review(facts)
+        if g:
+            return g
+    except Exception as e:
+        import sys
+        print(f"[narrative] gemini 폴백({type(e).__name__}): {e}", file=sys.stderr)
+    return _template_review(facts)
