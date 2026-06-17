@@ -132,7 +132,7 @@ def _gemini_review(facts: dict) -> str:
         f"사실:\n{fact_block}\n\n한줄평:"
     )
     model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-    client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=8000))  # 8s
+    client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=12000))  # 12s (Gemini 최소 10s)
     resp = client.models.generate_content(
         model=model, contents=prompt,
         config=types.GenerateContentConfig(temperature=0.8, max_output_tokens=256),
