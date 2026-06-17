@@ -1078,7 +1078,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         ],
                         if (homeRecent.isNotEmpty) ...[
                           const SizedBox(height: 5),
-                          _buildRecentBar(homeRecent, true),
+                          _buildRecentBar(homeRecent, true, homeCode),
                         ],
                         // 홈팀 승투/패투 (종료 + 무승부 아님)
                         if (isDone && !((homeScore == awayScore))) ...[
@@ -1193,7 +1193,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                         ],
                         if (awayRecent.isNotEmpty) ...[
                           const SizedBox(height: 5),
-                          _buildRecentBar(awayRecent, false),
+                          _buildRecentBar(awayRecent, false, awayCode),
                         ],
                         // 원정팀 승투/패투 (종료 + 무승부 아님)
                         if (isDone && !((homeScore == awayScore))) ...[
@@ -1492,34 +1492,21 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     );
   }
 
-  Widget _buildRecentBar(List<String> recent, bool isHome) {
+  Widget _buildRecentBar(List<String> recent, bool isHome, String code) {
     if (recent.isEmpty) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ink   = Pal.ink(isDark);
-    final ink3  = Pal.ink3(isDark);
-    final sub   = Pal.sub(isDark);
-    final line2 = Pal.line2(isDark);
-    final track = Pal.track(isDark);
+    // 마이팀 게임카드와 동일: 승=팀컬러, 패=진한 무채색, 무=연한 무채색 (전부 solid, 흰 글씨)
+    final accent = adjustTeamColor(teamColor(code), isDark);
     final displayed = isHome ? recent.reversed.toList() : recent;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: displayed.map((r) {
-        Color bg, fg;
-        Color? bd;
-        if (r == 'W') {
-          bg = ink;
-          fg = isDark ? const Color(0xFF0F0F12) : Colors.white;
-          bd = Colors.transparent;
-        } else if (r == 'L') {
-          bg = Colors.transparent;
-          fg = sub;
-          bd = line2;
-        } else {
-          bg = track;
-          fg = ink3;
-          bd = Colors.transparent;
-        }
+        final Color bg = r == 'W'
+            ? accent
+            : r == 'L'
+                ? const Color(0xFF71717A)
+                : const Color(0xFFA1A1AA);
         return Padding(
           padding: const EdgeInsets.only(right: 4),
           child: Container(
@@ -1527,10 +1514,14 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             decoration: BoxDecoration(
               color: bg,
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: bd, width: 1),
             ),
             alignment: Alignment.center,
-            child: Text(r, style: TextStyle(fontSize: Typo.caption, color: fg, fontWeight: Typo.extra)),
+            child: Text(r,
+                textAlign: TextAlign.center,
+                textHeightBehavior: const TextHeightBehavior(
+                    applyHeightToFirstAscent: false, applyHeightToLastDescent: false),
+                strutStyle: const StrutStyle(forceStrutHeight: true, height: 1.0, fontSize: Typo.caption),
+                style: const TextStyle(fontSize: Typo.caption, color: Colors.white, fontWeight: Typo.extra, height: 1.0)),
           ),
         );
       }).toList(),

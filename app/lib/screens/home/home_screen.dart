@@ -2029,8 +2029,10 @@ class GameCard extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(Radii.xs)),
               child: Text(r, textAlign: TextAlign.center,
+                  textHeightBehavior: const TextHeightBehavior(
+                      applyHeightToFirstAscent: false, applyHeightToLastDescent: false),
                   strutStyle: const StrutStyle(forceStrutHeight: true, height: 1.0, fontSize: Typo.micro),
-                  style: TextStyle(fontSize: Typo.micro, fontWeight: Typo.extra, color: fg, height: 1.0)),
+                  style: const TextStyle(fontSize: Typo.micro, fontWeight: Typo.extra, color: fg, height: 1.0)),
             ),
             const SizedBox(height: 2),
             // 가장 최근 경기 — 결과색(승=팀컬러/패무=무채색) 선
