@@ -39,12 +39,20 @@ def _template_review(facts: dict) -> str:
         lead = f"{winner}, {wscore}-{lscore} 끝내기 승리"
     elif facts.get("extra_innings"):
         lead = f"{winner}, 연장 접전 끝 {wscore}-{lscore} 승"
+    elif facts.get("comeback"):
+        lead = f"{winner}, 뒤지다 뒤집은 {wscore}-{lscore} 역전승"
     elif diff >= 8:
         lead = f"{winner}, {wscore}-{lscore} 대승"
     elif diff <= 1:
         lead = f"{winner}, {wscore}-{lscore} 진땀승"
     else:
         lead = f"{winner}, {wscore}-{lscore}로 {loser} 제압"
+
+    # 결정적 장면 한 조각 (있으면 우선 노출 — 결과 나열 탈피)
+    kp = facts.get("key_play")
+    if kp and kp.get("batter") and kp.get("text"):
+        sit = f"{kp.get('inning')}회{kp.get('half', '')}".strip()
+        return f"{lead}. {sit} {kp['batter']}의 {kp['text']}가 승부처"
 
     mvp_name = facts.get("mvp_name", "")
     mvp_l = facts.get("mvp_line", "")
@@ -123,13 +131,26 @@ def _gemini_review(facts: dict) -> str:
     if facts.get("mvp_name"):
         ml = facts.get("mvp_line", "")
         lines.append(f"수훈선수: {facts['mvp_name']}" + (f" ({ml})" if ml else ""))
+    if facts.get("comeback"):
+        lines.append(f"{h if hs > as_ else a}가 경기 도중 뒤지다 역전한 역전승")
+    kp = facts.get("key_play")
+    if kp and kp.get("batter"):
+        sit = f"{kp.get('inning')}회{kp.get('half', '')} {kp.get('outs', 0)}사 {kp.get('runners', '')}".strip()
+        txt = kp.get("text") or ""
+        desc = f"승부를 가른 결정적 장면: {sit}에서 {kp['batter']}"
+        if txt:
+            desc += f"의 '{txt}'"
+        desc += f" (홈 승리확률 {kp.get('swing', 0)}%p 변동)"
+        lines.append(desc)
     fact_block = "\n".join(f"- {x}" for x in lines)
 
     prompt = (
-        "다음 KBO 프로야구 경기 결과로 한국어 한줄평을 1~2문장으로 작성해라.\n"
-        "규칙: 아래 '사실'에 적힌 것만 사용한다. 점수·선수·기록은 물론, "
-        "연장/이닝/안타수 등 사실에 없는 정보는 절대 언급하지 않는다(추측·과장 금지). "
-        "야구 중계 자막처럼 자연스럽고 담백한 팬 친화 톤. 마크다운·따옴표·줄바꿈 없이 평문 한 줄.\n\n"
+        "다음 KBO 프로야구 경기 정보로 한국어 한줄평을 2~3문장으로 작성해라.\n"
+        "규칙:\n"
+        "1) 아래 '사실'에 적힌 것만 사용한다. 사실에 없는 점수·선수·기록·이닝·안타수는 절대 언급하지 않는다(추측·과장 금지).\n"
+        "2) 단순히 결과만 나열하지 말고, '결정적 장면'과 '역전' 같은 경기 흐름·상황을 자연스럽게 녹여 생생하게 묘사해라.\n"
+        "3) '승리확률 N%p 변동' 같은 수치 표현이나 괄호 안 부연은 본문에 그대로 쓰지 말고, 그 장면이 승부처였다는 뉘앙스로만 표현해라.\n"
+        "4) 야구 중계 자막처럼 담백하고 팬 친화적인 톤. 마크다운·따옴표·줄바꿈 없이 평문으로.\n\n"
         f"사실:\n{fact_block}\n\n한줄평:"
     )
     model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
@@ -137,14 +158,14 @@ def _gemini_review(facts: dict) -> str:
     resp = client.models.generate_content(
         model=model, contents=prompt,
         config=types.GenerateContentConfig(
-            temperature=0.8, max_output_tokens=256,
+            temperature=0.8, max_output_tokens=400,
             # gemini-2.5 기본 thinking이 출력토큰 소진→본문 잘림. 한줄평엔 thinking 불요.
             thinking_config=types.ThinkingConfig(thinking_budget=0),
         ),
     )
     text = (resp.text or "").strip().strip('"').strip("'").replace("\n", " ").strip()
     # 안전: 비었거나 비정상 길이면 폴백
-    if not text or len(text) > 200:
+    if not text or len(text) > 300:
         return ""
     return text
 

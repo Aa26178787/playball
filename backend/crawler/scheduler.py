@@ -1182,6 +1182,44 @@ def _send_game_summary(game_id: int):
             event_flags = {r[0] for r in cur.fetchall()}
         except Exception as _ev_err:
             print(f"[FCM] event_flags 조회 오류(무시) game={game_id}: {_ev_err}")
+
+        # 경기 내용 enrichment — 결정적 장면(WPA 최대 타석) + 역전 여부 (실패 격리)
+        key_play = None
+        comeback = False
+        try:
+            cur.execute("""
+                SELECT inning, inning_half, batter_name, result_text,
+                       outs_before, base1, base2, base3, win_rate_before, win_rate_after
+                FROM plate_appearances
+                WHERE game_id = %s AND win_rate_before IS NOT NULL AND win_rate_after IS NOT NULL
+                ORDER BY ABS(win_rate_after - win_rate_before) DESC LIMIT 1
+            """, (game_id,))
+            kp = cur.fetchone()
+            if kp and abs((kp[9] or 0) - (kp[8] or 0)) >= 8:  # 의미있는 승률 변동(≥8%p)만
+                inn, half, bat, rtext, outs, b1, b2, b3, wb, wa = kp
+                runners = ('만루' if (b1 and b2 and b3) else
+                           '1·3루' if (b1 and b3) else '2·3루' if (b2 and b3) else
+                           '1·2루' if (b1 and b2) else '3루' if b3 else '2루' if b2 else
+                           '1루' if b1 else '주자 없음')
+                key_play = {
+                    'inning': inn, 'half': '초' if str(half) == '0' else '말',
+                    'outs': outs, 'runners': runners, 'batter': bat,
+                    'text': (rtext or '').split(' : ')[-1].strip() if rtext else '',
+                    'swing': round(abs((wa or 0) - (wb or 0)), 1),
+                }
+            # 역전승 = 승팀이 도중 열세였나 (홈승=홈승률 최저<35 / 원정승=홈승률 최고>65)
+            cur.execute("""
+                SELECT MIN(win_rate_before), MAX(win_rate_before)
+                FROM plate_appearances WHERE game_id=%s AND win_rate_before IS NOT NULL
+            """, (game_id,))
+            mnmx = cur.fetchone()
+            if mnmx and mnmx[0] is not None:
+                if home_score > away_score and mnmx[0] < 35:
+                    comeback = True
+                elif away_score > home_score and mnmx[1] > 65:
+                    comeback = True
+        except Exception as _en_err:
+            print(f"[FCM] enrichment 조회 오류(무시) game={game_id}: {_en_err}")
         cur.close()
     except Exception as e:
         print(f"[FCM] 경기요약 쿼리 오류: {e}")
@@ -1199,6 +1237,8 @@ def _send_game_summary(game_id: int):
         'mvp_name': mvp_name or '', 'mvp_line': mvp_l,
         'walkoff': 'walkoff' in event_flags,
         'extra_innings': 'extra_innings' in event_flags,
+        'key_play': key_play,
+        'comeback': comeback,
     })
     try:
         c2 = get_connection()
