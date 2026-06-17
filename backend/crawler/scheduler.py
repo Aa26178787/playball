@@ -1173,11 +1173,15 @@ def _send_game_summary(game_id: int):
                 mvp_player_id, mvp_name, mvp_hits, mvp_hr, mvp_rbi = mr
 
         # 끝내기/연장 플래그 (game_event_stream)
-        cur.execute("""
-            SELECT type FROM game_event_stream
-            WHERE game_id = %s AND type IN ('walkoff', 'extra_innings')
-        """, (game_id,))
-        event_flags = {r[0] for r in cur.fetchall()}
+        event_flags = set()
+        try:  # 부가 플래그 — 실패해도 요약 본체는 발송되게 격리(과거 column명 오류로 전체 죽던 사고 방지)
+            cur.execute("""
+                SELECT event_type FROM game_event_stream
+                WHERE game_id = %s AND event_type IN ('walkoff', 'extra_innings')
+            """, (game_id,))
+            event_flags = {r[0] for r in cur.fetchall()}
+        except Exception as _ev_err:
+            print(f"[FCM] event_flags 조회 오류(무시) game={game_id}: {_ev_err}")
         cur.close()
     except Exception as e:
         print(f"[FCM] 경기요약 쿼리 오류: {e}")
