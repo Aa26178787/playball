@@ -1332,26 +1332,20 @@ def get_team_legacy(team_id: int):
                          _leaders("투수", "saves", "통산 세이브")],
         }
 
-        # ③ 역대 팀 시즌기록 (franchise×시즌 집계 — 투수승=팀승 근사, 타자HR=팀HR)
+        # ③ 역대 팀 시즌기록 — 타자 합산만(정확). 투수승=팀W는 선수행 합이 미연결/비규정으로
+        #    과소집계라 제외(팀 W-L 원장 없음). 홈런·타점은 batter 합=팀 실값.
         records = []
-        cur.execute("""
-            SELECT season, SUM(wins) w FROM historical_season_stats hss
-            JOIN team_franchises tf ON tf.id = hss.team_franchise_id
-            WHERE tf.current_team_id=%s AND hss.series_type='정규' AND hss.player_type='투수'
-            GROUP BY season ORDER BY w DESC NULLS LAST LIMIT 1
-        """, (team_id,))
-        r = cur.fetchone()
-        if r and r[1]:
-            records.append({"label": "역대 최다승 시즌", "season": r[0], "value": f"{int(r[1])}승"})
-        cur.execute("""
-            SELECT season, SUM(home_runs) hr FROM historical_season_stats hss
-            JOIN team_franchises tf ON tf.id = hss.team_franchise_id
-            WHERE tf.current_team_id=%s AND hss.series_type='정규' AND hss.player_type='타자'
-            GROUP BY season ORDER BY hr DESC NULLS LAST LIMIT 1
-        """, (team_id,))
-        r = cur.fetchone()
-        if r and r[1]:
-            records.append({"label": "역대 최다 팀홈런 시즌", "season": r[0], "value": f"{int(r[1])}홈런"})
+        for col, label, unit in [("home_runs", "역대 최다 팀홈런 시즌", "홈런"),
+                                 ("rbis", "역대 최다 팀타점 시즌", "타점")]:
+            cur.execute(f"""
+                SELECT season, SUM({col}) v FROM historical_season_stats hss
+                JOIN team_franchises tf ON tf.id = hss.team_franchise_id
+                WHERE tf.current_team_id=%s AND hss.series_type='정규' AND hss.player_type='타자'
+                GROUP BY season ORDER BY v DESC NULLS LAST LIMIT 1
+            """, (team_id,))
+            r = cur.fetchone()
+            if r and r[1]:
+                records.append({"label": label, "season": r[0], "value": f"{int(r[1])}{unit}"})
 
         return {"franchise": franchise, "legends": legends, "season_records": records}
     finally:
