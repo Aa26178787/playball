@@ -26,6 +26,17 @@ SEASON_RANGE = {  # 시범경기 제외, 정규+PS 여유 범위
 SLEEP = 1.2
 
 
+def _range(season):
+    # 미등록 시즌(2010~2023) = 3/24~11/30. ⚠️구포맷(13자)은 시범도 정규와 동일 id →
+    # 날짜로만 시범 제외(시범=early-mid 3월). 3/24 시작 = 시범 후·개막전 포함, PS(10~11월) 포함.
+    return SEASON_RANGE.get(season, (f'{season}-03-24', f'{season}-11-30'))
+
+
+def _is_kbo(gid, season):
+    # 신포맷=끝 '0{season}'(2020+) / 구포맷=YYYYMMDD+팀4+'0' 13자(연도 prefix)
+    return gid.endswith(f'0{season}') or (gid.startswith(str(season)) and len(gid) == 13)
+
+
 def _live_guard():
     """KST 17~23시 = 라이브 크롤 시간대 — 대기"""
     while True:
@@ -38,8 +49,8 @@ def _live_guard():
 
 
 def backfill_games(season: int):
-    d0 = date.fromisoformat(SEASON_RANGE[season][0])
-    d1 = date.fromisoformat(SEASON_RANGE[season][1])
+    d0 = date.fromisoformat(_range(season)[0])
+    d1 = date.fromisoformat(_range(season)[1])
     n_days = (d1 - d0).days + 1
     print(f'== {season} games: {d0} ~ {d1} ({n_days}일) ==', flush=True)
     total = 0
@@ -47,7 +58,7 @@ def backfill_games(season: int):
     while d <= d1:
         _live_guard()
         games = get_games_by_date(d.isoformat())
-        kbo = [g for g in games if g.get('game_id', '').endswith(f'0{season}')]
+        kbo = [g for g in games if _is_kbo(g.get('game_id', ''), season)]
         if kbo:
             save_games(kbo)
             total += len(kbo)
@@ -61,10 +72,10 @@ def backfill_pitches(season: int, with_locations: bool = True):
     cur = conn.cursor()
     cur.execute("""
         SELECT g.id, g.naver_game_id FROM games g
-        WHERE g.status = '종료' AND g.naver_game_id LIKE %s
+        WHERE g.status = '종료' AND EXTRACT(YEAR FROM g.game_date) = %s
           AND NOT EXISTS (SELECT 1 FROM game_pitches p WHERE p.game_id = g.id)
         ORDER BY g.game_date
-    """, (f'%0{season}',))
+    """, (season,))
     targets = cur.fetchall()
     cur.close()
     conn.close()
@@ -103,9 +114,6 @@ def backfill_pitches(season: int, with_locations: bool = True):
 
 def main():
     season = int(sys.argv[1])
-    if season not in SEASON_RANGE:
-        print(f'지원 시즌: {list(SEASON_RANGE)}')
-        return
     if '--skip-games' not in sys.argv:
         backfill_games(season)
     backfill_pitches(season, with_locations='--no-locations' not in sys.argv)
