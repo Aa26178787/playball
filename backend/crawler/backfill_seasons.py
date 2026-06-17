@@ -38,7 +38,9 @@ def _is_kbo(g):
 
 
 def _live_guard():
-    """KST 17~23시 = 라이브 크롤 시간대 — 대기"""
+    """KST 17~23시 = 라이브 크롤 시간대 — 대기. env BACKFILL_NO_GUARD=1이면 우회(즉시 크롤)."""
+    if os.environ.get('BACKFILL_NO_GUARD') == '1':
+        return
     while True:
         h = datetime.now(KST).hour
         if 17 <= h < 23:
