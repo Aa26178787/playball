@@ -662,13 +662,11 @@ class _TeamScreenState extends State<TeamScreen>
               return Padding(
                 padding: const EdgeInsets.only(right: 2),
                 child: Container(
-                  width: 4, height: newest ? 17 : 14,  // 최신 경기 = 살짝 길게
+                  width: 4, height: newest ? 17 : 14,  // 우측끝(최신) 막대 살짝 길게
                   decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(1.5)),
                 ),
               );
             }),
-            const SizedBox(width: 3),
-            Text('최신', style: TextStyle(fontSize: Typo.micro, fontWeight: Typo.bold, color: sub)),
           ]),
         ],
       );
