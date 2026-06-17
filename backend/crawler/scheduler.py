@@ -1204,7 +1204,7 @@ def _send_game_summary(game_id: int):
                 # 가드: ①의미있는 변동(≥8%p) ②대승(≥8점차)은 결정타 없음 제외
                 #       ③초반(≤3회) 거대 swing = win_rate 글리치(저레버리지라 불가능)
                 glitch = swing > 30 and (inn or 99) <= 3
-                if swing >= 8 and margin <= 7 and not glitch:
+                if swing >= 8 and margin <= 5 and not glitch:
                     runners = ('만루' if (b1 and b2 and b3) else
                                '1·3루' if (b1 and b3) else '2·3루' if (b2 and b3) else
                                '1·2루' if (b1 and b2) else '3루' if b3 else '2루' if b2 else
