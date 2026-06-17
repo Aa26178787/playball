@@ -136,7 +136,11 @@ def _gemini_review(facts: dict) -> str:
     client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=12000))  # 12s (Gemini 최소 10s)
     resp = client.models.generate_content(
         model=model, contents=prompt,
-        config=types.GenerateContentConfig(temperature=0.8, max_output_tokens=256),
+        config=types.GenerateContentConfig(
+            temperature=0.8, max_output_tokens=256,
+            # gemini-2.5 기본 thinking이 출력토큰 소진→본문 잘림. 한줄평엔 thinking 불요.
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+        ),
     )
     text = (resp.text or "").strip().strip('"').strip("'").replace("\n", " ").strip()
     # 안전: 비었거나 비정상 길이면 폴백
