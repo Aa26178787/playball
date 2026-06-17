@@ -534,7 +534,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - [x] ⏸️ 설계 게이트 통과 (2026-06-18 사용자 결정): **전 항목 채택** — 선수(타이틀 이력·팀변천 타임라인·마일스톤·통산 스플릿) + 팀(구단약사/계보·역대 레전드·역대 팀 시즌기록). 스펙=`docs/superpowers/specs/2026-06-18-detail-expansion-design.md`
 - [x] API (2026-06-18, 배포+live검증): 3 엔드포인트 @cached(3600), 7항목 전부. **공유 헬퍼** `historical.py` `_career_titles`(시즌부문 max, 비율은 규정게이트=시즌 최다출전 games×3.1[타]/×1.0[투])·`_team_timeline`(소속팀 연속구간 병합)·`_career_milestones`(달성+현역 ETA 최근시즌페이스)·`_player_splits`·`_career_extras`. `GET /historical/{kbo_id}/career-extras`(은퇴) + `GET /players/{id}/career-extras`(현역, player_id→kbo 브릿지, 미브릿지=빈번들 bridged:false) + `GET /teams/{id}/legacy`(franchise 계보·역대레전드 franchise통산리더 TOP3·시즌기록=타격합만 정확/투수승 과소라 제외). live: 이승엽 홈런왕5·타점왕4·삼성 95-03/12-17, 양현종 평자책왕2·다승왕1·200승 ETA2028, 두산 OB→두산·김재환276·2018 189홈런 정합
 - [x] 앱 (2026-06-18, analyze lib=0): 공유위젯 `widgets/career_extras_section.dart`(타이틀칩/팀변천 타임라인/마일스톤 골드뱃지+ETA/스플릿 — 이미지無 웹안전, 토큰 준수, 빈섹션 자동숨김). 현역 `player_detail`=`_loadCareerExtras`(브릿지 bridged시만) → 수상경력 인근 카드. 은퇴 `historical_player_detail`=Future.wait 병렬 fetch → career카드 인근(기존 per-season splits 루프 제거, 공유위젯 통합, _splitCard 삭제). 팀 `team_detail`=`_loadLegacy` → Overview에 구단역사(계보+시즌기록)·역대레전드(타자/투수 2열) 인라인(_C/_SectionLabel/_CardWrap 스타일)
-- [ ] 웹 동반 빌드+배포 + 검증 — **⏸️ 웹빌드 멈춤 상태**(사용자 지시 "빌드"까지 보류). API=배포완료, 앱코드=커밋됨. analyze lib=0 ✓. "빌드" 시 wasm 재빌드+rsync로 일괄 반영(누적분 동반)
+- [x] 웹 동반 빌드+배포 + 검증 (2026-06-18, 웹빌드 멈춤 해제): wasm 재빌드(306s)→tar→rsync `/var/www/playball_web/`, `/app/` 200. **누적 변경 일괄 반영**(최근5 정렬·경기상세 색상·AI한줄평은 백엔드·상세확장). HTTPS 검증: 이승엽 홈런왕5·타점왕4 / 두산 OB→두산 정합. analyze lib=0·골든 회귀.
 ### 1차 추천 (크롤0)
 선수 = 타이틀이력 + 팀변천 타임라인 · 팀 = 구단약사 + 역대레전드. 전부 보유 데이터.
 ### 진행로그
