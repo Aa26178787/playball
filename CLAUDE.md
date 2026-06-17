@@ -531,7 +531,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 **크롤/소스 필요(별도, 비목표 후보)**: ❌우승이력(한국시리즈 — KBO/정적JSON) ❌연봉 ❌부상이력 ❌올스타/월간MVP ❌타이틀 중 비스탯(수비상 등)
 ### 진행 체크리스트
 - [x] 브레인스톰/스파이크 (2026-06-18): 데이터 쿼리가능성 + 3화면 주입점 확인. **타이틀**=historical_season_stats 시즌별 부문 max 계산(카운팅=clean / 비율 타율·ERA=규정게이트 필요), awards엔 MVP/골글/신인상만 有(타이틀=별도계산). **팀변천**=team_name 시즌별 ✓. **구단약사**=team_franchises 22행(team_name/start~end/note) ✓. **역대레전드**=franchise+career ✓. **브릿지**=현역 277명 player_id. 주입점: 현역 player_detail(수상경력 섹션 1671 인근)·은퇴 historical_player_detail(franchise caption+통산+수상 有)·team_detail(Overview/팀리더 탭)
-- [ ] ⏸️ 설계 게이트: 어느 항목 넣을지·UI 배치 (사용자 확인) — **진행 중**
+- [x] ⏸️ 설계 게이트 통과 (2026-06-18 사용자 결정): **전 항목 채택** — 선수(타이틀 이력·팀변천 타임라인·마일스톤·통산 스플릿) + 팀(구단약사/계보·역대 레전드·역대 팀 시즌기록). 스펙=`docs/superpowers/specs/2026-06-18-detail-expansion-design.md`
 - [ ] API: 선정 항목 엔드포인트 (타이틀=계산·팀변천·마일스톤·구단약사·역대레전드 등, @cached)
 - [ ] 앱: 선수상세 + 팀상세 섹션 추가 — ⚠️웹이미지 3규칙·netImage·토큰(Typo/Pal/Radii/Space) 준수
 - [ ] 웹 동반 빌드+배포 + 검증·analyze lib=0
