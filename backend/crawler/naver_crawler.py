@@ -67,6 +67,18 @@ def save_game_pitches(db_game_id, naver_game_id, inning):
             return
         cur = conn.cursor()
 
+        # 이닝 단위 replace — seqno는 Naver 부여값이라 크롤마다 불안정(투수판 이탈/마운드 방문/투수교체
+        # 등 사후삽입 이벤트가 뒤 seqno 시프트). 옛 ON CONFLICT(...,seqno,type) 방식은 시프트된 동일
+        # 이벤트를 새 행으로 INSERT → 이닝 통째 offset 중복 누적(325 6회 사례). Naver relay는 누적
+        # 발행이라 매 크롤이 직전 이상 완전 → DELETE 후 fresh INSERT가 안전(단일 클린 카피).
+        # win_rate(결과행만 보유, 과거 크롤만 가진 경우 有)는 DELETE 전 보존 후 NULL일 때만 재병합.
+        cur.execute("""SELECT inning_half, text, home_win_rate, away_win_rate
+                       FROM game_pitches WHERE game_id=%s AND inning=%s AND type=13
+                         AND (home_win_rate IS NOT NULL OR away_win_rate IS NOT NULL)""",
+                    (db_game_id, inning))
+        _wr_keep = {(r[0], r[1]): (r[2], r[3]) for r in cur.fetchall()}
+        cur.execute("DELETE FROM game_pitches WHERE game_id=%s AND inning=%s", (db_game_id, inning))
+
         current_batter = None
         current_pitcher = None
         prev_inning_half = None
@@ -124,6 +136,11 @@ def save_game_pitches(db_game_id, naver_game_id, inning):
                 metric = opt.get('metricOption') or (item_metric if rtype == 13 else {})
                 home_win_rate = metric.get('homeTeamWinRate')
                 away_win_rate = metric.get('awayTeamWinRate')
+                # 이번 크롤이 win_rate 미제공이면 보존값(과거 크롤분) 재병합 — replace로 유실 방지
+                if rtype == 13 and home_win_rate is None and away_win_rate is None:
+                    _kept = _wr_keep.get((inning_half, text))
+                    if _kept:
+                        home_win_rate, away_win_rate = _kept
 
                 cur.execute("""
                     INSERT INTO game_pitches (
