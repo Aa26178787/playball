@@ -3,6 +3,7 @@ import '../../api/api_service.dart';
 import '../../utils/design_tokens.dart';
 import '../../utils/team_theme.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/career_extras_section.dart';
 
 /// 은퇴/역대 선수 상세 (라이브 데이터 없음 — bio+통산+시즌별+PS+수상+스플릿+franchise).
 /// 현역 상세(player_detail_screen)와 별도: 존히트맵/구종/트렌드/비교/투표 섹션 미존재.
@@ -19,6 +20,7 @@ class HistoricalPlayerDetailScreen extends StatefulWidget {
 class _HistoricalPlayerDetailScreenState
     extends State<HistoricalPlayerDetailScreen> {
   Map<String, dynamic>? _data;
+  Map<String, dynamic>? _extras;
   bool _loading = true;
   bool _error = false;
 
@@ -30,8 +32,18 @@ class _HistoricalPlayerDetailScreenState
 
   Future<void> _load() async {
     try {
-      final d = await ApiService.getHistoricalPlayer(widget.kboPlayerId);
-      if (mounted) setState(() { _data = d; _loading = false; });
+      final results = await Future.wait([
+        ApiService.getHistoricalPlayer(widget.kboPlayerId),
+        ApiService.getHistoricalCareerExtras(widget.kboPlayerId)
+            .catchError((_) => <String, dynamic>{}),
+      ]);
+      if (mounted) {
+        setState(() {
+          _data = results[0];
+          _extras = results[1];
+          _loading = false;
+        });
+      }
     } catch (e) {
       debugPrint('historical_detail: $e');
       if (mounted) setState(() { _error = true; _loading = false; });
@@ -64,18 +76,21 @@ class _HistoricalPlayerDetailScreenState
     final career = (_data!['career'] as Map?) ?? {};
     final stats = (_data!['stats'] as List?) ?? [];
     final awards = (_data!['awards'] as List?) ?? [];
-    final splits = (_data!['splits'] as Map?) ?? {};
     final post = (_data!['postseason'] as List?) ?? [];
     final fr = (_data!['franchise_path'] as List?) ?? [];
     final isPitcher = bio['player_type'] == '투수';
+    final code = bio['team_code'] as String? ?? '';
+    final accent = adjustTeamColor(teamColor(code), isDark);
     return ListView(padding: const EdgeInsets.all(Space.lg), children: [
       _hero(bio, isDark),
       if (career.isNotEmpty) _careerCard(career, isPitcher, isDark),
+      if (_extras != null) ...[
+        const SizedBox(height: Space.lg),
+        CareerExtrasSection(extras: _extras!, isDark: isDark, accent: accent),
+      ],
       if (stats.isNotEmpty) _seasonTable(stats.cast<Map>(), isPitcher, isDark),
       if (post.isNotEmpty) _postseasonCard(post.cast<Map>(), isPitcher, isDark),
       if (awards.isNotEmpty) _awardsCard(awards.cast<Map>(), isDark),
-      for (final axis in splits.keys)
-        _splitCard('$axis', (splits[axis] as List).cast<Map>(), isDark),
       if (fr.isNotEmpty) _franchiseCaption(fr.cast<Map>(), isDark),
       const SizedBox(height: Space.xl),
     ]);
@@ -251,14 +266,6 @@ class _HistoricalPlayerDetailScreenState
           ]),
         ]),
       );
-
-  Widget _splitCard(String axis, List<Map> rows, bool isDark) => _simpleListCard(
-      '스플릿 · $axis',
-      [
-        for (final r in rows)
-          '${r['season']} ${r['value']}: ${_r3(r['avg'])} (${r['home_runs'] ?? 0}HR)'
-      ],
-      isDark);
 
   Widget _franchiseCaption(List<Map> fr, bool isDark) => Padding(
         padding: const EdgeInsets.only(top: Space.lg),

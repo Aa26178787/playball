@@ -558,6 +558,22 @@ class ApiService {
     return res.data;
   }
 
+  // ===== 상세확장(타이틀/팀변천/마일스톤/스플릿, 팀 legacy) =====
+  static Future<Map<String, dynamic>> getPlayerCareerExtras(int playerId) async {
+    final res = await _dio.get('/players/$playerId/career-extras');
+    return res.data;
+  }
+
+  static Future<Map<String, dynamic>> getHistoricalCareerExtras(int kboPlayerId) async {
+    final res = await _dio.get('/historical/$kboPlayerId/career-extras');
+    return res.data;
+  }
+
+  static Future<Map<String, dynamic>> getTeamLegacy(int teamId) async {
+    final res = await _dio.get('/teams/$teamId/legacy');
+    return res.data;
+  }
+
   // ===== 팀 API =====
   static Future<Map<String, dynamic>> getTeams() async {
     final res = await _dedupGet('/teams/');

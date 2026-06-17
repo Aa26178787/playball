@@ -9,6 +9,7 @@ import '../../utils/insta_launch.dart';
 import 'player_compare_screen.dart';
 import '../../utils/team_theme.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/career_extras_section.dart';
 import '../../widgets/share_cards.dart';
 import '../../utils/share_card.dart';
 
@@ -27,6 +28,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   Map<String, dynamic>? _playerData;
   List<dynamic> _dailyStats = [];
   Map<String, dynamic>? _pitchStats;
+  Map<String, dynamic>? _careerExtras; // 타이틀/팀변천/마일스톤/스플릿 (역대 브릿지)
   OverlayEntry? _compareBubble; // 숫자 길게누르기 비교 말풍선
   bool _showCoreHint = false;   // 핵심스탯 길게누르기 1회성 점선 애니 힌트
 
@@ -71,6 +73,15 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
           season: _zoneSeason, stance: _pzStance);
       if (mounted) setState(() => _pitcherZones = d);
     } catch (e) { debugPrint('player_detail: $e'); }
+  }
+
+  Future<void> _loadCareerExtras() async {
+    try {
+      final d = await ApiService.getPlayerCareerExtras(widget.playerId);
+      if (mounted && (d['bridged'] == true)) setState(() => _careerExtras = d);
+    } catch (e) {
+      debugPrint('career_extras: $e');
+    }
   }
 
   Future<void> _loadDaily() async {
@@ -240,6 +251,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
     try {
       // daily(최근5) 병렬 시작
       _loadDaily();
+      _loadCareerExtras(); // 타이틀/팀변천/마일스톤 (역대 브릿지, 독립)
       // 하위섹션(구종분포/로케이션/히트맵)을 player_type 알면 프로필 대기 없이 즉시 병렬 발화
       // (리스트→상세는 initialData, 재방문은 memCached에 type 존재) → '한박자' 지연 제거
       final earlyType = (memCached?['player_type'] ?? widget.initialData?['player_type']) as String?;
@@ -337,6 +349,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   _buildCoreStatsGrid(player),
                   if (_dailyStats.isNotEmpty) _buildRecent5Games(player),
                   _buildDetailStatsGrids(player),
+                  if (_careerExtras != null) _buildCareerExtrasCard(player),
                   if (_dailyStats.isNotEmpty) _buildTrendCard(player),
                   if (_pitchStats != null) _buildPitchStatsCard(),
                   if (AppConfig.enabled('pitch_zone') && _pitchDesign != null && (_pitchDesign!['total'] as int? ?? 0) > 0)
@@ -1660,6 +1673,18 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
       if ((player['awards'] as List?)?.isNotEmpty ?? false)
         _awardsSection((player['awards'] as List).cast<Map>()),
     ]);
+  }
+
+  // 상세확장 (타이틀/팀변천/마일스톤/스플릿) — 역대 브릿지 있을 때만.
+  Widget _buildCareerExtrasCard(Map<String, dynamic> player) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final code = player['team_code'] as String? ?? '';
+    final accent = adjustTeamColor(teamColor(code), isDark);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Space.lg, Space.sm, Space.lg, Space.sm),
+      child: CareerExtrasSection(
+          extras: _careerExtras!, isDark: isDark, accent: accent),
+    );
   }
 
   // 수상 경력 (역대 머지 — historical_awards). awards 있을 때만 렌더.

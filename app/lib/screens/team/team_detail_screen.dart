@@ -48,6 +48,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   List _h2hRecords = [];
   Map _teamLeaders = {};
   Map<String, dynamic>? _seasonStats;
+  Map<String, dynamic>? _legacy; // 구단 약사/계보 + 역대 레전드 + 시즌기록
   bool _playersLoading = true;
   bool _gamesLoading = false;
   bool _rosterLoading = false;
@@ -73,6 +74,17 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     _loadStandings();
     _loadRosterChanges();
     _loadNews();
+    _loadLegacy();
+  }
+
+  Future<void> _loadLegacy() async {
+    final teamId = widget.team['id'] as int;
+    try {
+      final d = await ApiService.getTeamLegacy(teamId);
+      if (mounted) setState(() => _legacy = d);
+    } catch (e) {
+      debugPrint('team_legacy: $e');
+    }
   }
 
   // 메인 탭 슬라이드 전환
@@ -494,7 +506,91 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       else
         _CardWrap(cs: cs, child: Column(children: newsList.asMap().entries.map((e) =>
             _buildNewsItem(cs, e.value as Map, e.key == newsList.length - 1)).toList())),
+      if (_legacy != null) _buildLegacySection(cs, color),
       const SizedBox(height: Space.xl),
+    ]);
+  }
+
+  static String _yy(int? y) =>
+      y == null ? '' : "'${(y % 100).toString().padLeft(2, '0')}";
+
+  // 구단 역사/계보 + 역대 레전드 + 역대 팀 시즌기록 (legacy API)
+  Widget _buildLegacySection(_C cs, Color color) {
+    final fr = (_legacy!['franchise'] as List?) ?? const [];
+    final records = (_legacy!['season_records'] as List?) ?? const [];
+    final legends = (_legacy!['legends'] as Map?) ?? const {};
+    final batting = (legends['batting'] as List?) ?? const [];
+    final pitching = (legends['pitching'] as List?) ?? const [];
+
+    Widget leaderCol(List cats, String head) => Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(head, style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.extra, color: color)),
+            const SizedBox(height: Space.sm),
+            for (final c in cats) ...[
+              Text((c as Map)['category']?.toString() ?? '',
+                  style: TextStyle(fontSize: Typo.caption, color: cs.sub)),
+              const SizedBox(height: 2),
+              for (final p in ((c['players'] as List?) ?? const []))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2, top: 1),
+                  child: Row(children: [
+                    Expanded(child: Text((p as Map)['name']?.toString() ?? '',
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: Typo.small, fontWeight: Typo.semibold, color: cs.ink))),
+                    Text('${p['value'] ?? ''}',
+                        style: TextStyle(fontSize: Typo.small, fontWeight: Typo.bold, color: cs.ink2)),
+                  ]),
+                ),
+              const SizedBox(height: Space.sm),
+            ],
+          ]),
+        );
+
+    return Column(children: [
+      _SectionLabel(label: '구단 역사', cs: cs),
+      _CardWrap(cs: cs, child: Padding(
+        padding: const EdgeInsets.all(Space.lg),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // 계보
+          if (fr.isNotEmpty)
+            Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
+              for (var i = 0; i < fr.length; i++) ...[
+                if (i > 0) Padding(padding: const EdgeInsets.symmetric(horizontal: Space.xs),
+                    child: Icon(Icons.chevron_right, size: Typo.subtitle, color: cs.sub)),
+                Text('${(fr[i] as Map)['team_name'] ?? ''} '
+                    '${_yy((fr[i]['start_year'] as num?)?.toInt())}~${_yy((fr[i]['end_year'] as num?)?.toInt())}',
+                    style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink)),
+              ],
+            ]),
+          for (final f in fr)
+            if (((f as Map)['note'] as String?)?.isNotEmpty ?? false)
+              Padding(padding: const EdgeInsets.only(top: Space.xs),
+                  child: Text('· ${f['note']}', style: TextStyle(fontSize: Typo.caption, color: cs.sub))),
+          // 시즌기록
+          if (records.isNotEmpty) ...[
+            const SizedBox(height: Space.md),
+            for (final r in records)
+              Padding(padding: const EdgeInsets.only(bottom: Space.xs),
+                child: Row(children: [
+                  Expanded(child: Text((r as Map)['label']?.toString() ?? '',
+                      style: TextStyle(fontSize: Typo.small, color: cs.ink3))),
+                  Text('${r['season'] ?? ''}  ${r['value'] ?? ''}',
+                      style: TextStyle(fontSize: Typo.small, fontWeight: Typo.bold, color: cs.ink)),
+                ])),
+          ],
+        ]),
+      )),
+      if (batting.isNotEmpty || pitching.isNotEmpty) ...[
+        _SectionLabel(label: '역대 레전드', cs: cs),
+        _CardWrap(cs: cs, child: Padding(
+          padding: const EdgeInsets.all(Space.lg),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (batting.isNotEmpty) leaderCol(batting, '타자'),
+            if (batting.isNotEmpty && pitching.isNotEmpty) const SizedBox(width: Space.lg),
+            if (pitching.isNotEmpty) leaderCol(pitching, '투수'),
+          ]),
+        )),
+      ],
     ]);
   }
 
