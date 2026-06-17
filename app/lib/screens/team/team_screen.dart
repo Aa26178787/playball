@@ -646,23 +646,30 @@ class _TeamScreenState extends State<TeamScreen>
     }
 
     Widget formBar() {
+      // recent10 = 최근→과거 순(backend). 표시는 오래된(좌)→최신(우) 타임라인으로 reverse + 우측 '최신' 라벨.
+      final disp = recent10.reversed.toList();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('최근 10경기', style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.medium, color: sub)),
           const SizedBox(height: 6),
-          Row(children: List.generate(10, (i) {
-            final r = i < recent10.length ? recent10[i] : '';
-            final fill = r == 'W' ? tc : track;
-            return Padding(
-              padding: const EdgeInsets.only(right: 2),
-              child: Container(
-                width: 4, height: 14,
-                decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(1.5)),
-              ),
-            );
-          })),
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            ...List.generate(10, (i) {
+              final r = i < disp.length ? disp[i] : '';
+              final fill = r == 'W' ? tc : track;
+              final newest = i == 9;  // 우측끝 = 최신
+              return Padding(
+                padding: const EdgeInsets.only(right: 2),
+                child: Container(
+                  width: 4, height: newest ? 17 : 14,  // 최신 경기 = 살짝 길게
+                  decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(1.5)),
+                ),
+              );
+            }),
+            const SizedBox(width: 3),
+            Text('최신', style: TextStyle(fontSize: Typo.micro, fontWeight: Typo.bold, color: sub)),
+          ]),
         ],
       );
     }

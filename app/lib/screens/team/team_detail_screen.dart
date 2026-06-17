@@ -1114,37 +1114,43 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                     ? () => Navigator.push(context,
                         MaterialPageRoute(builder: (_) => GameDetailScreen(gameId: gid)))
                     : null,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
-                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    // '최근' 배지 슬롯(고정높이 — 셀 정렬 유지, 최근경기만 표시)
-                    SizedBox(
-                      height: 15,
-                      child: gid != null && gid == recentGid
-                          ? Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                              decoration: BoxDecoration(color: tc, borderRadius: BorderRadius.circular(Radii.pill)),
-                              child: Text('최근',
-                                  style: TextStyle(fontSize: Typo.micro, color: Colors.white, fontWeight: Typo.bold)))
-                          : null,
+                // 배지는 Stack 오버레이(중앙흐름서 분리 → 날짜/로고/결과 정중앙 정렬)
+                child: Stack(children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(md(d), textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: Typo.small, color: cs.sub)),
+                        const SizedBox(height: 6),
+                        TeamLogo(teamCode: oppCode, size: 34),
+                        const SizedBox(height: 6),
+                        if (cancelled)
+                          Text('취소', textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: Typo.title, fontWeight: Typo.bold, color: cs.sub))
+                        else ...[
+                          Text('${g['home_score'] ?? 0} : ${g['away_score'] ?? 0}',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: rc(r))),
+                          const SizedBox(height: 3),
+                          Text(rLabel, textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: rc(r))),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(md(d), style: TextStyle(fontSize: Typo.small, color: cs.sub)),
-                    const SizedBox(height: 6),
-                    TeamLogo(teamCode: oppCode, size: 34),
-                    const SizedBox(height: 6),
-                    if (cancelled)
-                      Text('취소',
-                          style: TextStyle(fontSize: Typo.title, fontWeight: Typo.bold, color: cs.sub))
-                    else ...[
-                      Text('${g['home_score'] ?? 0} : ${g['away_score'] ?? 0}',
-                          style: TextStyle(fontSize: Typo.h2, fontWeight: Typo.extra, color: rc(r))),
-                      const SizedBox(height: 3),
-                      Text(rLabel,
-                          style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: rc(r))),
-                    ],
-                  ]),
-                ),
+                  ),
+                  if (gid != null && gid == recentGid)
+                    Positioned(top: 2, left: 0, right: 0, child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(color: tc, borderRadius: BorderRadius.circular(Radii.pill)),
+                        child: Text('최근',
+                            style: TextStyle(fontSize: Typo.micro, color: Colors.white, fontWeight: Typo.bold)),
+                      ),
+                    )),
+                ]),
               );
             })),
           ],

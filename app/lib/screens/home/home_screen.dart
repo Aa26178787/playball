@@ -1907,42 +1907,18 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   border: Border(top: BorderSide(color: t.line, width: 1)),
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 200),
+                  constraints: const BoxConstraints(maxHeight: 240),
                   child: SingleChildScrollView(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-                      child: Column(
-                        children: changes.map((c) {
-                          final type = c['change_type'] as String? ?? '';
-                          Color col = type == '1군등록' ? const Color(0xFF1976D2)
-                              : type == '등록말소' ? const Color(0xFFFFA000)
-                              : type == '부상자명단' ? const Color(0xFFE53935) : t.ink3;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Row(children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: col.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(Radii.xs),
-                                ),
-                                child: Text(type, style: TextStyle(fontSize: Typo.caption, color: col, fontWeight: Typo.extra)),
-                              ),
-                              const SizedBox(width: Space.sm),
-                              Text(c['team_name'] ?? '', style: TextStyle(fontSize: Typo.caption, color: t.ink3, fontWeight: Typo.medium)),
-                              const SizedBox(width: Space.xs),
-                              Text(c['player_name'] ?? '', style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: t.ink)),
-                              if ((c['reason'] as String? ?? '').isNotEmpty) ...[
-                                const SizedBox(width: Space.xs),
-                                Expanded(
-                                  child: Text('(${c['reason']})',
-                                      style: TextStyle(fontSize: Typo.caption, color: t.sub),
-                                      overflow: TextOverflow.ellipsis),
-                                ),
-                              ],
-                            ]),
-                          );
-                        }).toList(),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 등록 | 말소(+부상) 2열 (팀상세 등록말소처럼)
+                          Expanded(child: _rosterCol('등록', const Color(0xFF1976D2), registrations, t)),
+                          const SizedBox(width: 14),
+                          Expanded(child: _rosterCol('말소', const Color(0xFFFFA000), [...removals, ...injuries], t)),
+                        ],
                       ),
                     ),
                   ),
@@ -1962,6 +1938,47 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     ),
     child: Text(label, style: TextStyle(fontSize: Typo.caption, color: color, fontWeight: Typo.extra)),
   );
+
+  // 약어 포지션 → 풀네임 (투→투수, 포→포수 …). 투수면 player_type 우선.
+  String _fullRosterPos(Map c) {
+    if ((c['player_type'] as String? ?? '') == '투수') return '투수';
+    final p = ((c['position'] ?? c['reason'] ?? '') as String).trim();
+    const m = {'투': '투수', '포': '포수', '내': '내야수', '외': '외야수'};
+    return m[p] ?? p;
+  }
+
+  // 등록/말소 단일 열 (헤더 dot + 항목: 팀 · 선수 · 풀포지션)
+  Widget _rosterCol(String label, Color color, List items, _Tok t) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 5),
+        Text('$label ${items.length}',
+            style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.extra, color: color)),
+      ]),
+      const SizedBox(height: 7),
+      if (items.isEmpty)
+        Text('-', style: TextStyle(fontSize: Typo.caption, color: t.sub))
+      else
+        ...items.map((c) {
+          final pos = _fullRosterPos(c as Map);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              Text('${teamDisplayName(c['team_code'] as String? ?? '')} ',
+                  style: TextStyle(fontSize: Typo.micro, color: t.sub, fontWeight: Typo.bold)),
+              Flexible(child: Text(c['player_name'] as String? ?? '',
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: t.ink))),
+              if (pos.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                Text(pos, style: TextStyle(fontSize: Typo.micro, color: t.sub)),
+              ],
+            ]),
+          );
+        }),
+    ]);
+  }
 }
 
 // ===== Winner Glow Logo =====
