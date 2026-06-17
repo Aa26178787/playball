@@ -539,7 +539,8 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - (미착수 — `상세확장 진행`으로 시작)
 
 ## 해야할 것
-### AI 경기 한줄평 알림 (2026-06-14 요청) — ✅ 구현완료 (06-15 메가E, 아래는 원 요청 기록)
+### AI 경기 한줄평 알림 (2026-06-14 요청) — ✅ 구현완료 (06-15 메가E 템플릿 → 06-18 Gemini LLM)
+- **06-18 LLM 업그레이드**: `api/narrative.py game_review` = **Gemini 무료 API**(google-genai, `gemini-2.5-flash`) 우선 → 실패/무키/타임아웃(12s, 최소10s제약)/503 시 `_template_review` 폴백(절대 안 죽음). 검증 facts만 프롬프트(환각가드: 연장/이닝 등 미제공정보 언급금지), 1~2문장 한국어 평문, lazy import. **env**: scheduler `gemini.conf` drop-in `GEMINI_API_KEY`(Google AI Studio 무료)·`GEMINI_MODEL`. 비용 $0(무료티어, 일 5~15경기). 검증=삼성 끝내기/KIA승 정확·환각없음. ⚠️**06-18 game_summary 죽음 버그 수정 직후**(event_type) 이 위에 얹음 — 둘 다 _send_game_summary 경로. ⚠️무료티어=입력 학습사용 가능(공개 경기facts라 저민감). 키 회전 시 gemini.conf 교체+scheduler restart.
 - 구현: 템플릿 기반(`api/narrative.py`), game_summary 본문 교체(별도 푸시·토글 신설 안 함), game_reviews 영속. LLM 업그레이드는 엔진 인터페이스만 교체하면 됨. 잔여 = 추후 LLM/3줄요약/다이제스트(메가E2)
 - **목표**: 경기 종료 시 경기 상황·결과를 분석해 **AI 한줄평**을 생성, 알림으로 전송 (마이팀/관심경기 대상)
 - **트리거**: scheduler 종료 후처리(`post_finished_done` 블록, game_summary 발송 지점과 동일) — game_summary 보강 형태
