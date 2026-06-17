@@ -3,6 +3,7 @@ from database.connection import get_connection
 from typing import Optional
 from api.cache import cached
 from api.routers.auth import get_current_user, get_optional_user
+from api.routers.historical import _career_extras
 
 router = APIRouter()
 
@@ -1317,3 +1318,28 @@ def report_insta(player_id: int, current_user: dict | None = Depends(get_optiona
     conn.commit()
     cur.close(); conn.close()
     return {"ok": True}
+
+
+@router.get("/{player_id}/career-extras")
+@cached(3600)
+def get_player_career_extras(player_id: int):
+    """현역 선수 상세확장 — 역대 브릿지(kbo_player_id) 해석 후 타이틀/팀변천/마일스톤/스플릿.
+    브릿지 없으면(역대 미적재 신인 등) 빈 번들+bridged=False."""
+    empty = {"titles": [], "team_timeline": [],
+             "milestones": {"reached": [], "approaching": []}, "splits": {}, "bridged": False}
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT kbo_player_id FROM historical_players WHERE player_id=%s", (player_id,))
+        row = cur.fetchone()
+        if not row:
+            return empty
+        extras = _career_extras(cur, row[0])
+        if extras is None:
+            return empty
+        extras["bridged"] = True
+        return extras
+    finally:
+        cur.close(); conn.close()

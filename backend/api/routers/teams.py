@@ -1288,3 +1288,71 @@ def get_bullpen_status(team_id: int):
     sev = {'red': 0, 'yellow': 1, 'green': 2}
     result.sort(key=lambda r: (sev[r['status']], -r['pitches_3d']))
     return {"team_id": team_id, "as_of": str(today), "pitchers": result}
+
+
+@router.get("/{team_id}/legacy")
+@cached(3600)
+def get_team_legacy(team_id: int):
+    """팀 상세확장 — 구단 약사/계보 + 역대 레전드(franchise 통산 리더) + 역대 팀 시즌기록."""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    try:
+        # ① 구단 약사/계보
+        cur.execute("""
+            SELECT team_name, start_year, end_year, note, is_continuous
+            FROM team_franchises WHERE current_team_id=%s ORDER BY start_year
+        """, (team_id,))
+        franchise = [{"team_name": r[0], "start_year": r[1], "end_year": r[2],
+                      "note": r[3], "is_continuous": r[4]} for r in cur.fetchall()]
+
+        # ② 역대 레전드 (franchise 소속 통산 리더 — col 화이트리스트)
+        def _leaders(ptype, col, label, limit=3):
+            cur.execute(f"""
+                SELECT hp.name, hp.kbo_player_id, hp.player_id, SUM(COALESCE(hss.{col},0)) v
+                FROM historical_season_stats hss
+                JOIN team_franchises tf ON tf.id = hss.team_franchise_id
+                JOIN historical_players hp ON hp.kbo_player_id = hss.kbo_player_id
+                WHERE tf.current_team_id=%s AND hss.series_type='정규' AND hss.player_type=%s
+                GROUP BY hp.name, hp.kbo_player_id, hp.player_id
+                HAVING SUM(COALESCE(hss.{col},0)) > 0
+                ORDER BY v DESC LIMIT %s
+            """, (team_id, ptype, limit))
+            return {"category": label, "players": [
+                {"name": r[0], "kbo_player_id": r[1], "is_active": r[2] is not None,
+                 "value": int(r[3])} for r in cur.fetchall()]}
+
+        legends = {
+            "batting": [_leaders("타자", "home_runs", "통산 홈런"),
+                        _leaders("타자", "hits", "통산 안타"),
+                        _leaders("타자", "rbis", "통산 타점")],
+            "pitching": [_leaders("투수", "wins", "통산 승"),
+                         _leaders("투수", "strikeouts_pitched", "통산 탈삼진"),
+                         _leaders("투수", "saves", "통산 세이브")],
+        }
+
+        # ③ 역대 팀 시즌기록 (franchise×시즌 집계 — 투수승=팀승 근사, 타자HR=팀HR)
+        records = []
+        cur.execute("""
+            SELECT season, SUM(wins) w FROM historical_season_stats hss
+            JOIN team_franchises tf ON tf.id = hss.team_franchise_id
+            WHERE tf.current_team_id=%s AND hss.series_type='정규' AND hss.player_type='투수'
+            GROUP BY season ORDER BY w DESC NULLS LAST LIMIT 1
+        """, (team_id,))
+        r = cur.fetchone()
+        if r and r[1]:
+            records.append({"label": "역대 최다승 시즌", "season": r[0], "value": f"{int(r[1])}승"})
+        cur.execute("""
+            SELECT season, SUM(home_runs) hr FROM historical_season_stats hss
+            JOIN team_franchises tf ON tf.id = hss.team_franchise_id
+            WHERE tf.current_team_id=%s AND hss.series_type='정규' AND hss.player_type='타자'
+            GROUP BY season ORDER BY hr DESC NULLS LAST LIMIT 1
+        """, (team_id,))
+        r = cur.fetchone()
+        if r and r[1]:
+            records.append({"label": "역대 최다 팀홈런 시즌", "season": r[0], "value": f"{int(r[1])}홈런"})
+
+        return {"franchise": franchise, "legends": legends, "season_records": records}
+    finally:
+        cur.close(); conn.close()
