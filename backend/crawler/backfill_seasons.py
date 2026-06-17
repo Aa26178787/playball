@@ -27,14 +27,14 @@ SLEEP = 1.2
 
 
 def _range(season):
-    # 미등록 시즌(2010~2023) = 3/24~11/30. ⚠️구포맷(13자)은 시범도 정규와 동일 id →
-    # 날짜로만 시범 제외(시범=early-mid 3월). 3/24 시작 = 시범 후·개막전 포함, PS(10~11월) 포함.
-    return SEASON_RANGE.get(season, (f'{season}-03-24', f'{season}-11-30'))
+    # 미등록 시즌(2010~2023) = 3/15~11/30. roundCode로 시범 제외하니 날짜는 넓게(개막전 누락 방지).
+    return SEASON_RANGE.get(season, (f'{season}-03-15', f'{season}-11-30'))
 
 
-def _is_kbo(gid, season):
-    # 신포맷=끝 '0{season}'(2020+) / 구포맷=YYYYMMDD+팀4+'0' 13자(연도 prefix)
-    return gid.endswith(f'0{season}') or (gid.startswith(str(season)) and len(gid) == 13)
+def _is_kbo(g):
+    # roundCode로 정규+PS만 (시범 kbo_e·올스타 제외). 2015~ 보편적.
+    rc = g.get('round_code') or ''
+    return rc == 'kbo_r' or rc.startswith('kbo_ps')
 
 
 def _live_guard():
@@ -58,7 +58,7 @@ def backfill_games(season: int):
     while d <= d1:
         _live_guard()
         games = get_games_by_date(d.isoformat())
-        kbo = [g for g in games if _is_kbo(g.get('game_id', ''), season)]
+        kbo = [g for g in games if _is_kbo(g)]
         if kbo:
             save_games(kbo)
             total += len(kbo)

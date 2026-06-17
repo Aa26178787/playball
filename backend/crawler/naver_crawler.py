@@ -206,6 +206,7 @@ def get_games_by_date(date_str=None):
         for game in data["result"]["games"]:
             games.append({
                 "game_id":        game.get("gameId"),
+                "round_code":     game.get("roundCode"),  # kbo_r 정규 / kbo_e 시범 / kbo_ps_* PS
                 "game_date":      game.get("gameDate"),
                 "game_datetime":  game.get("gameDateTime"),
                 "stadium":        game.get("stadium"),
