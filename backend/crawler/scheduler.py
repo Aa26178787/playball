@@ -1195,25 +1195,32 @@ def _send_game_summary(game_id: int):
                 ORDER BY ABS(win_rate_after - win_rate_before) DESC LIMIT 1
             """, (game_id,))
             kp = cur.fetchone()
-            if kp and abs((kp[9] or 0) - (kp[8] or 0)) >= 8:  # 의미있는 승률 변동(≥8%p)만
+            margin = abs((home_score or 0) - (away_score or 0))
+            if kp:
                 inn, half, bat, rtext, outs, b1, b2, b3, wb, wa = kp
-                runners = ('만루' if (b1 and b2 and b3) else
-                           '1·3루' if (b1 and b3) else '2·3루' if (b2 and b3) else
-                           '1·2루' if (b1 and b2) else '3루' if b3 else '2루' if b2 else
-                           '1루' if b1 else '주자 없음')
-                key_play = {
-                    'inning': inn, 'half': '초' if str(half) == '0' else '말',
-                    'outs': outs, 'runners': runners, 'batter': bat,
-                    'text': (rtext or '').split(' : ')[-1].strip() if rtext else '',
-                    'swing': round(abs((wa or 0) - (wb or 0)), 1),
-                }
+                swing = abs((wa or 0) - (wb or 0))
+                # 가드: ①의미있는 변동(≥8%p) ②대승(≥8점차)은 결정타 없음 제외
+                #       ③초반(≤3회) 거대 swing = win_rate 글리치(저레버리지라 불가능)
+                glitch = swing > 30 and (inn or 99) <= 3
+                if swing >= 8 and margin <= 7 and not glitch:
+                    runners = ('만루' if (b1 and b2 and b3) else
+                               '1·3루' if (b1 and b3) else '2·3루' if (b2 and b3) else
+                               '1·2루' if (b1 and b2) else '3루' if b3 else '2루' if b2 else
+                               '1루' if b1 else '주자 없음')
+                    key_play = {
+                        'inning': inn, 'half': '초' if str(half) == '0' else '말',
+                        'outs': outs, 'runners': runners, 'batter': bat,
+                        'text': (rtext or '').split(' : ')[-1].strip() if rtext else '',
+                        'swing': round(swing, 1),
+                    }
             # 역전승 = 승팀이 도중 열세였나 (홈승=홈승률 최저<35 / 원정승=홈승률 최고>65)
+            # 대승(≥7점차)은 글리치성 false comeback 회피 위해 제외
             cur.execute("""
                 SELECT MIN(win_rate_before), MAX(win_rate_before)
                 FROM plate_appearances WHERE game_id=%s AND win_rate_before IS NOT NULL
             """, (game_id,))
             mnmx = cur.fetchone()
-            if mnmx and mnmx[0] is not None:
+            if mnmx and mnmx[0] is not None and margin <= 6:
                 if home_score > away_score and mnmx[0] < 35:
                     comeback = True
                 elif away_score > home_score and mnmx[1] > 65:
