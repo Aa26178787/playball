@@ -1187,11 +1187,13 @@ def _send_game_summary(game_id: int):
         key_play = None
         comeback = False
         try:
+            # 결정장면 = 확실한 긍정 기여(안타/희생타)만 — 아웃 글리치+오해 소지 원천 배제
             cur.execute("""
                 SELECT inning, inning_half, batter_name, result_text,
                        outs_before, base1, base2, base3, win_rate_before, win_rate_after
                 FROM plate_appearances
                 WHERE game_id = %s AND win_rate_before IS NOT NULL AND win_rate_after IS NOT NULL
+                  AND (is_hit = true OR result_class = 'sac')
                 ORDER BY ABS(win_rate_after - win_rate_before) DESC LIMIT 1
             """, (game_id,))
             kp = cur.fetchone()
