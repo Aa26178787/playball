@@ -532,13 +532,13 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 ### 진행 체크리스트
 - [x] 브레인스톰/스파이크 (2026-06-18): 데이터 쿼리가능성 + 3화면 주입점 확인. **타이틀**=historical_season_stats 시즌별 부문 max 계산(카운팅=clean / 비율 타율·ERA=규정게이트 필요), awards엔 MVP/골글/신인상만 有(타이틀=별도계산). **팀변천**=team_name 시즌별 ✓. **구단약사**=team_franchises 22행(team_name/start~end/note) ✓. **역대레전드**=franchise+career ✓. **브릿지**=현역 277명 player_id. 주입점: 현역 player_detail(수상경력 섹션 1671 인근)·은퇴 historical_player_detail(franchise caption+통산+수상 有)·team_detail(Overview/팀리더 탭)
 - [x] ⏸️ 설계 게이트 통과 (2026-06-18 사용자 결정): **전 항목 채택** — 선수(타이틀 이력·팀변천 타임라인·마일스톤·통산 스플릿) + 팀(구단약사/계보·역대 레전드·역대 팀 시즌기록). 스펙=`docs/superpowers/specs/2026-06-18-detail-expansion-design.md`
-- [ ] API: 선정 항목 엔드포인트 (타이틀=계산·팀변천·마일스톤·구단약사·역대레전드 등, @cached)
+- [x] API (2026-06-18, 배포+live검증): 3 엔드포인트 @cached(3600), 7항목 전부. **공유 헬퍼** `historical.py` `_career_titles`(시즌부문 max, 비율은 규정게이트=시즌 최다출전 games×3.1[타]/×1.0[투])·`_team_timeline`(소속팀 연속구간 병합)·`_career_milestones`(달성+현역 ETA 최근시즌페이스)·`_player_splits`·`_career_extras`. `GET /historical/{kbo_id}/career-extras`(은퇴) + `GET /players/{id}/career-extras`(현역, player_id→kbo 브릿지, 미브릿지=빈번들 bridged:false) + `GET /teams/{id}/legacy`(franchise 계보·역대레전드 franchise통산리더 TOP3·시즌기록=타격합만 정확/투수승 과소라 제외). live: 이승엽 홈런왕5·타점왕4·삼성 95-03/12-17, 양현종 평자책왕2·다승왕1·200승 ETA2028, 두산 OB→두산·김재환276·2018 189홈런 정합
 - [ ] 앱: 선수상세 + 팀상세 섹션 추가 — ⚠️웹이미지 3규칙·netImage·토큰(Typo/Pal/Radii/Space) 준수
 - [ ] 웹 동반 빌드+배포 + 검증·analyze lib=0
 ### 1차 추천 (크롤0)
 선수 = 타이틀이력 + 팀변천 타임라인 · 팀 = 구단약사 + 역대레전드. 전부 보유 데이터.
 ### 진행로그
-- 2026-06-18: 착수. 스파이크 완료(데이터 쿼리가능성+3화면 주입점). 타이틀=시즌부문 max 계산(비율은 규정게이트), 팀변천/구단약사/역대레전드/마일스톤 전부 보유데이터로 가능. ⏸️ 설계 게이트 = 사용자 항목/UI 선택 대기.
+- 2026-06-18: 착수. 스파이크 완료(데이터 쿼리가능성+3화면 주입점). 타이틀=시즌부문 max 계산(비율은 규정게이트), 팀변천/구단약사/역대레전드/마일스톤 전부 보유데이터로 가능. 설계 게이트=전항목 채택. 스펙 작성. **API 완료**(3 엔드포인트, 공유헬퍼, live검증 — 이승엽 홈런왕5·양현종 200승ETA·두산 계보/레전드 정합). 다음=앱(선수/팀 상세 섹션).
 
 ## 해야할 것
 ### AI 경기 한줄평 알림 (2026-06-14 요청) — ✅ 구현완료 (06-15 메가E 템플릿 → 06-18 Gemini LLM → 06-18b 경기내용 결합)
