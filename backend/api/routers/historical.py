@@ -55,6 +55,176 @@ def _aggregate_career(rows: list[dict]) -> dict:
     return out
 
 
+# ── 상세확장: 타이틀 이력 / 팀변천 / 마일스톤 / 스플릿 (2026-06-18) ──
+# 카운팅 타이틀(부문 시즌 max 동률): col → 라벨
+_TITLE_COUNT = {
+    "타자": {"home_runs": "홈런왕", "rbis": "타점왕", "hits": "최다안타", "stolen_bases": "도루왕"},
+    "투수": {"wins": "다승왕", "saves": "세이브왕", "strikeouts_pitched": "탈삼진왕"},
+}
+
+
+def _career_titles(cur, kbo_player_id, ptype):
+    """시즌별 부문 1위 집계. 카운팅=시즌 max 동률 / 비율(타율·평자책)=규정게이트(시즌 최다출전 games 기준)."""
+    titles = []
+    for col, label in _TITLE_COUNT.get(ptype, {}).items():
+        # (player,season) 합산(트레이드 2행 대응) 후 시즌 max 동률 시즌
+        cur.execute(f"""
+            WITH ps AS (
+              SELECT kbo_player_id, season, SUM(COALESCE({col},0)) v
+              FROM historical_season_stats
+              WHERE series_type='정규' AND player_type=%s
+              GROUP BY kbo_player_id, season
+            ), sm AS (SELECT season, MAX(v) m FROM ps GROUP BY season)
+            SELECT ps.season FROM ps JOIN sm ON sm.season=ps.season AND ps.v=sm.m
+            WHERE ps.kbo_player_id=%s AND ps.v>0 ORDER BY ps.season
+        """, (ptype, kbo_player_id))
+        seasons = [r[0] for r in cur.fetchall()]
+        if seasons:
+            titles.append({"category": label, "count": len(seasons), "seasons": seasons})
+    # 비율 타이틀 — 규정게이트(타자 pa≥팀경기*3.1 / 투수 이닝≥팀경기*1.0, 팀경기≈시즌 최다출전 games)
+    if ptype == "타자":
+        cur.execute("""
+            WITH ps AS (
+              SELECT kbo_player_id, season, SUM(pa) pa, SUM(at_bats) ab,
+                     SUM(hits) h, SUM(games) g
+              FROM historical_season_stats WHERE series_type='정규' AND player_type='타자'
+              GROUP BY kbo_player_id, season
+            ), tg AS (SELECT season, MAX(g)*3.1 qp FROM ps GROUP BY season),
+            qual AS (
+              SELECT ps.kbo_player_id, ps.season,
+                     CASE WHEN ps.ab>0 THEN ps.h::numeric/ps.ab ELSE 0 END av
+              FROM ps JOIN tg ON tg.season=ps.season WHERE ps.pa >= tg.qp
+            ), sm AS (SELECT season, MAX(av) m FROM qual GROUP BY season)
+            SELECT qual.season FROM qual JOIN sm ON sm.season=qual.season AND qual.av=sm.m
+            WHERE qual.kbo_player_id=%s ORDER BY qual.season
+        """, (kbo_player_id,))
+        s = [r[0] for r in cur.fetchall()]
+        if s:
+            titles.append({"category": "타격왕", "count": len(s), "seasons": s})
+    else:
+        cur.execute("""
+            WITH ps AS (
+              SELECT kbo_player_id, season, SUM(earned_runs) er, SUM(games) g,
+                     SUM(FLOOR(innings_pitched) + (innings_pitched-FLOOR(innings_pitched))*10/3.0) ip
+              FROM historical_season_stats WHERE series_type='정규' AND player_type='투수'
+              GROUP BY kbo_player_id, season
+            ), tg AS (SELECT season, MAX(g) mg FROM ps GROUP BY season),
+            qual AS (
+              SELECT ps.kbo_player_id, ps.season,
+                     CASE WHEN ps.ip>0 THEN ps.er*9/ps.ip ELSE 999 END era
+              FROM ps JOIN tg ON tg.season=ps.season WHERE ps.ip >= tg.mg
+            ), sm AS (SELECT season, MIN(era) m FROM qual GROUP BY season)
+            SELECT qual.season FROM qual JOIN sm ON sm.season=qual.season AND qual.era=sm.m
+            WHERE qual.kbo_player_id=%s ORDER BY qual.season
+        """, (kbo_player_id,))
+        s = [r[0] for r in cur.fetchall()]
+        if s:
+            titles.append({"category": "평균자책왕", "count": len(s), "seasons": s})
+    titles.sort(key=lambda t: t["count"], reverse=True)
+    return titles
+
+
+def _team_timeline(cur, kbo_player_id):
+    """시즌별 소속팀 → 연속 구간 병합 ('삼성 1995~2003 → ...')."""
+    cur.execute("""
+        SELECT season, team_name FROM historical_season_stats
+        WHERE kbo_player_id=%s AND series_type='정규' AND team_name IS NOT NULL
+        GROUP BY season, team_name ORDER BY season
+    """, (kbo_player_id,))
+    out = []
+    for season, team in cur.fetchall():
+        if out and out[-1]["team"] == team and season <= out[-1]["end"] + 1:
+            out[-1]["end"] = max(out[-1]["end"], season)
+        else:
+            out.append({"team": team, "start": season, "end": season})
+    return out
+
+
+_MILESTONE = {
+    "타자": {"home_runs": ([100, 200, 300, 400, 500], "홈런"),
+            "hits": ([1000, 1500, 2000, 2500, 3000], "안타"),
+            "rbis": ([500, 1000, 1500], "타점"),
+            "stolen_bases": ([300, 500], "도루")},
+    "투수": {"wins": ([100, 150, 200], "승"),
+            "saves": ([100, 200, 300, 400], "세이브"),
+            "strikeouts_pitched": ([1000, 1500, 2000, 2500], "탈삼진")},
+}
+
+
+def _career_milestones(career, ptype, is_active, recent):
+    """달성 마일스톤 + (현역만)다음 목표 ETA(최근시즌 페이스)."""
+    reached, approaching = [], []
+    units = {"home_runs": "홈런", "hits": "안타", "rbis": "타점", "stolen_bases": "도루",
+             "wins": "승", "saves": "세이브", "strikeouts_pitched": "탈삼진"}
+    for col, (thr, unit) in _MILESTONE.get(ptype, {}).items():
+        val = career.get(col) or 0
+        for t in thr:
+            if val >= t:
+                reached.append({"label": f"통산 {t}{unit}", "value": t, "current": val})
+        nxts = [t for t in thr if val < t]
+        if nxts and is_active:
+            t = nxts[0]
+            remaining = t - val
+            pace = (recent.get(col) or 0) if recent else 0
+            eta = (2026 + -(-remaining // pace)) if pace > 0 else None
+            approaching.append({"label": f"{t}{unit}", "remaining": remaining,
+                                "eta_season": int(eta) if eta else None})
+    reached.sort(key=lambda x: x["value"], reverse=True)
+    return {"reached": reached, "approaching": approaching}
+
+
+def _player_splits(cur, kbo_player_id):
+    """통산 스플릿(historical_splits — 2023~25 타자만). 축별 그룹, 없으면 빈 dict."""
+    cur.execute("""
+        SELECT split_axis, split_value, season, games, pa, at_bats, hits,
+               home_runs, rbis, avg, slg
+        FROM historical_splits WHERE kbo_player_id=%s
+        ORDER BY season DESC, split_axis, split_value
+    """, (kbo_player_id,))
+    out: dict = {}
+    for r in cur.fetchall():
+        out.setdefault(r[0], []).append({
+            "value": r[1], "season": r[2], "games": r[3], "pa": r[4],
+            "at_bats": r[5], "hits": r[6], "home_runs": r[7], "rbis": r[8],
+            "avg": float(r[9]) if r[9] is not None else None,
+            "slg": float(r[10]) if r[10] is not None else None,
+        })
+    return out
+
+
+def _career_extras(cur, kbo_player_id):
+    """타이틀/팀변천/마일스톤/스플릿 번들. 현역·은퇴 공통 (kbo_player_id 키)."""
+    cur.execute("""
+        SELECT player_type, player_id FROM historical_players WHERE kbo_player_id=%s
+    """, (kbo_player_id,))
+    row = cur.fetchone()
+    if not row:
+        return None
+    ptype, pid = row
+    is_active = pid is not None
+    # career 집계 + 최근시즌(페이스)
+    cur.execute("""
+        SELECT season, team_name, player_type, games, pa, at_bats, runs, hits,
+               doubles, triples, home_runs, rbis, walks, hbp, intentional_walks,
+               strikeouts, stolen_bases, caught_stealing, gdp, sac_hits, sac_flies,
+               wins, losses, saves, holds, innings_pitched, hits_allowed,
+               runs_allowed, earned_runs, walks_allowed, hbp_allowed,
+               strikeouts_pitched, home_runs_allowed, qs, complete_games, shutouts
+        FROM historical_season_stats WHERE kbo_player_id=%s AND series_type='정규'
+        ORDER BY season DESC
+    """, (kbo_player_id,))
+    cols = [c[0] for c in cur.description]
+    stats = [dict(zip(cols, r)) for r in cur.fetchall()]
+    career = _aggregate_career(stats) if stats else {}
+    recent = stats[0] if stats else None
+    return {
+        "titles": _career_titles(cur, kbo_player_id, ptype),
+        "team_timeline": _team_timeline(cur, kbo_player_id),
+        "milestones": _career_milestones(career, ptype, is_active, recent),
+        "splits": _player_splits(cur, kbo_player_id),
+    }
+
+
 # 통산 리더 카테고리 → (player_type, 컬럼, 내림차순?)
 _LEADER_CATS = {
     "home_runs":          ("타자", "home_runs", True),
@@ -284,3 +454,20 @@ def get_historical_player(kbo_player_id: int):
         "splits": splits,
         "franchise_path": franchise_path,
     }
+
+
+@router.get("/{kbo_player_id}/career-extras")
+@cached(3600)
+def get_historical_career_extras(kbo_player_id: int):
+    """은퇴/역대 선수 상세확장 — 타이틀/팀변천/마일스톤/스플릿 (kbo_player_id 키)."""
+    conn = get_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="DB 연결 실패")
+    cur = conn.cursor()
+    try:
+        extras = _career_extras(cur, kbo_player_id)
+        if extras is None:
+            raise HTTPException(status_code=404, detail="역대 선수를 찾을 수 없습니다")
+        return extras
+    finally:
+        cur.close(); conn.close()
