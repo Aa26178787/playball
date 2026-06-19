@@ -1856,7 +1856,9 @@ def smart_update():
                 result_count = ckc.fetchone()[0]
                 ckc.close()
                 ck.close()
-                if result_count < 1:
+                # 무승부(동점 종료)는 승/패 투수 result가 영영 안 채워짐 → 대기 스킵(스코어가 결과 확정)
+                is_draw = (curr.get('home_score') or 0) == (curr.get('away_score') or 0)
+                if result_count < 1 and not is_draw:
                     print(f"[FCM] game_summary 대기 game={gid} (result 미충원)")
                     continue
             except Exception as ck_err:

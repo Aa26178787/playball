@@ -145,28 +145,27 @@ def _gemini_review(facts: dict) -> str:
     fact_block = "\n".join(f"- {x}" for x in lines)
 
     prompt = (
-        "다음 KBO 프로야구 경기 정보로 한국어 한줄평을 2~3문장으로 작성해라.\n"
+        "다음 KBO 프로야구 경기 정보로 한국어 한줄평을 작성해라.\n"
         "규칙:\n"
-        "1) 아래 '사실'에 적힌 것만 사용한다. 사실에 없는 점수·선수·기록·이닝·안타수는 절대 언급하지 않는다(추측·과장 금지).\n"
-        "2) 단순히 결과만 나열하지 말고, '결정적 장면'과 '역전' 같은 경기 흐름·상황을 자연스럽게 녹여 생생하게 묘사해라.\n"
-        "3) '승리확률 N%p 변동' 같은 수치 표현이나 괄호 안 부연은 본문에 그대로 쓰지 말고, 그 장면이 승부처였다는 뉘앙스로만 표현해라.\n"
-        "4) '역전'·'대역전'은 사실에 '역전승'이라고 적혀 있을 때만 언급한다(없으면 역전이라 단정하지 마라).\n"
-        "5) 야구 중계 자막처럼 담백하고 팬 친화적인 톤. 마크다운·따옴표·줄바꿈 없이 평문으로.\n\n"
-        f"사실:\n{fact_block}\n\n한줄평:"
+        "1) **딱 1문장, 최대 60자 안팎**으로 짧고 핵심만. 장황하게 쓰지 마라.\n"
+        "2) 핵심 = 결과(누가 몇대몇 승) + 승부처 한 조각(있으면 결정장면 타자 또는 역전). 둘 다 한 문장에 압축.\n"
+        "3) 아래 '사실'에 적힌 것만 사용. 없는 점수·선수·기록·이닝은 언급 금지(추측 금지). '역전'은 사실에 '역전승'일 때만.\n"
+        "4) '승리확률 N%p' 같은 수치·괄호 부연은 본문에 쓰지 마라. 야구 자막처럼 담백하게. 마크다운·따옴표·줄바꿈 없이 평문.\n\n"
+        f"사실:\n{fact_block}\n\n한줄평(1문장):"
     )
     model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
     client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=12000))  # 12s (Gemini 최소 10s)
     resp = client.models.generate_content(
         model=model, contents=prompt,
         config=types.GenerateContentConfig(
-            temperature=0.8, max_output_tokens=400,
+            temperature=0.7, max_output_tokens=200,
             # gemini-2.5 기본 thinking이 출력토큰 소진→본문 잘림. 한줄평엔 thinking 불요.
             thinking_config=types.ThinkingConfig(thinking_budget=0),
         ),
     )
     text = (resp.text or "").strip().strip('"').strip("'").replace("\n", " ").strip()
-    # 안전: 비었거나 비정상 길이면 폴백
-    if not text or len(text) > 300:
+    # 안전: 비었거나 비정상 길이면 폴백 (핵심 한줄 → 120자 초과는 비정상)
+    if not text or len(text) > 120:
         return ""
     return text
 
