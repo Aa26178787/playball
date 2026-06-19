@@ -1,0 +1,47 @@
+<!-- @dsCard group="Colors" name="시맨틱 컬러 (SemColor)" -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시맨틱 컬러 (SemColor)</title>
+<style>
+  :root { font-family: -apple-system, "Segoe UI", "Noto Sans KR", sans-serif; }
+  body { margin: 0; padding: 24px; background: #fafafa; color: #111113; }
+  h1 { font-size: 20px; font-weight: 800; margin: 0 0 4px; }
+  p.sub { font-size: 12px; color: #6b6b73; margin: 0 0 20px; }
+  .grp { font-size: 11px; font-weight: 700; color: #6b6b73; margin: 16px 0 8px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 12px; }
+  .tok { width: 120px; }
+  .chip { height: 44px; border-radius: 10px; border: 1px solid rgba(0,0,0,.10); }
+  .name { font-size: 12px; font-weight: 600; margin-top: 6px; }
+  .hex { font-size: 10px; font-family: ui-monospace, monospace; color: #6b6b73; }
+</style>
+</head>
+<body>
+  <h1>시맨틱 컬러 — SemColor</h1>
+  <p class="sub">design_tokens.dart · 도메인/상태색 (중성팔레트와 분리)</p>
+
+  <div class="grp">상태 / 결과</div>
+  <div class="grid">
+    <div class="tok"><div class="chip" style="background:#E53935"></div><div class="name">live</div><div class="hex">#E53935 · 라이브/위험</div></div>
+    <div class="tok"><div class="chip" style="background:#1976D2"></div><div class="name">success</div><div class="hex">#1976D2 · 승투/정보</div></div>
+    <div class="tok"><div class="chip" style="background:#FFA000"></div><div class="name">warning</div><div class="hex">#FFA000 · 경고/라인업</div></div>
+    <div class="tok"><div class="chip" style="background:#C62828"></div><div class="name">danger</div><div class="hex">#C62828 · 패투</div></div>
+  </div>
+
+  <div class="grp">BSO (볼/스트라이크/아웃)</div>
+  <div class="grid">
+    <div class="tok"><div class="chip" style="background:#22C55E"></div><div class="name">bsoB</div><div class="hex">#22C55E · ball</div></div>
+    <div class="tok"><div class="chip" style="background:#F43F5E"></div><div class="name">bsoS</div><div class="hex">#F43F5E · strike</div></div>
+    <div class="tok"><div class="chip" style="background:#F97316"></div><div class="name">bsoO</div><div class="hex">#F97316 · out</div></div>
+  </div>
+
+  <div class="grp">베이스 / 패널</div>
+  <div class="grid">
+    <div class="tok"><div class="chip" style="background:#FCD34D"></div><div class="name">baseOn</div><div class="hex">#FCD34D · 주자점거</div></div>
+    <div class="tok"><div class="chip" style="background:#F59E0B"></div><div class="name">baseAura</div><div class="hex">#F59E0B</div></div>
+    <div class="tok"><div class="chip" style="background:#111113"></div><div class="name">panelDark</div><div class="hex">#111113 · 다크패널</div></div>
+  </div>
+</body>
+</html>
