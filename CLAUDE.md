@@ -502,13 +502,16 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 ### 진행로그
 - (미착수 — `역대C2 진행`으로 시작)
 
-## 역대 게임단위 백필 (2010~2023) — 🔄 진행중 (2026-06-17 가동, 멀티데이 야간배치)
+## 역대 게임단위 백필 (2010~2023) — 🔄 1차완료+갭수정 재실행중 (2026-06-19)
+- ⚠️⚠️ **06-19 과거팀명 드롭 사고+수정 (save_games)**: `save_games`가 팀 id를 `teams.name = <API 팀명>`으로 조회했는데 **Naver 스케줄 API가 시즌마다 팀명 혼용**(2016=현재명 'SSG'/'키움' / **2017·2018=당시명 'SK'(SK와이번스)·'넥센'**) → 현재 teams.name 불일치 → team_id NULL → **그 경기 통째 미삽입**. 결과: 2017(SK+넥센)·2018(SK+넥센)·2020(SK, 2021 SSG개명 전) 경기 대량 증발(2017 461/720·2018 448·2020 589=COVID+SK드롭). 진단=홈/어웨이 팀분포에 SK·WO 부재 + API 직접대조(2016 'SSG' vs 2017 'SK'). **수정 = 팀조회 `name`→`short_name`(코드 SK/WO/HH… 불변, teams.short_name과 1:1)**. ⚠️**라이브 save_games도 동일 경로라 수정 혜택**(현재명도 코드매칭). 재크롤 = 픽스 후 전체배치 재실행(resume이 누락 SK/넥센만 INSERT+크롤, `/tmp/hist_games_batch2.log`).
 - **목적**: 게임단위(투구/PA/투구위치)를 2010~2023 확장 (현재 2024~26만). → matchup 진짜통산·역대 WPA/클러치·필드뷰 리플레이·존히트맵 역대.
 - **도구**: `crawler/backfill_seasons.py <year>`(games INSERT + relay pitches + 위치, requests=셀레늄無·안정·resume안전). `_is_kbo`=**roundCode**(정규 kbo_r + PS kbo_ps_* / 시범 kbo_e 제외 — id/날짜 휴리스틱 폐기). 미등록시즌 범위=3/15~11/30.
 - **오케스트레이터**: `/tmp/hist_games_batch.sh`(2023→2010 순차 + 끝에 `backfill_pa.py`), nohup `/tmp/hist_games_batch.log`. **⚠️live-guard = KST 17~23시 자동정지**(라이브 경합 회피) → 실질 23:00~17:00만 크롤. ~시즌당 8~9hr crawl-time, 14시즌 = **~1주 wall-clock**.
 - **모니터**: `tail /tmp/hist_games_batch.log` · `SELECT EXTRACT(YEAR FROM game_date),count(*) FROM game_pitches gp JOIN games g ON g.id=gp.game_id GROUP BY 1`. **resume**: 죽으면 `nohup bash /tmp/hist_games_batch.sh &` 재실행(pitches 있는 경기 skip).
 - ⚠️ 위치(physics)는 옛 경기서 없을 수 있음(PA단위는 textRelays라 확보). ⚠️ Naver relay 하한 ~2008(미확인) — 2010~2011 sparse 가능.
-- **진행로그**: 2026-06-17 가동(roundCode 시범제외 검증 — 2023 3월 시범 25개 삭제+필터화). SEASON 2023부터.
+- **진행로그**:
+  - 2026-06-17 가동(roundCode 시범제외 검증 — 2023 3월 시범 25개 삭제+필터화). SEASON 2023부터.
+  - 2026-06-19 **1차배치 완료**(10607경기·829438타석 PA, 06-19 03:22 UTC). 검증서 **과거팀명 드롭 사고 발견**(2017/18 SK·넥센, 2020 SK 누락) → save_games name→short_name 픽스 → **전체배치 재실행 가동**(`/tmp/hist_games_batch2.log`, PID 445965, 완료분 skip·누락 SK/넥센만 ~660게임 크롤 ~3.5h). 11시즌은 이미 완전, 재실행은 갭 자가치유용.
 
 ## 선수/팀 상세 콘텐츠 확장 — 트리거 대기 (미착수, 2026-06-17 브레인스톰)
 ### ⚡ 트리거: 사용자가 **`상세확장 진행`** 입력 시 = 이 섹션 재개.
