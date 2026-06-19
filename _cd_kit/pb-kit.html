@@ -1,0 +1,47 @@
+<!-- @dsCard group="PlayBall 실앱" name="게임카드 (실토큰 1:1)" -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PlayBall · 게임카드 (실앱 토큰)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+<style>html,body{margin:0;padding:0;background:#0F0F12;}*{box-sizing:border-box;}</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="pb-tokens.jsx"></script>
+<script type="text/babel" src="pb-gamecard.jsx"></script>
+<script type="text/babel">
+// 실앱 동일 토큰으로 렌더된 홈 게임카드 — 라이브/예정/종료. 다크모드.
+const games = [
+  { myCode:'LG', homeCode:'LG', awayCode:'HT', homeRank:2, awayRank:4,
+    status:'LIVE', homeScore:3, awayScore:2, inning:'7회 말',
+    homeRecent:['W','W','L','W','W'], awayRecent:['L','W','W','L','W'],
+    weather:'☁ 24°  ·  잠실' },
+  { myCode:'HH', homeCode:'HH', awayCode:'SS', homeRank:6, awayRank:3,
+    status:'선발확정', startTime:'18:30',
+    homeRecent:['L','L','W','L','W'], awayRecent:['W','W','W','L','W'],
+    weather:'☀ 27°  ·  대전' },
+  { myCode:'KT', homeCode:'KT', awayCode:'WO', homeRank:5, awayRank:8,
+    status:'종료', homeScore:5, awayScore:4,
+    homeRecent:['W','L','W','W','L'], awayRecent:['L','L','W','L','L'],
+    weather:'🌙 21°  ·  수원' },
+];
+function App() {
+  return (
+    <div style={{ padding:20, display:'flex', flexDirection:'column', gap:16, width:360, background:'#0F0F12' }}>
+      <div style={{ font:`800 13px/1 ${PB.font}`, color:'#8E8E98', letterSpacing:'.04em' }}>
+        PlayBall 게임카드 · design_tokens.dart 1:1 (다크)
+      </div>
+      {games.map((g,i)=> <PBGameCard key={i} game={g} isDark={true} isMyTeam={true} />)}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

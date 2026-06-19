@@ -1,0 +1,43 @@
+<!-- @dsCard group="PlayBall 실앱" name="필드뷰 (다이아몬드+BSO, 실토큰)" -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PlayBall · 필드뷰 (실앱 좌표/색)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+<style>html,body{margin:0;padding:0;background:#0F0F12;}*{box-sizing:border-box;}</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="pb-tokens.jsx"></script>
+<script type="text/babel" src="pb-fieldview.jsx"></script>
+<script type="text/babel">
+// 라이브 필드 — 2사 1·3루, 좌타 타석, KIA 수비, B1 S2 O2
+const live = {
+  defense: [
+    { pos:'P', name:'양현종' }, { pos:'C', name:'김태군' }, { pos:'1B', name:'위즈덤' },
+    { pos:'2B', name:'김선빈' }, { pos:'SS', name:'박찬호' }, { pos:'3B', name:'김도영' },
+    { pos:'LF', name:'이우성' }, { pos:'CF', name:'최원준' }, { pos:'RF', name:'나성범' },
+  ],
+  runners: { base1:{ name:'홍창기' }, base3:{ name:'오스틴' } },
+  batter: { name:'김현수', bats:'L' },
+  bso: { b:1, s:2, o:2 },
+};
+function App() {
+  return (
+    <div style={{ padding:20, display:'flex', flexDirection:'column', gap:14, width:340, background:'#0F0F12' }}>
+      <div style={{ font:`800 13px/1 ${PB.font}`, color:'#8E8E98', letterSpacing:'.04em' }}>
+        PlayBall 필드뷰 · LG 공격 vs KIA 수비 · 1·3루 2사
+      </div>
+      <PBFieldView fieldView={live} defendCode="HT" isDark={true} width={300} />
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

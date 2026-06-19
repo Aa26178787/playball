@@ -1,0 +1,59 @@
+<!-- @dsCard group="PlayBall 실앱" name="순위카드·선수행·compact (실토큰)" -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PlayBall · 순위/선수/compact (실앱 토큰)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+<style>html,body{margin:0;padding:0;background:#0F0F12;}*{box-sizing:border-box;}</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="pb-tokens.jsx"></script>
+<script type="text/babel" src="pb-gamecard.jsx"></script>
+<script type="text/babel" src="pb-components.jsx"></script>
+<script type="text/babel">
+const teams = [
+  { code:'LG', rank:1, w:48, l:30, d:2, winRate:0.615, gb:0, rankChange:0 },
+  { code:'HT', rank:2, w:45, l:33, d:1, winRate:0.577, gb:2.5, rankChange:1 },
+  { code:'SS', rank:3, w:43, l:35, d:2, winRate:0.551, gb:4.5, rankChange:-1 },
+];
+const hitters = [
+  { code:'HT', name:'김도영', number:5, position:'3루수' },
+  { code:'LG', name:'오스틴', number:23, position:'1루수' },
+  { code:'SS', name:'구자욱', number:5, position:'외야수' },
+];
+const compactGames = [
+  { homeCode:'NC', awayCode:'OB', status:'LIVE', homeScore:2, awayScore:4 },
+  { homeCode:'LT', awayCode:'WO', status:'예정', startTime:'14:00' },
+];
+function Sec({ t, children }) {
+  return <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+    <div style={{ font:`800 13px/1 ${PB.font}`, color:'#8E8E98', letterSpacing:'.04em' }}>{t}</div>
+    {children}</div>;
+}
+function App() {
+  return (
+    <div style={{ padding:20, display:'flex', flexDirection:'column', gap:24, width:360, background:'#0F0F12' }}>
+      <Sec t="팀 순위 카드 · 마이팀=LG 팀컬러 tint">
+        {teams.map((t,i)=> <PBRankCard key={i} team={t} isDark={true} isFav={t.code==='LG'} />)}
+      </Sec>
+      <Sec t="선수 순위 행 (타자)">
+        <div style={{ background:PB.pal(true).paper, borderRadius:16, border:`1px solid ${PB.pal(true).line}`, overflow:'hidden' }}>
+          {hitters.map((h,i)=> <PBPlayerRow key={i} rank={i+1} player={h} statVal={['.347','.331','.328'][i]} statLabel="타율" isDark={true} />)}
+        </div>
+      </Sec>
+      <Sec t="compact 게임카드 (일반경기)">
+        {compactGames.map((g,i)=> <PBCompactCard key={i} game={g} isDark={true} />)}
+      </Sec>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
