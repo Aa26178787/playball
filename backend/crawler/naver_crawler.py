@@ -289,9 +289,12 @@ def save_games(games):
            g.get("away_team_code") not in KBO_TEAM_CODES:
             continue
 
-        cur.execute("SELECT id FROM teams WHERE name = %s", (g["home_team"],))
+        # 팀 조회 = 안정적 코드(short_name)로. 이름(g["home_team"])은 Naver가 시즌마다
+        # 과거명/현재명 혼용 반환(2017 SK 와이번스='SK'·넥센='넥센' vs 현재 'SSG'/'키움')
+        # → name 매칭 시 과거 팀명 경기 통째 드롭(2017/18 SK·넥센, 2020 SK 누락 사고). 코드는 불변.
+        cur.execute("SELECT id FROM teams WHERE short_name = %s", (g["home_team_code"],))
         home = cur.fetchone()
-        cur.execute("SELECT id FROM teams WHERE name = %s", (g["away_team"],))
+        cur.execute("SELECT id FROM teams WHERE short_name = %s", (g["away_team_code"],))
         away = cur.fetchone()
 
         if not home or not away:
