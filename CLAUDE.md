@@ -376,6 +376,8 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
   - ⚠️ **신규 코드 = 토큰 우선**: `Typo`(폰트·weight)·`Pal`(중성색)·`SemColor`(시맨틱/브랜드)·`Radii`·`Space`. 인라인 hex/리터럴 지양
   - **제외(의도)**: `widgets/share_cards.dart`(골든 PNG 보호)·`utils/`(테마/토큰 정의층) = 전 토큰작업서 제외. 시맨틱/팀/결과칩/그라디언트 색 = 도메인색(중성팔레트 아님, 유지)
   - **검증**: analyze lib 0(매 단계) · 골든 4종 통과(VisitShare/PlayerShare/AppErrorView 라·다 — 값 1:1이라 PNG 불변) · 웹 wasm 재빌드 → `/app/` 200
+- **06-18~19 세션** (상세 = 각 섹션·주의사항): ① **AI 한줄평 경기내용 결합**(결과 나열 탈피 — 결정장면 WPA+역전 주입, 글리치 3가드. ↓해야할것) ② **투구 truncation 사고**(라이브 일시정지로 중간이닝 미완성 stale → 종료 시 전이닝 풀재크롤, 30경기 수복. ↓주의사항 종료감지) ③ **seqno offset 중복**(Naver seqno 크롤마다 시프트 → 이닝 단위 replace. ↓주의사항) ④ **상세확장 완료**(선수 타이틀/팀변천/마일스톤/스플릿 + 팀 구단약사/레전드/시즌기록, 웹+서버 라이브. ↓상세확장 섹션) ⑤ **역대 게임단위 백필**(2010~23, save_games 과거팀명 드롭 픽스로 2017/18/20 갭 복원. ↓게임단위 섹션) ⑥ **Claude Design 연동**(↓아래)
+- **06-19 Claude Design 연동 (`_cd_kit/`)**: claude.ai/design가 PlayBall을 정확 인식하도록 **실 design_tokens.dart·team_theme.dart로 React 컴포넌트 복제** → DesignSync 도구로 디자인 프로젝트(uuid c76876af "111")에 push. 파일=`_cd_kit/pb-{tokens,gamecard,components,fieldview}.jsx`+프리뷰 html. 커버=토큰전체·게임카드(풀/compact)·상태pill·최근5·팀순위카드·선수행·필드뷰. **권위=dart, _cd_kit=시각 미러**(앱 바뀌면 동기 수정 후 재push). ⚠️**`/design-sync` 풀 스킬은 Flutter 부적합**(React dist 번들 요구) — 토큰카드 직접 push 방식도 setup게이트 불통과(철회). **DesignSync 내장 도구**(user:design:read/write 스코프)로 프로젝트 읽기/쓰기는 가능(`claude_design` MCP·`/design-login`은 이 버전 미존재, 불필요). 잔여=Claude Design서 프리뷰 육안검증(내 렌더 미검증)·잔여 컴포넌트(존히트맵/승률그래프)
 
 ## 역대 데이터 수집 프로젝트 (KBO 1982~) — ✅ 핵심 완료 (2026-06-15 착수 ~ 06-16 A/C1/B/꼬리/검증 완료, C2만 장기보류)
 
@@ -502,7 +504,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 ### 진행로그
 - (미착수 — `역대C2 진행`으로 시작)
 
-## 역대 게임단위 백필 (2010~2023) — 🔄 1차완료+갭수정 재실행중 (2026-06-19)
+## 역대 게임단위 백필 (2010~2023) — 🔄 거의완료 (2026-06-19, 갭수정 성공·2010+PA 잔여)
 - ⚠️⚠️ **06-19 과거팀명 드롭 사고+수정 (save_games)**: `save_games`가 팀 id를 `teams.name = <API 팀명>`으로 조회했는데 **Naver 스케줄 API가 시즌마다 팀명 혼용**(2016=현재명 'SSG'/'키움' / **2017·2018=당시명 'SK'(SK와이번스)·'넥센'**) → 현재 teams.name 불일치 → team_id NULL → **그 경기 통째 미삽입**. 결과: 2017(SK+넥센)·2018(SK+넥센)·2020(SK, 2021 SSG개명 전) 경기 대량 증발(2017 461/720·2018 448·2020 589=COVID+SK드롭). 진단=홈/어웨이 팀분포에 SK·WO 부재 + API 직접대조(2016 'SSG' vs 2017 'SK'). **수정 = 팀조회 `name`→`short_name`(코드 SK/WO/HH… 불변, teams.short_name과 1:1)**. ⚠️**라이브 save_games도 동일 경로라 수정 혜택**(현재명도 코드매칭). 재크롤 = 픽스 후 전체배치 재실행(resume이 누락 SK/넥센만 INSERT+크롤, `/tmp/hist_games_batch2.log`).
 - **목적**: 게임단위(투구/PA/투구위치)를 2010~2023 확장 (현재 2024~26만). → matchup 진짜통산·역대 WPA/클러치·필드뷰 리플레이·존히트맵 역대.
 - **도구**: `crawler/backfill_seasons.py <year>`(games INSERT + relay pitches + 위치, requests=셀레늄無·안정·resume안전). `_is_kbo`=**roundCode**(정규 kbo_r + PS kbo_ps_* / 시범 kbo_e 제외 — id/날짜 휴리스틱 폐기). 미등록시즌 범위=3/15~11/30.
@@ -511,7 +513,8 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - ⚠️ 위치(physics)는 옛 경기서 없을 수 있음(PA단위는 textRelays라 확보). ⚠️ Naver relay 하한 ~2008(미확인) — 2010~2011 sparse 가능.
 - **진행로그**:
   - 2026-06-17 가동(roundCode 시범제외 검증 — 2023 3월 시범 25개 삭제+필터화). SEASON 2023부터.
-  - 2026-06-19 **1차배치 완료**(10607경기·829438타석 PA, 06-19 03:22 UTC). 검증서 **과거팀명 드롭 사고 발견**(2017/18 SK·넥센, 2020 SK 누락) → save_games name→short_name 픽스 → **전체배치 재실행 가동**(`/tmp/hist_games_batch2.log`, PID 445965, 완료분 skip·누락 SK/넥센만 ~660게임 크롤 ~3.5h). 11시즌은 이미 완전, 재실행은 갭 자가치유용.
+  - 2026-06-19 **1차배치 완료**(10607경기·829438타석 PA, 06-19 03:22 UTC). 검증서 **과거팀명 드롭 사고 발견**(2017/18 SK·넥센, 2020 SK 누락) → save_games name→short_name 픽스 → **전체배치 재실행**(`/tmp/hist_games_batch2.log`, 완료분 skip·누락 SK/넥센만 크롤).
+  - 2026-06-19b **갭수정 성공 검증**: 2017 461→**734**·2018 448→**736**·2020 589→**733** (전부 10팀 풀시즌 복원). 재실행 2010까지 진행 → 마지막 2010 + backfill_pa만 잔여. 끝나면 **2010~2023 전 시즌 완전**(전 시즌 ~730~736, 8~9팀 시대 2010~14는 ~545~590=정상).
 
 ## 선수/팀 상세 콘텐츠 확장 — 트리거 대기 (미착수, 2026-06-17 브레인스톰)
 ### ⚡ 트리거: 사용자가 **`상세확장 진행`** 입력 시 = 이 섹션 재개.
@@ -541,19 +544,13 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 ### 1차 추천 (크롤0)
 선수 = 타이틀이력 + 팀변천 타임라인 · 팀 = 구단약사 + 역대레전드. 전부 보유 데이터.
 ### 진행로그
-- 2026-06-18: 착수. 스파이크 완료(데이터 쿼리가능성+3화면 주입점). 타이틀=시즌부문 max 계산(비율은 규정게이트), 팀변천/구단약사/역대레전드/마일스톤 전부 보유데이터로 가능. 설계 게이트=전항목 채택. 스펙 작성. **API 완료**(3 엔드포인트, 공유헬퍼, live검증 — 이승엽 홈런왕5·양현종 200승ETA·두산 계보/레전드 정합). **앱 완료**(공유위젯 CareerExtrasSection + 3화면 배선, analyze lib=0). ⚠️**웹빌드 멈춤 상태라 빌드/배포만 보류** — "빌드" 시 일괄 반영. 상세확장 코드측 완료.
+- 2026-06-18: **상세확장 전체 완료·배포**. 스파이크→게이트(전항목)→API(3 엔드포인트·공유헬퍼)→앱(공유위젯 CareerExtrasSection+3화면, analyze lib=0)→웹 wasm 재빌드+rsync(`/app/` 200, 골든 PASS). live검증 = 이승엽 홈런왕5·양현종 200승ETA·두산 계보/레전드 정합. ⚠️네이티브 APK 미반영(웹+서버만).
 
 ## 해야할 것
 ### AI 경기 한줄평 알림 (2026-06-14 요청) — ✅ 구현완료 (06-15 메가E 템플릿 → 06-18 Gemini LLM → 06-18b 경기내용 결합)
 - **06-18b 경기내용 결합(결과 나열 탈피)**: "그냥 결과를 한줄로 바꾼것뿐" 피드백 → `_send_game_summary` enrichment + 프롬프트 확장으로 **결정적 장면+역전**을 facts에 주입, Gemini가 2~3문장 생생 한줄평 작성. **결정장면** = `plate_appearances` win_rate(WPA) 최대 swing 타석(이닝/초말/아웃/주자/타자/result_text). **역전** = 승팀 도중 열세(홈승=win_rate 최저<35 / 원정승=최고>65). ⚠️**거짓 결정타 방지 3가드(WPA 데이터 글리치 대응 — 초기 win_rate 불안정)**: ① **안타/희생타만**(`is_hit OR result_class='sac'` — 무주자 아웃이 50%p swing되는 글리치+Gemini가 아웃을 "결정타"로 오작성하는 것 배제) ② **대승 제외**(`margin<=5`서만 결정타, ≤6서만 역전 — 8:1 블로아웃에 "승부처" 표기 방지) ③ **초반 거대swing 글리치**(`swing>30 AND inning<=3` 배제 — 3회 88%p=저레버리지 불가능). 프롬프트 룰=facts만/결과나열 금지/수치(N%p) 본문금지/역전은 사실명시시만. 템플릿 폴백도 역전·결정장면 반영. 검증=452(15:1 대승→결정타None 깨끗)·477(2:1 역전→손호영 1루타 정확)·271639(글리치 아웃 배제→오스틴 2루타 선택)·476(역전 임의언급 사라짐). 한줄평=다음 종료경기부터.
 - **06-18 LLM 업그레이드**: `api/narrative.py game_review` = **Gemini 무료 API**(google-genai, `gemini-2.5-flash`) 우선 → 실패/무키/타임아웃(12s, 최소10s제약)/503 시 `_template_review` 폴백(절대 안 죽음). 검증 facts만 프롬프트(환각가드: 연장/이닝 등 미제공정보 언급금지), 평문 한국어, lazy import, `thinking_budget=0`(2.5-flash 기본 thinking이 출력토큰 소진→본문잘림 방지), max_output_tokens=400·길이가드 300. **env**: scheduler `gemini.conf` drop-in `GEMINI_API_KEY`(Google AI Studio 무료)·`GEMINI_MODEL`. 비용 $0(무료티어, 일 5~15경기). ⚠️**06-18 game_summary 죽음 버그 수정 직후**(event_type) 이 위에 얹음 — 둘 다 _send_game_summary 경로. ⚠️무료티어=입력 학습사용 가능(공개 경기facts라 저민감). 키 회전 시 gemini.conf 교체+scheduler restart.
-- 구현: 템플릿 기반(`api/narrative.py`), game_summary 본문 교체(별도 푸시·토글 신설 안 함), game_reviews 영속. LLM 업그레이드는 엔진 인터페이스만 교체하면 됨. 잔여 = 추후 LLM/3줄요약/다이제스트(메가E2)
-- **목표**: 경기 종료 시 경기 상황·결과를 분석해 **AI 한줄평**을 생성, 알림으로 전송 (마이팀/관심경기 대상)
-- **트리거**: scheduler 종료 후처리(`post_finished_done` 블록, game_summary 발송 지점과 동일) — game_summary 보강 형태
-- **입력 데이터(전부 보유)**: 최종 스코어·이닝별 득점, 승/패/세이브 투수, 결정적 타석(WPA 최대 — plate_appearances.win_rate_before/after), 역전/끝내기 여부(game_event_stream walkoff/extra_innings), 최다 안타·홈런·타점 선수(game_batters), 선발 QS 여부, 클러치 순간(clutch_moment)
-- **생성 방식 2안**: ① **템플릿 기반**(LLM 없이 — WPA 최대 타석+스코어로 규칙 조립, 비용 0, 아침브리핑 패턴 재사용) ② **Claude API**(claude-haiku-4-5 등 저비용 — 자연스러움↑, 매일 5경기 소액). 1차 템플릿 → 추후 LLM 업그레이드 (브리핑/3줄요약과 콘텐츠 파이프 공유 — 변경이력 시너지번들 9)
-- **전송**: 푸시GW(`fcm_service._send`) 경유 — quiet hours/채널 라우팅 자동. ntype = `ai_review`(또는 game_summary 흡수). 알림 설정 토글 1개 신설(daily_briefing 류) + notification_log dedup(`game_id, 'ai_review'`)
-- **표시**: 인앱 알림함 저장 + (옵션)경기 상세 상단 한줄평 배지. 라이트팬 진입장벽↓ 자산(경기 3줄 요약·다이제스트와 연결)
+- 구현: `api/narrative.py`, game_summary 본문 교체(별도 푸시·토글 신설 안 함), game_reviews 영속. 발송=종료 후처리 `post_finished_done`. 잔여 = 추후 3줄요약/다이제스트(메가E2)
 
 ### 관리자 콘솔 확장 백로그 (2026-06-13 추천)
 - **1순위 묶음 (app_config 편집 — 한 세션감)**: ① 공지 배너 작성/해제 UI ② min_version/latest_version 강제업데이트 설정 ③ 공지 푸시 발송(전체/팀별, 확인 다이얼로그)
@@ -567,19 +564,11 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - 가성비: 선수 초성검색(ㄱㄷㅇ→김도영)·경기 없는 날 마이팀 D-day 카드·필드뷰 풀스크린 토글(작은폰 보완)·예측 마감 카운트다운(포인트 ON 시)·오프라인 배너(connectivity)
 - 완성도(출시 직전): AppEmptyView 공용 빈상태·목록→상세 Hero 전환·스낵바 톤 통일
 
-### 즉시 (코드측)
-- [ ] **다크모드 육안검증** (⏸️ 사용자 지시로 보류 — 직접 요청 전까지 패스, 2026-06-12): 다크 ~15커밋+메가B/C 신규 UI 헤드리스만 검증된 상태. 골든이 회귀는 방어
-- 메가B/C/D 코드측 = ✅ 전부 완료 (06-12 변경이력). 잔여 = 외부작업(아래)과 메가D Play 내부테스트
-- [x] **키 회전** (2026-06-09 완료): Gmail·Kakao(JS/네이티브/REST)·DB pw 회전+라이브검증, 옛 Gmail 폐기 확인 (출시 APK는 새 키 재빌드)
-### 중기 (코드 품질) — ✅ 2026-06-09 전부 완료 (상세 기록 보존)
-- [x] ~~empty catch debugPrint~~(✅ 2026-06-09 빈 `catch(_){}` 52개 → `catch(e){debugPrint('<file>: $e')}` 17파일, game_detail:435 finally형만 제외) / ~~non-null `!` audit~~(✅ 2026-06-09 검토결과 안전·수정불요: `['key']!` 23개=로컬 const map·초기화보장·null체크 storage / `x!.` 94개=`_gameData!` 등 가드 후 idiomatic. crash 버그 없음) / ~~AppErrorView 전면~~(✅ 2026-06-09 6화면 ad-hoc 에러UI→`AppErrorView`(테마인식): team×2·notifications·search·player_stats·pitch_chart·post_detail. 잔여=home(레이아웃 얽힘,brand 적용됨)·team_detail 인라인 retry) / ~~서버 print→logging~~(✅ 2026-06-09 런타임서비스 fcm/weather/email/sms → `api/log_setup.py` 중앙설정+모듈 logger. prediction CLI·scheduler 운영 print는 유지)
-- [~] **SemColor.panelDark 감사**(2026-06-09): 80개 분류 — A(라이트잉크 `isDark?light:panelDark` ~40)·A2/A3·B(SnackBar/헤더그라디언트/온보딩 의도)는 **유지**. **Pattern-C 버그**(무조건 panelDark를 fg/fill/border에 → 다크 안 보임) ~22개. 수정완료 6: home OutlinedButton×2·login/register checkbox·phone icon → `SemColor.brand(context)`(다크0xFFE5E5E7/라이트panelDark). **C-fg 수정완료**: home버튼·auth체크박스·phone아이콘 + game_detail TabBar label/indicator(×2)·OutlinedButton → `brand(context)`(analyze clean). **C-fg defer → ✅해소 확인(2026-06-12)**: player_stats 토글=brand+반전 적용됨, player_compare 280=isDark 분기 적용됨, 200=다크 헤더 의도(B). panelDark 감사 전체 종결. **C-bg 결정**(다크 surface=기존 `AppColors.surfaceDark 0xFF18181C/surface2Dark` 재사용, 새 토큰 불요): player_screen 선수/구단 토글(818·836 bg + 825·843 텍스트반전)=✅`brand(context)`+invert. **gd C-bg defer→홀리스틱 다크패스**(헤더3301·avatar3364/3770·TableRow3863/3889): StatelessWidget 헬퍼는 context 없음 + 테이블 border(`0xFFE0E0E4`)·셀 비테마라 단독 fix 불일치. **홀리스틱 착수**: player_compare 테이블/검색카드 테마화 ✅(2026-06-09, State라 `context` 가용·AppColors.surfaceDark/surface2Dark 사용, 헤더는 의도 다크밴드 유지). player_stats ✅(2026-06-09 헤딩/섹션라벨 color 제거→테마 텍스트색 상속, 토글 brand+반전, _buildContent에 context 스레딩). game_detail ✅(2026-06-09 통계테이블 border/헤더row + 로스터헤더(3301) + 타순배지(3364·3770) → 인라인 다크 hex 0xFF1F1F24/26262C, `_tableCell` 데이터셀은 color:null이라 이미 테마구동). **홀리스틱 다크패스 3화면(player_compare·player_stats·game_detail) 완료**. ⚠️**전체 육안검증 미완**(헤드리스 컴파일만) → `flutter run` 다크모드 점검 필수. ⚠️무차별 치환 금지(A/B 다수). / **Radii**: magic `circular(999)`→`Radii.pill` 33곳 ✅(2026-06-09, 5파일). 수치 스케일(4/8/12/16/20)은 off-scale 값(10/13/14 등) 多 혼재 → 부분 토큰화=일관성↓라 점진 보류
-- [~] ~~Golden test(다크+라이트)~~(✅ 2026-06-09 인프라 구축: `app/test/golden/` built-in `matchesGoldenFile`, AppErrorView 라이트/다크 PNG 기준 커밋. 갱신=`flutter test --update-goldens test/golden`, 확장=테마인식 위젯 동일 패턴 추가. ※폰트 미로드로 텍스트=tofu box지만 색/레이아웃 회귀엔 충분. 잔여=주요화면 골든 확대) / ~~pre-commit grep hook~~(✅ 2026-06-09 `.githooks/pre-commit`: 음수 letterSpacing WARN + `baseUrl http://` BLOCK. 클론마다 활성화 `git config core.hooksPath .githooks`) / ~~nginx 보안헤더~~(✅ 2026-06-09 HSTS+CSP+Permissions-Policy 등 7종 적용·검증)
-- [x] 이닝중계 진행이닝 TTL 30→10s 검토 → **유지 결정**(클라 폴링 30s 고정이라 하향=Naver 부하 3배·UX 이득 0)
-### 보안 점검 — ✅ 2026-06-10 전부 완료 (감사: ufw deny-default·fail2ban·SSH 키온리·unattended-upgrades·pip-audit 주간·bcrypt·refresh rotation 확인)
-- [x] **업로드 EXIF 제거**: `api/image_utils.py` strip_metadata(Pillow 재인코딩, exif_transpose 선적용=회전보존) — 프로필+게시글 적용
-- [x] postgres listen_addresses → localhost (`ALTER SYSTEM` — 범인은 auto.conf의 과거 ALTER SYSTEM '*') / rpcbind disable / 이메일 인증 5회 실패 시 코드 무효화(`phone_verifications.attempts`)
-- [x] 백업 오프사이트: `backup_pull.ps1` + schtasks PlayballBackupPull(매일 12:00 트리거, 6일 스로틀=주1 pull, `~/playball_backups/` 4개 보관, 1MB 미만=실패 간주)
+### ✅ 완료 (요약 — 상세 git log / 활성 규칙은 주의사항)
+- **즉시·키회전** (06-09): Gmail/Kakao(JS·네이티브·REST)/DB pw 회전+라이브검증. 메가B/C/D 코드측 완료.
+- **중기 코드품질** (06-09): empty catch→debugPrint(17파일)·AppErrorView 6화면·서버 print→logging·SemColor.panelDark 감사+홀리스틱 다크패스(3화면)·Radii.pill 33곳·골든 인프라·pre-commit hook·nginx 보안헤더 7종. (다크 가시성 규칙 = 주의사항 "버튼 색 하드코딩 금지")
+- **보안 점검** (06-10): EXIF strip·pg listen localhost·rpcbind off·이메일 5회 제한·백업 오프사이트(`backup_pull.ps1`)·ufw/fail2ban/SSH키온리/unattended-upgrades/pip-audit 감사.
+- ⏸️ **다크모드 육안검증 = 영구 패스**(사용자 지시 — 직접 요청 전까지 안 함, 골든이 회귀 방어)
 
 ### 베타/출시 배포 경로 (2026-06-11 결정)
 - **Android 베타 = Firebase App Distribution** (이미 Firebase 연동·Crashlytics 동일 콘솔·완전 무료·Play Console $25 불요·자동 업데이트 알림). release keystore 생성+안전백업 선행(분실=업뎃 불가). 지인 이메일 등록→링크 설치
