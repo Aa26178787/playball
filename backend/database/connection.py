@@ -82,6 +82,16 @@ class _PooledConn:
             self.rollback()
         self.close()
 
+    def __del__(self):
+        # 안전망: 명시 close() 누락(예외/조기 return)으로 이 래퍼가 스코프를 벗어나면
+        # CPython refcount가 여기서 close()(rollback+풀반납)를 호출 → 커넥션 누수 방지.
+        # 정상 경로는 _closed=True라 no-op. get_connection 322개 사용처 전역 retrofit.
+        # ⚠️ CPython 결정적 GC 전제(서버=CPython). 부분초기화/셧다운엔 close()가 자체 try로 흡수.
+        try:
+            self.close()
+        except Exception:
+            pass
+
 
 def get_connection() -> _PooledConn | None:
     """Return a pooled DB connection. Call conn.close() to return it to the pool."""
