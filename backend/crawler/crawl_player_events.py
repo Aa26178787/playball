@@ -446,22 +446,26 @@ def daily_player_summary():
     conn = get_connection()
     if not conn:
         return
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT DISTINCT pds.player_id, p.name, t.name, p.player_type,
-               pds.stat_type, pds.hits, pds.at_bats, pds.home_runs, pds.rbi,
-               pds.walks, pds.sb, pds.ip, pds.er, pds.so, pds.result
-        FROM player_daily_stats pds
-        JOIN players p ON p.id = pds.player_id
-        LEFT JOIN teams t ON t.id = p.team_id
-        WHERE pds.game_date = %s
-          AND EXISTS (
-            SELECT 1 FROM user_favorite_players ufp
-            WHERE ufp.player_id = pds.player_id
-          )
-    """, (today,))
-    rows = cur.fetchall()
-    cur.close(); conn.close()
+    try:
+        cur = conn.cursor()
+        # ⚠️ player_daily_stats 실 컬럼 = ab (at_bats 아님). 오타 시 매 실행 에러 → 커넥션 누수 사고(06-25)
+        cur.execute("""
+            SELECT DISTINCT pds.player_id, p.name, t.name, p.player_type,
+                   pds.stat_type, pds.hits, pds.ab, pds.home_runs, pds.rbi,
+                   pds.walks, pds.sb, pds.ip, pds.er, pds.so, pds.result
+            FROM player_daily_stats pds
+            JOIN players p ON p.id = pds.player_id
+            LEFT JOIN teams t ON t.id = p.team_id
+            WHERE pds.game_date = %s
+              AND EXISTS (
+                SELECT 1 FROM user_favorite_players ufp
+                WHERE ufp.player_id = pds.player_id
+              )
+        """, (today,))
+        rows = cur.fetchall()
+        cur.close()
+    finally:
+        conn.close()  # 예외 시에도 반드시 반납 (try/finally 없으면 누수)
     for r in rows:
         pid, pname, tname, ptype, stype, h, ab, hr, rbi, bb, sb, ip, er, so, result = r
         stats = {
@@ -480,20 +484,24 @@ def hitting_streak_check():
     conn = get_connection()
     if not conn:
         return
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT pds.player_id, p.name, t.name, pds.game_date, pds.hits, pds.at_bats
-        FROM player_daily_stats pds
-        JOIN players p ON p.id = pds.player_id
-        LEFT JOIN teams t ON t.id = p.team_id
-        WHERE pds.stat_type='hitter'
-          AND EXISTS (
-            SELECT 1 FROM user_favorite_players ufp WHERE ufp.player_id = pds.player_id
-          )
-        ORDER BY pds.player_id, pds.game_date DESC
-    """)
-    rows = cur.fetchall()
-    cur.close(); conn.close()
+    try:
+        cur = conn.cursor()
+        # ⚠️ 실 컬럼 = ab (at_bats 아님)
+        cur.execute("""
+            SELECT pds.player_id, p.name, t.name, pds.game_date, pds.hits, pds.ab
+            FROM player_daily_stats pds
+            JOIN players p ON p.id = pds.player_id
+            LEFT JOIN teams t ON t.id = p.team_id
+            WHERE pds.stat_type='hitter'
+              AND EXISTS (
+                SELECT 1 FROM user_favorite_players ufp WHERE ufp.player_id = pds.player_id
+              )
+            ORDER BY pds.player_id, pds.game_date DESC
+        """)
+        rows = cur.fetchall()
+        cur.close()
+    finally:
+        conn.close()
 
     # 선수별 연속 안타 streak 계산
     from collections import defaultdict
@@ -504,38 +512,41 @@ def hitting_streak_check():
     notify_conn = get_connection()
     if not notify_conn:
         return
-    ncur = notify_conn.cursor()
-    for pid, history in by_player.items():
-        # history는 최신순. streak 계산: 연속으로 hits > 0 (ab > 0 조건 포함)
-        streak = 0
-        latest_pname = ''
-        latest_tname = ''
-        for gdate, hits, ab, pname, tname in history:
-            if ab > 0 and hits > 0:
-                streak += 1
-                if not latest_pname:
-                    latest_pname = pname
-                    latest_tname = tname
-            else:
-                break
-        if streak >= 8:
-            sub_id = f"{pid}_streak_{streak}"
-            ncur.execute("""
-                SELECT 1 FROM notification_log
-                WHERE game_id=0 AND type='hitting_streak' AND sub_id=%s
-            """, (sub_id,))
-            if ncur.fetchone():
-                continue
-            try:
-                notify_hitting_streak(pid, latest_pname, latest_tname or '', streak)
+    try:
+        ncur = notify_conn.cursor()
+        for pid, history in by_player.items():
+            # history는 최신순. streak 계산: 연속으로 hits > 0 (ab > 0 조건 포함)
+            streak = 0
+            latest_pname = ''
+            latest_tname = ''
+            for gdate, hits, ab, pname, tname in history:
+                if ab > 0 and hits > 0:
+                    streak += 1
+                    if not latest_pname:
+                        latest_pname = pname
+                        latest_tname = tname
+                else:
+                    break
+            if streak >= 8:
+                sub_id = f"{pid}_streak_{streak}"
                 ncur.execute("""
-                    INSERT INTO notification_log (game_id, type, sub_id)
-                    VALUES (0, 'hitting_streak', %s) ON CONFLICT DO NOTHING
+                    SELECT 1 FROM notification_log
+                    WHERE game_id=0 AND type='hitting_streak' AND sub_id=%s
                 """, (sub_id,))
-            except Exception as e:
-                print(f"[streak] 알림 실패 player={pid}: {e}")
-    notify_conn.commit()
-    ncur.close(); notify_conn.close()
+                if ncur.fetchone():
+                    continue
+                try:
+                    notify_hitting_streak(pid, latest_pname, latest_tname or '', streak)
+                    ncur.execute("""
+                        INSERT INTO notification_log (game_id, type, sub_id)
+                        VALUES (0, 'hitting_streak', %s) ON CONFLICT DO NOTHING
+                    """, (sub_id,))
+                except Exception as e:
+                    print(f"[streak] 알림 실패 player={pid}: {e}")
+        notify_conn.commit()
+        ncur.close()
+    finally:
+        notify_conn.close()
 
 
 if __name__ == '__main__':

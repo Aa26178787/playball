@@ -59,6 +59,13 @@ class _PooledConn:
     def close(self):
         if not self._closed:
             self._closed = True
+            # 반납 전 rollback — 커밋 안 한 열린/aborted 트랜잭션을 정리해
+            # 풀에 'idle in transaction' 상태로 되돌아가는 것 방지(누수/락 위생).
+            # 커밋된 작업은 영향 없음(rollback no-op), 미커밋분은 어차피 비영속.
+            try:
+                self._conn.rollback()
+            except Exception:
+                pass
             try:
                 _get_pool().putconn(self._conn)
             except Exception:
