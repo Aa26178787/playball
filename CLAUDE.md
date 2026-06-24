@@ -295,7 +295,7 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - 장기: Cloudflare CDN(이미지 edge 캐시 — 도메인 계획과 묶음)·dio+http2_adapter(h2 멀티플렉싱 — bootstrap 도입 시 가치 하락하니 후순위)·uvicorn --workers(인메모리 캐시 워커별 중복 → Naver fetch 배수 트레이드오프, 부하 생기면 검토)
 
 ## 주의사항
-- ⚠️ **`get_connection()`은 반드시 try/finally로 close()** — `conn=get_connection(); cur.execute(...); conn.close()` 패턴에서 execute/fetch가 던지면 close 스킵 → 커넥션 영구 leak(idle in tx, 락 보유). 06-25 사고: 컬럼 오타로 매일 에러나던 일배치가 try/finally 부재로 일 1개씩 누수 → `games` 락으로 마이그레이션 차단. **방어층**: `_PooledConn.close()`가 putconn 전 rollback + DB `idle_in_transaction_session_timeout=5min`(auto.conf, 재구축 시 재적용). 그래도 **신규 코드는 try/finally 필수**(322개 사용처가 이 패턴). 핫테이블 ALTER 전 `pg_stat_activity` idle-in-tx 점검
+- ⚠️ **DB 커넥션 누수 — 3중 방어 완비(06-25), 신규코드는 그래도 try/finally 권장**: `conn=get_connection(); cur.execute(...); conn.close()`에서 execute/fetch가 던지면 close 스킵 → 영구 leak(idle in tx, 락 보유)였음. 06-25 사고=컬럼 오타로 매일 에러나던 일배치가 일 1개씩 누수 → `games` 락으로 마이그레이션 차단. **방어 3층**: ① `_PooledConn.__del__`이 스코프 이탈 시 close() 자동 호출(CPython refcount, **322개 사용처 전역 retrofit** — 명시 close 누락해도 자동 회수) ② `close()`가 putconn 전 rollback(tx 정리) ③ DB `idle_in_transaction_session_timeout=5min`(auto.conf, **재구축 시 재적용**). 누수는 이제 자동 회수되나 **신규 코드는 try/finally로 즉시 반납이 정석**(루프 내 다량 획득 시 특히). 핫테이블 ALTER 전 `pg_stat_activity` idle-in-tx 점검
 - **baseUrl HTTPS 고정** / git push --force / 커밋·배포·로그·APK는 묻지 않고 실행
 - **배포 시 playball + playball-scheduler 둘 다 재시작**
 - **한글 파일 PowerShell -replace/Add-Content/Set-Content 전부 금지** (인코딩 깨짐 → crash loop). Edit/Write 도구만. 06-12 사고: api_service.dart·games.py 전체 mojibake → HEAD 복원+Edit 재적용으로 복구. 의심 시 `git diff`에 무관 한글줄 대량 변경 = 오염 신호
@@ -677,7 +677,7 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - 전략: ①니치 1개 집중(직관러 도구 or 라이브 필드뷰) ②무료+가벼운 광고로 시작 ③데이터 리스크 해결 전 공격적 마케팅 자제 ④포스트시즌(10월) 모멘텀 활용
 
 ## 알려진 이슈
-- ✅ ~~**DB 커넥션 누수 (idle in transaction 미커밋)**~~ — 06-25 **근본원인 규명·수정**(↓변경이력). 원인 = `crawl_player_events.daily_player_summary`/`hitting_streak_check` SELECT가 없는 컬럼 `pds.at_bats`(실제=`pds.ab`) 참조 → 매 실행 에러 + **try/finally 부재**로 `conn.close()` 스킵 → 커넥션 영구 leak(idle in tx aborted), 일 1개 누적 → `games` 락으로 마이그레이션 차단. 수정 = 컬럼 픽스 + try/finally + `_PooledConn.close()` rollback + `idle_in_transaction_session_timeout=5min`(auto.conf 전역 백스톱). ⚠️**재발방지 = ↓주의사항 "get_connection try/finally" 규칙**. 점검: `SELECT pid,state,now()-state_change,left(query,60) FROM pg_stat_activity WHERE state LIKE 'idle in transaction%'`
+- ✅ ~~**DB 커넥션 누수 (idle in transaction 미커밋)**~~ — 06-25 **근본원인 규명·수정**(↓변경이력). 원인 = `crawl_player_events.daily_player_summary`/`hitting_streak_check` SELECT가 없는 컬럼 `pds.at_bats`(실제=`pds.ab`) 참조 → 매 실행 에러 + **try/finally 부재**로 `conn.close()` 스킵 → 커넥션 영구 leak(idle in tx aborted), 일 1개 누적 → `games` 락으로 마이그레이션 차단. 수정 = 컬럼 픽스 + try/finally + `_PooledConn.close()` rollback + `idle_in_transaction_session_timeout=5min`(auto.conf) + **`_PooledConn.__del__` 안전망(322개 사용처 전역 retrofit, 스코프 이탈 시 자동 close)**. ⚠️**재발방지 = ↓주의사항 "DB 커넥션 누수 3중 방어"**. 점검: `SELECT pid,state,now()-state_change,left(query,60) FROM pg_stat_activity WHERE state LIKE 'idle in transaction%'`
 - push_tokens 사용자 1명 — 다수 유저 알림 시나리오 미검증
 - 라이브 pitch-locations cold 첫 호출 ~2초 (Naver fetch 의존)
 - scheduler 30초 사이클 — 연속 이벤트 1개 알림 통합 (의도된 dedup)
