@@ -546,49 +546,58 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           ]),
         );
 
-    return Column(children: [
-      _SectionLabel(label: '구단 역사', cs: cs),
-      _CardWrap(cs: cs, child: Padding(
-        padding: const EdgeInsets.all(Space.lg),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // 계보
-          if (fr.isNotEmpty)
-            Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
-              for (var i = 0; i < fr.length; i++) ...[
-                if (i > 0) Padding(padding: const EdgeInsets.symmetric(horizontal: Space.xs),
-                    child: Icon(Icons.chevron_right, size: Typo.subtitle, color: cs.sub)),
-                Text('${(fr[i] as Map)['team_name'] ?? ''} '
-                    '${_yy((fr[i]['start_year'] as num?)?.toInt())}~${_yy((fr[i]['end_year'] as num?)?.toInt())}',
-                    style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink)),
-              ],
-            ]),
-          for (final f in fr)
-            if (((f as Map)['note'] as String?)?.isNotEmpty ?? false)
-              Padding(padding: const EdgeInsets.only(top: Space.xs),
-                  child: Text('· ${f['note']}', style: TextStyle(fontSize: Typo.caption, color: cs.sub))),
-          // 시즌기록
-          if (records.isNotEmpty) ...[
-            const SizedBox(height: Space.md),
-            for (final r in records)
-              Padding(padding: const EdgeInsets.only(bottom: Space.xs),
-                child: Row(children: [
-                  Expanded(child: Text((r as Map)['label']?.toString() ?? '',
-                      style: TextStyle(fontSize: Typo.small, color: cs.ink3))),
-                  Text('${r['season'] ?? ''}  ${r['value'] ?? ''}',
-                      style: TextStyle(fontSize: Typo.small, fontWeight: Typo.bold, color: cs.ink)),
-                ])),
+    // 최근뉴스/최근등록말소와 동일한 divider 행 컨테이너 (카드 내부패딩 0 + 행별 하단선)
+    Widget lrow(Widget child, {bool last = false}) => Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          decoration: BoxDecoration(
+              border: last ? null : Border(bottom: BorderSide(color: cs.line))),
+          child: child,
+        );
+
+    // 구단 역사 = 계보(+note) 1행 + 시즌기록 각 1행 (divider 리스트)
+    final histRows = <Widget>[];
+    if (fr.isNotEmpty) {
+      histRows.add(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
+          for (var i = 0; i < fr.length; i++) ...[
+            if (i > 0) Padding(padding: const EdgeInsets.symmetric(horizontal: Space.xs),
+                child: Icon(Icons.chevron_right, size: Typo.subtitle, color: cs.sub)),
+            Text('${(fr[i] as Map)['team_name'] ?? ''} '
+                '${_yy((fr[i]['start_year'] as num?)?.toInt())}~${_yy((fr[i]['end_year'] as num?)?.toInt())}',
+                style: TextStyle(fontSize: Typo.body, fontWeight: Typo.bold, color: cs.ink)),
           ],
         ]),
-      )),
+        for (final f in fr)
+          if (((f as Map)['note'] as String?)?.isNotEmpty ?? false)
+            Padding(padding: const EdgeInsets.only(top: Space.xs),
+                child: Text('· ${f['note']}', style: TextStyle(fontSize: Typo.caption, color: cs.sub))),
+      ]));
+    }
+    for (final r in records) {
+      histRows.add(Row(children: [
+        Expanded(child: Text((r as Map)['label']?.toString() ?? '',
+            style: TextStyle(fontSize: Typo.small, color: cs.ink3))),
+        Text('${r['season'] ?? ''}  ${r['value'] ?? ''}',
+            style: TextStyle(fontSize: Typo.small, fontWeight: Typo.bold, color: cs.ink)),
+      ]));
+    }
+
+    return Column(children: [
+      if (histRows.isNotEmpty) ...[
+        _SectionLabel(label: '구단 역사', cs: cs),
+        _CardWrap(cs: cs, child: Column(children: [
+          for (var i = 0; i < histRows.length; i++) lrow(histRows[i], last: i == histRows.length - 1),
+        ])),
+      ],
       if (batting.isNotEmpty || pitching.isNotEmpty) ...[
         _SectionLabel(label: '역대 레전드', cs: cs),
-        _CardWrap(cs: cs, child: Padding(
-          padding: const EdgeInsets.all(Space.lg),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _CardWrap(cs: cs, child: lrow(
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (batting.isNotEmpty) leaderCol(batting, '타자'),
             if (batting.isNotEmpty && pitching.isNotEmpty) const SizedBox(width: Space.lg),
             if (pitching.isNotEmpty) leaderCol(pitching, '투수'),
           ]),
+          last: true,
         )),
       ],
     ]);

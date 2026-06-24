@@ -268,19 +268,19 @@ def _leader_query(cur, ptype, col, limit):
             )
         )
         SELECT hp.kbo_player_id, hp.name, hp.player_id,
-               t.short_name AS team_code, t.name AS team, SUM(a.v) AS total
+               t.short_name AS team_code, t.name AS team, hp.profile_image, SUM(a.v) AS total
         FROM allstat a
         JOIN historical_players hp ON hp.kbo_player_id = a.kid
         LEFT JOIN teams t ON t.id = hp.primary_team_id
-        GROUP BY hp.kbo_player_id, hp.name, hp.player_id, t.short_name, t.name
+        GROUP BY hp.kbo_player_id, hp.name, hp.player_id, t.short_name, t.name, hp.profile_image
         HAVING SUM(a.v) > 0
         ORDER BY total DESC
         LIMIT %s
     """, (ptype, limit))
     return [
         {"kbo_player_id": r[0], "name": r[1], "is_active": r[2] is not None,
-         "team_code": r[3], "team": r[4] or "역대", "profile_image": None,
-         "value": int(r[5] or 0)}
+         "team_code": r[3], "team": r[4] or "역대", "profile_image": r[5],
+         "value": int(r[6] or 0)}
         for r in cur.fetchall()
     ]
 
