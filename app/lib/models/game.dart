@@ -26,6 +26,7 @@ class Game {
   final int? homeTeamId;
   final int? awayTeamId;
   final int? stadiumId;
+  final bool suspended; // 우천중단(경기 중 일시 중단) — status='진행' 위 오버레이
 
   Game({
     required this.id,
@@ -55,6 +56,7 @@ class Game {
     this.homeTeamId,
     this.awayTeamId,
     this.stadiumId,
+    this.suspended = false,
   });
 
   factory Game.fromJson(Map<String, dynamic> json) {
@@ -88,6 +90,7 @@ class Game {
       homeTeamId:    json['home_team_id'],
       awayTeamId:    json['away_team_id'],
       stadiumId:     json['stadium_id'],
+      suspended:     json['suspended'] == true,
     );
   }
 }

@@ -942,6 +942,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Widget _buildGameHeader(Map<String, dynamic> game, {bool roundedBottom = true, bool includeField = true}) {
     final status = game['status'] as String? ?? '';
     final isLive = status == '진행';
+    final isSuspended = isLive && game['suspended'] == true; // 우천중단 오버레이
     final isDone = status == '종료';
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -1155,7 +1156,22 @@ class _GameDetailScreenState extends State<GameDetailScreen>
                       ),
                       ),
                       const SizedBox(height: 6),
-                      if (isLive)
+                      if (isSuspended)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: SemColor.warning.withValues(alpha: isDark ? 0.20 : 0.12),
+                            borderRadius: BorderRadius.circular(Radii.pill),
+                            border: Border.all(color: SemColor.warning.withValues(alpha: 0.50), width: 1),
+                          ),
+                          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.umbrella, size: 12, color: SemColor.warning),
+                            SizedBox(width: 5),
+                            Text('우천중단',
+                                style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.extra, color: SemColor.warning)),
+                          ]),
+                        )
+                      else if (isLive)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(

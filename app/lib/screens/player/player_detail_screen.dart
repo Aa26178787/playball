@@ -1841,7 +1841,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: Space.sm),
-                Text('$selType $selCount구 · 전체 $total구 · 셀 숫자 = 해당 구종 내 비율(%)',
+                Text('$selType $selCount구 · 전체 $total구',
                     style: TextStyle(fontSize: Typo.mini, color: sub)),
               ],
             ),
@@ -1918,9 +1918,9 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
     String metricNote() {
       switch (_bzMetric) {
-        case 'whiff': return '셀 = 헛스윙률% (스윙 5개 미만 회색)';
+        case 'whiff': return '스윙 5개 미만 회색';
         case 'avg': return '셀 = 존별 타율 (5타수 미만 회색, 적=핫·청=콜드)';
-        default: return '셀 = 전체 피투구 중 비율%';
+        default: return '';
       }
     }
 
@@ -2012,7 +2012,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: Space.sm),
-                Text('전체 $total구 · ${metricNote()}',
+                Text('전체 $total구${metricNote().isEmpty ? '' : ' · ${metricNote()}'}',
                     style: TextStyle(fontSize: Typo.mini, color: sub)),
               ],
             ),
@@ -2078,7 +2078,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
 
     final note = _pzMetric == 'avg'
         ? '셀 = 존별 피안타율 (5타수 미만 회색, 적=많이맞음·청=잘막음)'
-        : '셀 = 전체 투구 중 비율%';
+        : '';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
@@ -2150,7 +2150,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: Space.sm),
-                Text('전체 $total구 · $note', style: TextStyle(fontSize: Typo.mini, color: sub)),
+                Text('전체 $total구${note.isEmpty ? '' : ' · $note'}', style: TextStyle(fontSize: Typo.mini, color: sub)),
               ],
             ),
           ),

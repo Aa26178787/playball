@@ -121,6 +121,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'game_end':        return (Icons.flag, const Color(0xFF455A64));
       case 'extra_innings':   return (Icons.update, const Color(0xFF7B1FA2));
       case 'cancelled':       return (Icons.umbrella, const Color(0xFF607D8B));
+      case 'rain_delay':      return (Icons.umbrella, const Color(0xFFFFA000));
       case 'rank_change':     return (Icons.leaderboard, const Color(0xFF1976D2));
       case 'winning_streak':  return (Icons.trending_up, const Color(0xFFE53935));
       case 'losing_streak':   return (Icons.trending_down, const Color(0xFF607D8B));
@@ -129,6 +130,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       default:                return (Icons.notifications, const Color(0xFF6B6B73));
     }
   }
+
+  /// 백엔드 title 선두 이모지/기호 제거 — 인앱은 타입 아이콘(_typeIcon)으로 구분하므로 중복.
+  /// 웹 CanvasKit/일부 기기서 선두 이모지가 인접 한글 글리프를 드롭하던 문제도 해소(저장값·푸시는 이모지 유지).
+  String _cleanTitle(String t) =>
+      t.replaceFirst(RegExp(r'^[^가-힣\w]+', unicode: true), '').trim();
 
   String _relativeTime(String createdAt) {
     try {
@@ -244,7 +250,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                       children: [
                                         Expanded(
                                           child: Text(
-                                            n['title'] as String,
+                                            _cleanTitle(n['title'] as String),
                                             style: TextStyle(
                                               fontSize: Typo.subtitle,
                                               fontWeight: unread

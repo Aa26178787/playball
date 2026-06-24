@@ -1383,6 +1383,13 @@ def smart_update():
     curr_details = _get_game_details()
     curr_statuses = {gid: d['status'] for gid, d in curr_details.items()}
 
+    # 우천중단 감지/토글 (진행 경기 relay 텍스트 → games.suspended, false→true 시 알림).
+    # prev_details 가드 밖 = 재시작/첫사이클에도 동작 (suspended는 state-based, 전환 무관).
+    try:
+        _check_rain_delays(curr_details)
+    except Exception as e:
+        print(f"[우천중단] 체크 오류: {e}")
+
     if prev_details and curr_details:
         newly_finished = [
             gid for gid, status in curr_statuses.items()
@@ -2263,6 +2270,75 @@ def _update_live_games_realtime():
                         save_game_pitches(db_game_id, naver_game_id, inning)
 
 
+def _check_rain_delays(curr_details):
+    """진행 경기 relay 텍스트로 우천중단 감지 → games.suspended 토글 + false→true 전환 시 알림.
+    진행 경기당 relay 1회/cycle 추가 fetch(경량). 경기당 1회 dedup 알림."""
+    from crawler.naver_crawler import is_game_suspended
+
+    # 0) 진행 아닌 경기는 suspended 강제 해제 (재개/종료/취소/우천콜드→종료 정리)
+    conn0 = get_connection()
+    if conn0:
+        try:
+            c0 = conn0.cursor()
+            c0.execute("UPDATE games SET suspended = FALSE WHERE suspended = TRUE AND status != '진행'")
+            conn0.commit()
+            c0.close()
+        except Exception:
+            pass
+        finally:
+            conn0.close()
+
+    live = [(gid, d) for gid, d in curr_details.items()
+            if d.get('status') == '진행' and d.get('naver_game_id')]
+    if not live:
+        return
+
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, COALESCE(suspended, FALSE) FROM games WHERE id = ANY(%s)",
+                    ([gid for gid, _ in live],))
+        cur_susp = {r[0]: r[1] for r in cur.fetchall()}
+        cur.close()
+    except Exception:
+        conn.close()
+        return
+    conn.close()
+
+    for gid, d in live:
+        try:
+            now_susp = is_game_suspended(d['naver_game_id'], d.get('current_inning') or 1)
+        except Exception:
+            continue
+        if now_susp == cur_susp.get(gid, False):
+            continue
+        c2 = get_connection()
+        if not c2:
+            continue
+        try:
+            cu = c2.cursor()
+            cu.execute("UPDATE games SET suspended = %s WHERE id = %s", (now_susp, gid))
+            c2.commit()
+            cu.close()
+        except Exception:
+            pass
+        finally:
+            c2.close()
+        # false→true 전환에만 알림 (경기당 1회 dedup — 재중단 재알림은 v1 비목표)
+        if now_susp and not _already_notified(gid, 'rain_delay'):
+            try:
+                from api.fcm_service import notify_rain_delay
+                notify_rain_delay(gid, d['home_team'], d['away_team'],
+                                  d['home_team_id'], d['away_team_id'])
+                emit_event(gid, 'rain_delay', {'home': d['home_team'], 'away': d['away_team']})
+                _mark_notified(gid, 'rain_delay')
+                print(f"[FCM] 우천중단 알림 발송 game={gid}")
+            except Exception as e:
+                print(f"[FCM] 우천중단 알림 오류 game={gid}: {e}")
+
+
 def _update_lineup_by_starttime():
     """
     1단계: start_time 2시간 전 ~ 로스터 자체 없는 경기 크롤링 (후보야수/불펜)
@@ -2426,6 +2502,9 @@ def _update_roster_changes_pregame():
         from crawler.kbo_roster_crawler import run_today
         print(f"[{datetime.now()}] 경기전 등록말소 크롤링 ({count}경기 대기 중)")
         run_today()
+        # 크롤 직후 즉시 알림 — 오후 등록말소를 익일 09:30 일배치까지 기다리지 않음 (타이밍 픽스).
+        # notification_log dedup이라 5분 주기 재호출·일배치와 중복 없음.
+        _notify_roster_for_fans()
     except Exception as e:
         print(f"[{datetime.now()}] 등록말소 크롤링 오류: {e}")
 
@@ -2698,6 +2777,30 @@ def _get_scoring_play_detail(naver_game_id, inning, new_home_score, new_away_sco
             except: pass
 
 
+def _roster_recently_notified(player_id, change_type, days=3) -> bool:
+    """같은 (선수, 변동유형)을 최근 N일 내 roster_change 알림 발송했는지.
+    KBO '당일 말소' 표가 동일 변동을 다음날까지 재노출(change_date 시프트) → 중복 발송 차단.
+    유형/3일 간격으로 진짜 재등록·재말소는 구분."""
+    conn = get_connection()
+    if not conn:
+        return False
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT 1 FROM notification_log "
+            "WHERE type='roster_change' AND sub_id LIKE %s "
+            "AND sent_at > now() - make_interval(days => %s) LIMIT 1",
+            (f"{player_id}:{change_type}:%", days)
+        )
+        hit = cur.fetchone() is not None
+        cur.close()
+        return hit
+    except Exception:
+        return False
+    finally:
+        conn.close()
+
+
 def _notify_roster_for_fans():
     """오늘 등록말소: 즐겨찾기 선수 팬 + 마이팀 팬 모두에게 알림"""
     conn = get_connection()
@@ -2730,9 +2833,13 @@ def _notify_roster_for_fans():
         today_s = _d.today().isoformat()
         sent = 0
         for player_id, player_name, change_type, team_id in rows:
-            # 크롤 주기(10분)마다 재호출 — notification_log dedup 필수
+            # 크롤 주기마다 재호출 — notification_log dedup 필수
             sub = f"{player_id}:{change_type}:{today_s}"
             if _already_notified(0, 'roster_change', sub):
+                continue
+            # KBO 재노출(change_date만 바뀐 동일 변동) → 최근 3일 내 같은 (선수,유형) 알렸으면 스킵
+            if _roster_recently_notified(player_id, change_type):
+                _mark_notified(0, 'roster_change', sub)
                 continue
             notify_roster_change(player_id, player_name, change_type)
             if team_id:

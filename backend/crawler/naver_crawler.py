@@ -49,6 +49,42 @@ POSITION_MAP = {
 }
 
 
+# 우천중단 감지 키워드 — Naver relay 텍스트에 중단 공지가 실릴 때 매칭 (보수적, 오탐 최소).
+# ⚠️ Naver는 명시 status 필드를 안 줌 → relay 텍스트 키워드가 유일 신호. 실제 중단 발생 시 라이브 튜닝.
+_SUSPEND_KEYWORDS = ('서스펜디드', '경기 중단', '경기가 중단', '중단되었', '강우 중단', '우천 중단')
+
+
+def _text_has_suspend(blob):
+    """relay 텍스트 blob에 우천중단 신호가 있으면 True (순수 — 네트워크 무관, 단위테스트 대상)."""
+    if not blob:
+        return False
+    # '중단'(드문 표현) + 우천/강우 동반 = 강한 신호 (어순/표현 변형 흡수). '비'는 흔해 오탐 우려로 제외.
+    if '중단' in blob and ('우천' in blob or '강우' in blob):
+        return True
+    return any(k in blob for k in _SUSPEND_KEYWORDS)
+
+
+def is_game_suspended(naver_game_id, inning):
+    """진행 경기 relay(현재 이닝)의 가장 최근 텍스트에 우천중단 공지가 있으면 True.
+    최신 항목 기준이라 경기 재개(최신=정상 투구) 시 자동 False."""
+    try:
+        url = f"https://api-gw.sports.naver.com/schedule/games/{naver_game_id}/relay?inning={inning}"
+        res = requests.get(url, headers=HEADERS, timeout=10)
+        res.raise_for_status()
+        relay = res.json().get('result', {}).get('textRelayData', {})
+        text_relays = relay.get('textRelays', []) or []
+        if not text_relays:
+            return False
+        # textRelays = 최신순 → [0] = 가장 최근 항목만 검사 (재개 시 자동 해제 위함)
+        recent = text_relays[0]
+        blob = recent.get('title') or ''
+        for opt in recent.get('textOptions', []) or []:
+            blob += ' ' + (opt.get('text') or '')
+        return _text_has_suspend(blob)
+    except Exception:
+        return False
+
+
 def save_game_pitches(db_game_id, naver_game_id, inning):
     """진행 중인 경기 투구 데이터 저장"""
     try:

@@ -2195,7 +2195,24 @@ class GameCard extends StatelessWidget {
     final timeText = (!showScore && !isCancelled)
         ? (game.startTime ?? '') : '';
 
+    final isSuspended = isLive && game.suspended; // 우천중단 오버레이
     Widget statusBadge() {
+      if (isSuspended) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: SemColor.warning.withValues(alpha: isDark ? 0.20 : 0.12),
+            borderRadius: BorderRadius.circular(Radii.xs),
+            border: Border.all(color: SemColor.warning.withValues(alpha: 0.50)),
+          ),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.umbrella, size: 9, color: SemColor.warning),
+            SizedBox(width: Space.xs),
+            Text('우천중단',
+                style: TextStyle(fontSize: Typo.mini, fontWeight: Typo.extra, color: SemColor.warning)),
+          ]),
+        );
+      }
       if (isLive) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -2369,6 +2386,7 @@ class GameCard extends StatelessWidget {
     final isFinished = game.status == '종료';
     final isDraw = game.isDraw ?? false;
     final isLive = game.status == '진행';
+    final isSuspended = isLive && game.suspended; // 우천중단(진행 위 오버레이)
     final isCancelled = game.status == '취소';
     // 진행중도 winner 강조 (이기는 팀 크게/지는 팀 작게+불투명)
     final homeWon = (isFinished || isLive) && !isDraw && game.homeScore > game.awayScore;
@@ -2400,6 +2418,23 @@ class GameCard extends StatelessWidget {
 
     // ── 상태 pill ──
     Widget statusPill() {
+      if (isSuspended) {
+        // 우천중단: LIVE 대신 amber '우천중단' (진행 상태지만 일시 중단)
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: SemColor.warning.withValues(alpha: isDark ? 0.20 : 0.12),
+            borderRadius: BorderRadius.circular(Radii.pill),
+            border: Border.all(color: SemColor.warning.withValues(alpha: 0.50), width: 1),
+          ),
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.umbrella, size: 11, color: SemColor.warning),
+            SizedBox(width: 5),
+            Text('우천중단',
+                style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.extra, color: SemColor.warning)),
+          ]),
+        );
+      }
       if (isLive) {
         // 라이브: LIVE dot만 — 회차는 스코어 밑에만 표시 (중복 제거 2026-06-06)
         return Container(

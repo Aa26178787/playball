@@ -451,6 +451,16 @@ def notify_game_cancelled(game_id: int, home_team: str, away_team: str,
           {"game_id": str(game_id), "type": "cancelled"}, "cancelled", game_id)
 
 
+def notify_rain_delay(game_id: int, home_team: str, away_team: str,
+                      home_team_id: int, away_team_id: int):
+    """우천중단(경기 중 일시 중단) — 양 팀 팬에게 (취소와 동일 타겟)"""
+    targets = _get_targets('notify_game_start', [home_team_id, away_team_id])
+    _send(targets,
+          "🌧️ 우천 중단",
+          f"{home_team} vs {away_team} 경기가 우천으로 중단됐습니다.",
+          {"game_id": str(game_id), "type": "rain_delay"}, "rain_delay", game_id)
+
+
 # ── 순위 알림 ─────────────────────────────────────────────────────────────────
 
 def notify_rank_change(team_id: int, team_name: str,

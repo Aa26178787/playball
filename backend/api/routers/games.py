@@ -715,7 +715,8 @@ def get_today_games():
             EXISTS (
                 SELECT 1 FROM game_rosters gr3
                 WHERE gr3.game_id = g.id AND gr3.is_starter = FALSE
-            ) AS has_roster
+            ) AS has_roster,
+            COALESCE(g.suspended, FALSE) AS suspended
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
@@ -815,6 +816,7 @@ def get_today_games():
             "home_starter":     r[20],
             "away_starter":     r[21],
             "has_roster":       r[23] if len(r) > 23 else False,
+            "suspended":        bool(r[24]) if len(r) > 24 else False,
             "is_draw":          r[2] == '종료' and r[3] == r[4],
         })
 
@@ -844,7 +846,8 @@ def get_game_detail(game_id: int):
             g.home_team_id,
             g.away_team_id,
             ht.short_name AS home_team_code,
-            at.short_name AS away_team_code
+            at.short_name AS away_team_code,
+            COALESCE(g.suspended, FALSE) AS suspended
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
@@ -998,6 +1001,7 @@ def get_game_detail(game_id: int):
             "stadium":            game[13],
             "home_team_code":     game[17],
             "away_team_code":     game[18],
+            "suspended":          bool(game[19]) if len(game) > 19 else False,
             "home_recent_5":      home_recent_5,
             "away_recent_5":      away_recent_5,
             "win_pitcher":        win_p["name"] if win_p else None,
@@ -1089,7 +1093,8 @@ def get_games_by_date(date_str: str):
             EXISTS (
                 SELECT 1 FROM game_rosters gr3
                 WHERE gr3.game_id = g.id AND gr3.is_starter = FALSE
-            ) AS has_roster
+            ) AS has_roster,
+            COALESCE(g.suspended, FALSE) AS suspended
         FROM games g
         JOIN teams ht ON g.home_team_id = ht.id
         JOIN teams at ON g.away_team_id = at.id
@@ -1249,6 +1254,7 @@ def get_games_by_date(date_str: str):
             "home_starter":        r[17],
             "away_starter":        r[18],
             "has_roster":          r[21] if len(r) > 21 else False,
+            "suspended":           bool(r[22]) if len(r) > 22 else False,
             "weather":             weather,
             "home_team_id":        home_team_id_map.get(r[0]),
             "away_team_id":        away_team_id_map.get(r[0]),
