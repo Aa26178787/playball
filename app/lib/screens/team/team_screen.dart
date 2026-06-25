@@ -1540,13 +1540,16 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
       final txtColor = isDark ? medalColor : Color.lerp(medalColor, Colors.black, 0.42)!;
       final nameColor = Pal.ink(isDark);
       return GestureDetector(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) =>
-            widget.historical
-                ? HistoricalPlayerDetailScreen(kboPlayerId: p['kbo_player_id'], initialName: p['name'])
-                : PlayerDetailScreen(
-                    playerId: p['id'],
-                    initialData: {'name': p['name'], 'team': p['team_name'], 'profile_image': p['profile_image'], 'position': p['position'], 'player_type': p['player_type']},
-                  ))),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) {
+          // 역대탭 현역(player_id 有)은 활성 선수상세로 — 역대상세 오연결 방지
+          if (widget.historical && p['player_id'] == null) {
+            return HistoricalPlayerDetailScreen(kboPlayerId: p['kbo_player_id'], initialName: p['name']);
+          }
+          return PlayerDetailScreen(
+            playerId: widget.historical ? p['player_id'] : p['id'],
+            initialData: {'name': p['name'], 'team': p['team_name'] ?? p['team'], 'profile_image': p['profile_image'], 'position': p['position'], 'player_type': p['player_type']},
+          );
+        })),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
@@ -1643,6 +1646,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
             return _buildRankRow(
               rank: e.key + 4,
               playerId: widget.historical ? p['kbo_player_id'] : p['id'],
+              activePlayerId: widget.historical ? p['player_id'] as int? : null,
               name: p['name'] ?? '',
               team: p['team'] ?? '',
               teamCode: p['team_code'] ?? '',
@@ -1746,6 +1750,7 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
     required String label,
     required String value,
     String? profileImage,
+    int? activePlayerId, // 역대탭 현역선수 = 활성 player_id (있으면 활성 상세로)
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final t = _Tok.of(isDark);
@@ -1763,10 +1768,13 @@ class _PlayerRankingsTabState extends State<PlayerRankingsTab>
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(Radii.lg),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) =>
-              widget.historical
-                  ? HistoricalPlayerDetailScreen(kboPlayerId: playerId, initialName: name)
-                  : PlayerDetailScreen(playerId: playerId))),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) {
+            // 역대탭이라도 현역(activePlayerId 有)은 활성 선수상세로 — 역대상세 오연결 방지
+            if (widget.historical && activePlayerId == null) {
+              return HistoricalPlayerDetailScreen(kboPlayerId: playerId, initialName: name);
+            }
+            return PlayerDetailScreen(playerId: activePlayerId ?? playerId);
+          })),
           child: Container(
             padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
             decoration: BoxDecoration(

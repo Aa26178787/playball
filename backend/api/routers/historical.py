@@ -279,6 +279,7 @@ def _leader_query(cur, ptype, col, limit):
     """, (ptype, limit))
     return [
         {"kbo_player_id": r[0], "name": r[1], "is_active": r[2] is not None,
+         "player_id": r[2],  # 현역 브릿지 id (있으면 활성 선수상세로 라우팅 — 역대상세 오연결 방지)
          "team_code": r[3], "team": r[4] or "역대", "profile_image": r[5],
          "value": int(r[6] or 0)}
         for r in cur.fetchall()

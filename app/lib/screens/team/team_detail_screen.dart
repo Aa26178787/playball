@@ -68,13 +68,18 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPlayers();
-    _loadFavStatus();
-    _loadSeasonStats();
-    _loadStandings();
-    _loadRosterChanges();
-    _loadNews();
-    _loadLegacy();
+    // ⚠️ 첫 프레임 이후 로드 — 웹서 push 직후 initState 동기 fetch의 setState가
+    // 첫 진입 시 repaint 안 되던 문제(첫진입 빈화면·재진입만 표시) 방지 (2026-06-25).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadPlayers();
+      _loadFavStatus();
+      _loadSeasonStats();
+      _loadStandings();
+      _loadRosterChanges();
+      _loadNews();
+      _loadLegacy();
+    });
   }
 
   Future<void> _loadLegacy() async {
