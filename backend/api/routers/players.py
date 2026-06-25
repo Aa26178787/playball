@@ -349,7 +349,8 @@ def get_player_rankings(season: int = 2026):
     qual_p = [p for p in pitchers if p['innings_pitched'] >= qual_ip] if qual_ip > 0 else pitchers
 
     def top10(lst, key, asc=False):
-        return sorted(lst, key=lambda x: x[key] or 0, reverse=not asc)[:10]
+        # 부문별 순위 30위까지 (사용자 요청 2026-06-25, 구 10위)
+        return sorted(lst, key=lambda x: x[key] or 0, reverse=not asc)[:30]
 
     return {
         "hitters": {

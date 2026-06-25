@@ -506,7 +506,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
       else
         _CardWrap(cs: cs, child: Column(children: newsList.asMap().entries.map((e) =>
             _buildNewsItem(cs, e.value as Map, e.key == newsList.length - 1)).toList())),
-      if (_legacy != null) _buildLegacySection(cs, color),
+      // 구단 역사/역대 레전드 = 헤더 '구단역사' 버튼(공식홈 옆)으로 이동 — 시트 노출 (2026-06-25)
       const SizedBox(height: Space.xl),
     ]);
   }
@@ -933,6 +933,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
             _linkBtn(Icons.shopping_bag, '굿즈', fg, _teamLinks[code]!['gd'], color),
             const SizedBox(width: 7),
             _linkBtn(Icons.language, '공식홈', fg, _teamLinks[code]!['home'], color),
+            const SizedBox(width: 7),
+            // 구단 역사/역대 레전드 — URL 아닌 시트 오픈 (공식홈 옆)
+            _legacyBtn(fg, color),
           ]),
         ],
         if (_seasonStats != null) ...[
@@ -970,6 +973,60 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         ]),
       ),
     ));
+  }
+
+  // 구단 역사 버튼 (공식홈 옆) — URL 아닌 시트 오픈
+  Widget _legacyBtn(Color iconColor, Color teamColor) {
+    final cs = _C(context);
+    return Expanded(child: GestureDetector(
+      onTap: () => _showLegacySheet(teamColor),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        decoration: BoxDecoration(
+          color: teamColor.withValues(alpha: cs.dark ? 0.14 : 0.07),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.history_edu, size: 18, color: iconColor),
+          const SizedBox(height: 3),
+          Text('구단역사', style: TextStyle(fontSize: Typo.mini, color: cs.ink, fontWeight: Typo.medium)),
+        ]),
+      ),
+    ));
+  }
+
+  // 구단 역사/역대 레전드 시트 (overview서 이동)
+  void _showLegacySheet(Color color) {
+    final cs = _C(context);
+    if (_legacy == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('구단 역사를 불러오는 중입니다')));
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cs.bg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xl))),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.72,
+        minChildSize: 0.4,
+        maxChildSize: 0.94,
+        builder: (_, ctrl) => SingleChildScrollView(
+          controller: ctrl,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const SizedBox(height: 10),
+            Center(child: Container(width: 36, height: 4,
+                decoration: BoxDecoration(color: cs.line2, borderRadius: BorderRadius.circular(Radii.pill)))),
+            const SizedBox(height: 4),
+            _buildLegacySection(cs, color),
+            SizedBox(height: 24 + MediaQuery.of(context).padding.bottom),
+          ]),
+        ),
+      ),
+    );
   }
 
   // 투수 throws → 구위 (우완/좌완/언더)

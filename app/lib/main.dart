@@ -213,12 +213,11 @@ class PlayBallApp extends StatelessWidget {
           themeMode: themeProvider.themeMode,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
-          // a11y 큰 글자 clamp — 1.3은 iOS '텍스트 크기' 설정에서 전체 125% 부풂
-          // 체감(06-13 보고). 갤럭시와 일관 위해 1.1로 (접근성 vs 일관성 절충)
+          // OS '텍스트 크기' 설정을 앱에 반영 안 함 — 고정 1.0 (사용자 요청 2026-06-25).
+          // 앱 자체 zoom(1.05, 아래)만 적용되어 기기 일관성 유지. withNoTextScaling은
+          // min/max clamp가 없어 picker clamp assert(구 0.85~1.1 충돌)도 자연 해소.
           builder: (ctx, child) {
-            final clamped = MediaQuery.withClampedTextScaling(
-              minScaleFactor: 0.85,
-              maxScaleFactor: 1.1,
+            final clamped = MediaQuery.withNoTextScaling(
               child: child ?? const SizedBox.shrink(),
             );
             // 전역 기준폭 412(갤럭시 플립6) — 더 좁은 기기(아이폰 393 등)는
