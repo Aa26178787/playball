@@ -240,14 +240,18 @@ class PlayBallApp extends StatelessWidget {
             );
             // 전역 기준폭 412(갤럭시 플립6) — 더 좁은 기기(아이폰 393 등)는
             // 가상 412폭으로 레이아웃 후 비율 축소 렌더 → 모든 기기 동일 비율/여백
-            // (06-13 사용자 요청). 15% 초과 축소는 가독성상 미적용.
+            // (06-13 사용자 요청).
             // 06-17: 전역 약한 줌 zoom=1.05 — 레이아웃+폰트 비례 5% 확대(가시성, 밀집유지).
             //   412+ 기기=1.05배, 좁은폰=축소상쇄. 비례라 overflow 최소(밀집화면은 watch).
+            // 06-26: 하한 클램프 0.85→0.5 — 안드로이드 '화면 크기(디스플레이 크기)'를 크게
+            //   설정하면 logical dp 폭이 줄어(예 412→320) UI가 부풀던 문제. withNoTextScaling은
+            //   글자만 막고 display-size는 못 막음 → 412 기준 완전 정규화로 중화 = 웹과 동일 렌더.
+            //   (OS 디스플레이 설정이 앱 크기를 지배하지 않게 — 사용자 요청 2026-06-26)
             const baseW = 412.0;
             const zoom = 1.05;
             final mq = MediaQuery.of(ctx);
             if (mq.size.width == 0) return clamped;
-            final fit = (mq.size.width / baseW).clamp(0.85, 1.0);
+            final fit = (mq.size.width / baseW).clamp(0.5, 1.0);
             final scale = fit * zoom;
             final vSize = Size(mq.size.width / scale, mq.size.height / scale);
             return MediaQuery(
