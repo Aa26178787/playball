@@ -3,6 +3,7 @@ import '../../api/api_service.dart';
 import '../../widgets/common_widgets.dart';
 import '../../utils/design_tokens.dart';
 import '../../utils/local_cache.dart';
+import '../../utils/time_util.dart';
 import '../game/game_detail_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -138,7 +139,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   String _relativeTime(String createdAt) {
     try {
-      final dt = DateTime.parse(createdAt).toLocal();
+      final dt = parseServerTime(createdAt);
       final diff = DateTime.now().difference(dt);
       if (diff.inMinutes < 1) return '방금';
       if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';

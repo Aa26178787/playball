@@ -13,6 +13,7 @@ import '../../utils/app_config.dart';
 import '../../utils/team_theme.dart';
 import '../../utils/design_tokens.dart';
 import '../../utils/web_safe_area.dart';
+import '../../utils/time_util.dart';
 import 'pitch_location_chart.dart';
 import '../player/player_detail_screen.dart';
 import '../../utils/web_image.dart';
@@ -4127,7 +4128,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
         String relTime() {
           try {
-            final dt = DateTime.parse(published).toLocal();
+            final dt = parseServerTime(published);
             final diff = DateTime.now().difference(dt);
             if (diff.inMinutes < 60) return '${diff.inMinutes}분 전';
             if (diff.inHours < 24) return '${diff.inHours}시간 전';

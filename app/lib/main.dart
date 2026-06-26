@@ -136,7 +136,25 @@ final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 /// OS 뒤로가기(브라우저 back·안드로이드 제스처·iOS 스와이프) 처리 — Flutter 공식 경로.
 /// 엔진(SingleEntryBrowserHistory)이 popstate를 framework popRoute로 전달할 때 가로챔.
 /// JS pushState 트랩은 엔진 자체 히스토리 상태머신(serialCount)과 충돌해 폐기 (06-12).
+/// 현재 FCM 토큰을 서버에 재등록.
+/// 콜드스타트 1회 등록만으로는 취약 — 토큰 회전(앱 업데이트·Play 서비스 갱신)이나
+/// 계정 변경 후 서버에 옛 토큰이 남으면 Firebase가 옛 토큰을 유예 수락("성공")하면서
+/// 실제 배너는 사라진다. 앱 재개·로그인마다 호출해 항상 최신 토큰을 동기화한다.
+Future<void> syncFcmToken() async {
+  if (kIsWeb) return; // 웹은 FCM 미지원
+  try {
+    final token = await FirebaseMessaging.instance.getToken();
+    if (token != null) await ApiService.registerFcmToken(token);
+  } catch (_) {}
+}
+
 class _RootBackHandler with WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 앱이 포그라운드로 돌아올 때마다 FCM 토큰 재동기화 (stale 토큰 → 푸시 소실 방지)
+    if (state == AppLifecycleState.resumed) syncFcmToken();
+  }
+
   @override
   Future<bool> didPopRoute() async {
     final nav = appNavigatorKey.currentState;

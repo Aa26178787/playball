@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/design_tokens.dart';
+import '../../utils/time_util.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/insta_launch.dart';
 import '../../utils/web_image.dart';
@@ -617,7 +618,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     String dateStr = '';
     if (pub != null) {
       try {
-        final dt = DateTime.parse(pub).toLocal();
+        final dt = parseServerTime(pub);
         dateStr = '${dt.month}/${dt.day} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
       } catch (e) { debugPrint('team_detail: $e'); }
     }
@@ -1395,7 +1396,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           String dateStr = '';
           if (createdAt != null) {
             try {
-              final dt = DateTime.parse(createdAt).toLocal();
+              final dt = parseServerTime(createdAt);
               final diff = DateTime.now().difference(dt);
               if (diff.inMinutes < 60) {
                 dateStr = '${diff.inMinutes}분 전';
