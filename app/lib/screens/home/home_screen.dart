@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/game.dart';
 import '../../utils/local_cache.dart';
 import '../../utils/app_config.dart';
+import '../../utils/battery_opt.dart';
 import '../../utils/web_update/web_update_checker.dart';
 import '../../api/api_service.dart';
 import '../../utils/team_theme.dart';
@@ -105,6 +106,10 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     ApiService.myTeamData.addListener(_onMyTeamDataChanged);
     appTabBackHandler = _handleTabBack;
+    // 첫 진입 시 1회 배터리 최적화 예외 안내 (FCM standby 강등 방지)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) maybePromptBatteryOptimization(context);
+    });
   }
 
   void _onMyTeamDataChanged() {

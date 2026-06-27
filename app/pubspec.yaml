@@ -65,7 +65,10 @@ dependencies:
   firebase_messaging: ^16.3.0
   firebase_crashlytics: ^5.2.3
   flutter_local_notifications: ^17.2.3
-  
+
+  # 배터리 최적화/절전 예외 요청 (FCM standby 강등 방지)
+  permission_handler: ^11.3.1
+
   # 차트
   fl_chart: ^0.70.2
 
