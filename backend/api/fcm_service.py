@@ -255,20 +255,30 @@ def _send(targets: list[tuple[int, str]], title: str, body: str,
         return
     try:
         from firebase_admin import messaging
+        # 같은 (타입,경기) 알림은 tag로 트레이서 교체(누적 X) → Android 50개/앱 캡
+        # (MAX_PACKAGE_NOTIFICATIONS) 도달 시 이후 푸시 무음 드롭되던 문제 방지.
+        # 각 이벤트는 그대로 재알림(소리/진동), 트레이만 경기·타입당 1개 유지.
+        # collapse_key = 기기 오프라인 시 미수신분도 최신만 전달.
+        collapse = f"{ntype}_{game_id}" if game_id else ntype
         # Android high priority + APNs alert → Doze 우회, background에서도 즉시 표시
         msg = messaging.MulticastMessage(
             notification=messaging.Notification(title=title, body=body),
             data={k: str(v) for k, v in data.items()},
             android=messaging.AndroidConfig(
                 priority='high',
+                collapse_key=collapse,
                 notification=messaging.AndroidNotification(
                     channel_id=_channel_for(ntype),
                     sound='default',
                     default_vibrate_timings=True,
+                    tag=collapse,
                 ),
             ),
             apns=messaging.APNSConfig(
-                headers={'apns-priority': '10'},
+                headers={
+                    'apns-priority': '10',
+                    'apns-collapse-id': collapse[:64],
+                },
                 payload=messaging.APNSPayload(
                     aps=messaging.Aps(sound='default', badge=1),
                 ),
