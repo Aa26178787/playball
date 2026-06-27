@@ -109,8 +109,11 @@ Future<void> _initFirebase() async {
     FirebaseMessaging.onMessage.listen((RemoteMessage msg) {
       final n = msg.notification;
       if (n == null) return;
+      // 같은 (타입,경기) 알림은 같은 tag/id로 교체 → 트레이 누적 방지
+      // (Android 앱당 50개 캡 도달 시 이후 푸시 드롭되던 문제 회피, 포그라운드분).
+      final tag = '${msg.data['type'] ?? ''}_${msg.data['game_id'] ?? ''}';
       _localNotif.show(
-        msg.hashCode,
+        tag.hashCode,
         n.title,
         n.body,
         NotificationDetails(
@@ -121,6 +124,7 @@ Future<void> _initFirebase() async {
             importance: Importance.high,
             priority: Priority.high,
             icon: '@mipmap/ic_launcher',
+            tag: tag,
           ),
         ),
       );
