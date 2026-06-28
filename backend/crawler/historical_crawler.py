@@ -386,6 +386,252 @@ def crawl_season_allteams(season, driver=None):
     return th, tp
 
 
+# ===== 트랙C2: 2군(퓨처스) 시즌스탯 =====
+_FUT_HIT = "https://www.koreabaseball.com/futures/player/hitter.aspx"
+_FUT_PIT = "https://www.koreabaseball.com/futures/player/pitcher.aspx"
+# 퓨처스 ddlTeam 코드 (10 KBO 2군 + 상무 SM + 독립 고양 WO/울산 UL). WO=고양, SK=SSG.
+_FUT_TEAM_CODES = ['HH', 'LG', 'WO', 'OB', 'SK', 'SM', 'LT', 'NC', 'HT', 'SS', 'KT', 'UL']
+
+
+def _iter_futures_rows(driver, url, season, team=''):
+    """퓨처스 시즌스탯 리스트 전 페이지 순회. (headers, [(cells, kbo_player_id), ...]).
+    ⚠️ 테이블 class='tbl'(1군 tData01과 다름). ddlSeason(2010~)+ddlTeam(team 지정=비규정 포함).
+    선수앵커 href playerId=kbo_player_id (HitterDetail/PitcherDetail 양쪽 동일)."""
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import Select
+    driver.get(url)
+    time.sleep(3)
+    sel = driver.find_element(By.CSS_SELECTOR, "select[id*='ddlSeason']")
+    if sel.get_attribute('value') != str(season):
+        Select(sel).select_by_value(str(season))
+        time.sleep(3)
+    if team:  # 팀필터 = 비규정 포함 (그 시즌 미존재 팀이면 빈 반환)
+        try:
+            tsel = driver.find_element(By.CSS_SELECTOR, "select[id*='ddlTeam']")
+            vals = [o.get_attribute('value') for o in Select(tsel).options]
+            if team not in vals:
+                return [], []
+            if tsel.get_attribute('value') != team:
+                Select(tsel).select_by_value(team)
+                time.sleep(2.5)
+        except Exception:
+            return [], []
+
+    headers = []
+    out = []
+    seen = set()
+    for page_num in range(1, 31):
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        table = soup.find('table', class_='tbl')
+        if not table:
+            break
+        if not headers:
+            headers = [th.get_text(strip=True) for th in table.select('thead th')]
+        ncol = len(headers)
+        trs = table.select('tbody tr')
+        if not trs:
+            break
+        new = 0
+        for tr in trs:
+            cells = [td.get_text(strip=True) for td in tr.find_all('td')]
+            if len(cells) != ncol:  # 이종 테이블/페이저 스트레이 방어
+                continue
+            pid = None
+            a = tr.find('a', href=_PLAYERID_RE)
+            if a:
+                m = _PLAYERID_RE.search(a.get('href', ''))
+                if m:
+                    pid = int(m.group(1))
+            key = (pid, cells[2] if len(cells) > 2 else None)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append((cells, pid))
+            new += 1
+        if new == 0:
+            break
+        try:
+            driver.find_element('xpath', f'//a[normalize-space(.)="{page_num + 1}"]').click()
+            time.sleep(2)
+        except Exception:
+            try:
+                driver.find_element('xpath', '//a[normalize-space(.)="다음"]').click()
+                time.sleep(2)
+            except Exception:
+                break
+    return headers, out
+
+
+def crawl_futures_hitter_season(season, driver=None, team=''):
+    """2군 타자 시즌스탯 → historical_futures_season_stats. team=ddlTeam 코드(비규정 포함)."""
+    own = driver is None
+    if own:
+        driver = _get_driver()
+    try:
+        headers, rows = _iter_futures_rows(driver, _FUT_HIT, season, team)
+    finally:
+        if own:
+            driver.quit()
+    if not rows:
+        return 0
+    a = _hidx(headers)
+    i_name, i_team = (a('선수명') or 1), (a('팀명') or 2)
+    idx = dict(avg=a('AVG'), g=a('G'), pa=a('PA'), ab=a('AB'), r=a('R'), h=a('H'),
+               b2=a('2B'), b3=a('3B'), hr=a('HR'), rbi=a('RBI'), sb=a('SB'),
+               bb=a('BB'), hbp=a('HBP'), so=a('SO'), slg=a('SLG'), obp=a('OBP'))
+    conn = get_connection()
+    if not conn:
+        return 0
+    cur = conn.cursor()
+    saved = 0
+    try:
+        for cells, pid in rows:
+            if not pid:
+                continue
+
+            def c(k):
+                i = idx[k]
+                return cells[i] if i is not None and i < len(cells) else None
+            g = _safe_int(c('g'))
+            if not g or g < 1:
+                continue
+            name = cells[i_name] if i_name < len(cells) else None
+            team_nm = cells[i_team] if i_team < len(cells) else None
+            slg = _safe_float(c('slg'))
+            obp = _safe_float(c('obp'))
+            ops = round(slg + obp, 3) if slg is not None and obp is not None else None
+            _upsert_player(cur, pid, name, '타자')
+            cur.execute("""
+                INSERT INTO historical_futures_season_stats (
+                    kbo_player_id, season, team_name, player_type, games,
+                    pa, at_bats, runs, hits, doubles, triples, home_runs, rbis,
+                    stolen_bases, walks, hbp, strikeouts, avg, obp, slg, ops
+                ) VALUES (%s,%s,%s,'타자',%s, %s,%s,%s,%s,%s,%s,%s,%s, %s,%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (kbo_player_id, season, team_name, player_type) DO UPDATE SET
+                    games=EXCLUDED.games, pa=EXCLUDED.pa, at_bats=EXCLUDED.at_bats,
+                    runs=EXCLUDED.runs, hits=EXCLUDED.hits, doubles=EXCLUDED.doubles,
+                    triples=EXCLUDED.triples, home_runs=EXCLUDED.home_runs, rbis=EXCLUDED.rbis,
+                    stolen_bases=EXCLUDED.stolen_bases, walks=EXCLUDED.walks, hbp=EXCLUDED.hbp,
+                    strikeouts=EXCLUDED.strikeouts, avg=EXCLUDED.avg, obp=EXCLUDED.obp,
+                    slg=EXCLUDED.slg, ops=EXCLUDED.ops
+            """, (
+                pid, season, team_nm, g,
+                _safe_int(c('pa')), _safe_int(c('ab')), _safe_int(c('r')), _safe_int(c('h')),
+                _safe_int(c('b2')), _safe_int(c('b3')), _safe_int(c('hr')), _safe_int(c('rbi')),
+                _safe_int(c('sb')), _safe_int(c('bb')), _safe_int(c('hbp')), _safe_int(c('so')),
+                _safe_float(c('avg')), obp, slg, ops,
+            ))
+            saved += 1
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
+    print(f"[futures hitter {season}{('/' + team) if team else ''}] {saved}행")
+    return saved
+
+
+def crawl_futures_pitcher_season(season, driver=None, team=''):
+    """2군 투수 시즌스탯 → historical_futures_season_stats. WHIP=(H+BB)/IP 계산."""
+    own = driver is None
+    if own:
+        driver = _get_driver()
+    try:
+        headers, rows = _iter_futures_rows(driver, _FUT_PIT, season, team)
+    finally:
+        if own:
+            driver.quit()
+    if not rows:
+        return 0
+    a = _hidx(headers)
+    i_name, i_team = (a('선수명') or 1), (a('팀명') or 2)
+    idx = dict(era=a('ERA'), g=a('G'), w=a('W'), l=a('L'), sv=a('SV'), hld=a('HLD'),
+               wpct=a('WPCT'), ip=a('IP'), h=a('H'), hr=a('HR'), bb=a('BB'),
+               hbp=a('HBP'), so=a('SO'), r=a('R'), er=a('ER'))
+    conn = get_connection()
+    if not conn:
+        return 0
+    cur = conn.cursor()
+    saved = 0
+    try:
+        for cells, pid in rows:
+            if not pid:
+                continue
+
+            def c(k):
+                i = idx[k]
+                return cells[i] if i is not None and i < len(cells) else None
+            g = _safe_int(c('g'))
+            if not g or g < 1:
+                continue
+            name = cells[i_name] if i_name < len(cells) else None
+            team_nm = cells[i_team] if i_team < len(cells) else None
+            sv = _safe_int(c('sv'))
+            hld = _safe_int(c('hld'))
+            if sv is not None and sv > g:
+                sv = None
+            if hld is not None and hld > g:
+                hld = None
+            ip = _parse_ip(c('ip'))
+            ha = _safe_int(c('h'))
+            bba = _safe_int(c('bb'))
+            # IP는 .1/.2=⅓⅔ 관례 → 실수 이닝으로 환산해 WHIP 계산
+            ip_real = None
+            if ip is not None:
+                whole = int(ip)
+                frac = round(ip - whole, 1)
+                ip_real = whole + (frac * 10 / 3 if frac in (0.1, 0.2) else 0.0)
+            whip = round((ha + bba) / ip_real, 3) if ip_real and ip_real > 0 and ha is not None and bba is not None else None
+            _upsert_player(cur, pid, name, '투수')
+            cur.execute("""
+                INSERT INTO historical_futures_season_stats (
+                    kbo_player_id, season, team_name, player_type, games,
+                    wins, losses, saves, holds, wpct, innings_pitched, hits_allowed,
+                    home_runs_allowed, walks_allowed, hbp_allowed, strikeouts_pitched,
+                    runs_allowed, earned_runs, era, whip
+                ) VALUES (%s,%s,%s,'투수',%s, %s,%s,%s,%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s,%s)
+                ON CONFLICT (kbo_player_id, season, team_name, player_type) DO UPDATE SET
+                    games=EXCLUDED.games, wins=EXCLUDED.wins, losses=EXCLUDED.losses,
+                    saves=EXCLUDED.saves, holds=EXCLUDED.holds, wpct=EXCLUDED.wpct,
+                    innings_pitched=EXCLUDED.innings_pitched, hits_allowed=EXCLUDED.hits_allowed,
+                    home_runs_allowed=EXCLUDED.home_runs_allowed, walks_allowed=EXCLUDED.walks_allowed,
+                    hbp_allowed=EXCLUDED.hbp_allowed, strikeouts_pitched=EXCLUDED.strikeouts_pitched,
+                    runs_allowed=EXCLUDED.runs_allowed, earned_runs=EXCLUDED.earned_runs,
+                    era=EXCLUDED.era, whip=EXCLUDED.whip
+            """, (
+                pid, season, team_nm, g,
+                _safe_int(c('w')), _safe_int(c('l')), sv, hld, _safe_float(c('wpct')),
+                ip, ha, _safe_int(c('hr')), bba, _safe_int(c('hbp')), _safe_int(c('so')),
+                _safe_int(c('r')), _safe_int(c('er')), _safe_float(c('era')), whip,
+            ))
+            saved += 1
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
+    print(f"[futures pitcher {season}{('/' + team) if team else ''}] {saved}행")
+    return saved
+
+
+def crawl_futures_season_allteams(season, driver=None):
+    """2군 시즌스탯 전 팀(12) 크롤 — ddlTeam 루프로 비규정 포함 전 로스터. driver 재사용."""
+    own = driver is None
+    if own:
+        driver = _get_driver()
+    th = tp = 0
+    try:
+        for code in _FUT_TEAM_CODES:
+            try:
+                th += crawl_futures_hitter_season(season, driver=driver, team=code)
+                tp += crawl_futures_pitcher_season(season, driver=driver, team=code)
+            except Exception as e:
+                print(f"[futures allteams {season}/{code}] 오류 {e}")
+    finally:
+        if own:
+            driver.quit()
+    print(f"[futures allteams {season}] 타자 {th} + 투수 {tp}행")
+    return th, tp
+
+
 # 포스트시즌 시리즈 (ddlSeries 코드)
 _PS_SERIES = [('4', '와일드카드'), ('3', '준플레이오프'), ('5', '플레이오프'), ('7', '한국시리즈')]
 
@@ -1064,6 +1310,33 @@ if __name__ == '__main__':
                     driver = _get_driver()
                 print(f"=== allteams season {s} ===")
                 crawl_season_allteams(s, driver=driver)
+                time.sleep(1.5)
+        finally:
+            try:
+                driver.quit()
+            except Exception:
+                pass
+        sys.exit(0)
+    if args and args[0] == 'futures':
+        # futures <season> [end_season] — 2군 시즌스탯 (전 팀 ddlTeam 루프, 비규정 포함)
+        if len(args) == 2:
+            fut_seasons = [int(args[1])]
+        elif len(args) == 3:
+            fut_seasons = list(range(int(args[1]), int(args[2]) + 1))
+        else:
+            print("usage: ... futures <season> [end_season]")
+            sys.exit(1)
+        driver = _get_driver()
+        try:
+            for i, s in enumerate(fut_seasons):
+                if i and i % 3 == 0:  # 드라이버 주기 재생성(장수명 크래시 방지)
+                    try:
+                        driver.quit()
+                    except Exception:
+                        pass
+                    driver = _get_driver()
+                print(f"=== futures season {s} ===")
+                crawl_futures_season_allteams(s, driver=driver)
                 time.sleep(1.5)
         finally:
             try:

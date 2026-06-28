@@ -512,13 +512,13 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
 - **목적/스코프**: ① 퓨처스(2군) 경기단위·일정·박스 = 사실상 2군 리그 풀 파이프라인 ② 스플릿 세밀축(7축 전체×역대시즌·투수스플릿·OPS/OBP)
 - ⚠️ **무거움·니치·일부 비현실**: KBO 크롤 sleep-bound(~9s/page-sweep) → 역대 전체 스플릿/2군 경기단위 = **수일~**. 착수 전 스코프 강하게 바운드 필수. 니치(2군 게임데이터=좁은 수요). **UI 노출보다 후순위 권장.**
 ### 진행 체크리스트
-- [ ] 스파이크: 퓨처스 경기일정/박스 소스(`futures/schedule/FuturesList.aspx`, futures relay 유무) + 비용 산정
-- [ ] ⏸️ 게이트: 스코프 결정(2군 시즌스탯 역대화? 경기단위? 스플릿 어느 축/시즌?) — 비현실 구간 배제
-- [ ] (스코프 확정분) 크롤러+스키마+적재
+- [x] 스파이크 (2026-06-29): 소스맵 확정. **퓨처스 일정 = `Futures/Schedule/GameList.aspx`**(날짜/시간/팀/스코어/구장/상태 + 경기당 **박스스코어 링크** `Futures/Game/BoxScore.aspx?leagueId=2&seriesId=0&seasonId={y}&gameId={YYYYMMDDAWHM}0`, GameList WebFetch 도달O). ⚠️⚠️ **퓨처스 pitch-by-pitch/문자중계 = 없음** — 박스스코어가 최심부("No separate play-by-play links"). **Naver 2군 relay 없음**(api-gw 차단확인불가지만 1군 파이프 핵심인 textRelays는 2군 미존재 — 방송계약(Sportcado)뿐 데이터API無). **결론 = 2군 경기단위 = box-score 천장**(라인스코어+선수 box 집계). PA/투구/win_rate/존히트맵/필드뷰 리플레이 **불가능(소스부재)**. → 무거운 C2 야망(2군 pitch 파이프) = heavy 아니라 **infeasible 확정**. 비용: 2군시즌스탯역대화=KBO postback 17시즌(2010~)≈1~2세션·小 / 2군 box경기단위=GameList+BoxScore 셀레늄, ~시즌당 수백경기 단일페이지(1군 이닝sweep보다 가벼움)이나 **니치·저UI가치** / 스플릿세밀축=sleep-bound 역대전체=수일(바운드 필수)
+- [x] ⏸️ 게이트 통과 (2026-06-29 사용자 결정): **3트랙 전부 채택** = ① 2군 시즌스탯 역대화 ② 1군 스플릿 세밀축 ③ 2군 경기단위(box-only). + "KBO 공식 확인" 지시 → **서버 curl 실측으로 전 소스 확정**. **확정 소스맵**: 2군타자=`futures/player/hitter.aspx`(✅76KB·ddlSeason)·2군투수=`futures/player/pitcher.aspx`(✅60KB)·2군일정=`Futures/Schedule/GameList.aspx`(✅113행, box href 추출)·**2군박스=`Futures/Schedule/BoxScore.aspx?leagueId=2&seriesId={s}&seasonId={y}&gameId={gid}`**(✅140KB: tblScordboard 라인스코어1-9 R/H/E + tblAwayHitter/tblHomeHitter 타자box + 투수box + 결승타/홈런/실책 요약). ⚠️**box base=`/Futures/Schedule/`** (WebFetch가 준 `/Futures/Game/`=환각, 175B 빈응답). ⚠️**seriesId 게임별 가변**(대부분0, 일부10 — GameList href서 파싱 필수, 하드코딩 금지). gameId 포맷=`YYYYMMDD{away}{home}{dh}`(예 20260601HHKT0).
+- [ ] (스코프 확정분) 크롤러+스키마+적재 — 트랙1 2군시즌스탯 → 트랙3 스플릿세밀축 → 트랙2 box-only 순(가치/난이도)
 - [ ] 스플릿 세밀축(투수/추가축/OPS, 바운드 내)
 - [ ] 검증
 ### 진행로그
-- (미착수 — `역대C2 진행`으로 시작)
+- 2026-06-29: 착수. **스파이크 완료** — 소스맵: 퓨처스 일정=`GameList.aspx`(✅도달), 경기당 box=`BoxScore.aspx?leagueId=2...gameId=`. ⚠️**2군 pitch-by-pitch 소스 전무**(KBO 박스가 최심부·Naver textRelays 2군 미존재) → **2군 경기단위 = box-score 천장, PA/투구레벨 infeasible 확정**(소스부재, 노력문제 아님). **게이트 통과(전 3트랙 채택)** + 사용자 "KBO 확인" 지시 → **서버 curl로 전 소스 라이브 검증**: hitter.aspx 76KB·pitcher.aspx 60KB·GameList 113행·BoxScore(정정 base `/Futures/Schedule/`) 140KB 라인스코어+타자/투수box 전부 렌더 확정. box URL 환각 정정(`/Futures/Game/`→`/Futures/Schedule/`)·seriesId 가변 발견. 다음 = 빌드(트랙1 2군시즌스탯 먼저).
 
 ## 역대 게임단위 백필 (2010~2023) — ✅ 완료 (2026-06-19, 11317경기·885120타석, 갭 0)
 - ⚠️⚠️ **06-19 과거팀명 드롭 사고+수정 (save_games)**: `save_games`가 팀 id를 `teams.name = <API 팀명>`으로 조회했는데 **Naver 스케줄 API가 시즌마다 팀명 혼용**(2016=현재명 'SSG'/'키움' / **2017·2018=당시명 'SK'(SK와이번스)·'넥센'**) → 현재 teams.name 불일치 → team_id NULL → **그 경기 통째 미삽입**. 결과: 2017(SK+넥센)·2018(SK+넥센)·2020(SK, 2021 SSG개명 전) 경기 대량 증발(2017 461/720·2018 448·2020 589=COVID+SK드롭). 진단=홈/어웨이 팀분포에 SK·WO 부재 + API 직접대조(2016 'SSG' vs 2017 'SK'). **수정 = 팀조회 `name`→`short_name`(코드 SK/WO/HH… 불변, teams.short_name과 1:1)**. ⚠️**라이브 save_games도 동일 경로라 수정 혜택**(현재명도 코드매칭). 재크롤 = 픽스 후 전체배치 재실행(resume이 누락 SK/넥센만 INSERT+크롤, `/tmp/hist_games_batch2.log`).
