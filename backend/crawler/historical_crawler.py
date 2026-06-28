@@ -753,6 +753,152 @@ def crawl_splits_season(season, driver=None):
     return saved
 
 
+# 세밀축 (기존 crawl_splits_season의 홈원정/상대팀/월별 보완 — 좌우 플래툰·구장·투수 전반)
+_DET_HIT_AXES = [('41', '투수유형'), ('STADIUM_SC', '구장')]      # 타자 vs 좌우투, 구장
+_DET_PIT_AXES = [('HOMEAYAY_SC', '홈원정'), ('OPPTEAM_SC', '상대팀'), ('MONTH_SC', '월별'),
+                 ('42', '타자유형'), ('STADIUM_SC', '구장')]       # 투수 전무→신규
+
+
+def crawl_splits_detailed(season, driver=None):
+    """세밀축 스플릿 → historical_splits. 타자=투수유형(좌우)/구장, 투수=홈원정/상대팀/월별/타자유형(좌우)/구장.
+    기존 crawl_splits_season(타자 홈원정/상대팀/월별)와 상보(UNIQUE에 player_type 포함). slg=TB/AB(정확)."""
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import Select
+    own = driver is None
+    if own:
+        driver = _get_driver()
+    conn = get_connection()
+    if not conn:
+        if own:
+            driver.quit()
+        return 0
+    cur = conn.cursor()
+    saved = 0
+    jobs = [('타자', _HIT_B1, _DET_HIT_AXES), ('투수', _PIT_B1, _DET_PIT_AXES)]
+    try:
+        for ptype, base_url, axes in jobs:
+            for axis_code, axis_label in axes:
+                try:
+                    driver.get(base_url)
+                    time.sleep(3)
+                    Select(driver.find_element(By.CSS_SELECTOR, "select[id*='ddlSeason']")).select_by_value(str(season))
+                    time.sleep(2)
+                    Select(driver.find_element(By.CSS_SELECTOR, "select[id*='ddlSituation']")).select_by_value(axis_code)
+                    time.sleep(2.5)
+                    s2 = driver.find_element(By.CSS_SELECTOR, "select[id*='ddlSituationDetail']")
+                    vals = [(o.get_attribute('value'), o.text.strip())
+                            for o in s2.find_elements(By.TAG_NAME, 'option') if o.get_attribute('value')]
+                except Exception as e:
+                    print(f"[detsplits {season}/{ptype}/{axis_label}] 축 설정 오류: {e}")
+                    continue
+                for v2, label2 in vals:
+                    try:
+                        Select(driver.find_element(By.CSS_SELECTOR, "select[id*='ddlSituationDetail']")).select_by_value(v2)
+                        time.sleep(2.5)
+                    except Exception:
+                        continue
+                    headers = []
+                    seen = set()
+                    idx = {}
+                    for _pg in range(1, 31):
+                        soup = BeautifulSoup(driver.page_source, 'html.parser')
+                        table = soup.find('table', class_='tData01')
+                        if not table:
+                            break
+                        if not headers:
+                            headers = [th.get_text(strip=True) for th in table.select('thead th')]
+                            a = _hidx(headers)
+                            if ptype == '타자':
+                                idx = dict(avg=a('AVG'), g=a('G'), pa=a('PA'), ab=a('AB'), h=a('H'),
+                                           b2=a('2B'), b3=a('3B'), hr=a('HR'), tb=a('TB'), rbi=a('RBI'))
+                            else:
+                                idx = dict(era=a('ERA'), g=a('G'), w=a('W'), l=a('L'), sv=a('SV'),
+                                           hld=a('HLD'), ip=a('IP'), h=a('H'), hr=a('HR'), bb=a('BB'),
+                                           so=a('SO'), r=a('R'), er=a('ER'), whip=a('WHIP'))
+                        ncol = len(headers)
+                        trs = table.select('tbody tr')
+                        if not trs:
+                            break
+                        new = 0
+                        for tr in trs:
+                            cells = [td.get_text(strip=True) for td in tr.find_all('td')]
+                            if len(cells) != ncol:
+                                continue
+                            pid = None
+                            ael = tr.find('a', href=_PLAYERID_RE)
+                            if ael:
+                                m = _PLAYERID_RE.search(ael.get('href', ''))
+                                if m:
+                                    pid = int(m.group(1))
+                            if not pid:
+                                continue
+                            key = (pid, cells[2] if len(cells) > 2 else None)
+                            if key in seen:
+                                continue
+                            seen.add(key)
+                            new += 1
+                            nm = cells[1] if len(cells) > 1 else None
+
+                            def cc(k):
+                                i = idx.get(k)
+                                return cells[i] if i is not None and i < len(cells) else None
+                            _upsert_player(cur, pid, nm, ptype)
+                            if ptype == '타자':
+                                ab = _safe_int(cc('ab'))
+                                tb = _safe_int(cc('tb'))
+                                slg = round(tb / ab, 3) if tb is not None and ab and ab > 0 else None
+                                cur.execute("""
+                                    INSERT INTO historical_splits (
+                                        kbo_player_id, season, player_type, split_axis, split_value,
+                                        games, pa, at_bats, hits, doubles, triples, home_runs, rbis, tb, avg, slg
+                                    ) VALUES (%s,%s,'타자',%s,%s, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                    ON CONFLICT (kbo_player_id, season, player_type, split_axis, split_value)
+                                    DO UPDATE SET games=EXCLUDED.games, pa=EXCLUDED.pa, at_bats=EXCLUDED.at_bats,
+                                        hits=EXCLUDED.hits, doubles=EXCLUDED.doubles, triples=EXCLUDED.triples,
+                                        home_runs=EXCLUDED.home_runs, rbis=EXCLUDED.rbis, tb=EXCLUDED.tb,
+                                        avg=EXCLUDED.avg, slg=EXCLUDED.slg
+                                """, (pid, season, axis_label, label2,
+                                      _safe_int(cc('g')), _safe_int(cc('pa')), ab, _safe_int(cc('h')),
+                                      _safe_int(cc('b2')), _safe_int(cc('b3')), _safe_int(cc('hr')),
+                                      _safe_int(cc('rbi')), tb, _safe_float(cc('avg')), slg))
+                            else:
+                                cur.execute("""
+                                    INSERT INTO historical_splits (
+                                        kbo_player_id, season, player_type, split_axis, split_value,
+                                        games, wins, losses, saves, holds, innings_pitched, hits_allowed,
+                                        home_runs_allowed, walks_allowed, strikeouts_pitched, runs_allowed,
+                                        earned_runs, era, whip
+                                    ) VALUES (%s,%s,'투수',%s,%s, %s,%s,%s,%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s)
+                                    ON CONFLICT (kbo_player_id, season, player_type, split_axis, split_value)
+                                    DO UPDATE SET games=EXCLUDED.games, wins=EXCLUDED.wins, losses=EXCLUDED.losses,
+                                        saves=EXCLUDED.saves, holds=EXCLUDED.holds, innings_pitched=EXCLUDED.innings_pitched,
+                                        hits_allowed=EXCLUDED.hits_allowed, home_runs_allowed=EXCLUDED.home_runs_allowed,
+                                        walks_allowed=EXCLUDED.walks_allowed, strikeouts_pitched=EXCLUDED.strikeouts_pitched,
+                                        runs_allowed=EXCLUDED.runs_allowed, earned_runs=EXCLUDED.earned_runs,
+                                        era=EXCLUDED.era, whip=EXCLUDED.whip
+                                """, (pid, season, axis_label, label2,
+                                      _safe_int(cc('g')), _safe_int(cc('w')), _safe_int(cc('l')), _safe_int(cc('sv')),
+                                      _safe_int(cc('hld')), _parse_ip(cc('ip')), _safe_int(cc('h')),
+                                      _safe_int(cc('hr')), _safe_int(cc('bb')), _safe_int(cc('so')),
+                                      _safe_int(cc('r')), _safe_int(cc('er')), _safe_float(cc('era')), _safe_float(cc('whip'))))
+                            saved += 1
+                        if new == 0:
+                            break
+                        try:
+                            driver.find_element('xpath', f'//a[normalize-space(.)="{_pg + 1}"]').click()
+                            time.sleep(2)
+                        except Exception:
+                            break
+                    conn.commit()
+                print(f"[detsplits {season}/{ptype}/{axis_label}] 누적 {saved}행")
+    finally:
+        cur.close()
+        conn.close()
+        if own:
+            driver.quit()
+    return saved
+
+
 def crawl_ps_season(season, driver=None):
     """한 시즌 전 포스트시즌 시리즈 적재. driver 주면 재사용(드라이버 startup 8→1로 절감)."""
     own = driver is None
@@ -1256,6 +1402,33 @@ if __name__ == '__main__':
                     drv = _get_driver()
                 print(f"=== splits season {s} ===")
                 crawl_splits_season(s, driver=drv)
+                time.sleep(1.5)
+        finally:
+            try:
+                drv.quit()
+            except Exception:
+                pass
+        sys.exit(0)
+    if args and args[0] == 'detsplits':
+        # detsplits <season> [end_season] — 세밀축 스플릿(타자 좌우/구장 + 투수 전축)
+        if len(args) == 2:
+            ds_seasons = [int(args[1])]
+        elif len(args) == 3:
+            ds_seasons = list(range(int(args[1]), int(args[2]) + 1))
+        else:
+            print("usage: ... detsplits <season> [end_season]")
+            sys.exit(1)
+        drv = _get_driver()
+        try:
+            for i, s in enumerate(ds_seasons):
+                if i and i % 3 == 0:
+                    try:
+                        drv.quit()
+                    except Exception:
+                        pass
+                    drv = _get_driver()
+                print(f"=== detsplits season {s} ===")
+                crawl_splits_detailed(s, driver=drv)
                 time.sleep(1.5)
         finally:
             try:
