@@ -774,6 +774,24 @@ def crawl_splits_detailed(season, driver=None):
         return 0
     cur = conn.cursor()
     saved = 0
+    # ⚠️ 투수 split 행엔 playerId 앵커 없음(타자 split엔 有) → (이름,팀,시즌) 제약조인으로
+    # 1군 historical_season_stats서 해결. ⚠️player_type 필터 금지 — 다수 투수가 타자페이지 오염으로
+    # '타자' row만 갖고 '투수' row 부재(06-17 이슈)라 type='투수' 필터 시 47%만 매칭. type무관 같은 사람
+    # pid 동일이므로 무필터 → 93% 매칭. 동명이인 same-team-season=모호 제외(오배정 방지, 스킵).
+    cur.execute("""
+        SELECT hp.name, s.team_name, s.kbo_player_id
+        FROM historical_season_stats s JOIN historical_players hp ON hp.kbo_player_id = s.kbo_player_id
+        WHERE s.season = %s AND s.series_type = '정규'
+    """, (season,))
+    _pmap = {}
+    _ambig = set()
+    for _nm, _tm, _kid in cur.fetchall():
+        _k = (_nm, _tm)
+        if _k in _pmap and _pmap[_k] != _kid:
+            _ambig.add(_k)
+        _pmap[_k] = _kid
+    for _k in _ambig:
+        _pmap.pop(_k, None)
     jobs = [('타자', _HIT_B1, _DET_HIT_AXES), ('투수', _PIT_B1, _DET_PIT_AXES)]
     try:
         for ptype, base_url, axes in jobs:
@@ -830,6 +848,9 @@ def crawl_splits_detailed(season, driver=None):
                                 m = _PLAYERID_RE.search(ael.get('href', ''))
                                 if m:
                                     pid = int(m.group(1))
+                            nm = cells[1] if len(cells) > 1 else None
+                            if not pid and ptype == '투수':  # 투수 split=앵커無 → 이름+팀 제약조인
+                                pid = _pmap.get((nm, cells[2] if len(cells) > 2 else None))
                             if not pid:
                                 continue
                             key = (pid, cells[2] if len(cells) > 2 else None)
@@ -837,7 +858,6 @@ def crawl_splits_detailed(season, driver=None):
                                 continue
                             seen.add(key)
                             new += 1
-                            nm = cells[1] if len(cells) > 1 else None
 
                             def cc(k):
                                 i = idx.get(k)
