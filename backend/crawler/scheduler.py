@@ -1657,6 +1657,45 @@ def smart_update():
                             save_game_pitches(gid, naver_gid, _inn)
                     except Exception as sgp_err:
                         print(f"[{datetime.now()}] save_game_pitches 오류: {sgp_err}")
+                    # 종료 이닝 교정 — Naver가 9회 종료 후 inn=10 등 실제보다 앞선 이닝을
+                    # 투영해 current_inning이 과증가(10회초)로 stale되던 버그(525 두산-KIA 1:12,
+                    # 9회 종료인데 카드에 10회초 표기). 재크롤된 game_pitches의 실제 마지막
+                    # 이닝/half로 교정(Naver 투영 무시). 라이브 함수는 이닝전환 오작동 위험으로 미변경.
+                    try:
+                        conn_fix = get_connection()
+                        if conn_fix:
+                            try:
+                                cur_fix = conn_fix.cursor()
+                                # 실제 마지막 이닝/half = at-bat 결과(type 13/23) 있는 최종 행.
+                                # Naver의 '다음타자 예고'(type 8)만 있는 phantom 이닝은 제외.
+                                # game_pitches.inning_half는 '0'(초)/'1'(말) → games는 '초'/'말'.
+                                cur_fix.execute("""
+                                    SELECT inning, inning_half FROM game_pitches
+                                    WHERE game_id = %s AND type IN (13, 23)
+                                    ORDER BY inning DESC,
+                                             CASE inning_half WHEN '0' THEN 0 ELSE 1 END DESC
+                                    LIMIT 1
+                                """, (gid,))
+                                r_fix = cur_fix.fetchone()
+                                if r_fix and r_fix[0]:
+                                    real_inn = int(r_fix[0])
+                                    half = '말' if str(r_fix[1]) == '1' else '초'
+                                    cur_fix.execute(
+                                        "UPDATE games SET current_inning=%s, inning_half=%s WHERE id=%s",
+                                        (real_inn, half, gid))
+                                    # 실제 마지막 타석 이후 phantom 이닝(다음타자 투영 잔재) 정리
+                                    cur_fix.execute(
+                                        "DELETE FROM game_innings WHERE game_id=%s AND inning>%s",
+                                        (gid, real_inn))
+                                    cur_fix.execute(
+                                        "DELETE FROM game_pitches WHERE game_id=%s AND inning>%s",
+                                        (gid, real_inn))
+                                    conn_fix.commit()
+                                cur_fix.close()
+                            finally:
+                                conn_fix.close()
+                    except Exception as inn_err:
+                        print(f"[{datetime.now()}] 종료 이닝 교정 오류 game={gid}: {inn_err}")
                     # 도메인 이벤트: 경기 종료 (UNIQUE dedup라 재실행 안전)
                     emit_event(gid, 'game_end',
                                {'home_score': curr.get('home_score', 0),
