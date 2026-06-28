@@ -235,16 +235,16 @@ class PlayBallApp extends StatelessWidget {
           themeMode: themeProvider.themeMode,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
-          // OS '텍스트 크기' 무시 + 앱 고정 텍스트 배율 0.85 (사용자 요청 2026-06-27).
-          // OS 글자크기가 앱을 지배하지 않게 고정하되, 1.0은 너무 커서 0.85로 축소.
-          // (구 06-25 withNoTextScaling=1.0 고정이 폰 0.8 설정보다 텍스트가 25% 커지는
-          //  문제 → 0.85 고정으로 교체). zoom 1.05(아래)는 요소 크기 별도 →
-          // 텍스트는 요소 대비 0.85 비율. linear scaler라 min/max 없어 picker assert 무관.
+          // OS '텍스트 크기' 무시 + 앱 고정 텍스트 배율 0.8 (사용자 요청 2026-06-27~28).
+          // OS 글자크기가 앱을 지배하지 않게 고정하되, 1.0은 너무 커서 0.8로 축소.
+          // (구 06-25 withNoTextScaling=1.0 고정이 폰 0.8 설정보다 텍스트가 커지던
+          //  문제 → 고정 배율로 교체. 06-27 0.85 → 06-28 0.8). zoom 1.05(아래)는
+          // 요소 크기 별도 → 텍스트는 요소 대비 0.8 비율. linear scaler라 min/max 없어 picker assert 무관.
           builder: (ctx, child) {
             final clamped = Builder(
               builder: (c) => MediaQuery(
                 data: MediaQuery.of(c).copyWith(
-                  textScaler: const TextScaler.linear(0.85),
+                  textScaler: const TextScaler.linear(0.8),
                 ),
                 child: child ?? const SizedBox.shrink(),
               ),
