@@ -168,29 +168,42 @@ class CareerExtrasSection extends StatelessWidget {
     ]);
   }
 
-  // ── 통산 스플릿 (2023~25 타자 — 축별 value 누적 avg) ──
+  // ── 통산 스플릿 (타자 avg / 투수 ERA, 축별 누적) ──
   Widget _splitsBlock(Map splits) {
     final axisLabels = {
-      'home_away': '홈/원정',
-      'vs_team': '상대팀별',
-      'month': '월별',
+      '홈원정': '홈/원정', '상대팀': '상대팀별', '월별': '월별',
+      '투수유형': 'vs 좌/우투', '구장': '구장별', '타자유형': 'vs 좌/우타',
     };
+    const axisOrder = ['투수유형', '타자유형', '홈원정', '구장', '상대팀', '월별'];
+    final keys = splits.keys.toList()
+      ..sort((a, b) {
+        final ia = axisOrder.indexOf(a.toString());
+        final ib = axisOrder.indexOf(b.toString());
+        return (ia < 0 ? 99 : ia).compareTo(ib < 0 ? 99 : ib);
+      });
     final axisBlocks = <Widget>[];
-    splits.forEach((axis, rows) {
-      if (rows is! List || rows.isEmpty) return;
-      // value별 at_bats/hits 누적 → avg
-      final agg = <String, List<int>>{}; // value → [ab, h]
-      for (final r in rows) {
-        final v = (r as Map)['value']?.toString() ?? '';
-        final ab = (r['at_bats'] as num?)?.toInt() ?? 0;
-        final h = (r['hits'] as num?)?.toInt() ?? 0;
+    for (final axis in keys) {
+      final rows = splits[axis];
+      if (rows is! List || rows.isEmpty) continue;
+      final isPit = (rows.first as Map)['player_type'] == '투수';
+      // value별 누적: 타자=[ab,h], 투수=[er, ip_thirds]
+      final agg = <String, List<double>>{};
+      for (final r in rows.cast<Map>()) {
+        final v = r['value']?.toString() ?? '';
         final cur = agg.putIfAbsent(v, () => [0, 0]);
-        cur[0] += ab;
-        cur[1] += h;
+        if (isPit) {
+          cur[0] += (r['earned_runs'] as num?)?.toDouble() ?? 0;
+          final ip = (r['innings_pitched'] as num?)?.toDouble() ?? 0;
+          cur[1] += ip.floor() + (ip - ip.floor()) * 10 / 3; // .1/.2=⅓⅔
+        } else {
+          cur[0] += (r['at_bats'] as num?)?.toDouble() ?? 0;
+          cur[1] += (r['hits'] as num?)?.toDouble() ?? 0;
+        }
       }
-      final chips = agg.entries.where((e) => e.value[0] > 0).map<Widget>((e) {
-        final avg = e.value[1] / e.value[0];
-        final avgStr = avg.toStringAsFixed(3).replaceFirst('0.', '.');
+      final chips = agg.entries.where((e) => e.value[1] > 0).map<Widget>((e) {
+        final metric = isPit
+            ? (e.value[0] * 9 / e.value[1]).toStringAsFixed(2) // ERA
+            : (e.value[1] / e.value[0]).toStringAsFixed(3).replaceFirst('0.', '.'); // AVG
         return Container(
           padding: const EdgeInsets.symmetric(
               horizontal: Space.sm + 2, vertical: Space.xs),
@@ -201,31 +214,26 @@ class CareerExtrasSection extends StatelessWidget {
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Text(e.key,
-                style: TextStyle(
-                    fontSize: Typo.caption, color: Pal.ink3(isDark))),
+                style: TextStyle(fontSize: Typo.caption, color: Pal.ink3(isDark))),
             const SizedBox(width: Space.sm),
-            Text(avgStr,
+            Text(metric,
                 style: TextStyle(
-                    fontSize: Typo.small,
-                    fontWeight: Typo.bold,
-                    color: Pal.ink(isDark))),
+                    fontSize: Typo.small, fontWeight: Typo.bold, color: Pal.ink(isDark))),
           ]),
         );
       }).toList();
-      if (chips.isEmpty) return;
+      if (chips.isEmpty) continue;
       axisBlocks.add(Padding(
         padding: const EdgeInsets.only(bottom: Space.md),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(axisLabels[axis] ?? axis.toString(),
+          Text('${axisLabels[axis] ?? axis}${isPit ? ' · ERA' : ''}',
               style: TextStyle(
-                  fontSize: Typo.caption,
-                  fontWeight: Typo.bold,
-                  color: Pal.sub(isDark))),
+                  fontSize: Typo.caption, fontWeight: Typo.bold, color: Pal.sub(isDark))),
           const SizedBox(height: Space.sm),
           Wrap(spacing: Space.sm, runSpacing: Space.sm, children: chips),
         ]),
       ));
-    });
+    }
     if (axisBlocks.isEmpty) return const SizedBox.shrink();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _label('통산 스플릿'),
