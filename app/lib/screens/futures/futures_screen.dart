@@ -27,16 +27,21 @@ class _FuturesScreenState extends State<FuturesScreen> {
     setState(() => _loading = true);
     try {
       final d = await ApiService.getFuturesGames(_season, month: _month);
+      final months = ((d['months'] as List?) ?? []).cast<int>();
+      // 첫 진입/시즌전환(_month=null): months만 받아 최신월 확정 후 그 월로 1회 재요청
+      // (재요청 안 하면 전체 시즌 경기가 표시되는데 월칩은 최신월만 선택 = 리스트↔필터 모순)
+      if (_month == null && months.isNotEmpty) {
+        if (!mounted) return;
+        setState(() => _months = months);
+        _month = months.last;
+        return _load(); // _month != null → 재귀 1회로 종료
+      }
       if (!mounted) return;
       setState(() {
         _games = (d['games'] as List?) ?? [];
-        _months = ((d['months'] as List?) ?? []).cast<int>();
-        _month ??= _months.isNotEmpty ? _months.last : null;
+        _months = months;
         _loading = false;
       });
-      if (_month != null && _games.isNotEmpty && _games.first['game_date'] != null) {
-        // month null이었으면 전체 받았으니 선택월로 재요청
-      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
