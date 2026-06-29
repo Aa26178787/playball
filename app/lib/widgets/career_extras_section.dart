@@ -200,7 +200,8 @@ class CareerExtrasSection extends StatelessWidget {
           cur[1] += (r['hits'] as num?)?.toDouble() ?? 0;
         }
       }
-      final chips = agg.entries.where((e) => e.value[1] > 0).map<Widget>((e) {
+      // 가드: 투수=ip>0(value[1]), 타자=ab>0(value[0]) — .000 타자 보존 + div0 방지
+      final chips = agg.entries.where((e) => isPit ? e.value[1] > 0 : e.value[0] > 0).map<Widget>((e) {
         final metric = isPit
             ? (e.value[0] * 9 / e.value[1]).toStringAsFixed(2) // ERA
             : (e.value[1] / e.value[0]).toStringAsFixed(3).replaceFirst('0.', '.'); // AVG
@@ -257,6 +258,7 @@ class CareerExtrasSection extends StatelessWidget {
     final sections = <Widget>[];
     String s3(num? v) => v == null ? '-' : v.toStringAsFixed(3).replaceFirst('0.', '.');
     String s2(num? v) => v == null ? '-' : v.toStringAsFixed(2);
+    String sIp(num? v) => v == null ? '-' : v.toStringAsFixed(1); // KBO IP = X.1/X.2(단소수)
     if (hit.isNotEmpty) {
       sections.add(Padding(
         padding: const EdgeInsets.only(bottom: Space.sm),
@@ -267,7 +269,7 @@ class CareerExtrasSection extends StatelessWidget {
       ));
       for (final r in hit.cast<Map>()) {
         sections.add(Row(children: [
-          cell("'${(r['season'] % 100).toString().padLeft(2, '0')}", strong: true),
+          cell("'${(((r['season'] as num?) ?? 0).toInt() % 100).toString().padLeft(2, '0')}", strong: true),
           cell(r['team_name']?.toString() ?? '-'),
           cell('${r['games'] ?? '-'}'),
           cell(s3(r['avg'] as num?)),
@@ -287,11 +289,11 @@ class CareerExtrasSection extends StatelessWidget {
       ));
       for (final r in pit.cast<Map>()) {
         sections.add(Row(children: [
-          cell("'${(r['season'] % 100).toString().padLeft(2, '0')}", strong: true),
+          cell("'${(((r['season'] as num?) ?? 0).toInt() % 100).toString().padLeft(2, '0')}", strong: true),
           cell(r['team_name']?.toString() ?? '-'),
           cell('${r['games'] ?? '-'}'),
           cell(s2(r['era'] as num?)),
-          cell(s2(r['innings_pitched'] as num?)),
+          cell(sIp(r['innings_pitched'] as num?)),
           cell(s2(r['whip'] as num?)),
         ]));
       }
