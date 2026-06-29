@@ -174,20 +174,52 @@ def _career_milestones(career, ptype, is_active, recent):
 
 
 def _player_splits(cur, kbo_player_id):
-    """통산 스플릿(historical_splits — 2023~25 타자만). 축별 그룹, 없으면 빈 dict."""
+    """통산 스플릿(historical_splits). 타자=avg/slg, 투수=era/whip. 축별 그룹, 없으면 {}."""
     cur.execute("""
-        SELECT split_axis, split_value, season, games, pa, at_bats, hits,
-               home_runs, rbis, avg, slg
+        SELECT split_axis, split_value, season, player_type, games, pa, at_bats, hits,
+               home_runs, rbis, avg, slg,
+               era, innings_pitched, whip, earned_runs, strikeouts_pitched
         FROM historical_splits WHERE kbo_player_id=%s
         ORDER BY season DESC, split_axis, split_value
     """, (kbo_player_id,))
     out: dict = {}
     for r in cur.fetchall():
         out.setdefault(r[0], []).append({
-            "value": r[1], "season": r[2], "games": r[3], "pa": r[4],
-            "at_bats": r[5], "hits": r[6], "home_runs": r[7], "rbis": r[8],
-            "avg": float(r[9]) if r[9] is not None else None,
-            "slg": float(r[10]) if r[10] is not None else None,
+            "value": r[1], "season": r[2], "player_type": r[3], "games": r[4],
+            "pa": r[5], "at_bats": r[6], "hits": r[7],
+            "home_runs": r[8], "rbis": r[9],
+            "avg": float(r[10]) if r[10] is not None else None,
+            "slg": float(r[11]) if r[11] is not None else None,
+            "era": float(r[12]) if r[12] is not None else None,
+            "innings_pitched": float(r[13]) if r[13] is not None else None,
+            "whip": float(r[14]) if r[14] is not None else None,
+            "earned_runs": r[15], "strikeouts_pitched": r[16],
+        })
+    return out
+
+
+def _futures_stats(cur, kbo_player_id):
+    """2군(퓨처스) 시즌스탯 — historical_futures_season_stats. 시즌 DESC, 없으면 []."""
+    cur.execute("""
+        SELECT season, team_name, player_type, games,
+               avg, home_runs, rbis, ops, stolen_bases,
+               era, innings_pitched, whip, wins, saves, strikeouts_pitched
+        FROM historical_futures_season_stats
+        WHERE kbo_player_id=%s
+        ORDER BY season DESC, player_type
+    """, (kbo_player_id,))
+    out = []
+    for r in cur.fetchall():
+        out.append({
+            "season": r[0], "team_name": r[1], "player_type": r[2], "games": r[3],
+            "avg": float(r[4]) if r[4] is not None else None,
+            "home_runs": r[5], "rbis": r[6],
+            "ops": float(r[7]) if r[7] is not None else None,
+            "stolen_bases": r[8],
+            "era": float(r[9]) if r[9] is not None else None,
+            "innings_pitched": float(r[10]) if r[10] is not None else None,
+            "whip": float(r[11]) if r[11] is not None else None,
+            "wins": r[12], "saves": r[13], "strikeouts_pitched": r[14],
         })
     return out
 
@@ -222,6 +254,7 @@ def _career_extras(cur, kbo_player_id):
         "team_timeline": _team_timeline(cur, kbo_player_id),
         "milestones": _career_milestones(career, ptype, is_active, recent),
         "splits": _player_splits(cur, kbo_player_id),
+        "futures_stats": _futures_stats(cur, kbo_player_id),
     }
 
 
