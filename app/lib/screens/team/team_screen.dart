@@ -13,6 +13,7 @@ import '../player/historical_player_detail_screen.dart';
 import '../mypage/my_page_screen.dart';
 import '../stadium/stadium_screen.dart';
 import 'team_detail_screen.dart';
+import '../futures/futures_screen.dart';
 import '../../utils/web_image.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
@@ -49,7 +50,7 @@ class _TeamScreenState extends State<TeamScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     ApiService.favoriteTeamsChanged.addListener(_loadFavoriteTeams);
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _loadTeams();
     _loadFavoriteTeams();
     _loadOdds();
@@ -193,6 +194,7 @@ class _TeamScreenState extends State<TeamScreen>
                   Tab(text: '팀 기록'),
                   Tab(text: '부문별 순위'),
                   Tab(text: '역대 기록실'),
+                  Tab(text: '퓨처스'),
                 ],
               ),
             ]),
@@ -205,6 +207,7 @@ class _TeamScreenState extends State<TeamScreen>
                 const TeamStatsTab(),
                 const PlayerRankingsTab(),
                 const PlayerRankingsTab(historical: true),
+                const FuturesScreen(),
               ],
             ),
           ),
