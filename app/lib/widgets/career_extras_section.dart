@@ -34,6 +34,8 @@ class CareerExtrasSection extends StatelessWidget {
       blocks.add(_milestoneBlock(reached, approaching));
     }
     if (splits.isNotEmpty) blocks.add(_splitsBlock(splits));
+    final futures = (extras['futures_stats'] as List?) ?? const [];
+    if (futures.isNotEmpty) blocks.add(_futuresBlock(futures));
     if (blocks.isEmpty) return const SizedBox.shrink();
 
     final out = <Widget>[];
@@ -228,6 +230,67 @@ class CareerExtrasSection extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _label('통산 스플릿'),
       ...axisBlocks,
+    ]);
+  }
+
+  // ── 2군(퓨처스) 시즌 기록 ── 1군 시즌행 룩 미러 (표 형태, 토큰)
+  Widget _futuresBlock(List rows) {
+    Widget cell(String t, {bool head = false, bool strong = false}) => Expanded(
+          child: Text(t,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: head ? Typo.micro : Typo.caption,
+                  fontWeight: strong ? Typo.bold : Typo.regular,
+                  color: head ? Pal.sub(isDark) : Pal.ink(isDark))),
+        );
+    // 타자/투수 분리 (한 선수가 둘 다 가능)
+    final hit = rows.where((r) => (r as Map)['player_type'] == '타자').toList();
+    final pit = rows.where((r) => (r as Map)['player_type'] == '투수').toList();
+    final sections = <Widget>[];
+    String s3(num? v) => v == null ? '-' : v.toStringAsFixed(3).replaceFirst('0.', '.');
+    String s2(num? v) => v == null ? '-' : v.toStringAsFixed(2);
+    if (hit.isNotEmpty) {
+      sections.add(Padding(
+        padding: const EdgeInsets.only(bottom: Space.sm),
+        child: Row(children: [
+          cell('시즌', head: true), cell('팀', head: true), cell('G', head: true),
+          cell('타율', head: true), cell('HR', head: true), cell('OPS', head: true),
+        ]),
+      ));
+      for (final r in hit.cast<Map>()) {
+        sections.add(Row(children: [
+          cell("'${(r['season'] % 100).toString().padLeft(2, '0')}", strong: true),
+          cell(r['team_name']?.toString() ?? '-'),
+          cell('${r['games'] ?? '-'}'),
+          cell(s3(r['avg'] as num?)),
+          cell('${r['home_runs'] ?? '-'}'),
+          cell(s3(r['ops'] as num?)),
+        ]));
+      }
+    }
+    if (pit.isNotEmpty) {
+      if (sections.isNotEmpty) sections.add(const SizedBox(height: Space.md));
+      sections.add(Padding(
+        padding: const EdgeInsets.only(bottom: Space.sm),
+        child: Row(children: [
+          cell('시즌', head: true), cell('팀', head: true), cell('G', head: true),
+          cell('ERA', head: true), cell('IP', head: true), cell('WHIP', head: true),
+        ]),
+      ));
+      for (final r in pit.cast<Map>()) {
+        sections.add(Row(children: [
+          cell("'${(r['season'] % 100).toString().padLeft(2, '0')}", strong: true),
+          cell(r['team_name']?.toString() ?? '-'),
+          cell('${r['games'] ?? '-'}'),
+          cell(s2(r['era'] as num?)),
+          cell(s2(r['innings_pitched'] as num?)),
+          cell(s2(r['whip'] as num?)),
+        ]));
+      }
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _label('2군 기록'),
+      ...sections,
     ]);
   }
 }
