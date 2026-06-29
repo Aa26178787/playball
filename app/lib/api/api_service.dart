@@ -574,6 +574,24 @@ class ApiService {
     return res.data;
   }
 
+  // ===== 퓨처스(2군) =====
+  static Future<Map<String, dynamic>> getFuturesGames(int season, {int? month}) async {
+    final qp = <String, dynamic>{'season': season};
+    if (month != null) qp['month'] = month;
+    final res = await _dio.get('/futures/games', queryParameters: qp);
+    return res.data;
+  }
+
+  static Future<Map<String, dynamic>> getFuturesBox(String gameId) async {
+    final res = await _dio.get('/futures/games/$gameId/box');
+    return res.data;
+  }
+
+  static Future<Map<String, dynamic>> getFuturesLeaders(int season) async {
+    final res = await _dio.get('/futures/leaders', queryParameters: {'season': season});
+    return res.data;
+  }
+
   // ===== 팀 API =====
   static Future<Map<String, dynamic>> getTeams() async {
     final res = await _dedupGet('/teams/');
