@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, ORJSONResponse
-from api.routers import games, players, teams, auth, user, stadiums, widget, community, calendar, phone, email_verify, password_reset, search, news, prediction, app_config, admin, historical
+from api.routers import games, players, teams, auth, user, stadiums, widget, community, calendar, phone, email_verify, password_reset, search, news, prediction, app_config, admin, historical, futures
 from fastapi.staticfiles import StaticFiles
 import time
 import threading
@@ -183,6 +183,7 @@ app.include_router(share.router, tags=["공유 랜딩"])
 from api.routers import bootstrap
 app.include_router(bootstrap.router, tags=["부트스트랩"])
 app.include_router(historical.router, prefix="/historical", tags=["역대"])
+app.include_router(futures.router, prefix="/futures", tags=["퓨처스(2군)"])
 app.mount("/static", StaticFiles(directory="/home/ubuntu/playball/backend/static"), name="static")
 
 
