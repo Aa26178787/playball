@@ -571,7 +571,12 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     ApiService.favoriteTeamsChanged.addListener(_loadFavoriteTeams);
     // 최우선 — 오늘이면 bootstrap 1콜이 순위/캘린더/설정까지 채움 → 완료 후
     // _loadRankings는 스킵 플래그로 개별 fetch 생략 (race 방지 체이닝)
-    _loadGames().then((_) { if (mounted) _loadRankings(); });
+    // ⚠️ post-frame으로: 웹 콜드로드 시 initState 동기 fetch의 setState가 첫 프레임에
+    // repaint 안 돼 빈화면(새로고침하면 뜸) 되던 것 방지 (06-25b 첫진입 repaint 패턴)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadGames().then((_) { if (mounted) _loadRankings(); });
+    });
     _loadFavoriteTeams();
     _loadCompactMode();
     _startAutoRefresh();
@@ -1125,43 +1130,43 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   }
 
   Widget _buildLeagueToggle(bool isDark) {
-    Widget seg(String label, bool active, VoidCallback onTap) => Expanded(
-          child: GestureDetector(
-            onTap: active ? null : onTap,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(vertical: 7),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: active ? Pal.ink(isDark) : Colors.transparent,
-                borderRadius: BorderRadius.circular(Radii.pill),
-              ),
-              child: Text(label,
-                  style: TextStyle(
-                      fontSize: Typo.small,
-                      fontWeight: Typo.extra,
-                      color: active ? Pal.paper(isDark) : Pal.sub(isDark))),
+    Widget seg(String label, bool active, VoidCallback onTap) => GestureDetector(
+          onTap: active ? null : onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: active ? Pal.ink(isDark) : Colors.transparent,
+              borderRadius: BorderRadius.circular(Radii.pill),
             ),
+            child: Text(label,
+                style: TextStyle(
+                    fontSize: Typo.caption,
+                    fontWeight: Typo.extra,
+                    color: active ? Pal.paper(isDark) : Pal.sub(isDark))),
           ),
         );
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
-      child: Container(
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          color: Pal.paper2(isDark),
-          borderRadius: BorderRadius.circular(Radii.pill),
+      padding: const EdgeInsets.fromLTRB(18, 6, 18, 2),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: Pal.paper2(isDark),
+            borderRadius: BorderRadius.circular(Radii.pill),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            seg('KBO', !_futuresMode, () {
+              HapticFeedback.selectionClick();
+              _exitFuturesMode();
+            }),
+            seg('퓨처스', _futuresMode, () {
+              HapticFeedback.selectionClick();
+              _enterFuturesMode();
+            }),
+          ]),
         ),
-        child: Row(children: [
-          seg('1군', !_futuresMode, () {
-            HapticFeedback.selectionClick();
-            _exitFuturesMode();
-          }),
-          seg('퓨처스', _futuresMode, () {
-            HapticFeedback.selectionClick();
-            _enterFuturesMode();
-          }),
-        ]),
       ),
     );
   }
@@ -2503,7 +2508,8 @@ class GameCard extends StatelessWidget {
                                             fontFeatures: const [FontFeature.tabularFigures()])),
                                   ])
                               // 예정: 시간을 스코어 자리 — 종료 스코어와 동일 크기(18) 일관성
-                              : Text(timeText.isEmpty ? 'vs' : timeText,
+                              // 취소(진행 중 우천취소 0:0 무효화 포함): 스코어 자리도 '취소'
+                              : Text(isCancelled ? '취소' : (timeText.isEmpty ? 'vs' : timeText),
                                   style: TextStyle(fontSize: Typo.lg, fontWeight: Typo.extra, color: t.ink,
                                       fontFeatures: const [FontFeature.tabularFigures()])),
                           // ── 2층: 상태 ──
@@ -2783,9 +2789,20 @@ class GameCard extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (isUpcoming)
+                          if (isCancelled)
+                            // 우천취소 등 — 진행 중 취소(점수 0:0로 무효화)도 '취소' 표기
+                            // (status pill 외 score 자리도 0:0 대신 취소, 06-30 한화-KT 0:0 오표기)
                             Text(
-                              isCancelled ? '취소' : (game.startTime ?? 'VS'),
+                              '취소',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: Typo.lg, fontWeight: Typo.extra,
+                                color: t.ink3, letterSpacing: 0,
+                              ),
+                            )
+                          else if (isUpcoming)
+                            Text(
+                              game.startTime ?? 'VS',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: Typo.lg, fontWeight: Typo.extra,
