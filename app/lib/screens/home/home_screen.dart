@@ -895,6 +895,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   }
 
   Future<void> _loadTomorrowGames() async {
+    if (_futuresMode) return; // 퓨처스 모드는 1군 시리즈 프리페치 안 함
     final gen = ++_seriesGen;
     try {
       final base = _selectedDate.isAfter(DateTime.now())

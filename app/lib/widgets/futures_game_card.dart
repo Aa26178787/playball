@@ -113,7 +113,9 @@ Map<String, List> groupFuturesGamesByDate(List games) {
   for (final g in games) {
     final d = (g as Map)['game_date'];
     if (d == null) continue;
-    final key = d.toString().substring(0, 10);
+    final s = d.toString();
+    if (s.length < 10) continue; // 비정상 짧은 날짜 = 스킵 (RangeError·재페치루프 방지)
+    final key = s.substring(0, 10);
     (map[key] ??= []).add(g);
   }
   return map;
