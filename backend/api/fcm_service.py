@@ -236,6 +236,18 @@ def _remove_invalid_tokens(tokens: list[str]):
         conn.close()
 
 
+def _collapse_key(ntype: str, game_id: int | None, data: dict) -> str:
+    """트레이 collapse_key / Android tag. 같은 키 = 트레이서 최신 알림이 이전 것 교체.
+    - game_id 有: 경기·타입당 1슬롯 (고빈도 score_change가 Android 50개 캡 채우는 것 방지).
+    - game_id 無: data의 player_id/team_id로 엔티티별 분리. 없으면 bare ntype(하위호환).
+    ⚠️ bare ntype이면 같은 타입 다수 이벤트(예: 같은 날 여러 선수 등록말소)가 한 슬롯으로
+    합쳐져 마지막 1건만 트레이에 남음 — 06-30 오재원/정민규 등말소 1건 누락 사고 원인."""
+    if game_id:
+        return f"{ntype}_{game_id}"
+    disc = data.get('player_id') or data.get('team_id')
+    return f"{ntype}_{disc}" if disc else ntype
+
+
 def _send(targets: list[tuple[int, str]], title: str, body: str,
           data: dict, ntype: str, game_id: int | None):
     if not targets:
@@ -259,7 +271,7 @@ def _send(targets: list[tuple[int, str]], title: str, body: str,
         # (MAX_PACKAGE_NOTIFICATIONS) 도달 시 이후 푸시 무음 드롭되던 문제 방지.
         # 각 이벤트는 그대로 재알림(소리/진동), 트레이만 경기·타입당 1개 유지.
         # collapse_key = 기기 오프라인 시 미수신분도 최신만 전달.
-        collapse = f"{ntype}_{game_id}" if game_id else ntype
+        collapse = _collapse_key(ntype, game_id, data)
         # Android high priority + APNs alert → Doze 우회, background에서도 즉시 표시
         msg = messaging.MulticastMessage(
             notification=messaging.Notification(title=title, body=body),
@@ -554,7 +566,7 @@ def notify_team_roster_change(team_id: int, player_id: int, player_name: str, ch
     _send(targets,
           f"{emoji} {player_name} {change_type}",
           f"마이팀 {player_name}이(가) {change_type} 되었습니다.",
-          {"type": "roster_change"}, "roster_change", None)
+          {"player_id": str(player_id), "type": "roster_change"}, "roster_change", None)
 
 
 # ── 페넌트레이스 알림 ─────────────────────────────────────────────────────────
