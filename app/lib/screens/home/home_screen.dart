@@ -483,8 +483,9 @@ class _TodayGamesTabState extends State<TodayGamesTab>
 
   Future<void> _enterFuturesMode() async {
     setState(() => _futuresMode = true);
+    if (_gameScrollController.hasClients) _gameScrollController.jumpTo(0);
     await _loadFuturesMonth(_selectedDate);
-    if (!mounted) return;
+    if (!mounted || !_futuresMode) return;
     // 선택일에 퓨처스 경기 없으면 로드된 최근 경기일로 점프
     if (!_futuresActiveDates.contains(_dateKey(_selectedDate))) {
       final latest = _latestFuturesDate();
@@ -504,6 +505,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         _loadGen++;
       }
     });
+    if (_gameScrollController.hasClients) _gameScrollController.jumpTo(0);
     _loadGames();
     _loadTomorrowGames();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
@@ -1646,7 +1648,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                _isLoading ? _buildGameShimmer() : _buildGameList(),
+                (_isLoading && !_futuresMode) ? _buildGameShimmer() : _buildGameList(),
                 AnimatedBuilder(
                   animation: _gameScrollController,
                   builder: (ctx, _) {
