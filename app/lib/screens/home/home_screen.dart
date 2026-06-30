@@ -30,6 +30,8 @@ import '../calendar/calendar_screen.dart';
 import '../mypage/my_page_screen.dart';
 import '../search/search_screen.dart';
 import '../notifications/notifications_screen.dart';
+import '../../widgets/futures_game_card.dart';
+import '../futures/futures_box_sheet.dart';
 
 // 공통 디자인 토큰 (mockup hi-fi)
 class _Tok {
@@ -434,6 +436,12 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   final Set<String> _gameDates = {};
   final Set<String> _loadedMonths = {};
 
+  // ── 퓨처스(2군) 모드 ──
+  bool _futuresMode = false;
+  final Map<String, List> _futuresByDate = {};
+  final Set<String> _futuresActiveDates = {};
+  final Set<String> _futuresLoadedMonths = {};
+
   String _dateKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
@@ -449,6 +457,58 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       _loadedMonths.remove(key); // 실패 시 재시도 허용
     }
   }
+
+  Future<void> _loadFuturesMonth(DateTime d) async {
+    final key = '${d.year}-${d.month.toString().padLeft(2, '0')}';
+    if (_futuresLoadedMonths.contains(key)) return;
+    _futuresLoadedMonths.add(key);
+    try {
+      final data = await ApiService.getFuturesGames(d.year, month: d.month);
+      final grouped = groupFuturesGamesByDate((data['games'] as List?) ?? []);
+      if (!mounted) return;
+      setState(() {
+        _futuresByDate.addAll(grouped);
+        _futuresActiveDates.addAll(grouped.keys);
+      });
+    } catch (_) {
+      _futuresLoadedMonths.remove(key); // 실패 시 재시도 허용
+    }
+  }
+
+  DateTime? _latestFuturesDate() {
+    if (_futuresActiveDates.isEmpty) return null;
+    final sorted = _futuresActiveDates.toList()..sort();
+    return DateTime.parse(sorted.last);
+  }
+
+  Future<void> _enterFuturesMode() async {
+    setState(() => _futuresMode = true);
+    await _loadFuturesMonth(_selectedDate);
+    if (!mounted) return;
+    // 선택일에 퓨처스 경기 없으면 로드된 최근 경기일로 점프
+    if (!_futuresActiveDates.contains(_dateKey(_selectedDate))) {
+      final latest = _latestFuturesDate();
+      if (latest != null) setState(() => _selectedDate = latest);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+  }
+
+  void _exitFuturesMode() {
+    final today = DateTime.now();
+    setState(() {
+      _futuresMode = false;
+      if (!_isSameDay(_selectedDate, today)) {
+        _selectedDate = today;
+        _isLoading = true;
+        _games = [];
+        _loadGen++;
+      }
+    });
+    _loadGames();
+    _loadTomorrowGames();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+  }
+
   Timer? _autoRefreshTimer;
   int _unreadNotifCount = 0;
   int _loadGen = 0;
@@ -712,6 +772,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     _autoRefreshTimer?.cancel();
     _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (!mounted) return;
+      if (_futuresMode) return; // 퓨처스 = 라이브 폴링 없음
       final isToday = _isSameDay(_selectedDate, DateTime.now());
       if (isToday || _hasLiveGames) {
         _loadGames();
@@ -870,6 +931,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   }
 
   Future<void> _loadGames() async {
+    if (_futuresMode) return; // 퓨처스 모드는 _loadFuturesMonth가 담당
     final gen = ++_loadGen;
     final dateStr = _selectedDateStr;
 
@@ -1057,6 +1119,48 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     }).toList();
 
     ApiService.myTeamData.value = chips;
+  }
+
+  Widget _buildLeagueToggle(bool isDark) {
+    Widget seg(String label, bool active, VoidCallback onTap) => Expanded(
+          child: GestureDetector(
+            onTap: active ? null : onTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              padding: const EdgeInsets.symmetric(vertical: 7),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: active ? Pal.ink(isDark) : Colors.transparent,
+                borderRadius: BorderRadius.circular(Radii.pill),
+              ),
+              child: Text(label,
+                  style: TextStyle(
+                      fontSize: Typo.small,
+                      fontWeight: Typo.extra,
+                      color: active ? Pal.paper(isDark) : Pal.sub(isDark))),
+            ),
+          ),
+        );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: Pal.paper2(isDark),
+          borderRadius: BorderRadius.circular(Radii.pill),
+        ),
+        child: Row(children: [
+          seg('1군', !_futuresMode, () {
+            HapticFeedback.selectionClick();
+            _exitFuturesMode();
+          }),
+          seg('퓨처스', _futuresMode, () {
+            HapticFeedback.selectionClick();
+            _enterFuturesMode();
+          }),
+        ]),
+      ),
+    );
   }
 
   // 연·월 통합 컨트롤: < 2026.06 > — 탭하면 연도+월 픽커 시트 (구 연도행+월스트립 대체)
@@ -1247,12 +1351,14 @@ class _TodayGamesTabState extends State<TodayGamesTab>
           final isSat = date.weekday == DateTime.saturday;
           final isSun = date.weekday == DateTime.sunday;
 
-          // 경기 없는 날 비활성 — 해당 월 로드 완료 후 game_dates에 없으면 disabled
+          // 경기 없는 날 비활성 — 모드별 소스
           final monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
-          if (!_loadedMonths.contains(monthKey)) {
-            Future(() => _loadMonthGameDates(date));
+          final loadedSet = _futuresMode ? _futuresLoadedMonths : _loadedMonths;
+          if (!loadedSet.contains(monthKey)) {
+            Future(() => _futuresMode ? _loadFuturesMonth(date) : _loadMonthGameDates(date));
           }
-          final noGame = _loadedMonths.contains(monthKey) && !_gameDates.contains(_dateKey(date));
+          final activeSet = _futuresMode ? _futuresActiveDates : _gameDates;
+          final noGame = loadedSet.contains(monthKey) && !activeSet.contains(_dateKey(date));
 
           final tk = _Tok.of(isDark);
           Color nameColor;
@@ -1270,8 +1376,12 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             onTap: noGame ? null : () {
               if (!isSelected) {
                 setState(() => _selectedDate = date);
-                _loadGames();
-                Future.delayed(const Duration(seconds: 3), () { if (mounted) _loadTomorrowGames(); });
+                if (_futuresMode) {
+                  _loadFuturesMonth(date); // 같은 월이면 즉시 반환(이미 로드)
+                } else {
+                  _loadGames();
+                  Future.delayed(const Duration(seconds: 3), () { if (mounted) _loadTomorrowGames(); });
+                }
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
               }
             },
@@ -1485,51 +1595,53 @@ class _TodayGamesTabState extends State<TodayGamesTab>
             color: isDark ? AppColors.scaffoldDark : AppColors.scaffoldLight,
             child: Column(
               children: [
+                _buildLeagueToggle(isDark),
                 _buildMonthStrip(),
                 _buildDateStrip(),
               ],
             ),
           ),
           _buildServerBanner(),
-          if (_todayRosterChanges.isNotEmpty && _isSameDay(_selectedDate, DateTime.now()))
+          if (!_futuresMode && _todayRosterChanges.isNotEmpty && _isSameDay(_selectedDate, DateTime.now()))
             _buildTodayRosterBanner(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 2),
-            child: Row(
-              children: [
-                if (_favoriteTeamIds.isNotEmpty) ...[
-                  _buildFilterChip('전체', !_myTeamOnly, () => setState(() => _myTeamOnly = false)),
-                  const SizedBox(width: Space.sm),
-                  _buildFilterChip('마이팀', _myTeamOnly, () => setState(() => _myTeamOnly = true), icon: Icons.star),
-                ],
-                const Spacer(),
-                // 간략 보기 온/오프 스위치 (마이팀 토글 옆)
-                Text('간략',
-                    style: TextStyle(fontSize: Typo.small, fontWeight: Typo.medium, color: t.ink3)),
-                const SizedBox(width: 6),
-                GestureDetector(
-                  onTap: _toggleCompactMode,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: 38, height: 22,
-                    decoration: BoxDecoration(
-                      color: _compactMode ? t.ink : t.track,
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: AnimatedAlign(
+          if (!_futuresMode)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 2),
+              child: Row(
+                children: [
+                  if (_favoriteTeamIds.isNotEmpty) ...[
+                    _buildFilterChip('전체', !_myTeamOnly, () => setState(() => _myTeamOnly = false)),
+                    const SizedBox(width: Space.sm),
+                    _buildFilterChip('마이팀', _myTeamOnly, () => setState(() => _myTeamOnly = true), icon: Icons.star),
+                  ],
+                  const Spacer(),
+                  // 간략 보기 온/오프 스위치 (마이팀 토글 옆)
+                  Text('간략',
+                      style: TextStyle(fontSize: Typo.small, fontWeight: Typo.medium, color: t.ink3)),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: _toggleCompactMode,
+                    child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
-                      alignment: _compactMode ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        width: 18, height: 18, margin: const EdgeInsets.symmetric(horizontal: 2),
-                        decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white,
-                            boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(0, 1))]),
+                      width: 38, height: 22,
+                      decoration: BoxDecoration(
+                        color: _compactMode ? t.ink : t.track,
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: AnimatedAlign(
+                        duration: const Duration(milliseconds: 180),
+                        alignment: _compactMode ? Alignment.centerRight : Alignment.centerLeft,
+                        child: Container(
+                          width: 18, height: 18, margin: const EdgeInsets.symmetric(horizontal: 2),
+                          decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white,
+                              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(0, 1))]),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           Expanded(
             child: Stack(
               clipBehavior: Clip.none,
@@ -1657,7 +1769,46 @@ class _TodayGamesTabState extends State<TodayGamesTab>
     );
   }
 
+  Widget _buildFuturesList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final games = _futuresByDate[_dateKey(_selectedDate)] ?? const [];
+    return RefreshIndicator(
+      onRefresh: () async {
+        HapticFeedback.lightImpact();
+        final mk = '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}';
+        _futuresLoadedMonths.remove(mk);
+        await _loadFuturesMonth(_selectedDate);
+      },
+      child: games.isEmpty
+          ? ListView(
+              padding: EdgeInsets.only(bottom: _listBottomPad(context)),
+              children: [
+                SizedBox(height: MediaQuery.of(context).size.height * 0.15),
+                Center(
+                    child: Text('경기 없음',
+                        style: TextStyle(fontSize: Typo.body, color: Pal.sub(isDark)))),
+              ],
+            )
+          : ListView.builder(
+              controller: _gameScrollController,
+              padding: EdgeInsets.fromLTRB(12, 8, 12, _listBottomPad(context)),
+              itemCount: games.length,
+              itemBuilder: (_, i) {
+                final g = games[i] as Map;
+                return FuturesGameCard(
+                  game: g,
+                  isDark: isDark,
+                  onTap: g['has_box'] == true
+                      ? () => showFuturesBoxSheet(context, g['game_id'] as String)
+                      : null,
+                );
+              },
+            ),
+    );
+  }
+
   Widget _buildGameList() {
+    if (_futuresMode) return _buildFuturesList();
     List filtered;
     if (_myTeamOnly && _favoriteTeamIds.isNotEmpty) {
       filtered = _games.where((g) =>
