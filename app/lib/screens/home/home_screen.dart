@@ -31,7 +31,7 @@ import '../mypage/my_page_screen.dart';
 import '../search/search_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../../widgets/futures_game_card.dart';
-import '../futures/futures_box_sheet.dart';
+import '../futures/futures_game_detail_screen.dart';
 
 // 공통 디자인 토큰 (mockup hi-fi)
 class _Tok {
@@ -1807,7 +1807,10 @@ class _TodayGamesTabState extends State<TodayGamesTab>
                   game: g,
                   isDark: isDark,
                   onTap: g['has_box'] == true
-                      ? () => showFuturesBoxSheet(context, g['game_id'] as String)
+                      ? () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => FuturesGameDetailScreen(gameId: g['game_id'] as String)))
                       : null,
                 );
               },

@@ -195,7 +195,7 @@ class _FuturesGameDetailScreenState extends State<FuturesGameDetailScreen>
     );
   }
 
-  // 라인스코어 (futures_box_sheet._lineScore 이식)
+  // 라인스코어
   Widget _lineScore(Map sb, bool isDark) {
     final away = (sb['away'] as Map?) ?? {};
     final home = (sb['home'] as Map?) ?? {};
