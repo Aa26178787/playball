@@ -292,7 +292,7 @@ class _FuturesGameDetailScreenState extends State<FuturesGameDetailScreen>
         padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xs),
         child: Column(children: [
           row(const {}, head: true),
-          Divider(height: 1, color: Pal.line(isDark)),
+          Divider(height: 1, thickness: 1, color: Pal.line(isDark)),
           ...rows.cast<Map>().map((b) => row(b)),
         ]),
       ),
@@ -366,7 +366,7 @@ class _FuturesGameDetailScreenState extends State<FuturesGameDetailScreen>
           // 좌측 고정 (결과+이름)
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             leftCell('', '', head: true),
-            Divider(height: 1, color: line),
+            Divider(height: 1, thickness: 1, color: line),
             ...rows.cast<Map>().map((p) => leftCell('${p['result'] ?? ''}', '${p['name'] ?? ''}')),
           ]),
           // 우측 가로스크롤 (스탯)
@@ -375,7 +375,7 @@ class _FuturesGameDetailScreenState extends State<FuturesGameDetailScreen>
               scrollDirection: Axis.horizontal,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 statRow(const {}, head: true),
-                Divider(height: 1, color: line),
+                Divider(height: 1, thickness: 1, color: line),
                 ...rows.cast<Map>().map((p) => statRow(p)),
               ]),
             ),
