@@ -416,6 +416,12 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
   - **⑤ 작동감사(0 High·3 Med·4 Low)**: Med=미연결 기능(`updateStadiumRecord` PUT 서버라우트 없음 / `getMyTeamScore`·`getFuturesLeaders` 백엔드有 UI無 — **잔여, 유저 결정**). **L3 버그 수정** = `game_detail_screen` `_gameData!['innings'/'pitchers'/'batters'] as List`가 취소/미완경기서 키 없으면 TypeError→빈화면 → `as List? ?? []` 가드(+player_detail matchup `as Map` 동일). 리포트=`.sdd/audit-broken.md`.
   - **⑥ 데드코드 감사·정리**: 제거 = 고아 dart 2(`models/player.dart`·`screens/player/player_stats_section.dart`)·빈 `api/models.py`·`games.py.bak`·미사용 import 4(random/shutil×2/get_features). **잔여(유저결정)**=12 스크래치 `test*.py`(비pytest 디버그)·`crawl_all_kbo_players`(dead fn)·`kbo_crawler.py`(superseded)·미연결 ApiService 메서드. `pa_hit_model.py`=의도보존. 리포트=`.sdd/audit-deadcode.md`.
   - **⚠️ 잔여/유저조치**: 미연결 기능 3종(M1-M3) 살릴지 결정 · 스크래치 스크립트 12개 제거 여부 · **퓨처스 상세 육안 스팟체크**(재설계 렌더).
+- **📌 07-02b 마일스톤 알림 확장** (commits `a93cd12`~`80de367`, subagent-driven 5태스크+최종리뷰) — 서버 라이브(백엔드 전용, 앱/DB 스키마 무변경). 웹리서치로 미커버 대기록 발굴 → 4묶음 추가:
+  - **신규 마일스톤**: 끝내기(`walkoff_hr`/`walkoff_hit`, 선수식별) · 사이클링(`game_cycle`) · 한경기 다홈런(`game_multi_hr`) · 전 구단 상대 홈런(`season_hr_vs_all`, 완성 감지) · 20-20/30-30/40-40(`season_20_20`류) · 통산 안타 **100단위 확장**(1000↑, 1100안타류 해소)+**역대순위 캡션**("역대 N번째") · 통산 탈삼진 100단위(`career_so`).
+  - **구조**: 순수판정 `api/milestone_detect.py`(is_cycle/walkoff_type/crossed/dual_crossed/format_milestone_title/career_thresholds_100, pytest 6) + `_check_post_game_milestones` 확장(종료+27분, PA 적재 후) + `notify_milestone`/`_MILESTONE_LABELS` 재사용. dedup=`player_milestone_alerts`. **동명이인 회피**=game_batters(player_id); PA(batter_name)는 game 스코프만+name→pid 다중매칭 스킵.
+  - ⚠️ **최종리뷰가 잡은 결함**(반영): ⓐ `career_tb`(루타)=**폐기**(game_batters에 tb 없어 today TB 소스 부재→prev==curr→영영 미발송. 향후 PA서 today-TB 계산해 재도입) ⓑ 끝내기=**마지막 이닝 말 마지막 PA**(is_hit 필터 제거)로 게임종결 플레이 귀속(안타 후 볼넷 결승 시 오귀속 방지) ⓒ **per-game 이벤트(사이클/끝내기/다홈런)는 `month` 슬롯에 game_id** 넣어 시즌 내 재발생도 발송(dedup 붕괴 방지) ⓓ 20-20류 title value=1(숫자 중복 제거).
+  - ⚠️ **문구 title만 정리**(`format_milestone_title`: unit='' & value<=1 → 숫자 생략) — body는 기존 유지. **실발송=다음 해당 경기부터**(소급 없음). 스펙/플랜=`docs/superpowers/{specs,plans}/2026-07-02-milestone-expansion*.md`.
+  - **큐(유저 요청)**: ① 팀 기록 묶음(선발 전원안타/전원타점 등 — team-game record, 다음 배치) ② 실시간 알림 지연 개선(마일스톤 +27분·한줄평 +30분 설계 + 단일스레드 스케줄러 smart_update 블로킹 혼잡 → 로그 실측 후 개선).
 
 ## 역대 데이터 수집 프로젝트 (KBO 1982~) — ✅ 핵심 완료 (2026-06-15 착수 ~ 06-16 A/C1/B/꼬리/검증 완료, C2만 장기보류)
 
