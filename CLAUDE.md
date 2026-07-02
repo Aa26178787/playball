@@ -427,7 +427,13 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
   - **구조**: 신규 `_check_team_records(game_id)`(종료+27분, 개인 마일스톤과 동반 스케줄) → 신규 `fcm_service.notify_team_record` → **팀팬**(`notify_team_milestone` 토글 재사용). dedup=`notification_log`(game_id,'team_record',`{tid}:{type}`). 순수헬퍼 `max_consecutive_hr`/`all_meet`(milestone_detect.py, pytest 8 누적).
   - ⚠️ **06-30 트레이 collapse 회피**: `notify_team_record`=`_send(game_id=None)` + `data['team_id']=f"{tid}_{record_type}"` → `_collapse_key`가 record별 트레이 분리(같은 경기 다수 팀기록 안 합쳐짐). 문구=`format_milestone_title` 재사용(연속홈런만 특례 "{N}연속 타자 홈런!").
   - ⚠️ **최종리뷰 Important 반영**: `fire()` 발송당 try/except 격리(한 기록 실패가 나머지 팀/기록 안 막게). 라이브 스팟체크(gid 539 대량득점) 무크래시 확인. **실발송=다음 경기부터**. 비목표=두자릿수득점(빈도)·한이닝기록·팀통산.
-  - **잔여 큐**: 실시간 알림 지연 개선(위 07-02b ②) — 미착수.
+  - **잔여 큐**: 실시간 알림 지연 개선(위 07-02b ②) → **07-03 완료(↓)**.
+- **📌 07-03 알림 지연 개선** (commits `bb93a93`~, systematic-debugging→brainstorm→subagent-driven) — 서버 라이브(백엔드 전용). 한줄평·게임데이터 마일스톤이 7-30분 늦던 것 → ~1-5분.
+  - **근본원인(로그 실측 확정, game 542)**: ⓐ 한줄평(game_summary)=`game_pitchers.result` 충원 대기, result는 **"5분 후" 예약된 boxscore 크롤**이 채움(~7분 대기) ⓑ 게임데이터 마일스톤=전부 **+27분 하드코딩 배치**(원래 KBO 시즌스탯 +25분 대기용인데 game_batters/PA 기반은 불요). ⚠️혼잡 가설(H2)=**기각**(사이클~33s), rank/score/clutch=이미 즉시.
+  - **Part 1 (한줄평 가속)**: `_crawl_game_boxscore(gid)`(update_finished per-game 추출) → smart_update result-대기 루프서 미충원 시 **즉시 재크롤** + post_finished 종료 즉시 1회 → result 채워지는 즉시(≤30s) 발송. "5분 예약"은 백업 유지. **result-게이트 유지=오발송 없음**.
+  - **Part 2 (마일스톤 early/late 분리)**: `_check_post_game_milestones`서 게임데이터 감지(완봉/QS/노히터·사이클·다홈런·끝내기·전구단·팀기록)를 **`_check_game_data_records`로 추출**(game_batters/game_pitchers/PA **독립쿼리**, batter_stats 조인 제거) → smart_update서 **game_batters 채워진 순간 1회**(`_already_notified(gid,'game_data_records')` dedup) 조기 발송. 시즌/월간/통산/20-20=`_check_post_game_milestones` **+27분 잔류**(KBO 스탯, 안전). 팀기록 +27분 스케줄→조기호출로 이동.
+  - ⚠️ **최종리뷰(opus) 7/7 통과**: no double-fire/missing-fire·season·career 온전·month=gid 규약·조기배선·팀기록스케줄 제거·독립쿼리 검증. Minor: 완봉/QS·다홈런 블록별 예외격리 추가(수정), game_cg month=0(pre-existing/의도=시즌 첫 완봉/QS, 유지). 라이브 gid539 무크래시.
+  - ⚠️ **하한**: Naver boxscore 게시·KBO 시즌스탯 갱신(외부) — 그보다 빠르겐 불가. **실효과=다음 라이브 종료경기 로그 재측정 권장**(종료→발송 델타).
 
 ## 역대 데이터 수집 프로젝트 (KBO 1982~) — ✅ 핵심 완료 (2026-06-15 착수 ~ 06-16 A/C1/B/꼬리/검증 완료, C2만 장기보류)
 
