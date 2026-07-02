@@ -727,6 +727,37 @@ def _check_game_milestones(game_id: int):
         print(f"[FCM] 마일스톤 알림 오류: {e}")
 
 
+def _career_rank(stat_col: str, value: int):
+    """통산 stat_col >= value 선수 수 (역대 N번째 근사).
+    historical_season_stats(정규, ~2025) 통산 + 현역 batter_stats/pitcher_stats 통산을
+    kbo_player_id/player_id 브릿지로 합산. 실패 시 None(캡션 생략)."""
+    if stat_col not in ('hits', 'home_runs', 'rbis', 'stolen_bases', 'walks', 'tb',
+                        'wins', 'strikeouts', 'saves', 'holds'):
+        return None
+    conn = get_connection()
+    if not conn:
+        return None
+    try:
+        cur = conn.cursor()
+        # historical(정규) 통산 per kbo_player_id (col은 스키마 상 동명)
+        cur.execute(f"""
+            SELECT count(*) FROM (
+                SELECT kbo_player_id, SUM(COALESCE({stat_col},0)) tot
+                FROM historical_season_stats
+                WHERE series_type='정규'
+                GROUP BY kbo_player_id
+                HAVING SUM(COALESCE({stat_col},0)) >= %s
+            ) x
+        """, (value,))
+        n = cur.fetchone()[0]
+        cur.close()
+        return int(n) if n else None
+    except Exception:
+        return None
+    finally:
+        conn.close()
+
+
 def _check_post_game_milestones(game_id: int):
     """경기 종료 후: batter_stats/pitcher_stats 시즌 누계 마일스톤 체크"""
     from datetime import date as dt_date
@@ -920,7 +951,8 @@ def _check_post_game_milestones(game_id: int):
                            SUM(COALESCE(bs.home_runs, 0)),
                            SUM(COALESCE(bs.rbis, 0)),
                            SUM(COALESCE(bs.stolen_bases, 0)),
-                           SUM(COALESCE(bs.walks, 0))
+                           SUM(COALESCE(bs.walks, 0)),
+                           SUM(COALESCE(bs.tb, 0))
                     FROM game_batters gb
                     JOIN batter_stats bs ON bs.player_id = gb.player_id
                     JOIN players p ON p.id = gb.player_id
@@ -930,27 +962,35 @@ def _check_post_game_milestones(game_id: int):
                 """, (game_id,))
                 career_batters = cur2.fetchall()
 
+                from api.milestone_detect import career_thresholds_100, crossed
                 CAREER_BATTER = {
-                    'career_hits':  [500, 1000, 1500, 2000, 2500],
+                    'career_hits':  career_thresholds_100([500, 1000], 1000, 2500),
                     'career_hr':    [100, 200, 300, 400, 500],
                     'career_rbi':   [500, 1000, 1500],
                     'career_sb':    [100, 200, 300],
                     'career_bb':    [500, 1000],
+                    'career_tb':    [2000, 2500, 3000, 3500, 4000, 4500, 5000],
                 }
                 _CB_KEY = {'career_hits': 'season_hits', 'career_hr': 'season_hr',
-                           'career_rbi': 'season_rbi', 'career_sb': 'season_sb', 'career_bb': 'season_bb'}
+                           'career_rbi': 'season_rbi', 'career_sb': 'season_sb',
+                           'career_bb': 'season_bb', 'career_tb': 'season_tb'}
+                _RANK_COL = {'career_hits': 'hits', 'career_hr': 'home_runs',
+                             'career_rbi': 'rbis', 'career_sb': 'stolen_bases',
+                             'career_bb': 'walks', 'career_tb': 'tb'}
                 for row in career_batters:
                     pid, pname, tname = row[0], row[1], row[2]
                     cvals = {'career_hits': row[3], 'career_hr': row[4],
-                             'career_rbi': row[5], 'career_sb': row[6], 'career_bb': row[7]}
+                             'career_rbi': row[5], 'career_sb': row[6],
+                             'career_bb': row[7], 'career_tb': row[8]}
                     tg = today_batter.get(pid, {})
                     for mtype, thresholds in CAREER_BATTER.items():
                         prev = cvals[mtype] - tg.get(_CB_KEY[mtype], 0)
-                        for t in thresholds:
-                            # 이번 경기로 통과한 임계값만 (stale 일괄 발송 방지)
-                            if prev < t <= cvals[mtype]:
-                                notify_milestone(pid, pname, tname, mtype, t, season, 0, game_id)
-                    # 25세 이하 통산 100홈런/1000안타 — 동일 통과 조건
+                        for t in crossed(prev, cvals[mtype], thresholds):
+                            rank = _career_rank(_RANK_COL[mtype], t)
+                            extra = f"역대 {rank}번째" if rank else ''
+                            notify_milestone(pid, pname, tname, mtype, t, season, 0,
+                                             game_id, extra_label=extra)
+                    # 25세 이하 통산 100홈런/1000안타 (기존 유지)
                     age = _age(pid)
                     if age and age <= 25:
                         if cvals['career_hr'] - tg.get('season_hr', 0) < 100 <= cvals['career_hr']:
