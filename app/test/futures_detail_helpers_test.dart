@@ -20,4 +20,16 @@ void main() {
     expect(futuresAvgLabel(null), '-');
     expect(futuresAvgLabel('x'), '-');
   });
+
+  test('futuresPosLabel maps Naver hanja/abbrev positions to Korean', () {
+    expect(futuresPosLabel('二'), '2루');       // 한자 → 2루
+    expect(futuresPosLabel('一'), '1루');
+    expect(futuresPosLabel('유'), '유격');
+    expect(futuresPosLabel('주유'), '유격');     // 교대: 대주→유격, 최종 수비위치
+    expect(futuresPosLabel('一三'), '3루');      // 1루→3루
+    expect(futuresPosLabel('주'), '대주');       // 대주자만
+    expect(futuresPosLabel('지'), '지명');
+    expect(futuresPosLabel(''), '');
+    expect(futuresPosLabel(null), '');
+  });
 }

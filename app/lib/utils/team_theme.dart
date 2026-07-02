@@ -41,6 +41,10 @@ const Map<String, Color> kTeamColors = {
   'SS': Color(0xFF1B4BAB),  // 삼성
   'HH': Color(0xFFFF6600),  // 한화
   'WO': Color(0xFF820024),  // 키움
+  // 퓨처스(2군) 독립/군 팀 — 로고 URL 없어 _avatar 배지(팀명+색)로 표시
+  'SM': Color(0xFF3E6B3E),  // 상무 (국군체육부대)
+  'UL': Color(0xFF15568C),  // 울산
+  'SO': Color(0xFF5A5A5A),  // 소프트뱅크 (교류전)
 };
 
 const Map<String, String> kTeamDisplayNames = {
@@ -54,6 +58,9 @@ const Map<String, String> kTeamDisplayNames = {
   'SS': '삼성',
   'HH': '한화',
   'WO': '키움',
+  'SM': '상무',
+  'UL': '울산',
+  'SO': '소뱅',
 };
 
 Color teamColor(String? code) =>
