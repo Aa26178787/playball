@@ -1000,6 +1000,53 @@ def _check_post_game_milestones(game_id: int):
         except Exception as _e:
             print(f"[마일스톤] 전구단홈런 오류: {_e}")
 
+        # ── 사이클링 히트 / 한 경기 다홈런 / 끝내기 (단일경기) ──
+        from api.milestone_detect import is_cycle, walkoff_type
+        _bname_to_pid = {}  # 이 경기 batter_name → player_id (동명이인 다중매칭 스킵)
+        for r in batters:
+            _bname_to_pid.setdefault(r[1], []).append((r[0], r[2]))
+        # 사이클
+        try:
+            conn_c = get_connection()
+            if conn_c:
+                try:
+                    cur_c = conn_c.cursor()
+                    cur_c.execute("""
+                        SELECT batter_name, array_agg(DISTINCT result_class)
+                        FROM plate_appearances WHERE game_id = %s
+                        GROUP BY batter_name
+                    """, (game_id,))
+                    for bname, classes in cur_c.fetchall():
+                        if is_cycle(set(classes or [])):
+                            pids = _bname_to_pid.get(bname, [])
+                            if len(pids) == 1:
+                                pid, tname = pids[0]
+                                notify_milestone(pid, bname, tname, 'game_cycle', 1, season, month, game_id)
+                    cur_c.close()
+                finally:
+                    conn_c.close()
+        except Exception as _e:
+            print(f"[마일스톤] 사이클 오류: {_e}")
+        # 다홈런 (game_batters.home_runs>=3, player_id 직접)
+        for r in batters:
+            pid, pname, tname = r[0], r[1], r[2]
+            hr_today = today_batter.get(pid, {}).get('season_hr', 0) or 0
+            if hr_today >= 3:
+                notify_milestone(pid, pname, tname, 'game_multi_hr', hr_today, season, month, game_id)
+        # 끝내기 (선수 식별)
+        try:
+            if _is_walkoff(game_id):
+                wb = _walkoff_batter(game_id)
+                if wb:
+                    bname, rclass, ishit = wb[0], wb[1], wb[2]
+                    wtype = walkoff_type(rclass or '', bool(ishit))
+                    pids = _bname_to_pid.get(bname, [])
+                    if wtype and len(pids) == 1:
+                        pid, tname = pids[0]
+                        notify_milestone(pid, bname, tname, wtype, 1, season, month, game_id)
+        except Exception as _e:
+            print(f"[마일스톤] 끝내기 오류: {_e}")
+
         # ── 통산 타자 마일스톤 ──
         conn2 = get_connection()
         if conn2:
@@ -1123,6 +1170,31 @@ def _is_walkoff(game_id: int) -> bool:
         return row is not None and (row[0] or 0) > 0
     except Exception:
         return False
+    finally:
+        conn.close()
+
+
+def _walkoff_batter(game_id: int):
+    """끝내기 결승타 타자 (batter_name, result_class, is_hit). 마지막 이닝 말의
+    is_hit PA 중 win_rate_after>=99(홈 승 확정)인 마지막 PA. 없으면 None."""
+    conn = get_connection()
+    if not conn:
+        return None
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT batter_name, result_class, is_hit
+            FROM plate_appearances
+            WHERE game_id = %s AND inning_half = '말' AND is_hit = TRUE
+              AND inning = (SELECT MAX(inning) FROM plate_appearances WHERE game_id = %s)
+            ORDER BY pa_seq DESC
+            LIMIT 1
+        """, (game_id, game_id))
+        row = cur.fetchone()
+        cur.close()
+        return row  # (batter_name, result_class, is_hit) or None
+    except Exception:
+        return None
     finally:
         conn.close()
 
