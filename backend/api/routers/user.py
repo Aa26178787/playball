@@ -429,7 +429,7 @@ def register_push_token(body: PushToken, current_user: dict = Depends(get_curren
     return {"message": "푸시 토큰 등록 완료"}
 
 from fastapi import UploadFile, File, Request
-import os, uuid, shutil
+import os, uuid
 from api.security_log import log_upload
 from api.image_utils import strip_metadata
 

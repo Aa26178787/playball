@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Request
 from pydantic import BaseModel, field_validator
 from typing import Optional, List
-import os, uuid, shutil, json
+import os, uuid, json
 from datetime import datetime, timedelta
 from database.connection import get_connection
 from api.routers.auth import get_current_user

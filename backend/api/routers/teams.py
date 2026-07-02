@@ -1,5 +1,4 @@
 import os
-import random
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends, Query
 from database.connection import get_connection

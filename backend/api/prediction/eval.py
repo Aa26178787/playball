@@ -3,7 +3,6 @@ import math
 from datetime import date as _date_cls, timedelta
 from database.connection import get_connection
 from api.prediction.model import predict_win_probability
-from api.prediction.features import get_features
 
 
 def log_prediction(game_id: int):
