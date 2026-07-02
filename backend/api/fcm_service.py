@@ -833,7 +833,6 @@ _MILESTONE_LABELS: dict[str, tuple] = {
     'career_so':     ('🔥', '통산', '탈삼진'),
     'career_saves':  ('💾', '통산', '세이브'),
     'career_holds':  ('✋', '통산', '홀드'),
-    'career_tb':     ('✨', '통산', '루타'),
     # 확장(07-02)
     'walkoff_hr':        ('🎉', '끝내기 홈런', ''),
     'walkoff_hit':       ('🎉', '끝내기 안타', ''),

@@ -729,9 +729,9 @@ def _check_game_milestones(game_id: int):
 
 def _career_rank(stat_col: str, value: int):
     """통산 stat_col >= value 선수 수 (역대 N번째 근사).
-    historical_season_stats(정규, ~2025) 통산 + 현역 batter_stats/pitcher_stats 통산을
-    kbo_player_id/player_id 브릿지로 합산. 실패 시 None(캡션 생략)."""
-    if stat_col not in ('hits', 'home_runs', 'rbis', 'stolen_bases', 'walks', 'tb',
+    historical_season_stats(정규, ~2025) 기준만(현역 시즌 미합산) — 근사치.
+    실패 시 None(캡션 생략)."""
+    if stat_col not in ('hits', 'home_runs', 'rbis', 'stolen_bases', 'walks',
                         'wins', 'strikeouts', 'saves', 'holds'):
         return None
     conn = get_connection()
@@ -893,7 +893,7 @@ def _check_post_game_milestones(game_id: int):
             _phr, _psb = _hr - tg['season_hr'], _sb - tg['season_sb']
             for _k, _kt in [(20, 'season_20_20'), (30, 'season_30_30'), (40, 'season_40_40')]:
                 if dual_crossed(_phr, _hr, _psb, _sb, _k):
-                    notify_milestone(pid, pname, tname, _kt, _k, season, month, game_id)
+                    notify_milestone(pid, pname, tname, _kt, 1, season, month, game_id)
             for mtype, thresholds in BATTER_SEASON.items():
                 prev = vals[mtype] - tg[mtype]
                 for t in thresholds:
@@ -1021,18 +1021,21 @@ def _check_post_game_milestones(game_id: int):
                             pids = _bname_to_pid.get(bname, [])
                             if len(pids) == 1:
                                 pid, tname = pids[0]
-                                notify_milestone(pid, bname, tname, 'game_cycle', 1, season, month, game_id)
+                                notify_milestone(pid, bname, tname, 'game_cycle', 1, season, game_id, game_id)
                     cur_c.close()
                 finally:
                     conn_c.close()
         except Exception as _e:
             print(f"[마일스톤] 사이클 오류: {_e}")
         # 다홈런 (game_batters.home_runs>=3, player_id 직접)
-        for r in batters:
-            pid, pname, tname = r[0], r[1], r[2]
-            hr_today = today_batter.get(pid, {}).get('season_hr', 0) or 0
-            if hr_today >= 3:
-                notify_milestone(pid, pname, tname, 'game_multi_hr', hr_today, season, month, game_id)
+        try:
+            for r in batters:
+                pid, pname, tname = r[0], r[1], r[2]
+                hr_today = today_batter.get(pid, {}).get('season_hr', 0) or 0
+                if hr_today >= 3:
+                    notify_milestone(pid, pname, tname, 'game_multi_hr', hr_today, season, game_id, game_id)
+        except Exception as _e:
+            print(f"[마일스톤] 다홈런 오류: {_e}")
         # 끝내기 (선수 식별)
         try:
             if _is_walkoff(game_id):
@@ -1043,7 +1046,7 @@ def _check_post_game_milestones(game_id: int):
                     pids = _bname_to_pid.get(bname, [])
                     if wtype and len(pids) == 1:
                         pid, tname = pids[0]
-                        notify_milestone(pid, bname, tname, wtype, 1, season, month, game_id)
+                        notify_milestone(pid, bname, tname, wtype, 1, season, game_id, game_id)
         except Exception as _e:
             print(f"[마일스톤] 끝내기 오류: {_e}")
 
@@ -1058,8 +1061,7 @@ def _check_post_game_milestones(game_id: int):
                            SUM(COALESCE(bs.home_runs, 0)),
                            SUM(COALESCE(bs.rbis, 0)),
                            SUM(COALESCE(bs.stolen_bases, 0)),
-                           SUM(COALESCE(bs.walks, 0)),
-                           SUM(COALESCE(bs.tb, 0))
+                           SUM(COALESCE(bs.walks, 0))
                     FROM game_batters gb
                     JOIN batter_stats bs ON bs.player_id = gb.player_id
                     JOIN players p ON p.id = gb.player_id
@@ -1076,19 +1078,18 @@ def _check_post_game_milestones(game_id: int):
                     'career_rbi':   [500, 1000, 1500],
                     'career_sb':    [100, 200, 300],
                     'career_bb':    [500, 1000],
-                    'career_tb':    [2000, 2500, 3000, 3500, 4000, 4500, 5000],
                 }
                 _CB_KEY = {'career_hits': 'season_hits', 'career_hr': 'season_hr',
                            'career_rbi': 'season_rbi', 'career_sb': 'season_sb',
-                           'career_bb': 'season_bb', 'career_tb': 'season_tb'}
+                           'career_bb': 'season_bb'}
                 _RANK_COL = {'career_hits': 'hits', 'career_hr': 'home_runs',
                              'career_rbi': 'rbis', 'career_sb': 'stolen_bases',
-                             'career_bb': 'walks', 'career_tb': 'tb'}
+                             'career_bb': 'walks'}
                 for row in career_batters:
                     pid, pname, tname = row[0], row[1], row[2]
                     cvals = {'career_hits': row[3], 'career_hr': row[4],
                              'career_rbi': row[5], 'career_sb': row[6],
-                             'career_bb': row[7], 'career_tb': row[8]}
+                             'career_bb': row[7]}
                     tg = today_batter.get(pid, {})
                     for mtype, thresholds in CAREER_BATTER.items():
                         prev = cvals[mtype] - tg.get(_CB_KEY[mtype], 0)
@@ -1125,7 +1126,7 @@ def _check_post_game_milestones(game_id: int):
 
                 CAREER_PITCHER = {
                     'career_wins':  [50, 100, 150, 200],
-                    'career_so':    [500, 1000, 1500, 2000, 2500],
+                    'career_so':    career_thresholds_100([500, 1000], 1000, 2500),
                     'career_saves': [100, 200, 300],
                     'career_holds': [100, 200],
                 }
@@ -1138,9 +1139,12 @@ def _check_post_game_milestones(game_id: int):
                     tg = today_pitcher.get(pid, {})
                     for mtype, thresholds in CAREER_PITCHER.items():
                         prev = cvals[mtype] - tg.get(_CP_KEY[mtype], 0)
-                        for t in thresholds:
-                            # 이번 경기로 통과한 임계값만
-                            if prev < t <= cvals[mtype]:
+                        for t in crossed(prev, cvals[mtype], thresholds):
+                            if mtype == 'career_so':
+                                rank = _career_rank('strikeouts', t)
+                                extra = f"역대 {rank}번째" if rank else ''
+                                notify_milestone(pid, pname, tname, mtype, t, season, 0, game_id, extra_label=extra)
+                            else:
                                 notify_milestone(pid, pname, tname, mtype, t, season, 0, game_id)
 
                 cur2.close()
@@ -1175,8 +1179,8 @@ def _is_walkoff(game_id: int) -> bool:
 
 
 def _walkoff_batter(game_id: int):
-    """끝내기 결승타 타자 (batter_name, result_class, is_hit). 마지막 이닝 말의
-    is_hit PA 중 win_rate_after>=99(홈 승 확정)인 마지막 PA. 없으면 None."""
+    """마지막 이닝 말 마지막 PA(pa_seq 최대) = 끝내기 결승 플레이.
+    walkoff_type이 안타/홈런만 통과."""
     conn = get_connection()
     if not conn:
         return None
@@ -1185,7 +1189,7 @@ def _walkoff_batter(game_id: int):
         cur.execute("""
             SELECT batter_name, result_class, is_hit
             FROM plate_appearances
-            WHERE game_id = %s AND inning_half = '말' AND is_hit = TRUE
+            WHERE game_id = %s AND inning_half = '말'
               AND inning = (SELECT MAX(inning) FROM plate_appearances WHERE game_id = %s)
             ORDER BY pa_seq DESC
             LIMIT 1
