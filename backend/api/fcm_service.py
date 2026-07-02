@@ -569,6 +569,32 @@ def notify_team_roster_change(team_id: int, player_id: int, player_name: str, ch
           {"player_id": str(player_id), "type": "roster_change"}, "roster_change", None)
 
 
+_TEAM_RECORD_LABELS: dict[str, tuple] = {
+    'team_all_hit':  ('🔥', '선발 전원 안타', ''),
+    'team_all_rbi':  ('🔥', '선발 전원 타점', ''),
+    'team_all_run':  ('🏃', '선발 전원 득점', ''),
+    'team_multi_hr': ('💣', '한 경기', '홈런'),
+    'team_many_hits':('💥', '한 경기', '안타'),
+    'team_consec_hr':('⚡', '', ''),
+}
+
+
+def notify_team_record(team_id: int, record_type: str, team_name: str, value: int = 0):
+    """팀-경기 기록 알림 → 팀팬(notify_team_milestone 토글).
+    06-30 트레이 collapse 회피: game_id=None + data.team_id=f"{tid}_{type}"(record별 분리)."""
+    targets = _get_team_fan_targets(team_id, 'notify_team_milestone')
+    if not targets:
+        return
+    emoji, cat, unit = _TEAM_RECORD_LABELS.get(record_type, ('⭐', record_type, ''))
+    if record_type == 'team_consec_hr':
+        title = f"{emoji} {team_name} {value}연속 타자 홈런!"
+    else:
+        from api.milestone_detect import format_milestone_title
+        title = format_milestone_title(emoji, team_name, '', cat, value, unit, '')
+    data = {"type": "team_record", "team_id": f"{team_id}_{record_type}", "tid": str(team_id)}
+    _send(targets, title, title, data, "team_record", None)
+
+
 # ── 페넌트레이스 알림 ─────────────────────────────────────────────────────────
 
 def notify_gb_zero(team_id: int, team_name: str, first_team_name: str):
