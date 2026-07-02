@@ -1920,6 +1920,12 @@ def smart_update():
                         continue
                     naver_gid = row_tmp[0]
                     max_inn = int(row_tmp[1])
+                    # boxscore 즉시 크롤 — result+game_batters를 save_game_pitches보다 먼저 채워
+                    # 한줄평/게임데이터 마일스톤 조기화(result 게이트·마일스톤 데이터 게이트 해소).
+                    try:
+                        _crawl_game_boxscore(gid)
+                    except Exception as _bx:
+                        print(f"[boxscore] post_finished 크롤 오류 game={gid}: {_bx}")
                     # 투구 데이터 — 종료 시 전 이닝 1회 풀 재크롤. 라이브 중 일시정지(투수판 이탈 등)로
                     # 중간 이닝이 미완성 타석으로 끊긴 채 stale 잔존하는 것 치유(474 서호철 4회말 사례 —
                     # max_inn/max_inn-1만 재저장하면 2이닝+ 지난 이닝은 영원히 미완성). 종료당 1회
@@ -2178,7 +2184,9 @@ def smart_update():
                 # 무승부(동점 종료)는 승/패 투수 result가 영영 안 채워짐 → 대기 스킵(스코어가 결과 확정)
                 is_draw = (curr.get('home_score') or 0) == (curr.get('away_score') or 0)
                 if result_count < 1 and not is_draw:
-                    print(f"[FCM] game_summary 대기 game={gid} (result 미충원)")
+                    # result 채우는 boxscore를 즉시 재크롤(5분 예약 대기 대신) → 다음 사이클서 발송
+                    _crawl_game_boxscore(gid)
+                    print(f"[FCM] game_summary 대기 game={gid} (result 미충원, boxscore 재크롤)")
                     continue
             except Exception as ck_err:
                 print(f"[FCM] game_summary result 확인 오류 game={gid}: {ck_err}")
