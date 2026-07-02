@@ -822,31 +822,36 @@ def _check_team_records(game_id: int):
     # 발송
     try:
         from api.fcm_service import notify_team_record
-        for side in ('home', 'away'):
-            tid, tname = team_of[side]
+    except Exception as e:
+        print(f"[팀기록] import 오류: {e}")
+        return
+    for side in ('home', 'away'):
+        tid, tname = team_of[side]
 
-            def fire(rtype, value=0):
+        # 발송당 예외 격리 — 한 기록 실패가 나머지 팀/기록을 막지 않도록
+        def fire(rtype, value=0):
+            try:
                 sub = f"{tid}:{rtype}"
                 if _already_notified(game_id, 'team_record', sub):
                     return
                 notify_team_record(tid, rtype, tname, value)
                 _mark_notified(game_id, 'team_record', sub)
+            except Exception as e:
+                print(f"[팀기록] 발송 오류 {rtype}: {e}")
 
-            if allrec[side]['hit']:
-                fire('team_all_hit')
-            if allrec[side]['rbi']:
-                fire('team_all_rbi')
-            if allrec[side]['run']:
-                fire('team_all_run')
-            hr, hits = teamagg.get(side, (0, 0))
-            if hr >= 5:
-                fire('team_multi_hr', hr)
-            if hits >= 20:
-                fire('team_many_hits', hits)
-            if consec[side] >= 3:
-                fire('team_consec_hr', consec[side])
-    except Exception as e:
-        print(f"[팀기록] 발송 오류: {e}")
+        if allrec[side]['hit']:
+            fire('team_all_hit')
+        if allrec[side]['rbi']:
+            fire('team_all_rbi')
+        if allrec[side]['run']:
+            fire('team_all_run')
+        hr, hits = teamagg.get(side, (0, 0))
+        if hr >= 5:
+            fire('team_multi_hr', hr)
+        if hits >= 20:
+            fire('team_many_hits', hits)
+        if consec[side] >= 3:
+            fire('team_consec_hr', consec[side])
 
 
 def _check_post_game_milestones(game_id: int):
