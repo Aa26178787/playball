@@ -3177,6 +3177,37 @@ def _update_today_games():
         save_games(games)
 
 
+def _crawl_game_boxscore(gid: int) -> bool:
+    """단일 종료경기 boxscore(result+game_batters+innings) 즉시 크롤.
+    update_finished_game_records의 per-game 파싱 추출 — 한줄평/게임데이터 마일스톤 조기화용.
+    idempotent(save_game_record ON CONFLICT). 성공/시도=True, 스킵=False."""
+    conn = get_connection()
+    if not conn:
+        return False
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT naver_game_id FROM games WHERE id=%s AND status='종료'", (gid,))
+        row = cur.fetchone()
+        cur.close()
+    except Exception:
+        return False
+    finally:
+        conn.close()
+    if not row or not row[0]:
+        return False
+    naver_game_id = row[0]
+    if not _is_regular_game(naver_game_id):
+        return False
+    try:
+        record = get_game_record(naver_game_id)
+        if record:
+            save_game_record(gid, record)
+        return True
+    except Exception as e:
+        print(f"[boxscore] 크롤 오류 game={gid}: {e}")
+        return False
+
+
 def update_finished_game_records():
     """종료 경기 상세 기록 업데이트"""
     print(f"[{datetime.now()}] 경기 상세 기록 업데이트 시작")
