@@ -887,6 +887,13 @@ def _check_post_game_milestones(game_id: int):
             tg = {'season_hr': row[9], 'season_rbi': row[10], 'season_hits': row[11],
                   'season_sb': row[12], 'season_bb': row[13], 'season_runs': row[14]}
             today_batter[pid] = tg
+            # 20-20 / 30-30 / 40-40 (오늘 완성)
+            from api.milestone_detect import dual_crossed
+            _hr, _sb = vals['season_hr'], vals['season_sb']
+            _phr, _psb = _hr - tg['season_hr'], _sb - tg['season_sb']
+            for _k, _kt in [(20, 'season_20_20'), (30, 'season_30_30'), (40, 'season_40_40')]:
+                if dual_crossed(_phr, _hr, _psb, _sb, _k):
+                    notify_milestone(pid, pname, tname, _kt, _k, season, month, game_id)
             for mtype, thresholds in BATTER_SEASON.items():
                 prev = vals[mtype] - tg[mtype]
                 for t in thresholds:
@@ -939,6 +946,59 @@ def _check_post_game_milestones(game_id: int):
                         ytype = mtype.replace('season_', 'young_season_')
                         notify_milestone(pid, pname, tname, ytype, vals[mtype],
                                          season, month, game_id, extra_label=f"{age}세")
+
+        # ── 전 구단 상대 홈런 (오늘 홈런 친 타자, 시즌 상대팀 셋 완성) ──
+        try:
+            hr_today_pids = [r[0] for r in batters if (today_batter.get(r[0], {}).get('season_hr', 0) or 0) > 0]
+            if hr_today_pids:
+                conn_v = get_connection()
+                if conn_v:
+                    try:
+                        cur_v = conn_v.cursor()
+                        # 리그 전체 팀 수(상대팀 = 자기팀 제외) → 완성 기준
+                        cur_v.execute("SELECT count(*) FROM teams")
+                        n_teams = cur_v.fetchone()[0]
+                        need = n_teams - 1  # 자기팀 제외 전 구단
+                        for pid in hr_today_pids:
+                            # 시즌 내 홈런 친 경기의 상대팀 distinct (game_batters.home_runs>0)
+                            cur_v.execute("""
+                                SELECT count(DISTINCT CASE WHEN g.home_team_id = p.team_id
+                                                          THEN g.away_team_id ELSE g.home_team_id END)
+                                FROM game_batters gb
+                                JOIN games g ON g.id = gb.game_id
+                                JOIN players p ON p.id = gb.player_id
+                                WHERE gb.player_id = %s
+                                  AND gb.home_runs > 0
+                                  AND EXTRACT(YEAR FROM g.game_date) = %s
+                            """, (pid, season))
+                            curr_opp = cur_v.fetchone()[0] or 0
+                            if curr_opp < need:
+                                continue
+                            # 오늘 경기 제외 시 미완성이어야(오늘 완성) — 오늘 상대팀 빼고 재계산
+                            cur_v.execute("""
+                                SELECT count(DISTINCT CASE WHEN g.home_team_id = p.team_id
+                                                          THEN g.away_team_id ELSE g.home_team_id END)
+                                FROM game_batters gb
+                                JOIN games g ON g.id = gb.game_id
+                                JOIN players p ON p.id = gb.player_id
+                                WHERE gb.player_id = %s
+                                  AND gb.home_runs > 0
+                                  AND EXTRACT(YEAR FROM g.game_date) = %s
+                                  AND gb.game_id <> %s
+                            """, (pid, season, game_id))
+                            prev_opp = cur_v.fetchone()[0] or 0
+                            if prev_opp >= need:
+                                continue  # 오늘 이전 이미 완성 → dedup에도 걸리나 이중가드
+                            # 리그 N번째(올 시즌 완성 선수 수) 근사 캡션은 생략(정확계산 복잡) → 값만
+                            prow = next((r for r in batters if r[0] == pid), None)
+                            if prow:
+                                notify_milestone(pid, prow[1], prow[2], 'season_hr_vs_all', 1,
+                                                 season, 0, game_id)
+                        cur_v.close()
+                    finally:
+                        conn_v.close()
+        except Exception as _e:
+            print(f"[마일스톤] 전구단홈런 오류: {_e}")
 
         # ── 통산 타자 마일스톤 ──
         conn2 = get_connection()
