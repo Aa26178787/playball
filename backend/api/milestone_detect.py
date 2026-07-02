@@ -18,6 +18,24 @@ def walkoff_type(result_class: str, is_hit: bool):
     return None
 
 
+def max_consecutive_hr(seq) -> int:
+    """result_class 시퀀스에서 연속 'hr' 최대 런 길이."""
+    best = run = 0
+    for rc in seq:
+        if rc == 'hr':
+            run += 1
+            if run > best:
+                best = run
+        else:
+            run = 0
+    return best
+
+
+def all_meet(vals, n: int = 9) -> bool:
+    """정확히 n개이고 전원 >= 1 (선발 전원 안타/타점/득점 판정)."""
+    return len(vals) == n and all((v or 0) >= 1 for v in vals)
+
+
 def crossed(prev: int, curr: int, thresholds) -> list:
     """prev < t <= curr 인 임계값들(이번 경기로 통과)."""
     return [t for t in thresholds if prev < t <= curr]
