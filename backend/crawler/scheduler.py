@@ -758,6 +758,97 @@ def _career_rank(stat_col: str, value: int):
         conn.close()
 
 
+def _check_team_records(game_id: int):
+    """팀-경기 기록 감지 → 팀팬 알림. 종료 후처리(+27분, PA 적재 후)."""
+    from api.milestone_detect import max_consecutive_hr, all_meet
+    conn = get_connection()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT g.home_team_id, g.away_team_id, ht.short_name, at.short_name
+            FROM games g
+            JOIN teams ht ON ht.id = g.home_team_id
+            JOIN teams at ON at.id = g.away_team_id
+            WHERE g.id = %s
+        """, (game_id,))
+        r = cur.fetchone()
+        if not r:
+            cur.close()
+            return
+        team_of = {'home': (r[0], r[2]), 'away': (r[1], r[3])}
+        # 선발 전원 (팀별 정확히 9명)
+        allrec = {}
+        for side in ('home', 'away'):
+            cur.execute("""
+                SELECT COALESCE(gb.hits, 0), COALESCE(gb.rbis, 0), COALESCE(gb.runs, 0)
+                FROM game_rosters gr
+                LEFT JOIN game_batters gb
+                  ON gb.game_id = gr.game_id AND gb.player_id = gr.player_id
+                WHERE gr.game_id = %s AND gr.team_side = %s
+                  AND gr.is_starter = TRUE AND gr.batting_order BETWEEN 1 AND 9
+            """, (game_id, side))
+            rows = cur.fetchall()
+            hits = [x[0] for x in rows]; rbis = [x[1] for x in rows]; runs = [x[2] for x in rows]
+            allrec[side] = {'hit': all_meet(hits, 9), 'rbi': all_meet(rbis, 9), 'run': all_meet(runs, 9)}
+        # 팀 다홈런 / 대량안타
+        cur.execute("""
+            SELECT team_side, COALESCE(SUM(home_runs), 0), COALESCE(SUM(hits), 0)
+            FROM game_batters WHERE game_id = %s GROUP BY team_side
+        """, (game_id,))
+        teamagg = {row[0]: (row[1], row[2]) for row in cur.fetchall()}
+        # 연속타자 홈런 (이닝-하프 내 연속)
+        cur.execute("""
+            SELECT inning, inning_half, result_class
+            FROM plate_appearances WHERE game_id = %s
+            ORDER BY inning, pa_seq
+        """, (game_id,))
+        groups = {}
+        for inn, half, rc in cur.fetchall():
+            groups.setdefault((inn, half), []).append(rc)
+        consec = {'home': 0, 'away': 0}
+        for (inn, half), seq in groups.items():
+            side = 'home' if half == '말' else 'away'
+            m = max_consecutive_hr(seq)
+            if m > consec[side]:
+                consec[side] = m
+        cur.close()
+    except Exception as e:
+        print(f"[팀기록] 쿼리 오류: {e}")
+        return
+    finally:
+        conn.close()
+    # 발송
+    try:
+        from api.fcm_service import notify_team_record
+        for side in ('home', 'away'):
+            tid, tname = team_of[side]
+
+            def fire(rtype, value=0):
+                sub = f"{tid}:{rtype}"
+                if _already_notified(game_id, 'team_record', sub):
+                    return
+                notify_team_record(tid, rtype, tname, value)
+                _mark_notified(game_id, 'team_record', sub)
+
+            if allrec[side]['hit']:
+                fire('team_all_hit')
+            if allrec[side]['rbi']:
+                fire('team_all_rbi')
+            if allrec[side]['run']:
+                fire('team_all_run')
+            hr, hits = teamagg.get(side, (0, 0))
+            if hr >= 5:
+                fire('team_multi_hr', hr)
+            if hits >= 20:
+                fire('team_many_hits', hits)
+            if consec[side] >= 3:
+                fire('team_consec_hr', consec[side])
+    except Exception as e:
+        print(f"[팀기록] 발송 오류: {e}")
+
+
 def _check_post_game_milestones(game_id: int):
     """경기 종료 후: batter_stats/pitcher_stats 시즌 누계 마일스톤 체크"""
     from datetime import date as dt_date
@@ -1971,6 +2062,7 @@ def smart_update():
                     schedule.every(25).minutes.do(_run_once, _crawl_kbo_stats_for_game, gid)
                     # 마일스톤 체크 27분 후
                     schedule.every(27).minutes.do(_run_once, _check_post_game_milestones, gid)
+                    schedule.every(27).minutes.do(_run_once, _check_team_records, gid)
                     # 하이라이트 즉시 + 1시간 후 retry (Naver 색인 지연 대응)
                     try:
                         from crawler.crawl_highlights import crawl_highlights_for_game
