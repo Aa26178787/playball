@@ -3671,6 +3671,18 @@ def _update_season_phase():
         conn.close()
 
 
+def _update_futures_games():
+    """매일: 퓨처스(2군) 일정+박스 크롤 (idempotent upsert, box=only_missing).
+    2군 전용 크롤 스케줄러가 없어 데이터가 stale(예: 신규 월 경기 미수집 → 날짜스트립 비활성)되던 것 방지.
+    selenium(schedule nav)+requests(box) — arm_or_wdm_chrome 경유(driver_util)."""
+    try:
+        from crawler.backfill_futures_games import backfill_season
+        backfill_season(datetime.now().year)
+        print(f"[{datetime.now()}] 퓨처스 일정/박스 갱신 완료")
+    except Exception as e:
+        print(f"[퓨처스 갱신] 오류: {e}")
+
+
 def run_scheduler():
     print("PlayBall 스케줄러 시작!")
     try:
@@ -3764,6 +3776,9 @@ def run_scheduler():
 
     # 매일 UTC 18:30 (KST 03:30): 시즌 단계 자동 갱신 (postseason=admin 핀 보존)
     schedule.every().day.at("18:30").do(_update_season_phase)
+
+    # 매일 UTC 19:00 (KST 04:00): 퓨처스(2군) 일정/박스 갱신 (2군 크롤 스케줄러 부재로 stale 방지)
+    schedule.every().day.at("19:00").do(_update_futures_games)
 
     # 매시간: 팀 뉴스 크롤링
     schedule.every(1).hours.do(_crawl_news_hourly)
