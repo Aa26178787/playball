@@ -833,6 +833,16 @@ _MILESTONE_LABELS: dict[str, tuple] = {
     'career_so':     ('🔥', '통산', '탈삼진'),
     'career_saves':  ('💾', '통산', '세이브'),
     'career_holds':  ('✋', '통산', '홀드'),
+    'career_tb':     ('✨', '통산', '루타'),
+    # 확장(07-02)
+    'walkoff_hr':        ('🎉', '끝내기 홈런', ''),
+    'walkoff_hit':       ('🎉', '끝내기 안타', ''),
+    'game_cycle':        ('🌈', '사이클링 히트', ''),
+    'game_multi_hr':     ('💣', '한 경기', '홈런'),
+    'season_hr_vs_all':  ('🎯', '전 구단 상대 홈런', ''),
+    'season_20_20':      ('⚡', '20-20 클럽', ''),
+    'season_30_30':      ('⚡', '30-30 클럽', ''),
+    'season_40_40':      ('🔥', '40-40 클럽', ''),
     # 개인 월간 최다 경신
     'personal_monthly_hits': ('📈', '개인 최다', '안타'),
     'personal_monthly_hr':   ('📈', '개인 최다', '홈런'),
@@ -897,7 +907,10 @@ def notify_milestone(player_id: int, player_name: str, team_name: str,
             pass
 
     # 분류: 통산은 통산 토글(선수팬+팀팬), 나머지는 팀 마일스톤 토글(팀팬만)
-    is_career = milestone_type.startswith('career_') or milestone_type.startswith('young_career_')
+    _CAREER_LIKE = {'walkoff_hr', 'walkoff_hit', 'season_hr_vs_all'}
+    is_career = (milestone_type.startswith('career_')
+                 or milestone_type.startswith('young_career_')
+                 or milestone_type in _CAREER_LIKE)
     targets = []
     if is_career:
         targets.extend(_get_player_fan_targets(player_id, 'notify_milestone'))
@@ -920,7 +933,8 @@ def notify_milestone(player_id: int, player_name: str, team_name: str,
     month_str = f"{month}월 " if month > 0 and 'monthly' in milestone_type else ''
     extra_str = f" ({extra_label})" if extra_label else ''
 
-    title = f"{emoji} {player_name} {month_str}{cat} {milestone_value}{unit}!{extra_str}"
+    from api.milestone_detect import format_milestone_title
+    title = format_milestone_title(emoji, player_name, month_str, cat, milestone_value, unit, extra_str)
     body = f"{team_name} {player_name} {month_str}{cat} {milestone_value}{unit} 달성!{extra_str}"
 
     _send(unique_targets, title, body,
