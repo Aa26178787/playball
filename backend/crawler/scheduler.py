@@ -2090,9 +2090,8 @@ def smart_update():
                     if row_tmp[3]: finished_team_ids.add(row_tmp[3])
                     # KBO 시즌 스탯 25분 후 (selenium 무거움 — schedule만)
                     schedule.every(25).minutes.do(_run_once, _crawl_kbo_stats_for_game, gid)
-                    # 마일스톤 체크 27분 후
+                    # 마일스톤 체크 27분 후 (시즌/통산 — batter_stats 적재 대기)
                     schedule.every(27).minutes.do(_run_once, _check_post_game_milestones, gid)
-                    schedule.every(27).minutes.do(_run_once, _check_team_records, gid)
                     # 하이라이트 즉시 + 1시간 후 retry (Naver 색인 지연 대응)
                     try:
                         from crawler.crawl_highlights import crawl_highlights_for_game
@@ -2216,6 +2215,36 @@ def smart_update():
                 _send_game_summary(gid)
             except Exception as gs_err:
                 print(f"[FCM] game_summary 즉시 발송 오류 game={gid}: {gs_err}")
+
+        # 게임데이터 기반 기록 조기 발송 (완봉/QS/노히터·사이클·다홈런·끝내기·전구단·팀기록)
+        # batter_stats JOIN 불요 — game_batters/game_pitchers/PA로 즉시 판정 가능
+        for gid, curr in curr_details.items():
+            if curr.get('status') != '종료':
+                continue
+            if _already_notified(gid, 'game_data_records'):
+                continue
+            # game_batters 존재 여부로 데이터 준비 확인
+            try:
+                ckg = get_connection()
+                if not ckg:
+                    continue
+                try:
+                    ckgc = ckg.cursor()
+                    ckgc.execute(
+                        "SELECT 1 FROM game_batters WHERE game_id=%s LIMIT 1", (gid,))
+                    has_batters = ckgc.fetchone() is not None
+                    ckgc.close()
+                finally:
+                    ckg.close()
+                if not has_batters:
+                    continue
+            except Exception as _bchk:
+                continue
+            _mark_notified(gid, 'game_data_records')
+            try:
+                _check_game_data_records(gid)
+            except Exception as _gde:
+                print(f"[게임기록] 조기발송 오류 game={gid}: {_gde}")
 
     conn = get_connection()
     if conn:
