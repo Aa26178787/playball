@@ -422,6 +422,12 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
   - ⚠️ **최종리뷰가 잡은 결함**(반영): ⓐ `career_tb`(루타)=**폐기**(game_batters에 tb 없어 today TB 소스 부재→prev==curr→영영 미발송. 향후 PA서 today-TB 계산해 재도입) ⓑ 끝내기=**마지막 이닝 말 마지막 PA**(is_hit 필터 제거)로 게임종결 플레이 귀속(안타 후 볼넷 결승 시 오귀속 방지) ⓒ **per-game 이벤트(사이클/끝내기/다홈런)는 `month` 슬롯에 game_id** 넣어 시즌 내 재발생도 발송(dedup 붕괴 방지) ⓓ 20-20류 title value=1(숫자 중복 제거).
   - ⚠️ **문구 title만 정리**(`format_milestone_title`: unit='' & value<=1 → 숫자 생략) — body는 기존 유지. **실발송=다음 해당 경기부터**(소급 없음). 스펙/플랜=`docs/superpowers/{specs,plans}/2026-07-02-milestone-expansion*.md`.
   - **큐(유저 요청)**: ① 팀 기록 묶음(선발 전원안타/전원타점 등 — team-game record, 다음 배치) ② 실시간 알림 지연 개선(마일스톤 +27분·한줄평 +30분 설계 + 단일스레드 스케줄러 smart_update 블로킹 혼잡 → 로그 실측 후 개선).
+- **📌 07-02c 팀 기록 알림** (commits `a7d0155`~, subagent-driven 3태스크+최종리뷰) — 서버 라이브(백엔드 전용, 앱/DB 무변경). 개인 마일스톤에 이어 **팀-경기 기록** 6종:
+  - 선발 전원 안타/타점/득점(`team_all_hit`/`_rbi`/`_run`, game_rosters is_starter 9명 × all_meet) · 팀 한경기 5홈런+(`team_multi_hr`) · 20안타+(`team_many_hits`, game_batters SUM per team_side) · 3연속타자 홈런(`team_consec_hr`, PA inning-half 최대 연속 hr).
+  - **구조**: 신규 `_check_team_records(game_id)`(종료+27분, 개인 마일스톤과 동반 스케줄) → 신규 `fcm_service.notify_team_record` → **팀팬**(`notify_team_milestone` 토글 재사용). dedup=`notification_log`(game_id,'team_record',`{tid}:{type}`). 순수헬퍼 `max_consecutive_hr`/`all_meet`(milestone_detect.py, pytest 8 누적).
+  - ⚠️ **06-30 트레이 collapse 회피**: `notify_team_record`=`_send(game_id=None)` + `data['team_id']=f"{tid}_{record_type}"` → `_collapse_key`가 record별 트레이 분리(같은 경기 다수 팀기록 안 합쳐짐). 문구=`format_milestone_title` 재사용(연속홈런만 특례 "{N}연속 타자 홈런!").
+  - ⚠️ **최종리뷰 Important 반영**: `fire()` 발송당 try/except 격리(한 기록 실패가 나머지 팀/기록 안 막게). 라이브 스팟체크(gid 539 대량득점) 무크래시 확인. **실발송=다음 경기부터**. 비목표=두자릿수득점(빈도)·한이닝기록·팀통산.
+  - **잔여 큐**: 실시간 알림 지연 개선(위 07-02b ②) — 미착수.
 
 ## 역대 데이터 수집 프로젝트 (KBO 1982~) — ✅ 핵심 완료 (2026-06-15 착수 ~ 06-16 A/C1/B/꼬리/검증 완료, C2만 장기보류)
 
