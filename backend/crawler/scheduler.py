@@ -947,21 +947,27 @@ def _check_game_data_records(gid: int):
         from api.fcm_service import notify_milestone
         from api.milestone_detect import is_cycle, walkoff_type
         # ── 완봉/완봉승/노히터/QS ──
-        for row in starters_cg:
-            pid, pname, tname = row[0], row[1], row[2]
-            ip_val = _parse_ip(row[3]); er = row[4] or 0; ha = row[5] or 0
-            if ip_val >= 9.0:
-                notify_milestone(pid, pname, tname, 'game_cg', 1, season, month, gid)
-                if er == 0:
-                    notify_milestone(pid, pname, tname, 'game_shutout', 1, season, month, gid)
-                if ha == 0:
-                    notify_milestone(pid, pname, tname, 'game_no_hitter', 1, season, month, gid)
-            elif ip_val >= 6.0 and er <= 3:
-                notify_milestone(pid, pname, tname, 'game_qs', 1, season, month, gid)
+        try:
+            for row in starters_cg:
+                pid, pname, tname = row[0], row[1], row[2]
+                ip_val = _parse_ip(row[3]); er = row[4] or 0; ha = row[5] or 0
+                if ip_val >= 9.0:
+                    notify_milestone(pid, pname, tname, 'game_cg', 1, season, month, gid)
+                    if er == 0:
+                        notify_milestone(pid, pname, tname, 'game_shutout', 1, season, month, gid)
+                    if ha == 0:
+                        notify_milestone(pid, pname, tname, 'game_no_hitter', 1, season, month, gid)
+                elif ip_val >= 6.0 and er <= 3:
+                    notify_milestone(pid, pname, tname, 'game_qs', 1, season, month, gid)
+        except Exception as _e:
+            print(f"[게임기록] 완봉/QS 오류: {_e}")
         # ── 다홈런 ──
-        for r in batters_gd:
-            if (r[3] or 0) >= 3:
-                notify_milestone(r[0], r[1], r[2], 'game_multi_hr', r[3], season, gid, gid)
+        try:
+            for r in batters_gd:
+                if (r[3] or 0) >= 3:
+                    notify_milestone(r[0], r[1], r[2], 'game_multi_hr', r[3], season, gid, gid)
+        except Exception as _e:
+            print(f"[게임기록] 다홈런 오류: {_e}")
         # ── 사이클 (PA) ──
         _bname_to_pid = {}
         for r in batters_gd:
