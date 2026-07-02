@@ -669,9 +669,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
 
     final game = _gameData!['game'];
-    final innings = _gameData!['innings'] as List;
-    final pitchers = _gameData!['pitchers'] as List;
-    final batters = _gameData!['batters'] as List;
+    final innings = _gameData!['innings'] as List? ?? [];
+    final pitchers = _gameData!['pitchers'] as List? ?? [];
+    final batters = _gameData!['batters'] as List? ?? [];
 
     // breadcrumb: 팀 vs 팀 + 현재 탭 + (sub-tab)
     const mainTabs = ['중계', '라인업', '기록', '하이라이트'];

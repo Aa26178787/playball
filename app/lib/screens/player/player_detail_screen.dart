@@ -492,8 +492,8 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   }
 
   Widget _buildMatchupResult(Map<String, dynamic> data, String thisName) {
-    final batter = data['batter'] as Map;
-    final pitcher = data['pitcher'] as Map;
+    final batter = data['batter'] as Map? ?? {};
+    final pitcher = data['pitcher'] as Map? ?? {};
     final games = data['games'] ?? 0;
     final pa = data['pa'] ?? 0;
     final ab = data['at_bats'] ?? 0;
