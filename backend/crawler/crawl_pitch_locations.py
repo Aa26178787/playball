@@ -127,6 +127,10 @@ def save_pitch_locations_for_game(game_id, naver_game_id, max_inning):
                     round(float(x), 4), z, classify(result_text),
                     pts.get('topSz'), pts.get('bottomSz'),
                     stuff, pts.get('stance', 'R'),
+                    pts.get('x0'), pts.get('vx0'), pts.get('ax'),
+                    pts.get('y0'), pts.get('vy0'), pts.get('ay'),
+                    pts.get('z0'), pts.get('vz0'), pts.get('az'),
+                    pts.get('crossPlateY'),
                 ))
 
         time.sleep(0.15)
@@ -135,8 +139,10 @@ def save_pitch_locations_for_game(game_id, naver_game_id, max_inning):
         cur.executemany("""
             INSERT INTO game_pitch_locations
                 (game_id, inning, inning_half, pitcher_name, batter_name,
-                 x, z, result, top_sz, bot_sz, pitch_type, stance)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 x, z, result, top_sz, bot_sz, pitch_type, stance,
+                 x0, vx0, ax, y0, vy0, ay, z0, vz0, az, cross_y)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, rows)
 
     conn.commit()
