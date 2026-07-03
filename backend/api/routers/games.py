@@ -1649,7 +1649,8 @@ def get_pitch_locations(game_id: int):
     if game_status == '종료':
         cur.execute("""
             SELECT inning, inning_half, batter_name, pitcher_name,
-                   x, z, top_sz, bot_sz, pitch_type, result, stance
+                   x, z, top_sz, bot_sz, pitch_type, result, stance,
+                   x0, vx0, ax, y0, vy0, ay, z0, vz0, az, cross_y
             FROM game_pitch_locations
             WHERE game_id = %s
             ORDER BY inning, id
@@ -1659,12 +1660,19 @@ def get_pitch_locations(game_id: int):
             cur.close(); conn.close()
             import re as _re
             def _strip_order(name): return _re.sub(r'^\d+번타자 ', '', name or '')
+            def _f(v): return float(v) if v is not None else None
             all_pitches = [
                 {
                     "inning": r[0], "inning_half": r[1], "batter": _strip_order(r[2]),
                     "pitcher": r[3], "x": r[4], "z": r[5],
                     "top_sz": r[6], "bot_sz": r[7], "stuff": r[8],
                     "result": r[9], "stance": r[10],
+                    "physics": ({
+                        "x0": _f(r[11]), "vx0": _f(r[12]), "ax": _f(r[13]),
+                        "y0": _f(r[14]), "vy0": _f(r[15]), "ay": _f(r[16]),
+                        "z0": _f(r[17]), "vz0": _f(r[18]), "az": _f(r[19]),
+                        "cross_y": _f(r[20]),
+                    } if r[11] is not None else None),
                 }
                 for r in db_rows
             ]
@@ -1746,6 +1754,8 @@ def get_pitch_locations(game_id: int):
                         pitcher_name = pitcher_cache[pid]
                 if "고의" in result_text:
                     continue
+                def _fv(v): return float(v) if v is not None else None
+                _px0 = pts.get("x0")
                 pitches.append({
                     "inning":      inning,
                     "inning_half": inning_half,
@@ -1760,6 +1770,12 @@ def get_pitch_locations(game_id: int):
                     "result_text": result_text,
                     "result":      classify(result_text),
                     "stance":      pts.get("stance", "R"),
+                    "physics": ({
+                        "x0": _fv(pts.get("x0")), "vx0": _fv(pts.get("vx0")), "ax": _fv(pts.get("ax")),
+                        "y0": _fv(pts.get("y0")), "vy0": _fv(pts.get("vy0")), "ay": _fv(pts.get("ay")),
+                        "z0": _fv(pts.get("z0")), "vz0": _fv(pts.get("vz0")), "az": _fv(pts.get("az")),
+                        "cross_y": _fv(pts.get("crossPlateY")),
+                    } if _px0 is not None else None),
                 })
         return inning, pitches
 
