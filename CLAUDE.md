@@ -434,6 +434,13 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
   - **Part 2 (마일스톤 early/late 분리)**: `_check_post_game_milestones`서 게임데이터 감지(완봉/QS/노히터·사이클·다홈런·끝내기·전구단·팀기록)를 **`_check_game_data_records`로 추출**(game_batters/game_pitchers/PA **독립쿼리**, batter_stats 조인 제거) → smart_update서 **game_batters 채워진 순간 1회**(`_already_notified(gid,'game_data_records')` dedup) 조기 발송. 시즌/월간/통산/20-20=`_check_post_game_milestones` **+27분 잔류**(KBO 스탯, 안전). 팀기록 +27분 스케줄→조기호출로 이동.
   - ⚠️ **최종리뷰(opus) 7/7 통과**: no double-fire/missing-fire·season·career 온전·month=gid 규약·조기배선·팀기록스케줄 제거·독립쿼리 검증. Minor: 완봉/QS·다홈런 블록별 예외격리 추가(수정), game_cg month=0(pre-existing/의도=시즌 첫 완봉/QS, 유지). 라이브 gid539 무크래시.
   - ⚠️ **하한**: Naver boxscore 게시·KBO 시즌스탯 갱신(외부) — 그보다 빠르겐 불가. **실효과=다음 라이브 종료경기 로그 재측정 권장**(종료→발송 델타).
+- **📌 07-04~05 투구 궤적 시각화** (commits `6be181e`~`3a31001`, brainstorm→subagent-driven, 웹+서버 라이브·⚠️APK 미반영) — 투구위치보기에 궤적 추가.
+  - **데이터 근거**: Naver `ptsOptions`=완전 9-파라미터 PITCHf/x(x0/vx0/ax·y0/vy0/ay·z0/vz0/az+crossPlateX/Y). 현 크롤러는 파생 x/z만 저장했음. `game_relay_archive`엔 물리값 없어 백필=Naver 재크롤 불가피.
+  - **A 데이터**: `game_pitch_locations`에 9 물리컬럼+cross_y **nullable 추가**(기존 106k 행 null) · 크롤러(`crawl_pitch_locations`) 원값 저장(⚠️tuple↔INSERT 22-pos 정합) · API `pitch-locations`에 `physics` 서브객체(null-safe) · 백필 `backfill_pitch_physics.py`(game별 **DELETE+재크롤 replace**, live-guard KST17-23, ⚠️DELETE후 재크롤실패=위치0행→crawl_all이 재수집). **백필 부분완료**(≈265k행/871경기, live-guard로 정지 — **창밖 재실행 필요**).
+  - **B 수학**: `app/lib/utils/pitch_trajectory.dart`(순수 Dart, TDD 4) — `pitchTrajectory`(위치(t)=p0+v0t+½at², t_plate=y(t)=cross_y 해)·`pitchMovement`(무회전 대비 break inch)·`PitchPhysics.fromJson`(null-safe).
+  - **C 뷰**(`pitch_location_chart.dart`): [위치]/[궤적] 토글 · **무브먼트 꼬리**(플레이트 차트) · **2D 측면/상단 비행 아크** · **3D 원근 회전 뷰**(`_Trajectory3DView`, CustomPainter 회전+원근투영, 드래그 회전, 3D엔진 불요). 물리값 null 경기=궤적 탭 빈상태.
+  - ⚠️ **육안 미검증**(헤드리스 렌더 불가): 무브먼트꼬리·2D·**3D 회전/원근/스케일** 사용자 스팟체크 필수. 3D 초기각(yaw0.4/pitch0.28)·스케일·depth-sort 튜닝 여지(리뷰 노트).
+  - ⚠️ **미완/잔여**: 백필 나머지(live-guard 창밖 `python3 -m crawler.backfill_pitch_physics` 재실행) · Phase C-2D 서브에이전트가 계정 세션한도로 uncommitted 중단→메인루프가 검증(lint 1 fix)+커밋 · APK 미반영.
 
 ## 역대 데이터 수집 프로젝트 (KBO 1982~) — ✅ 핵심 완료 (2026-06-15 착수 ~ 06-16 A/C1/B/꼬리/검증 완료, C2만 장기보류)
 
