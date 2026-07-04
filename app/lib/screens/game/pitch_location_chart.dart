@@ -789,10 +789,10 @@ class _StrikeZonePainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Task 7: _TrajectoryView widget
+// Task 7: _TrajectoryView widget  (Task 8: 2D/3D sub-toggle added)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _TrajectoryView extends StatelessWidget {
+class _TrajectoryView extends StatefulWidget {
   final List<Map> pitches;
   final Map<String, Color> colors;
   final bool isDark;
@@ -807,76 +807,108 @@ class _TrajectoryView extends StatelessWidget {
     required this.onSelect,
   });
 
-  TextStyle _labelStyle(bool isDark) => TextStyle(
+  @override
+  State<_TrajectoryView> createState() => _TrajectoryViewState();
+}
+
+class _TrajectoryViewState extends State<_TrajectoryView> {
+  bool _show3D = false;
+
+  TextStyle _labelStyle() => TextStyle(
     fontSize: Typo.caption, fontWeight: Typo.bold,
-    color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF9A9AA2),
+    color: widget.isDark ? const Color(0xFF9A9AA3) : const Color(0xFF9A9AA2),
   );
 
   @override
   Widget build(BuildContext context) {
-    final physPitches = pitches.where((p) => p['_phys'] != null).toList();
+    final physPitches = widget.pitches.where((p) => p['_phys'] != null).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── side panel (y-distance × z-height) ───────────────────────────
+        // ── 2D / 3D sub-toggle ────────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.only(bottom: 2),
-          child: Text('측면 (거리 × 높이)', style: _labelStyle(isDark)),
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            children: [
+              _subToggle('2D', !_show3D),
+              const SizedBox(width: 4),
+              _subToggle('3D', _show3D),
+            ],
+          ),
         ),
-        Expanded(
-          flex: 5,
-          child: ClipRect(
-            child: LayoutBuilder(
-              builder: (_, c) => CustomPaint(
-                size: Size(c.maxWidth, c.maxHeight),
-                painter: _TrajectorySidePainter(
-                  pitches: pitches,
-                  colors: colors,
-                  isDark: isDark,
-                  selectedIdx: selectedIdx,
+        if (_show3D) ...[
+          // ── 3D rotating view ─────────────────────────────────────────────
+          Expanded(
+            child: ClipRect(
+              child: _Trajectory3DView(
+                pitches: widget.pitches,
+                colors: widget.colors,
+                isDark: widget.isDark,
+                selectedIdx: widget.selectedIdx,
+              ),
+            ),
+          ),
+        ] else ...[
+          // ── side panel (y-distance × z-height) ───────────────────────────
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Text('측면 (거리 × 높이)', style: _labelStyle()),
+          ),
+          Expanded(
+            flex: 5,
+            child: ClipRect(
+              child: LayoutBuilder(
+                builder: (_, c) => CustomPaint(
+                  size: Size(c.maxWidth, c.maxHeight),
+                  painter: _TrajectorySidePainter(
+                    pitches: widget.pitches,
+                    colors: widget.colors,
+                    isDark: widget.isDark,
+                    selectedIdx: widget.selectedIdx,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 6),
-        // ── top panel (y-distance × x-lateral) ───────────────────────────
-        Padding(
-          padding: const EdgeInsets.only(bottom: 2),
-          child: Text('상단 (거리 × 좌우)', style: _labelStyle(isDark)),
-        ),
-        Expanded(
-          flex: 4,
-          child: ClipRect(
-            child: LayoutBuilder(
-              builder: (_, c) => CustomPaint(
-                size: Size(c.maxWidth, c.maxHeight),
-                painter: _TrajectoryTopPainter(
-                  pitches: pitches,
-                  colors: colors,
-                  isDark: isDark,
-                  selectedIdx: selectedIdx,
+          const SizedBox(height: 6),
+          // ── top panel (y-distance × x-lateral) ───────────────────────────
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Text('상단 (거리 × 좌우)', style: _labelStyle()),
+          ),
+          Expanded(
+            flex: 4,
+            child: ClipRect(
+              child: LayoutBuilder(
+                builder: (_, c) => CustomPaint(
+                  size: Size(c.maxWidth, c.maxHeight),
+                  painter: _TrajectoryTopPainter(
+                    pitches: widget.pitches,
+                    colors: widget.colors,
+                    isDark: widget.isDark,
+                    selectedIdx: widget.selectedIdx,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        // ── pitch selector strip ──────────────────────────────────────────
+        ],
+        // ── pitch selector strip ─────────────────────────────────────────────
         if (physPitches.isNotEmpty)
           SizedBox(
             height: 36,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(vertical: 4),
-              itemCount: pitches.length,
+              itemCount: widget.pitches.length,
               itemBuilder: (_, i) {
-                final p = pitches[i];
+                final p = widget.pitches[i];
                 if (p['_phys'] == null) return const SizedBox.shrink();
                 final result = p['result'] as String? ?? 'other';
-                final color = colors[result] ?? colors['other']!;
-                final sel = selectedIdx == i;
+                final color = widget.colors[result] ?? widget.colors['other']!;
+                final sel = widget.selectedIdx == i;
                 return GestureDetector(
-                  onTap: () => onSelect(i),
+                  onTap: () => widget.onSelect(i),
                   child: Container(
                     margin: const EdgeInsets.only(right: 4),
                     width: 28, height: 28,
@@ -899,6 +931,42 @@ class _TrajectoryView extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _subToggle(String label, bool active) {
+    final isDark = widget.isDark;
+    return GestureDetector(
+      onTap: () => setState(() => _show3D = label == '3D'),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: active
+              ? (isDark
+                  ? Colors.white.withValues(alpha: 0.15)
+                  : Colors.black.withValues(alpha: 0.10))
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(Radii.xs),
+          border: Border.all(
+            color: active
+                ? (isDark
+                    ? Colors.white.withValues(alpha: 0.3)
+                    : Colors.black.withValues(alpha: 0.2))
+                : Colors.transparent,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: Typo.caption,
+            fontWeight: active ? Typo.bold : Typo.regular,
+            color: active
+                ? (isDark ? Colors.white : Colors.black)
+                : (isDark ? const Color(0xFF9A9AA3) : const Color(0xFF9A9AA2)),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1152,4 +1220,311 @@ class _TrajectoryTopPainter extends CustomPainter {
   @override
   bool shouldRepaint(_TrajectoryTopPainter old) =>
       old.pitches != pitches || old.isDark != isDark || old.selectedIdx != selectedIdx;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task 8: _Trajectory3DView  — drag-to-rotate 3D perspective
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _Trajectory3DView extends StatefulWidget {
+  final List<Map> pitches;
+  final Map<String, Color> colors;
+  final bool isDark;
+  final int? selectedIdx;
+
+  const _Trajectory3DView({
+    required this.pitches,
+    required this.colors,
+    required this.isDark,
+    required this.selectedIdx,
+  });
+
+  @override
+  State<_Trajectory3DView> createState() => _Trajectory3DViewState();
+}
+
+class _Trajectory3DViewState extends State<_Trajectory3DView> {
+  // Initial 3/4 view: pitcher slightly right, looking from above-behind catcher
+  double _yaw   = 0.40;   // ~23° — scene rotated laterally
+  double _pitch = 0.28;   // ~16° — tilt down from above
+
+  void _onPan(DragUpdateDetails d) {
+    setState(() {
+      _yaw = (_yaw + d.delta.dx * 0.012)
+          .clamp(-math.pi, math.pi);
+      _pitch = (_pitch - d.delta.dy * 0.012)
+          .clamp(-math.pi / 2 + 0.05, math.pi / 2 - 0.05);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanUpdate: _onPan,
+      child: LayoutBuilder(
+        builder: (_, c) => CustomPaint(
+          size: Size(c.maxWidth, c.maxHeight),
+          painter: _Trajectory3DPainter(
+            pitches: widget.pitches,
+            colors: widget.colors,
+            isDark: widget.isDark,
+            selectedIdx: widget.selectedIdx,
+            yaw: _yaw,
+            pitch: _pitch,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task 8: _Trajectory3DPainter
+//
+// Coordinate system (world, ft):
+//   y = distance from plate (0=plate, 55=release)
+//   x = lateral (positive = catcher's right)
+//   z = height (positive = up)
+//
+// Projection pipeline:
+//   1. Translate to scene centre (0, 27.5, 3.5)
+//   2. Yaw  (θ) rotation around world-up  (z) axis
+//   3. Pitch (φ) rotation around scene-lateral (x) axis
+//   4. Camera pull-back: camera sits 55 ft "behind" scene centre
+//   5. Perspective divide
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _Trajectory3DPainter extends CustomPainter {
+  final List<Map> pitches;
+  final Map<String, Color> colors;
+  final bool isDark;
+  final int? selectedIdx;
+  final double yaw, pitch;
+
+  _Trajectory3DPainter({
+    required this.pitches,
+    required this.colors,
+    required this.isDark,
+    required this.selectedIdx,
+    required this.yaw,
+    required this.pitch,
+  });
+
+  // Scene centre
+  static const double _scCx = 0.0;
+  static const double _scCy = 27.5;
+  static const double _scCz = 3.5;
+  // Camera sits this many scene-units behind the scene centre along the
+  // rotated depth axis.  55 ft keeps all trajectory points in front.
+  static const double _camBack = 55.0;
+
+  /// Project world-space (wx, wy, wz) → canvas Offset.
+  /// Returns null when the point is behind the camera.
+  Offset? _proj(double wx, double wy, double wz, Size size, double scale) {
+    // 1. Translate to scene centre
+    final lx = wx - _scCx;
+    final ly = wy - _scCy;
+    final lz = wz - _scCz;
+
+    // 2. Yaw rotation around Z (scene-up) axis
+    final cosY = math.cos(yaw), sinY = math.sin(yaw);
+    final rx = lx * cosY + ly * sinY;
+    final ry = -lx * sinY + ly * cosY;
+
+    // 3. Pitch rotation around X (scene-lateral) axis
+    //    positive pitch = tilt scene forward → view from above
+    final cosP = math.cos(pitch), sinP = math.sin(pitch);
+    final px      = rx;
+    final pyDepth = ry * cosP + lz * sinP;   // depth in camera frame
+    final pzUp    = -ry * sinP + lz * cosP;  // vertical in camera frame
+
+    // 4. Camera pull-back: camera at pyDepth = -_camBack
+    final depth = pyDepth + _camBack;
+    if (depth < 0.1) return null;
+
+    // 5. Perspective divide
+    final s = _camBack / depth * scale;
+    return Offset(
+      size.width  / 2 + px   * s,
+      size.height / 2 - pzUp * s,  // canvas-y inverted
+    );
+  }
+
+  void _drawSeg(Canvas c, Offset? a, Offset? b, Paint p) {
+    if (a != null && b != null) c.drawLine(a, b, p);
+  }
+
+  void _drawPoly(Canvas c, List<Offset?> pts, Paint p, {bool close = false}) {
+    Offset? prev;
+    for (final pt in pts) {
+      if (pt != null && prev != null) c.drawLine(prev, pt, p);
+      if (pt != null) prev = pt;
+    }
+    if (close && prev != null && pts.first != null) {
+      c.drawLine(prev, pts.first!, p);
+    }
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Background
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()..color = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F5));
+
+    // Scale: 1 ft ≈ 1/10 of the canvas shortest side
+    final scale = size.shortestSide / 10.0;
+
+    // ── Average strike zone dimensions ────────────────────────────────────────
+    double topSz = 3.3, botSz = 1.6;
+    final tops = pitches.where((p) => p['top_sz'] != null)
+        .map((p) => (p['top_sz'] as num).toDouble()).toList();
+    final bots = pitches.where((p) => p['bot_sz'] != null)
+        .map((p) => (p['bot_sz'] as num).toDouble()).toList();
+    if (tops.isNotEmpty) topSz = tops.reduce((a, b) => a + b) / tops.length;
+    if (bots.isNotEmpty) botSz = bots.reduce((a, b) => a + b) / bots.length;
+
+    const pHW = 8.5 / 12.0; // plate half-width (ft)
+
+    // ── Ground guide grid (z = 0) ─────────────────────────────────────────────
+    final gridP = Paint()
+      ..color = Colors.grey.withValues(alpha: 0.14)
+      ..strokeWidth = 0.6
+      ..style = PaintingStyle.stroke;
+
+    // Longitudinal lines (along y)
+    for (final xv in [-pHW, 0.0, pHW]) {
+      _drawSeg(canvas,
+        _proj(xv, 55.0, 0.0, size, scale),
+        _proj(xv,  0.0, 0.0, size, scale),
+        gridP,
+      );
+    }
+    // Distance tick lines (across x)
+    for (final yv in [0.0, 10.0, 20.0, 30.0, 40.0, 50.0]) {
+      _drawSeg(canvas,
+        _proj(-pHW, yv, 0.0, size, scale),
+        _proj( pHW, yv, 0.0, size, scale),
+        gridP,
+      );
+    }
+
+    // ── Strike zone rectangle at plate (y = 0) ────────────────────────────────
+    final zonePts = [
+      _proj(-pHW, 0.0, topSz, size, scale),  // TL
+      _proj( pHW, 0.0, topSz, size, scale),  // TR
+      _proj( pHW, 0.0, botSz, size, scale),  // BR
+      _proj(-pHW, 0.0, botSz, size, scale),  // BL
+    ];
+    _drawPoly(canvas, zonePts,
+        Paint()..color = Colors.red.withValues(alpha: 0.06),
+        close: true);
+    _drawPoly(canvas, zonePts,
+        Paint()
+          ..color = Colors.red.withValues(alpha: 0.55)
+          ..strokeWidth = 1.2
+          ..style = PaintingStyle.stroke,
+        close: true);
+
+    // ── Home plate pentagon (flat on ground) ──────────────────────────────────
+    // Standard plate: 17" wide front, tip toward catcher (−y direction)
+    const plateSideY = -0.25; // where angled sides start
+    const plateTipY  = -0.55; // pointed back toward catcher
+    final platePts = [
+      _proj(-pHW, 0.0,       0.0, size, scale), // front-left
+      _proj( pHW, 0.0,       0.0, size, scale), // front-right
+      _proj( pHW, plateSideY, 0.0, size, scale), // back-right
+      _proj( 0.0, plateTipY,  0.0, size, scale), // tip
+      _proj(-pHW, plateSideY, 0.0, size, scale), // back-left
+    ];
+    final plateColor = isDark ? Colors.grey[600]! : Colors.grey[400]!;
+    _drawPoly(canvas, platePts,
+        Paint()..color = plateColor.withValues(alpha: 0.5),
+        close: true);
+    _drawPoly(canvas, platePts,
+        Paint()
+          ..color = Colors.grey.withValues(alpha: 0.7)
+          ..strokeWidth = 1.0
+          ..style = PaintingStyle.stroke,
+        close: true);
+
+    // ── Trajectory polylines ─────────────────────────────────────────────────
+    for (int i = 0; i < pitches.length; i++) {
+      final p = pitches[i];
+      final phys = p['_phys'] as PitchPhysics?;
+      if (phys == null) continue;
+
+      final result = p['result'] as String? ?? 'other';
+      final color  = colors[result] ?? colors['other']!;
+      final isSel   = selectedIdx == i;
+      final isOther = selectedIdx != null && !isSel;
+      final alpha   = isOther ? 0.13 : (isSel ? 1.0 : 0.55);
+      final strokeW = isSel ? 2.8 : 1.5;
+
+      final traj = pitchTrajectory(phys, samples: 24);
+      if (traj.length < 2) continue;
+
+      final pts3d = traj
+          .map((v) => _proj(v.x, v.y, v.z, size, scale))
+          .toList();
+
+      // Draw polyline
+      final path = Path();
+      bool first = true;
+      for (final pt in pts3d) {
+        if (pt == null) continue;
+        if (first) { path.moveTo(pt.dx, pt.dy); first = false; }
+        else        { path.lineTo(pt.dx, pt.dy); }
+      }
+      canvas.drawPath(path, Paint()
+        ..color = color.withValues(alpha: alpha)
+        ..strokeWidth = strokeW
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round);
+
+      if (!isOther) {
+        // Release dot (start of path, near pitcher)
+        Offset? rel;
+        for (final pt in pts3d) { if (pt != null) { rel = pt; break; } }
+        if (rel != null) {
+          canvas.drawCircle(rel, isSel ? 4.5 : 3.0,
+              Paint()..color = color.withValues(alpha: alpha));
+        }
+
+        // Plate-arrival marker (solid + white ring)
+        Offset? plat;
+        for (final pt in pts3d.reversed) { if (pt != null) { plat = pt; break; } }
+        if (plat != null) {
+          canvas.drawCircle(plat, isSel ? 5.5 : 3.5,
+              Paint()..color = color.withValues(alpha: alpha));
+          canvas.drawCircle(plat, isSel ? 5.5 : 3.5,
+              Paint()
+                ..color = Colors.white.withValues(alpha: 0.8)
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = isSel ? 2.0 : 1.2);
+        }
+      }
+    }
+
+    // ── Drag hint ─────────────────────────────────────────────────────────────
+    final hintStyle = TextStyle(
+      fontSize: Typo.micro,
+      color: Colors.grey[500]!.withValues(alpha: 0.65),
+    );
+    final tp = TextPainter(
+      text: TextSpan(text: '드래그하여 회전', style: hintStyle),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas,
+        Offset(size.width - tp.width - 4, size.height - tp.height - 4));
+  }
+
+  @override
+  bool shouldRepaint(_Trajectory3DPainter old) =>
+      old.pitches     != pitches     ||
+      old.isDark      != isDark      ||
+      old.selectedIdx != selectedIdx ||
+      old.yaw         != yaw         ||
+      old.pitch       != pitch;
 }
