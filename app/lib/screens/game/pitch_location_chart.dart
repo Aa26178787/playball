@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../widgets/common_widgets.dart';
 import '../../utils/design_tokens.dart';
+import '../../utils/pitch_trajectory.dart';
 import '../../api/api_service.dart';
+
+enum _ViewMode { zone, traj }
 
 class PitchLocationSheet extends StatefulWidget {
   final int gameId;
@@ -33,9 +37,11 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
   String _awayTeam = '원정';
 
   String? _selectedPitcher;
-  int? _selectedInning;   // null = 전체
-  String? _selectedBatter; // null = 전체
+  int? _selectedInning;
+  String? _selectedBatter;
   String _filter = 'all';
+  _ViewMode _viewMode = _ViewMode.zone;
+  int? _selectedPitchIdx;
 
   bool _loading = true;
   bool _error = false;
@@ -83,7 +89,12 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
       final data = await ApiService.getPitchLocations(widget.gameId);
       if (mounted) {
         final pitches = (data['pitches'] as List? ?? [])
-            .map((p) => Map<String, dynamic>.from(p as Map))
+            .map((p) {
+              final m = Map<String, dynamic>.from(p as Map);
+              // Task 6: parse physics — stored under '_phys' key (PitchPhysics? value)
+              m['_phys'] = PitchPhysics.fromJson(m['physics'] as Map?);
+              return m;
+            })
             .toList();
         final pitchers = List<String>.from(data['pitchers'] ?? []);
         final homePitchers = List<String>.from(data['home_pitchers'] ?? []);
@@ -106,7 +117,6 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
     }
   }
 
-  // 현재 선택 투수의 이닝 목록
   List<int> get _availableInnings {
     final set = <int>{};
     for (final p in _pitches) {
@@ -118,7 +128,6 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
     return list;
   }
 
-  // 현재 선택 투수+이닝의 타자 목록 (첫 등장 순서 유지)
   List<String> get _availableBatters {
     final seen = <String>{};
     final ordered = <String>[];
@@ -205,49 +214,21 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
             Expanded(
               child: Column(
                 children: [
-                  // 1단계: 투수 선택
                   _buildSectionLabel('① 투수'),
                   _buildPitcherSelector(),
-
-                  // 2단계: 이닝 선택
                   _buildSectionLabel('② 이닝'),
                   _buildInningSelector(),
-
-                  // 3단계: 타자 선택
                   _buildSectionLabel('③ 타자'),
                   _buildBatterSelector(),
-
-                  // 결과 필터
                   _buildResultFilter(),
-
-                  // 범례 (차트 위 — 인식 쉽게) + 구수
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                    child: Wrap(
-                      spacing: 10,
-                      runSpacing: 4,
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        _legend('볼', _resultColors['ball']!),
-                        _legend('스트라이크', _resultColors['strike']!),
-                        _legend('헛스윙', _resultColors['swing']!),
-                        _legend('파울', _resultColors['foul']!),
-                        _legend('타격', _resultColors['hit']!),
-                        _legendDash('끝면 상한', Colors.orange),
-                        Text('· ${_filtered.length}구',
-                            style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.medium, color: _sub)),
-                      ],
-                    ),
-                  ),
-
-                  // 차트
+                  _buildViewBar(),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                      child: ClipRect(
-                        child: _StrikeZoneChart(pitches: _filtered, colors: _resultColors, isDark: _isDark),
-                      ),
+                      child: _viewMode == _ViewMode.zone
+                          ? ClipRect(child: _StrikeZoneChart(
+                              pitches: _filtered, colors: _resultColors, isDark: _isDark))
+                          : _buildTrajectoryContent(),
                     ),
                   ),
                 ],
@@ -257,6 +238,117 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
       ),
     );
   }
+
+  // ─── view bar: [위치]/[궤적] toggle + legend ───────────────────────────────
+
+  Widget _buildViewBar() {
+    final filtered = _filtered;
+    final physCount = filtered.where((p) => p['_phys'] != null).length;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Row(
+        children: [
+          // toggle
+          Container(
+            decoration: BoxDecoration(
+              color: _paper2,
+              borderRadius: BorderRadius.circular(Radii.sm),
+              border: Border.all(color: _line),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _viewToggleBtn('위치', _ViewMode.zone),
+                _viewToggleBtn('궤적', _ViewMode.traj),
+              ],
+            ),
+          ),
+          const SizedBox(width: Space.sm),
+          if (_viewMode == _ViewMode.zone)
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _legend('볼', _resultColors['ball']!),
+                    const SizedBox(width: 8),
+                    _legend('스트라이크', _resultColors['strike']!),
+                    const SizedBox(width: 8),
+                    _legend('헛스윙', _resultColors['swing']!),
+                    const SizedBox(width: 8),
+                    _legend('파울', _resultColors['foul']!),
+                    const SizedBox(width: 8),
+                    _legend('타격', _resultColors['hit']!),
+                    const SizedBox(width: 8),
+                    _legendDash('끝면 상한', Colors.orange),
+                  ],
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: Text(
+                '궤적 $physCount/${filtered.length}구',
+                style: TextStyle(fontSize: Typo.caption, color: _sub),
+              ),
+            ),
+          Text('· ${filtered.length}구',
+              style: TextStyle(fontSize: Typo.caption, fontWeight: Typo.medium, color: _sub)),
+        ],
+      ),
+    );
+  }
+
+  Widget _viewToggleBtn(String label, _ViewMode mode) {
+    final sel = _viewMode == mode;
+    return GestureDetector(
+      onTap: () => setState(() { _viewMode = mode; _selectedPitchIdx = null; }),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: sel ? _ink : Colors.transparent,
+          borderRadius: BorderRadius.circular(Radii.sm - 1),
+        ),
+        child: Text(label, style: TextStyle(
+          fontSize: Typo.caption,
+          fontWeight: sel ? Typo.bold : Typo.regular,
+          color: sel ? _paper : _sub,
+        )),
+      ),
+    );
+  }
+
+  // ─── trajectory tab content ───────────────────────────────────────────────
+
+  Widget _buildTrajectoryContent() {
+    final filtered = _filtered;
+    final hasPhys = filtered.any((p) => p['_phys'] != null);
+    if (!hasPhys) {
+      return Center(child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.show_chart, size: 48, color: Colors.grey[300]),
+          const SizedBox(height: 12),
+          Text('궤적 데이터 없음',
+              style: TextStyle(fontSize: Typo.subtitle, fontWeight: Typo.medium, color: _ink)),
+          const SizedBox(height: 6),
+          Text('이 경기의 투구 물리 데이터가 없습니다',
+              style: TextStyle(fontSize: Typo.small, color: _sub)),
+        ],
+      ));
+    }
+    return _TrajectoryView(
+      pitches: filtered,
+      colors: _resultColors,
+      isDark: _isDark,
+      selectedIdx: _selectedPitchIdx,
+      onSelect: (i) => setState(() =>
+          _selectedPitchIdx = _selectedPitchIdx == i ? null : i),
+    );
+  }
+
+  // ─── selectors / chips ───────────────────────────────────────────────────
 
   Widget _buildSectionLabel(String label) {
     return Padding(
@@ -310,6 +402,7 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
                         _selectedPitcher = p;
                         _selectedInning = null;
                         _selectedBatter = null;
+                        _selectedPitchIdx = null;
                       }),
                       child: _chip(p, sel, _ink),
                     ),
@@ -327,35 +420,29 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
     final innings = _availableInnings;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      child: Row(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => setState(() { _selectedInning = null; _selectedBatter = null; }),
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: _chip('전체', _selectedInning == null, Colors.grey[700]!),
-                    ),
-                  ),
-                  ...innings.map((ing) {
-                    final sel = _selectedInning == ing;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: GestureDetector(
-                        onTap: () => setState(() { _selectedInning = ing; _selectedBatter = null; }),
-                        child: _chip('$ing회', sel, Colors.grey[700]!),
-                      ),
-                    );
-                  }),
-                ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () => setState(() { _selectedInning = null; _selectedBatter = null; _selectedPitchIdx = null; }),
+              child: Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: _chip('전체', _selectedInning == null, Colors.grey[700]!),
               ),
             ),
-          ),
-        ],
+            ...innings.map((ing) {
+              final sel = _selectedInning == ing;
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: GestureDetector(
+                  onTap: () => setState(() { _selectedInning = ing; _selectedBatter = null; _selectedPitchIdx = null; }),
+                  child: _chip('$ing회', sel, Colors.grey[700]!),
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
@@ -364,35 +451,29 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
     final batters = _availableBatters;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      child: Row(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => setState(() => _selectedBatter = null),
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: _chip('전체', _selectedBatter == null, Colors.teal),
-                    ),
-                  ),
-                  ...batters.map((b) {
-                    final sel = _selectedBatter == b;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: GestureDetector(
-                        onTap: () => setState(() => _selectedBatter = b),
-                        child: _chip(b, sel, Colors.teal),
-                      ),
-                    );
-                  }),
-                ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () => setState(() { _selectedBatter = null; _selectedPitchIdx = null; }),
+              child: Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: _chip('전체', _selectedBatter == null, Colors.teal),
               ),
             ),
-          ),
-        ],
+            ...batters.map((b) {
+              final sel = _selectedBatter == b;
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: GestureDetector(
+                  onTap: () => setState(() { _selectedBatter = b; _selectedPitchIdx = null; }),
+                  child: _chip(b, sel, Colors.teal),
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
@@ -411,7 +492,6 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
         label,
         style: TextStyle(
           fontSize: Typo.caption,
-          // 선택 bg가 밝으면(_ink 다크모드=흰색) 검은 글씨로 대비 확보
           color: selected ? (color.computeLuminance() > 0.6 ? Colors.black : Colors.white) : _sub,
           fontWeight: selected ? Typo.bold : Typo.regular,
         ),
@@ -422,27 +502,21 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
   Widget _buildResultFilter() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      child: Row(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _resultLabels.entries.map((e) {
-                  final sel = _filter == e.key;
-                  final color = e.key == 'all' ? _ink : (_resultColors[e.key] ?? Colors.grey);
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: GestureDetector(
-                      onTap: () => setState(() => _filter = e.key),
-                      child: _chip(e.value, sel, color),
-                    ),
-                  );
-                }).toList(),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: _resultLabels.entries.map((e) {
+            final sel = _filter == e.key;
+            final color = e.key == 'all' ? _ink : (_resultColors[e.key] ?? Colors.grey);
+            return Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: GestureDetector(
+                onTap: () => setState(() => _filter = e.key),
+                child: _chip(e.value, sel, color),
               ),
-            ),
-          ),
-        ],
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -463,11 +537,8 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          width: 18,
-          height: 10,
-          child: CustomPaint(
-            painter: _DashLinePainter(color),
-          ),
+          width: 18, height: 10,
+          child: CustomPaint(painter: _DashLinePainter(color)),
         ),
         const SizedBox(width: Space.xs),
         Text(label, style: TextStyle(fontSize: Typo.caption, color: _sub)),
@@ -475,6 +546,10 @@ class _PitchLocationSheetState extends State<PitchLocationSheet> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _DashLinePainter
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _DashLinePainter extends CustomPainter {
   final Color color;
@@ -492,6 +567,10 @@ class _DashLinePainter extends CustomPainter {
   @override
   bool shouldRepaint(_DashLinePainter old) => old.color != color;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _StrikeZoneChart + _StrikeZonePainter  (Task 6: movement tail added)
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _StrikeZoneChart extends StatelessWidget {
   final List<Map> pitches;
@@ -522,13 +601,10 @@ class _StrikeZonePainter extends CustomPainter {
   static const double xMax = 2.5;
   static const double zMin = 0.0;
   static const double zMax = 5.5;
-  // KBO 홈플레이트 반폭 8.5인치(ft), 공 반지름 1.45인치(ft)
-  // ABS: 공 중심이 플레이트 끝 + 공반지름 이내 → strike
-  static const double plateHalfW = 8.5 / 12.0;          // 0.7083 ft
-  static const double ballR      = 1.45 / 12.0;         // 0.1208 ft
-  static const double absHalfW   = plateHalfW + ballR;  // 0.8292 ft
-  // 끝면(후면) 높이 오프셋: 중간면보다 1.5cm 낮게 설정 (KBO ABS 공식 규정)
-  static const double absDropFt  = 1.5 / 30.48;         // 0.0492 ft
+  static const double plateHalfW = 8.5 / 12.0;
+  static const double ballR      = 1.45 / 12.0;
+  static const double absHalfW   = plateHalfW + ballR;
+  static const double absDropFt  = 1.5 / 30.48;
 
   double get _avgTopSz {
     final vals = pitches.where((p) => p['top_sz'] != null).map((p) => (p['top_sz'] as num).toDouble());
@@ -552,10 +628,8 @@ class _StrikeZonePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final topSz = _avgTopSz;
     final botSz = _avgBotSz;
-    // topSz/botSz = ABS 판정 경계 (이미 ball-edge 기준, 추가 ballR 불필요)
     final topAbs = topSz;
     final botAbs = botSz;
-    // 끝면(후면) 기준 상한: 중간면보다 1.5cm 낮음
     final topBack = topAbs - absDropFt;
 
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
@@ -567,33 +641,27 @@ class _StrikeZonePainter extends CustomPainter {
       Paint()..color = Colors.brown.withValues(alpha: 0.3)..strokeWidth = 1,
     );
 
-    // ABS 스트라이크존 (공 중심 기준 판정 경계)
     final tl = _toCanvas(-absHalfW, topAbs, size);
     final br = _toCanvas(absHalfW, botAbs, size);
     final zoneRect = Rect.fromPoints(tl, br);
 
-    // 중간면+끝면 모두 통과 구역 (확정 스트라이크)
     canvas.drawRect(zoneRect, Paint()..color = Colors.red.withValues(alpha: 0.06));
 
-    // 끝면 기준 상한선 위 구역: 중간면 통과 but 끝면 불통 가능 (경계 영역)
     final yTopBack = _toCanvas(0, topBack, size).dy;
     canvas.drawRect(
       Rect.fromLTRB(tl.dx, tl.dy, br.dx, yTopBack),
       Paint()..color = Colors.orange.withValues(alpha: 0.13),
     );
 
-    // 전체 존 테두리 (중간면 기준)
     canvas.drawRect(zoneRect,
         Paint()..color = Colors.red.withValues(alpha: 0.5)..style = PaintingStyle.stroke..strokeWidth = 1.5);
 
-    // 끝면 상한선: 점선
     final dashPaint = Paint()
       ..color = Colors.orange.withValues(alpha: 0.75)
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
     _drawDashedHLine(canvas, tl.dx, br.dx, yTopBack, dashPaint);
 
-    // 3x3 구역 구분선
     final zoneH = (topAbs - botAbs) / 3;
     for (int i = 1; i <= 2; i++) {
       final y = _toCanvas(0, botAbs + zoneH * i, size).dy;
@@ -608,12 +676,11 @@ class _StrikeZonePainter extends CustomPainter {
           Paint()..color = Colors.red.withValues(alpha: 0.2)..strokeWidth = 0.5);
     }
 
-    // 홈플레이트 실제 폭 (±8.5인치) — tip을 캔버스 안에 고정
     final plateCenter = _toCanvas(0, 0, size);
-    final plateLeft = _toCanvas(-plateHalfW, 0.15, size);
+    final plateLeft  = _toCanvas(-plateHalfW, 0.15, size);
     final plateRight = _toCanvas(plateHalfW, 0.15, size);
-    final plateTipY = (plateCenter.dy + 8).clamp(0.0, size.height - 1);
-    final platePath = Path()
+    final plateTipY  = (plateCenter.dy + 8).clamp(0.0, size.height - 1);
+    final platePath  = Path()
       ..moveTo(plateLeft.dx, plateLeft.dy)
       ..lineTo(plateRight.dx, plateRight.dy)
       ..lineTo(plateCenter.dx, plateTipY)
@@ -622,12 +689,12 @@ class _StrikeZonePainter extends CustomPainter {
     canvas.drawPath(platePath,
         Paint()..color = Colors.grey[500]!..style = PaintingStyle.stroke..strokeWidth = 1);
 
-    final centerX = plateCenter.dx;
     canvas.drawLine(
-      Offset(centerX, 0), Offset(centerX, size.height),
+      Offset(plateCenter.dx, 0), Offset(plateCenter.dx, size.height),
       Paint()..color = Colors.grey.withValues(alpha: 0.2)..strokeWidth = 0.5,
     );
 
+    // ── draw pitches: movement tail (Task 6) then dot ──────────────────────
     for (final p in pitches) {
       final x = (p['x'] as num?)?.toDouble();
       final z = (p['z'] as num?)?.toDouble();
@@ -641,6 +708,53 @@ class _StrikeZonePainter extends CustomPainter {
         continue;
       }
 
+      // Task 6: movement tail for pitches with physics
+      final phys = p['_phys'] as PitchPhysics?;
+      if (phys != null) {
+        final (pfxX, pfxZ) = pitchMovement(phys);
+        // spinless reference location (ft) = actual minus the movement break
+        final refX = x - pfxX / 12.0;
+        final refZ = z - pfxZ / 12.0;
+        final refPos = _toCanvas(refX, refZ, size);
+
+        // tail line: reference → actual
+        canvas.drawLine(refPos, pos,
+          Paint()
+            ..color = color.withValues(alpha: 0.6)
+            ..strokeWidth = 1.8
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round);
+
+        // arrowhead at actual dot
+        final dx = pos.dx - refPos.dx;
+        final dy = pos.dy - refPos.dy;
+        final len = math.sqrt(dx * dx + dy * dy);
+        if (len > 2) {
+          final ux = dx / len, uy = dy / len;
+          // backward unit vector
+          final bx = -ux, by = -uy;
+          const arrowLen = 5.0;
+          final cosA = math.cos(0.45);
+          final sinA = math.sin(0.45);
+          final ah1 = Offset(
+            pos.dx + arrowLen * (bx * cosA - by * sinA),
+            pos.dy + arrowLen * (bx * sinA + by * cosA),
+          );
+          final ah2 = Offset(
+            pos.dx + arrowLen * (bx * cosA + by * sinA),
+            pos.dy + arrowLen * (-bx * sinA + by * cosA),
+          );
+          final arrowPaint = Paint()
+            ..color = color.withValues(alpha: 0.6)
+            ..strokeWidth = 1.5
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round;
+          canvas.drawLine(pos, ah1, arrowPaint);
+          canvas.drawLine(pos, ah2, arrowPaint);
+        }
+      }
+
+      // dot (always)
       canvas.drawCircle(pos, 5.5, Paint()..color = Colors.black.withValues(alpha: 0.15));
       canvas.drawCircle(pos, 5, Paint()..color = color.withValues(alpha: 0.85));
       canvas.drawCircle(pos, 5,
@@ -672,4 +786,370 @@ class _StrikeZonePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_StrikeZonePainter old) => old.pitches != pitches || old.isDark != isDark;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task 7: _TrajectoryView widget
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TrajectoryView extends StatelessWidget {
+  final List<Map> pitches;
+  final Map<String, Color> colors;
+  final bool isDark;
+  final int? selectedIdx;
+  final void Function(int) onSelect;
+
+  const _TrajectoryView({
+    required this.pitches,
+    required this.colors,
+    required this.isDark,
+    required this.selectedIdx,
+    required this.onSelect,
+  });
+
+  TextStyle _labelStyle(bool isDark) => TextStyle(
+    fontSize: Typo.caption, fontWeight: Typo.bold,
+    color: isDark ? const Color(0xFF9A9AA3) : const Color(0xFF9A9AA2),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final physPitches = pitches.where((p) => p['_phys'] != null).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── side panel (y-distance × z-height) ───────────────────────────
+        Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Text('측면 (거리 × 높이)', style: _labelStyle(isDark)),
+        ),
+        Expanded(
+          flex: 5,
+          child: ClipRect(
+            child: LayoutBuilder(
+              builder: (_, c) => CustomPaint(
+                size: Size(c.maxWidth, c.maxHeight),
+                painter: _TrajectorySidePainter(
+                  pitches: pitches,
+                  colors: colors,
+                  isDark: isDark,
+                  selectedIdx: selectedIdx,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        // ── top panel (y-distance × x-lateral) ───────────────────────────
+        Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Text('상단 (거리 × 좌우)', style: _labelStyle(isDark)),
+        ),
+        Expanded(
+          flex: 4,
+          child: ClipRect(
+            child: LayoutBuilder(
+              builder: (_, c) => CustomPaint(
+                size: Size(c.maxWidth, c.maxHeight),
+                painter: _TrajectoryTopPainter(
+                  pitches: pitches,
+                  colors: colors,
+                  isDark: isDark,
+                  selectedIdx: selectedIdx,
+                ),
+              ),
+            ),
+          ),
+        ),
+        // ── pitch selector strip ──────────────────────────────────────────
+        if (physPitches.isNotEmpty)
+          SizedBox(
+            height: 36,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              itemCount: pitches.length,
+              itemBuilder: (_, i) {
+                final p = pitches[i];
+                if (p['_phys'] == null) return const SizedBox.shrink();
+                final result = p['result'] as String? ?? 'other';
+                final color = colors[result] ?? colors['other']!;
+                final sel = selectedIdx == i;
+                return GestureDetector(
+                  onTap: () => onSelect(i),
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 4),
+                    width: 28, height: 28,
+                    decoration: BoxDecoration(
+                      color: sel ? color : color.withValues(alpha: 0.25),
+                      shape: BoxShape.circle,
+                      border: sel ? Border.all(color: color, width: 2) : null,
+                    ),
+                    child: Center(
+                      child: Text('${i + 1}',
+                        style: TextStyle(
+                          fontSize: Typo.micro,
+                          color: sel ? Colors.white : color,
+                          fontWeight: Typo.bold,
+                        )),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task 7: _TrajectorySidePainter  (canvas-x = distance y, canvas-y = height z)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TrajectorySidePainter extends CustomPainter {
+  final List<Map> pitches;
+  final Map<String, Color> colors;
+  final bool isDark;
+  final int? selectedIdx;
+
+  _TrajectorySidePainter({
+    required this.pitches,
+    required this.colors,
+    required this.isDark,
+    required this.selectedIdx,
+  });
+
+  static const double _yRelease = 55.0;
+  static const double _yPlate   = 0.0;
+  static const double _zMin     = 0.0;
+  static const double _zMax     = 7.0;
+
+  // release at canvas left, plate at canvas right
+  Offset _tc(double worldY, double worldZ, Size size) {
+    final cx = (_yRelease - worldY) / (_yRelease - _yPlate) * size.width;
+    final cy = (_zMax - worldZ) / (_zMax - _zMin) * size.height;
+    return Offset(cx, cy);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()..color = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F5));
+
+    // ground line
+    final groundY = _tc(0, 0, size).dy;
+    canvas.drawLine(Offset(0, groundY), Offset(size.width, groundY),
+        Paint()..color = Colors.brown.withValues(alpha: 0.3)..strokeWidth = 1);
+
+    // strike zone band at plate edge
+    double topSz = 3.3, botSz = 1.6;
+    final tops = pitches.where((p) => p['top_sz'] != null).map((p) => (p['top_sz'] as num).toDouble()).toList();
+    final bots = pitches.where((p) => p['bot_sz'] != null).map((p) => (p['bot_sz'] as num).toDouble()).toList();
+    if (tops.isNotEmpty) topSz = tops.reduce((a, b) => a + b) / tops.length;
+    if (bots.isNotEmpty) botSz = bots.reduce((a, b) => a + b) / bots.length;
+
+    final szTop = _tc(_yPlate, topSz, size);
+    final szBot = _tc(_yPlate, botSz, size);
+    final szX   = size.width - 8;
+    canvas.drawRect(
+      Rect.fromLTRB(szX, szTop.dy, size.width, szBot.dy),
+      Paint()..color = Colors.red.withValues(alpha: 0.15),
+    );
+    canvas.drawRect(
+      Rect.fromLTRB(szX, szTop.dy, size.width, szBot.dy),
+      Paint()..color = Colors.red.withValues(alpha: 0.5)..style = PaintingStyle.stroke..strokeWidth = 1.2,
+    );
+
+    // grid lines + labels
+    final lblStyle = TextStyle(
+      fontSize: Typo.micro,
+      color: isDark ? Colors.grey[500] : Colors.grey[600],
+    );
+    for (final zv in [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]) {
+      if (zv > _zMax) break;
+      final oy = _tc(0, zv, size).dy;
+      canvas.drawLine(Offset(0, oy), Offset(size.width, oy),
+          Paint()..color = Colors.grey.withValues(alpha: 0.12)..strokeWidth = 0.5);
+      final tp = TextPainter(
+        text: TextSpan(text: '${zv.toInt()}ft', style: lblStyle),
+        textDirection: TextDirection.ltr)..layout();
+      tp.paint(canvas, Offset(2, oy - 9));
+    }
+    for (final yv in [10.0, 20.0, 30.0, 40.0, 50.0]) {
+      final ox = _tc(yv, 0, size).dx;
+      canvas.drawLine(Offset(ox, 0), Offset(ox, size.height),
+          Paint()..color = Colors.grey.withValues(alpha: 0.12)..strokeWidth = 0.5);
+      final tp = TextPainter(
+        text: TextSpan(text: '${yv.toInt()}ft', style: lblStyle),
+        textDirection: TextDirection.ltr)..layout();
+      tp.paint(canvas, Offset(ox + 2, size.height - 12));
+    }
+
+    // trajectories
+    for (int i = 0; i < pitches.length; i++) {
+      final p = pitches[i];
+      final phys = p['_phys'] as PitchPhysics?;
+      if (phys == null) continue;
+      final result = p['result'] as String? ?? 'other';
+      final color = colors[result] ?? colors['other']!;
+      final isSel   = selectedIdx == i;
+      final isOther = selectedIdx != null && !isSel;
+      final alpha   = isOther ? 0.18 : (isSel ? 1.0 : 0.55);
+      final strokeW = isSel ? 2.5 : 1.5;
+
+      final traj = pitchTrajectory(phys, samples: 24);
+      if (traj.length < 2) continue;
+      final path = Path();
+      bool first = true;
+      for (final v in traj) {
+        final o = _tc(v.y, v.z, size);
+        if (first) { path.moveTo(o.dx, o.dy); first = false; }
+        else { path.lineTo(o.dx, o.dy); }
+      }
+      canvas.drawPath(path, Paint()
+        ..color = color.withValues(alpha: alpha)
+        ..strokeWidth = strokeW
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round);
+
+      // release dot
+      if (!isOther) {
+        final rel = _tc(traj.first.y, traj.first.z, size);
+        canvas.drawCircle(rel, isSel ? 4.5 : 3.0,
+            Paint()..color = color.withValues(alpha: alpha));
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_TrajectorySidePainter old) =>
+      old.pitches != pitches || old.isDark != isDark || old.selectedIdx != selectedIdx;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task 7: _TrajectoryTopPainter  (canvas-x = distance y, canvas-y = lateral x)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TrajectoryTopPainter extends CustomPainter {
+  final List<Map> pitches;
+  final Map<String, Color> colors;
+  final bool isDark;
+  final int? selectedIdx;
+
+  _TrajectoryTopPainter({
+    required this.pitches,
+    required this.colors,
+    required this.isDark,
+    required this.selectedIdx,
+  });
+
+  static const double _yRelease = 55.0;
+  static const double _yPlate   = 0.0;
+  static const double _xRange   = 3.0;   // ±3 ft lateral
+
+  // release at canvas left, plate at canvas right
+  // positive x (pitcher's right / catcher's right) at canvas top
+  Offset _tc(double worldY, double worldX, Size size) {
+    final cx = (_yRelease - worldY) / (_yRelease - _yPlate) * size.width;
+    final cy = (_xRange - worldX) / (_xRange * 2) * size.height;
+    return Offset(cx, cy);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()..color = isDark ? const Color(0xFF1F1F24) : const Color(0xFFF5F5F5));
+
+    // center line (x = 0)
+    final centerY = _tc(0, 0, size).dy;
+    canvas.drawLine(Offset(0, centerY), Offset(size.width, centerY),
+        Paint()..color = Colors.grey.withValues(alpha: 0.3)..strokeWidth = 0.8);
+
+    // plate width band at plate edge
+    const plateHalfW = 8.5 / 12.0;
+    final plateTop = _tc(_yPlate, plateHalfW, size);
+    final plateBot = _tc(_yPlate, -plateHalfW, size);
+    final szX = size.width - 8;
+    canvas.drawRect(
+      Rect.fromLTRB(szX, plateTop.dy, size.width, plateBot.dy),
+      Paint()..color = Colors.blue.withValues(alpha: 0.15),
+    );
+    canvas.drawRect(
+      Rect.fromLTRB(szX, plateTop.dy, size.width, plateBot.dy),
+      Paint()..color = Colors.blue.withValues(alpha: 0.4)..style = PaintingStyle.stroke..strokeWidth = 1.2,
+    );
+
+    final lblStyle = TextStyle(
+      fontSize: Typo.micro,
+      color: isDark ? Colors.grey[500] : Colors.grey[600],
+    );
+    for (final xv in [-2.0, -1.0, 1.0, 2.0]) {
+      final oy = _tc(0, xv, size).dy;
+      canvas.drawLine(Offset(0, oy), Offset(size.width, oy),
+          Paint()..color = Colors.grey.withValues(alpha: 0.12)..strokeWidth = 0.5);
+      final lbl = '${xv > 0 ? '+' : ''}${xv.toInt()}ft';
+      final tp = TextPainter(
+        text: TextSpan(text: lbl, style: lblStyle),
+        textDirection: TextDirection.ltr)..layout();
+      tp.paint(canvas, Offset(2, oy - 9));
+    }
+
+    // distance labels
+    for (final yv in [10.0, 20.0, 30.0, 40.0, 50.0]) {
+      final ox = _tc(yv, 0, size).dx;
+      canvas.drawLine(Offset(ox, 0), Offset(ox, size.height),
+          Paint()..color = Colors.grey.withValues(alpha: 0.12)..strokeWidth = 0.5);
+      final tp = TextPainter(
+        text: TextSpan(text: '${yv.toInt()}ft', style: lblStyle),
+        textDirection: TextDirection.ltr)..layout();
+      tp.paint(canvas, Offset(ox + 2, size.height - 12));
+    }
+
+    // trajectories
+    for (int i = 0; i < pitches.length; i++) {
+      final p = pitches[i];
+      final phys = p['_phys'] as PitchPhysics?;
+      if (phys == null) continue;
+      final result = p['result'] as String? ?? 'other';
+      final color = colors[result] ?? colors['other']!;
+      final isSel   = selectedIdx == i;
+      final isOther = selectedIdx != null && !isSel;
+      final alpha   = isOther ? 0.18 : (isSel ? 1.0 : 0.55);
+      final strokeW = isSel ? 2.5 : 1.5;
+
+      final traj = pitchTrajectory(phys, samples: 24);
+      if (traj.length < 2) continue;
+      final path = Path();
+      bool first = true;
+      for (final v in traj) {
+        final o = _tc(v.y, v.x, size);
+        if (first) { path.moveTo(o.dx, o.dy); first = false; }
+        else { path.lineTo(o.dx, o.dy); }
+      }
+      canvas.drawPath(path, Paint()
+        ..color = color.withValues(alpha: alpha)
+        ..strokeWidth = strokeW
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round);
+
+      if (!isOther) {
+        final rel = _tc(traj.first.y, traj.first.x, size);
+        canvas.drawCircle(rel, isSel ? 4.5 : 3.0,
+            Paint()..color = color.withValues(alpha: alpha));
+      }
+    }
+
+    // axis label
+    final axisLbl = TextPainter(
+      text: TextSpan(text: '투수 → 포수', style: lblStyle),
+      textDirection: TextDirection.ltr)..layout();
+    axisLbl.paint(canvas, Offset(size.width / 2 - axisLbl.width / 2, size.height - 12));
+  }
+
+  @override
+  bool shouldRepaint(_TrajectoryTopPainter old) =>
+      old.pitches != pitches || old.isDark != isDark || old.selectedIdx != selectedIdx;
 }
