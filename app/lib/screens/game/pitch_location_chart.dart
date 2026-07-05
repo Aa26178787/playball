@@ -708,53 +708,7 @@ class _StrikeZonePainter extends CustomPainter {
         continue;
       }
 
-      // Task 6: movement tail for pitches with physics
-      final phys = p['_phys'] as PitchPhysics?;
-      if (phys != null) {
-        final (pfxX, pfxZ) = pitchMovement(phys);
-        // spinless reference location (ft) = actual minus the movement break
-        final refX = x - pfxX / 12.0;
-        final refZ = z - pfxZ / 12.0;
-        final refPos = _toCanvas(refX, refZ, size);
-
-        // tail line: reference → actual
-        canvas.drawLine(refPos, pos,
-          Paint()
-            ..color = color.withValues(alpha: 0.6)
-            ..strokeWidth = 1.8
-            ..style = PaintingStyle.stroke
-            ..strokeCap = StrokeCap.round);
-
-        // arrowhead at actual dot
-        final dx = pos.dx - refPos.dx;
-        final dy = pos.dy - refPos.dy;
-        final len = math.sqrt(dx * dx + dy * dy);
-        if (len > 2) {
-          final ux = dx / len, uy = dy / len;
-          // backward unit vector
-          final bx = -ux, by = -uy;
-          const arrowLen = 5.0;
-          final cosA = math.cos(0.45);
-          final sinA = math.sin(0.45);
-          final ah1 = Offset(
-            pos.dx + arrowLen * (bx * cosA - by * sinA),
-            pos.dy + arrowLen * (bx * sinA + by * cosA),
-          );
-          final ah2 = Offset(
-            pos.dx + arrowLen * (bx * cosA + by * sinA),
-            pos.dy + arrowLen * (-bx * sinA + by * cosA),
-          );
-          final arrowPaint = Paint()
-            ..color = color.withValues(alpha: 0.6)
-            ..strokeWidth = 1.5
-            ..style = PaintingStyle.stroke
-            ..strokeCap = StrokeCap.round;
-          canvas.drawLine(pos, ah1, arrowPaint);
-          canvas.drawLine(pos, ah2, arrowPaint);
-        }
-      }
-
-      // dot (always)
+      // dot (위치 뷰 = 궤적/무브먼트 미표시, 궤적은 [궤적] 탭 전용)
       canvas.drawCircle(pos, 5.5, Paint()..color = Colors.black.withValues(alpha: 0.15));
       canvas.drawCircle(pos, 5, Paint()..color = color.withValues(alpha: 0.85));
       canvas.drawCircle(pos, 5,
@@ -1135,10 +1089,10 @@ class _TrajectoryTopPainter extends CustomPainter {
     canvas.drawLine(Offset(0, centerY), Offset(size.width, centerY),
         Paint()..color = Colors.grey.withValues(alpha: 0.3)..strokeWidth = 0.8);
 
-    // plate width band at plate edge
-    const plateHalfW = 8.5 / 12.0;
-    final plateTop = _tc(_yPlate, plateHalfW, size);
-    final plateBot = _tc(_yPlate, -plateHalfW, size);
+    // ABS 스트라이크존 lateral 밴드 (plate 반폭 + 공 반지름 = 위치 뷰 absHalfW)
+    const absHalfW = 8.5 / 12.0 + 1.45 / 12.0;
+    final plateTop = _tc(_yPlate, absHalfW, size);
+    final plateBot = _tc(_yPlate, -absHalfW, size);
     final szX = size.width - 8;
     canvas.drawRect(
       Rect.fromLTRB(szX, plateTop.dy, size.width, plateBot.dy),
@@ -1384,7 +1338,9 @@ class _Trajectory3DPainter extends CustomPainter {
     if (tops.isNotEmpty) topSz = tops.reduce((a, b) => a + b) / tops.length;
     if (bots.isNotEmpty) botSz = bots.reduce((a, b) => a + b) / bots.length;
 
-    const pHW = 8.5 / 12.0; // plate half-width (ft)
+    const pHW = 8.5 / 12.0; // plate half-width (ft) — 홈플레이트/그리드용
+    // ABS 스트라이크존 반폭 = 플레이트 반폭 + 공 반지름 (위치 뷰 _StrikeZonePainter.absHalfW와 동일)
+    const absHW = pHW + 1.45 / 12.0;
 
     // ── Ground guide grid (z = 0) ─────────────────────────────────────────────
     final gridP = Paint()
@@ -1411,10 +1367,10 @@ class _Trajectory3DPainter extends CustomPainter {
 
     // ── Strike zone rectangle at plate (y = 0) ────────────────────────────────
     final zonePts = [
-      _proj(-pHW, 0.0, topSz, size, scale),  // TL
-      _proj( pHW, 0.0, topSz, size, scale),  // TR
-      _proj( pHW, 0.0, botSz, size, scale),  // BR
-      _proj(-pHW, 0.0, botSz, size, scale),  // BL
+      _proj(-absHW, 0.0, topSz, size, scale),  // TL
+      _proj( absHW, 0.0, topSz, size, scale),  // TR
+      _proj( absHW, 0.0, botSz, size, scale),  // BR
+      _proj(-absHW, 0.0, botSz, size, scale),  // BL
     ];
     _drawPoly(canvas, zonePts,
         Paint()..color = Colors.red.withValues(alpha: 0.06),
