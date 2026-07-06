@@ -441,6 +441,8 @@ google-services.json(앱) / firebase_options.dart / firebase-service-account.jso
   - **C 뷰**(`pitch_location_chart.dart`): [위치]/[궤적] 토글 · **무브먼트 꼬리**(플레이트 차트) · **2D 측면/상단 비행 아크** · **3D 원근 회전 뷰**(`_Trajectory3DView`, CustomPainter 회전+원근투영, 드래그 회전, 3D엔진 불요). 물리값 null 경기=궤적 탭 빈상태.
   - ⚠️ **육안 미검증**(헤드리스 렌더 불가): 무브먼트꼬리·2D·**3D 회전/원근/스케일** 사용자 스팟체크 필수. 3D 초기각(yaw0.4/pitch0.28)·스케일·depth-sort 튜닝 여지(리뷰 노트).
   - ⚠️ **미완/잔여**: 백필 나머지(live-guard 창밖 `python3 -m crawler.backfill_pitch_physics` 재실행) · Phase C-2D 서브에이전트가 계정 세션한도로 uncommitted 중단→메인루프가 검증(lint 1 fix)+커밋 · APK 미반영.
+  - **07-05 궤적 폴리시**(commit `885e14d`, 웹+서버 라이브): 육안 피드백 2건. ① [위치] 뷰서 무브먼트 꼬리 제거(`_StrikeZonePainter`) — 궤적/무브먼트는 [궤적] 탭 전용. ② **3D ABS 밖 스트라이크 오표시** 근본원인 = 3D 스트라이크존 박스가 폭에 `pHW`(plate 반폭 8.5/12) 사용, 실제 ABS 존 폭 = `absHalfW = pHW + ballR(1.45/12) = 9.95/12`(위치 뷰 `_StrikeZonePainter.absHalfW` 값) → 박스 좁아 가장자리 스트라이크가 밖으로. top 뷰 밴드도 plateHalfW 사용 → **둘 다 absHalfW 정렬**(4뷰 위치·side·top·3D 존 정의 통일: 폭 ±absHalfW·높이 avg[botSz,topSz]). 홈플레이트/그리드는 실제 plate라 pHW 유지. ⚠️육안 미검증.
+- **📌 07-07 마일스톤 stale 신고 = 오진(버그 아님, 코드 무변경)**: "디아즈 69타점인데 시즌 50타점 알림" 신고 → systematic-debugging 실측: **득점(runs) ≠ 타점(RBI) 혼동**. 디아즈 2026 = runs 50·rbis 69, game 558(07-05) runs +1 → 50번째 득점 갓 통과. 발송 알림 = `season_runs` 50("🏃 시즌 50득점", 타점 아님). season_rbi(타점)는 50(06-14)·60(06-23) 정상 발화·70 미도달 침묵. crossing 가드 `prev = 시즌누계 - 오늘경기; if prev < t <= 시즌누계`(BATTER_SEASON 전체 동일, `season_runs:[50,80,100]` 포함) 정상 + game_batters per-game 값 정상(디아즈 0-1/경기) → stale 경로 없음. **교훈: "N타점인데 M 알림" 신고 = 스탯종류(득점/타점/안타) 먼저 대조**(user_notifications.title + player_milestone_alerts.milestone_type 실측).
 
 ## 역대 데이터 수집 프로젝트 (KBO 1982~) — ✅ 핵심 완료 (2026-06-15 착수 ~ 06-16 A/C1/B/꼬리/검증 완료, C2만 장기보류)
 
