@@ -1200,14 +1200,14 @@ class _Trajectory3DView extends StatefulWidget {
 class _Trajectory3DViewState extends State<_Trajectory3DView> {
   // Initial 3/4 view: pitcher slightly right, looking from above-behind catcher
   double _yaw   = 0.40;   // ~23° — scene rotated laterally
-  double _pitch = 0.28;   // ~16° — tilt down from above
+  // 위아래(pitch)는 고정 — 횡(yaw)으로만 회전 (사용자 요청). 상하 드래그는 무시.
+  final double _pitch = 0.28;   // ~16° — tilt down from above (고정)
 
   void _onPan(DragUpdateDetails d) {
     setState(() {
+      // 좌우 드래그(dx)로 yaw만 회전 — 상하(dy)는 반영 안 함(시점 상하 고정)
       _yaw = (_yaw + d.delta.dx * 0.012)
           .clamp(-math.pi, math.pi);
-      _pitch = (_pitch - d.delta.dy * 0.012)
-          .clamp(-math.pi / 2 + 0.05, math.pi / 2 - 0.05);
     });
   }
 
