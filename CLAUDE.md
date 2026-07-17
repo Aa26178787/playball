@@ -307,11 +307,13 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 - ~~share_plus 10 고정~~ → **06-12 firebase 메이저 업** (core ^4.10/messaging ^16.3/crashlytics ^5.2 — 구버전이 Xcode 16 non-modular header 비호환으로 iOS 빌드 불가): share_plus ^12 동반, image_cropper 제거(미사용+web 충돌). 메이저 업 후 안드 빌드 깨지면 **flutter clean 먼저**(stale 캐시가 Unresolved reference 둔갑) / 소셜 로그인 안 함(결정) / 동명이인 team_id 기준
 - 과거경기 수정 game_date < '2026-05-09' 조건 / 삼성 홈 stadium_id=7 보정 SQL
 - 서버 pull 전 충돌 파일 rm (insta CSV 등 untracked 주의) / firebase-service-account.json push 금지
+- **서버 git 인증 = PAT-in-URL(현재) / 보안강화 = SSH deploy key 권장**: 현재 remote = `https://<PAT>@github.com/...`(토큰 평문 `.git/config`). 최강 = **SSH deploy key** — `ssh-keygen -t ed25519 -f ~/.ssh/playball_deploy -N ''` → 공개키를 GitHub 레포 Settings→Deploy keys 등록(read-only 체크 가능) → `git remote set-url origin git@github.com:Aa26178787/playball.git`. 토큰 자체 제거·레포단위 폐기·노출0. 중간책 = env+credential helper(토큰 `.git/config`서 빼나 같은 유저면 `/proc/PID/environ`로 여전히 읽힘 = 어중간). PAT 만료/노출 시 GitHub서 회전 → 서버 `git remote set-url` 재실행 1회. (⚠️07-17 구토큰 `ghp_T5Gpq..` 만료 → 새 PAT로 재인증·`reset --hard origin/main` reconcile 완료, 현재 정상 pull)
 - PgBouncer 6432 유지 / 커뮤니티 조회수 _view_cache 재시작 초기화(의도)
 - **nginx 배포 = `/etc/nginx/sites-enabled/playball`이 symlink 아닌 독립 실파일** (repo `nginx_playball.conf` → sites-available **아니라** sites-enabled로 cp해야 적용). ⚠️ 백업파일은 절대 sites-enabled 안에 두지 말 것(nginx가 `sites-enabled/*` 전부 로드 → `limit_req_zone` 중복 `emerg`). 백업은 /tmp. 적용 = cp→`nginx -t`→`systemctl reload nginx` (reload graceful이라 직후 수초 old/new worker 혼재 정상)
 - ⚠️⚠️ **repo nginx_playball.conf가 프로덕션 직접튜닝보다 뒤처질 수 있음** — 06-09 사고: CSP 배포가 sites-enabled를 repo로 덮으며 **API rate limit 300r/m→30r/m·burst 100→20 revert → 앱 홈 버스트(1초 20+요청) 전부 503 = 전 데이터 로딩 실패**. **cp 배포 전 반드시 `sudo diff /etc/nginx/sites-enabled/playball ~/playball/nginx_playball.conf`**. 현 튜닝 = api **300r/m+burst100** / auth 10r/m+burst5 (repo 동기화 완료). 진단법: nginx error.log `limiting requests, excess` + access.log `Dart/3.11`+503
 - **DB 비번 회전 = 3곳 동기화**: ① `ALTER USER playball_user PASSWORD` ② `/etc/pgbouncer/pgbouncer.ini` `[databases]` 줄 `password=`(auth_type=trust라 pgbouncer→postgres 실자격증명 = 여기, userlist.txt 아님) ③ systemd `Environment=DB_PASSWORD`(2 drop-in: playball=email.conf, scheduler=env.conf). ② 빠뜨리면 "pgbouncer cannot connect to server". 순서: ALTER→ini 교체→pgbouncer restart→서비스 restart
 - 새 알림 = notification_log dedup 패턴 필수
+- **FCM 무-game_id 알림 = data에 엔티티ID로 collapse 분리 필수** (06-30 버그): `_send`의 collapse_key가 game_id 無면 bare 상수(`"roster_change"` 등) → Android `tag`+APNs `collapse-id` 동일 → 같은 타입 다발 알림(등말소·마일스톤·rank·streak·team_record)이 **트레이 한 슬롯에 합쳐져 최신이 이전 덮음**(발송·인앱함은 정상, 트레이만 드롭). `_collapse_key(ntype,game_id,data)`가 game_id 無면 data의 player_id/team_id로 분리 → **신규 무-game_id 알림 추가 시 data에 player_id/team_id 넣을 것**
 - ⚠️ **`game_event_stream` 컬럼 = `event_type`** (`type` 아님). 06-18 사고: `_send_game_summary`가 `SELECT type FROM game_event_stream`로 매 종료마다 예외→return → **한줄평/MVP/game_summary push가 narrative 배포(06-15)~06-18 전부 죽음**(game_reviews 0행). 교훈 = ① dedup 마킹(`_mark_notified('game_end')`)을 **발송 성공 후**가 아닌 호출 전 하면 실패 시 영구 누락 ② 부가쿼리(event_flags 등)는 개별 try 격리 — 본체 발송 안 죽게. 수정+event_type+격리, 478 검증("삼성 끝내기, 구자욱")
 - 테마 splashFactory = **NoSplash** + highlight/splash 투명 (탭 반짝임 전부 제거 — 06-08, 되돌리지 말 것). TabBarTheme overlayColor도 투명
 - 프로필 크롭 = `PhotoCropScreen`(crop_your_image, Flutter 인앱). 네이티브 image_cropper(uCrop)는 Android15 edge-to-edge status bar 겹침으로 폐기 — 프로필엔 다시 쓰지 말 것. photo_manager 권한 = 기존 READ_MEDIA_IMAGES 재사용
@@ -328,421 +330,67 @@ Headers: `User-Agent: Mozilla/5.0` / `Referer: https://sports.naver.com/`
 ## FCM (활성화 완료)
 google-services.json(앱) / firebase_options.dart / firebase-service-account.json(서버) / firebase-admin 7.4.0 / push_tokens·user_settings notify 컬럼 — 전부 ✅. AndroidConfig high priority + channel playball_default.
 
-## 변경 이력 (기능 상세 = git log / 재발방지 규칙 = 주의사항)
-- **~06-08 누적**: 필드뷰 CustomPainter(ABS)·알림체계(notification_log dedup/마일스톤/game_summary)·이닝중계 개편(textRelays 지연 → 직전이닝 재fetch)·Option A 전면이식(헤더5탭/마이페이지/팀상세/선수/캘린더/커뮤니티)·인앱크롭(PhotoCropScreen)·다중사진(image_urls)·피칭디자인&존히트맵·인스타339명·플로팅탭 슬라이드
-- **06-08b 출시준비(보안·안정화)**: 시크릿 env화·admin X-Admin-Key·rate limit 강화(X-Real-IP)·업로드 magic-byte·회원탈퇴 FK CASCADE·유저차단(user_blocks)·DB백업 가드·watchdog·Crashlytics·보안감사(auth/IDOR 견고)·auth 버튼 다크 가시성
-- **06-11 즉시묶음**: 보안5(EXIF Pillow 재인코딩·pg listen localhost·rpcbind off·백업 오프사이트 pull·인증 5회 제한) + 성능(orjson·uvicorn[standard]) + **app-config 풀스택**(서버 `/app-config`+`app_config` 테이블 / 클라 `AppConfig` 강제업데이트 다이얼로그·홈 서버배너·`enabled()` 킬스위치 API — 위젯 적용 점진) + **아침 브리핑**(KST 09:00 팀별 1통, 라이브 검증 완료) + UI소품(햅틱·이닝칩 자동스크롤·댓글 이탈경고). 잔여: 다크 육안검증
-- **06-11b 메가A 착수**: 플랫폼 코어(game_event_stream 8종 발행 + plate_appearances 24,584타석 백필 — 분포 리그 정합 검증) → **matchup 직접대결**(서버+선수상세+필드뷰 좌하단 라이브 캡션) → **인게임 승률 모델 v1**(AUC .853)+win-prob-series+relay home_win_prob → **승률 그래프 UI**(중계탭 상단 `_WinProbChart` — 타석별 라인·50%점선·이닝라벨·터치툴팁·라이브30s) → **결정적순간 푸시**(`_check_clutch_moment` — game_pitches 최신행→모델, ±20%p·5회+, 시뮬 평균 0.81건/경기). **per-PA 안타확률 = 검증 후 보류**(AUC 0.50 — 1시즌 표본으론 타자 간 분산이 타석 노이즈에 묻힘, 출루 라벨도 동일. `pa_hit_model.py` 보존, 2시즌+ 재평가. 데일리픽 등 의존 기능 동반 보류) → **불펜 피로도**(bullpen-status + 경기상세 로스터 불펜 색상뱃지·범례 — 라이브 검증: 조동욱 red 2연투 정합). **메가A 전체 완료** (per-PA만 데이터 사유 보류). ⚠️**서버 pull 충돌 주의 확장: 학습 coef json도 untracked 충돌원** (ingame_coef.json 사고 — pull 실패로 직전 배포 누락됐었음. 산출물 커밋 전 서버 측 rm) ⚠️5/9~ Naver win_rate 미수신 건 라이브 시간대 확인 대기
-- **06-11c A1이전+3시즌화**: A1.Flex 마이그레이션(상단 인프라) → **PA type23 파서버그 발견·수정**(홈런/SF 타석 증발 — 전체 재구축 132,949→145,689 PA, 김도영 2024 HR 38 정합 확인) → 모델 재학습(ingame AUC .8541@14.5만 / **per-PA .5226 — 0.497서 개선됐지만 표면노출 계속 보류**, matchup 통산은 3시즌 자동 수혜) → **24·25 시즌스탯 적재**(네이버 통계 match-only + KBO 보강 + statiz 타자파생 미실행 오타픽스) → **선수상세 시즌칩**(2026/2025/2024/통산 — 통산=클라 집계(카운팅 합·비율 재계산·불가시 표본가중), 리그비교/규정뱃지는 최신시즌 뷰만) → **홈 날짜스트립 2024-03~ 확장**(연도 픽커 추가, 월칩 = 보는 연도 기준, 오프시즌 날짜 = 경기없음 비활성). 존히트맵/피칭디자인은 자연히 3시즌 합산됨(표본↑, 의도)
-- **06-10 선수상세 개편**: 핵심스탯 커스텀피커(선수별 슬롯)+리그순위/규정미달/방향인식 비교말풍선(길게누르기,단어줄바꿈 word-joiner)·스탯 ⓘ용어설명·세부그리드=전체−핵심·팀상세 SNS링크(YT/IG/굿즈)·최근본선수칩·인스타 신고버튼. **인스타 다중검증(상세=INSTA_VERIFY.md): 339→358, imginn으로 가족계정9·동명이인 박멸**. 선발투수 게임카드 조기표시(`_update_probable_starters` 오늘+내일). 홀드 GREATEST고정버그(올러294)→자가치유
-- **06-12 메가B 1차 (포인트 원장)**: point_ledger+game_predictions 테이블 → `api/points.py award()`(UNIQUE 멱등) → 예측 API(POST predict/GET fan-predictions) → scheduler 종료 정산(적중50/참여10) → 출석(+5 일1회)/직관(+20) 훅 → 리더보드 TOP50 → 게임카드 `_PredictionBar` 팬투표 섹션(픽 버튼→분포바+✓내픽, 'AI 승리 예측' 바 아래)+홈 출석 사일런트+마이페이지 points_screen(내 포인트/랭킹/적립내역). **mojibake 사고 복구**: api_service.dart·games.py 워킹카피 전체 오염(과거 PS append) → HEAD 복원+Edit 재적용, predictGame류 authHeaders 누락도 교정
-- **06-12d UI 정리+킬스위치**: **포인트 기능 토글**(관리자 콘솔 '기능 토글' 탭 — GET/POST `/admin/feature-flags`(points/prediction/community), kill_switches JSONB 갱신+`/app-config` 캐시 즉시 무효화. 앱 = `AppConfig.enabled('points')` 가드: 게임카드 팬투표·출석 호출·마이페이지 포인트 진입. **현재 points=false 시드** — 콘솔서 켜기 전까지 앱/웹 숨김) + 연월 컨트롤 중앙정렬 + **팬투표 리디자인**(고스트 버튼+팀컬러 dot / 투표 후 라벨행+8px 얇은바 — ML 바와 위계 차등) + **마이페이지 재편**(글/좋아요/댓글 인라인 3섹션→'커뮤니티 활동' 허브 3행+바텀시트 전체목록, 포인트/차단/초기화 단독카드→'기타' 통합) + **알림 설정 4카테고리**(올스타→선수 흡수, 커뮤니티+방해금지→일반, 접힘 헤더 켜짐 n/m) + **scheduler 30분 heartbeat**(무경기 새벽 무로그 → 스모크 오인 방지, smoke 기준 35분)
-- **06-13 안정화+관리자 대확장**: (앱/웹/iOS 다수 픽스) iOS 사파리 주배포 대응(웹 OS뒤로가기=JS 트랩 유일경로·extension type this 바인딩·webBottomGuard 탭바·헤더 상태바 단차 5탭+서브6·**기준폭 412 전역 스케일**(좁은기기=갤럭시 동일비율, Transform.scale+MediaQuery override)·textScale 1.1·헤더 노치 여백 headerTopGap·필드뷰 잔여500px 보장+FittedBox 비율유지) / 구장 카카오맵 웹 폴백(inappwebview 스텁→외부링크) / 루트 302→/app/ / **버그8**(탭바여백·작성칸 커서·트렌드 era소멸→안내문·공유 타점 rbi→rbis·인증문구·사전알림 GRANT누락·댓글알림 중복=POST재시도 GET한정+더블탭가드) / **성능3종**(SWR @cached(ttl,swr)·ETag/304 미들웨어+클라 If-None-Match·`/home/bootstrap` 1콜) / createImageBitmap premultiplyAlpha='premultiply'(전역스케일후 투명PNG 어두움 방지). ※다크모드 이미지 어두움은 이 옵션 아님 = **Chrome Auto Dark Theme** — index.html `<meta name=color-scheme content="light dark">`로 해결(06-14, 미선언 시 강제 darkening이 이미지만 dim) / 스코어보드+득점요약 통합카드(균등분배 스크롤제거·토글헤더제거·타점배지 높이24) / **마일스톤 정리**(개인최다 최소임계·등록말소 알림 0건=공백불일치+dedup·결정적순간/아침브리핑 전용토글) / 팀순위 시즌하한(전반기 216승=3시즌합산 — 홈원정·피타고리안·1점차도 동일 픽스)·PS확률 자체정렬+바아래 항목%
-  - ⚠️ **502 사고 2건**(상단 인프라 기록): duckdns 구박스 cron 핑퐁 + fail2ban 릴레이 IP 오인밴. 스모크 6·7항이 감시
-  - **관리자 콘솔 대확장**: 로그인 게이트(키 검증 후 진입) + **DAU 인프라**(`api/dau.py` 미들웨어 JWT sub 추출→daily_active_users 60s flush) + 탭4 신설(통계 DAU/WAU/MAU+가입추이 / 설정·공지 배너·버전·시즌단계+전체 푸시 broadcast / 시스템 하트비트·재크롤큐(admin_commands, scheduler 30s 소비)·백업·알림내역·보안로그 / 댓글 검색삭제) + 회원 정지(users.suspended_until, 로그인 403)·포인트 수동지급(reason=admin). 신규테이블 daily_active_users·admin_commands GRANT 완료
-- **06-14 game_start 미발송 사고+수정**: 6/13 459 키움-한화 game_start 알림 누락(타 경기 460~463 정상). 원인 = **status 갱신 경로 2개 race** — `_update_today_games`(스케줄 크롤, curr_details 반영) vs `_update_live_games_realtime`(relay)가 `curr_details` 캡처 **이후** status를 '진행'으로 바꿈(relay 우선 감지). game_start 루프는 stale curr('예정')만 봐 전환 누락 → 다음 cycle prev='진행'이라 영구 스킵. ⚠️같은 시간대 selenium(snap chromium) 크래시 있었으나 **무관**(크래시는 전 경기 '예정' 시점, game_start은 그 후 — 시점 다름. 헷갈리지 말 것). 수정 2중방어: ① **알림 비교 직전 `curr_details`/`curr_statuses` 재캡처**(`_update_*` 갱신분 다 반영 후 비교 — game_start뿐 아니라 종료/취소 등 모든 state 알림이 relay 우선갱신 race서 보호) ② **game_start catch-up**: 전환(예정/라인업→진행) 외 `진행 & 초반(current_inning≤2) & 미발송`도 발송(재시작/예외/race 자가복구, >2회 진행 경기 제외=늦은 '경기 시작' 오발송 방지, notification_log 영속 dedup이라 중복 X). 459는 이미 종료라 소급 미발송. **교훈**: 전환(prev→curr) 기반 알림은 curr 캡처 시점·다중 갱신경로 race에 취약 → 비교 직전 재캡처 + state-based catch-up 병행
-- **⚠️ 06-14 game_start 진짜 원인 정정** (위 recapture/catch-up은 **오진** — 무해해서 유지하나 원인 아니었음): **경기전 알림(pregame, "경기 N분 전")이 `user_notifications`에 type='game_start' 기록**(9d08207, 5/24) + **`_already_notified`에 user_notifications(game_id,type) 전역 체크 추가**(f2237a2, 6/3) → 충돌. pregame이 경기 2시간 전 game_start row를 남기면 실제 시작 시 '이미 보냄' 판정해 억제. ⚠️**체크가 game당 전역**이라 **한 명만 pregame 받아도 그 경기 game_start가 전원 누락**. 6/5 정상이던 건 그 경기에 pregame 미발화(설정/토큰), 6월 중순부터 발화하며 억제 시작. 459(키움-한화)만 누락·460~463 정상이던 것도 동일 사용자 pregame 차이로 설명됨. **수정**: pregame `user_notifications.type` 'game_start'→**'game_soon'**(FCM data.type은 game_start 유지=탭 라우팅), 앱 알림화면 game_soon=alarm 아이콘. ⚠️**경기 관련 user_notifications에 'game_start' type 재사용 금지** — `_already_notified`가 전역 game당 dedup하므로 pregame류는 별도 type 필수
-- **06-14d 웹/UI 픽스 묶음**: ① **다크모드 웹 이미지 어두움** = **Chrome Auto Dark Theme**(color-scheme 미선언 시 콘텐츠 강제 darkening — 앱 UI는 이미 다크라 밝은 이미지만 dim). `app/web/index.html`에 `<meta name="color-scheme" content="light dark">` = opt-out. ⚠️premultiplyAlpha 가설은 오진(되돌림, 'premultiply' 유지). ② **핵심스탯 1회성 점선힌트** = 2x2 전체 wrap 아닌 **각 기록(숫자)에만** marching-ants(`_MarchingAntsBox`/`_DashedBorderPainter`), 비교말풍선 트리거 길게누르기→**클릭(onTapUp)**. **비규정(규정타석/이닝 미달)도 값+용어설명 팝업**(`_showCompareBubble` c==null early return 제거, c null-safe). ③ **갤럭시 스와이프 뒤로가기가 이전 사이트로 탈출** = web back trap popstate서 sentinel **재푸시를 onBack보다 먼저**(동기) — 빠른 연속 스와이프 레이스 창 제거(`web_back_web.dart`). ④ **인스타 링크 앱 연결** = `utils/insta_launch.dart`(`instagram://user?username=` 딥링크 우선+https 폴백), 선수/팀 상세 적용, AndroidManifest `<queries>` instagram scheme/package + iOS `LSApplicationQueriesSchemes`. 웹은 https 폴백(kIsWeb). ⑤ **PS확률 범례 풀네임** = PO/준PO/WC홈/WC원정 → 플레이오프/준플레이오프/와일드카드 홈/와일드카드 원정(team_screen `_psPctLabel`, Wrap이라 줄바꿈 안전). ⑥ **온보딩 모드 픽커 서버 영속** = `user_settings.app_mode`(TEXT) + `/auth/me` 포함 + `POST /user/app-mode`. 앱 픽커가 로그인 유저면 보기 전 서버 app_mode 확인(있으면 스킵+로컬 flag 복원), 선택 시 서버 저장 → 웹 localStorage(사파리 ITP/캐시삭제)로 로컬 flag 증발해도 **재로그인 시 재노출 안 됨**. ⚠️**웹 로그아웃/온보딩 재출현 원인 = 사파리 ITP가 미설치 웹앱 localStorage를 ~7일 evict**(토큰+flag 증발) or 사이트데이터 수동삭제 — 코드버그 아님. 토큰까지 영구화는 PWA 설치 필요(standalone 크래시로 보류). ⚠️웹 변경 다수 = 재빌드+배포 완료, **네이티브 APK는 미반영(재빌드 필요)**
-- **06-14b QS/완투/완봉 0 누락 + starter 식별 버그**: 한화 박준영(#68) 6/13 6.1IP 2ER 퀄스인데 선수상세 QS 0. 원인 2중 ① `pitcher_stats.qs/cg/sho`는 **KBO 공식(규정충족자만 노출)**에서만 채워짐 → 비규정 선발 영원히 0 (2026 32명 영향) ② ⚠️**`game_pitchers.pitching_order` 베이스 불일치** — boxscore writer(naver_crawler `enumerate`)는 **0-base**(starter=0), 라이브 relay/entry writer(`enumerate(...,start=1)`)는 **1-base**(starter=1). 즉 라이브 중 starter=1, 최종 종료 후 starter=0. starter를 `pitching_order=1` 고정으로 찾던 곳(마일스톤 QS/완투, games.py 선발 fallback)이 종료 후 2번째 투수를 선발로 오인. **수정**: starter = `(game,team_side)별 MIN(pitching_order)`로 통일(convention-agnostic, 0/1 양쪽 안전) — 절대값 `=1` 금지. `_sync_pitcher_counting_from_games()`가 game_pitchers(starter min-order, ip≥6 & er≤3)서 QS/CG/SHO 계산해 GREATEST 보완(KBO값 유지), 경기 종료 후처리에 추가 + 3시즌 백필(99행). ※`innings_pitched`는 numeric(6.1=6⅓)이라 `>=6` 직접 비교 OK. ⚠️동명이인 박준영 한화 2명(313/8405) — QS는 player_id 귀속이라 무관
-- **06-14c 핵심스탯 점선힌트 + 관리자 토글확장/서비스복구**: ① 선수상세 핵심스탯 길게누르기 안내 = 설명글→**marching-ants 점선박스 애니 1회성**(`_MarchingAntsBox`/`_DashedBorderPainter`, LocalCache flag `hint_core_longpress` — 처음만 표시+즉시 set, 길게누르면 해제) ② **관리자 기능토글 9종 확장**: FEATURES += win_prob/bullpen/pitch_zone/highlights/weather/share, 앱 `AppConfig.enabled(key)` 가드(OFF=섹션 graceful 숨김 — 승률그래프·불펜신호등·피칭디자인/존히트맵·하이라이트·날씨·공유카드). 기본 ON(kill_switches 미기재=enabled) ③ **`POST /admin/maintenance`**(clear_cache·reset_db_pool·rewarm_weather·all) — API 프로세스 직접실행(큐는 scheduler 프로세스라 캐시/풀 복구 불가), 콘솔 시스템탭 '서비스 복구' 버튼. **새 기능토글 추가 시 = backend FEATURES + 클라 AppConfig.enabled 가드 1:1 필수**
-- **06-12c 메가D (출시 게이트 코드측)**: `scripts/smoke.sh`(서비스 활성+scheduler 30분 심장박동(새벽 무로그 정상이라 3분 기준은 오탐)+git 동기화+엔드포인트 9종+HTTPS 2종 — 배포 후 `bash ~/playball/scripts/smoke.sh` 1커맨드, ALL PASS 검증 완료) + **GitHub Actions CI 녹색**(`.github/workflows/ci.yml` — flutter analyze는 **`lib test` 범위 한정**(vendored local_packages가 CI fresh 환경서 미해석 에러)+test(@Tags(golden) 제외: 골든 PNG=Windows 렌더라 Linux 러너 불일치)+backend compileall) + **골든 확대**(VisitShareCard/PlayerShareCard — cached_network_image의 path_provider mock 채널 필수 패턴) + **release APK 빌드 복구**: google-services 4.3.10→4.4.2 (crashlytics gradle 3.x가 4.4.1+ 요구 — release minify의 mapping 업로드 태스크만 터져서 debug론 잠복, 65.5MB 빌드 성공). 잔여 메가D = 외부작업(Play 내부테스트·keystore)
-- **06-12b 메가B 완결+메가C**: **푸시GW**(fcm_service._send = 단일 게이트웨이 — KST 23:30~07:30 quiet hours 억제(user_settings.notify_quiet 기본 ON, 인앱 알림함은 전원 저장) + ntype→Android 채널 3종 라우팅(playball_live/myteam/community — main.dart 생성, 설정 '방해금지' 토글)) → **뱃지**(api/badges.py 11종 + user_badges 테이블, GET /user/badges lazy 평가) → **주간미션**(GET /user/missions — 예측3/출석5/직관1, KST 월요일 주차, 완료 시 자동 보상 reason=mission_weekly) → points_screen에 미션 진척바+뱃지 그리드 → **온보딩 모드**(홈 첫실행 프로/캐주얼 픽커 — 캐주얼=compact+notify_my_team_only) → **push_tokens 다수 검증**(가짜 토큰 시뮬: 멀티발송/quiet 억제·opt-out/채널/무효토큰 자동삭제 전부 라이브 통과 — InvalidArgumentError 매칭 보강이 픽스). **메가C**: showShareCardDialog(RepaintBoundary→png→share_plus, 웹=버튼 숨김)+VisitShareCard/PlayerShareCard → 직관 저장 직후 공유 제안+승리 시 인앱리뷰(in_app_review ^2.0.9) → 선수상세 FAB 시트 '카드 공유'(랜딩 링크 동봉) → **공유 랜딩** `/s/p/{id}`·`/s/g/{id}`(api/routers/share.py — og 메타+웹앱 유도 버튼). 딥링크 스킴 = 출시 시 App Links로 (메가D)
-- **06-15 버그픽스+시스템+메가E/F/G**: 팀상세·시스템 수정 후 메가셋 3개 연속 구현(spec/plan = `docs/superpowers/`).
-  - **버그 5**: ① 팀상세 승률 '-' = 미니멀 진입점(홈 로고탭 등) widget.team에 win_rate 없음 → `_loadStandings`가 team_rankings서 빠진 헤더필드 백필 ② PS확률 정렬 뒤죽박죽 = 5개 직행확률 **합**으로 정렬→상위팀 ~100% 수렴 동점 → **시드 가중**(KS×5>PO×4>준PO×3>WC홈×2>WC원정)+rank tiebreak ③ 등록말소 행 = `reason` 컬럼이 약어 포지션("내"/"투") 저장 → 오른쪽 풀포지션 제거+이름 옆 풀포지션 ④ 선수목록 타자/투수 열 행높이 불일치 = 투수만 칩(Container padding) → 타자도 동일 칩 ⑤ 최근경기 시리즈 끝 1경기 orphan = getTeamGames limit 10이 3경기 시리즈 경계 자름(10=3+3+3+1) → fetch 18+잘린 가장오래된 불완전시리즈 숨김
-  - **시스템 (다기기 간헐 로그아웃 진범)**: `create_refresh_token` 활성토큰 캡 쿼리 **`ORDER BY created_at ASC OFFSET 4` = 정렬 역전** → 오래된 4개 보존하고 방금 활동한 최신 토큰 삭제 → 다기기(삼성브라우저+사파리+APK) 사용자 활성세션 잘려 401. **DESC로 수정**. + revoked/만료 토큰 영구 누적(248행 중 92% dead) → create 시 per-user 정리 + scheduler 일일 전역 purge(UTC 18:00). + `flutter analyze lib` 18→**0**(미사용 import/메서드 제거, deprecated Share→SharePlus.instance)
-  - **테스트 인프라**: `backend/tests/` pytest + CI `backend-test` job(postgres 서비스, 타깃 deps, `pytest.ini` pythonpath). 순수=DB불요/통합=`TEST_DATABASE_URL` skipif. **25개**(narrative/auth rotation/points/badges/season=순수+DB). 검증 = 서버 scratch DB(`playball_test` 생성→drop). auth 캡 버그를 이제 자동으로 잡음
-  - **메가E 내러티브 엔진**: `api/narrative.py`(순수 dict→str, LLM 교체가능: `game_review`/`live_caption`/`mvp_line`) + **`game_reviews` 테이블**(game_id PK, review/mvp). 종료 후처리서 WPA(plate_appearances) 기반 **오늘의 MVP**(rbis 폴백)+game_event_stream 끝내기/연장 → 한줄평 생성 → `notify_game_summary(review_text=)`로 **game_summary 푸시 본문 교체**(신규 푸시 0). relay `current_state.situation_caption`=라이브 "지금 무슨 상황?". game detail `review` join → 경기상세 중계탭 상단 배너+MVP칩. 킬스위치 `narrative`(FEATURES+AppConfig). 한줄평/MVP=다음 종료경기부터
-  - **메가F 리텐션 점화**: **points 킬스위치 OFF→ON**(admin POST /feature-flags, kill_switches={} 라이브) → 팬투표·출석·포인트·뱃지·미션·리더보드 전 유저 활성. **예측 결과 푸시**(`notify_prediction_result` 적중/참여/무, 토큰없는 웹유저는 인앱만) — 정산 루프서 예측자별, `notification_log (game_id,'prediction_result',uid)` dedup(⚠️**sub_id 비어있어야 user_notifications 전역체크 회피** = game_start 버그 패턴이라 sub_id=uid 필수). **예측 마감 카운트다운**(`_PredictionBar` deadline=경기시작, 1분 Timer, 마감 후 투표잠금). badges/mission 회귀테스트 추가
-  - **메가G 시즌/오프시즌**: `api/season.py::compute_phase`(순수: preseason/regular/offseason, **postseason=admin 핀 전용** 자동판별X) + scheduler 일일 자동갱신(UTC 18:30, 일정서 first/last/recent → season_phase, postseason이면 미덮음, 캐시 무효화). **연말결산 Wrapped**(`GET /user/season-wrapped?year` 직관W/L/구장·예측적중·포인트·출석·최애 / `screens/wrapped/season_wrapped_screen` 그라디언트 카드+공유 / 마이페이지 진입). **오프시즌 홈**(season_phase=offseason+무경기 → 결산 진입 뷰). E/G 소비자 대부분 시즌 이벤트성(11월 phase전환 시 자동노출, 지금 Wrapped는 마이페이지 미리보기)
-  - ⚠️ **네이티브 APK 전부 미반영** — E 배너·F 카운트다운·G Wrapped/오프시즌홈·버그픽스 클라분 = 웹·서버만 라이브. IPA=Codemagic main 빌드 자동포함, APK 재빌드 필요
-- **06-15b 데드코드+팀상세 대수술+로스터자동화**: 메가E/F/G 후 정리·UI·데이터 위생 묶음(전부 웹+서버 라이브, 네이티브 미반영).
-  - **데드코드 제거**: backend 미사용 import3·함수6(log_auth_fail·cache_delete·notify_allstar_vote_player_in·_notify_fav_player_lineup·_get_game_statuses·get_game_lineup)·StadiumRecord / dart 미사용 메서드 9 + cascade(헬퍼·_rosterStatusBadge·_playerRosterStatus fetch) = ~1100줄. `flutter analyze lib=0`. ⚠️elo 미사용 **파라미터**는 시그니처 위험으로 제외. ⚠️`git add -A`가 insta 스크래치 대량 오스테이징 → 코드파일만 선별 add (스크래치 untracked 유지)
-  - **다크 팀컬러 가시성**: `utils/team_theme.dart`에 `adjustTeamColor`/`teamColorOn` 중앙화(HSL lightness<0.45 → +0.30 부스트). **전경(텍스트·배지·아이콘)만** 적용(로고·그라디언트 배경=raw). NC/두산/KT/키움 네이비 가독. + 다크 `sub` 회색 0xFF71717A→**0xFF8E8E98**(대비 AA, 전 화면 33곳). home `_adjustTeamColor` 중복 제거→공용
-  - **시리즈카드 재설계**(팀상세 최근경기): 3섹션 → **헤더없이 경기별 3칸**(날짜/상대로고/스코어/승패, 승패색). 취소경기 포함(`getTeamGames` status IN 종료·취소, 셀='취소'), 전부취소 그룹 제외, 3-cap은 종료경기만(rainout 유지). **N월 M주차 구분선**(진출선 스타일). 폰트 스코어20/날짜12/승패13
-  - **팀상세 6종**: ①월별성적+상대전적 **통합 재설계**(단일스크롤·시즌종합요약카드·통일 win%바·약세📉/강세📈 하이라이트, 구 차트/원형게이지/_RingPainter/_SummaryChip/_LegendDot 제거) ②**타순별 선수 중복** 수정(각 선수 주타순 1배정 — backend slot_pick CTE, 김도영 3·4번 동시표기 버그) ③커뮤→커뮤니티 ④플로팅탭 홈 형태 통일(height58·radius30·Icon22·active=ink) ⑦다크 sub 회색(상동)
-  - **미계약 외인 자동화(A)**: `kbo_roster_crawler._save_changes`서 방출/웨이버/임의탈퇴 roster_change → `is_active=FALSE`(1군등록/복귀=재활성 self-heal). 앱 is_active 필터로 자동숨김. 치리노스(LG)·쿠싱(HH) 수동 off. ⚠️매닝(SS)=신규영입 부상이라 오탐(웹검증으로 회피). 기존 방출분 backlog는 자동신호 없음(이벤트無+외인플래그無)
-  - **1군 등록현황 diff = 부상/이탈 자동표기**(문동주=방카르트 수술): `crawl_active_rosters`(Register.aspx **fnSearchChange('CODE')** 링크클릭 10팀 1군명단 — execute_script 직접호출은 strict-mode 에러) + `sync_active_roster`(diff→`roster_status` 배지). ⚠️**판정 = 1군 등록부재 AND 2026 1군출전 AND 14일+ 미출전**(staleness 가드 — 등록부재 단독은 크롤누락/휴식/당일말소로 현역 강민호 오말소. 1차 백필 201건 중 현역 오탐 발견→revert→가드 추가). roster_diff.py 순수판정+test. ⚠️**KBO 부상자명단 페이지 없음** → 1군 diff가 최선(부상≠2군 구분 불가). 스케줄러 `_update_roster_changes` 일일
-  - ⚠️⚠️ **자동 생성 roster_change는 reason `(자동)` 마커 + 모든 뉴스 surface서 제외 필수**: 알림(`_notify_roster_for_fans`)·홈 등록말소 배너(`get_today_roster_changes`)·팀상세 최근등록말소(`get_roster_changes`) 전부 `reason NOT LIKE '%(자동)%'`. **선수상세 roster_status 배지(`get_player_detail` 최신행 파생)만 노출**=의도 surface. 교훈: 자동데이터를 기존 뉴스 테이블에 넣으면 **전 소비처 노출정책 일괄 점검**(홈 172 도배 사고 — 알림가드만 하고 배너 2곳 놓침)
-  - **backend pytest 확장**: roster_diff·narrative·season·auth rotation·points·badges·pa = scratch DB(`playball_test`) 검증, CI backend-test(postgres) job
-  - **refresh_tokens bloat**: revoked 토큰 영구누적(92% dead) → create 시 per-user 정리 + scheduler 일일 전역 purge
-- **06-16 팀상세 UI + 디자인토큰 전면화**: (전부 웹+서버 라이브, **네이티브 APK 미반영**)
-  - **팀상세/경기탭 재구성**: ① 상대전적 강세/약세 재설계(승/패/무 분리 + **승률**(구 "2-4" 폐기) + 상대 로고, 강세→약세 순, 이모지 제거·데이터 가운데정렬·카드높이 축소) ② **타순별 서브탭 → 팀 리더**(`GET /teams/{id}/leaders` @cached(300), 부문별 TOP3 — 타자 avg/hr/rbi/sb/ops·투수 era/w/k/sv/hld, 규정 게이트 qual_pa/ip / 앱 = 타자·투수 **2열** 한화면) ③ 선수카드에 best_stat/best_rank(최고순위 부문) 표기·hr→홈런. `getTeamBattingOrder` 제거
-  - **타이포 스케일 토큰화** (`utils/design_tokens.dart` `Typo`): micro9/mini10/caption11/small12/body13/subtitle14/title16/lg18/h220/h124/display34. off-scale 매핑(8→micro·15→subtitle·17→title·19→lg·22→h2·26→h1). 전 화면 `fontSize` 정수리터럴 → `Typo.*`(12커밋). 소수(X.5)·초대형(28/32/150)은 raw 유지(의도)
-  - **디자인토큰 4종 전면화** (5커밋, sed 바이트안전 일괄 + git diff 한글오염 매단계 감시 0):
-    - `design_tokens` 확장: **`Typo.thin/semibold/black`**(w300/500/900) + **`Pal` 신설**(중성팔레트 ink/ink2/ink3/sub/paper/paper2/line/line2/track 9단계 다크/라이트 정준쌍 중앙화, `Pal.x(isDark)` bool 인자 — Theme 재조회 회피)
-    - **fontWeight** `FontWeight.wN/bold/normal` → `Typo.*` (~370, 1:1 무손실)
-    - **중성색** 화면별 `_C`헬퍼·인라인 삼항식 → `Pal.*` (278). 조건식 2형태(로컬 `isDark*` + 인라인 `Theme.of().brightness==dark`) 대응. ⚠️**정준 쌍만 매칭**(값 불일치·비정준쌍은 미변환 = 오변환 0). `_isDark` 밑줄 getter 엣지케이스 교정(`_Pal` 고아 4건)
-    - **Radii** `circular(4/8/12/16/20/999)` → `Radii.xs/sm/md/lg/xl/pill` (110). off-scale(10/14/5/3/2/6/13/22)는 raw(스냅=모서리 시각변경 회피)
-    - **Space** `EdgeInsets.all`·단일축 `SizedBox(width|height)` 스케일값 → `Space.*` (279). ⚠️`width:`/`height:`는 간격↔크기(로고/스피너)·Positioned 오프셋 구문구분 불가 → **명확한 간격 idiom만**(symmetric/only/fromLTRB·이중축 SizedBox·off-scale 6/10/14/18/20 = raw)
-  - ⚠️ **신규 코드 = 토큰 우선**: `Typo`(폰트·weight)·`Pal`(중성색)·`SemColor`(시맨틱/브랜드)·`Radii`·`Space`. 인라인 hex/리터럴 지양
-  - **제외(의도)**: `widgets/share_cards.dart`(골든 PNG 보호)·`utils/`(테마/토큰 정의층) = 전 토큰작업서 제외. 시맨틱/팀/결과칩/그라디언트 색 = 도메인색(중성팔레트 아님, 유지)
-  - **검증**: analyze lib 0(매 단계) · 골든 4종 통과(VisitShare/PlayerShare/AppErrorView 라·다 — 값 1:1이라 PNG 불변) · 웹 wasm 재빌드 → `/app/` 200
-- **06-18~19 세션** (상세 = 각 섹션·주의사항): ① **AI 한줄평 경기내용 결합**(결과 나열 탈피 — 결정장면 WPA+역전 주입, 글리치 3가드. ↓해야할것) ② **투구 truncation 사고**(라이브 일시정지로 중간이닝 미완성 stale → 종료 시 전이닝 풀재크롤, 30경기 수복. ↓주의사항 종료감지) ③ **seqno offset 중복**(Naver seqno 크롤마다 시프트 → 이닝 단위 replace. ↓주의사항) ④ **상세확장 완료**(선수 타이틀/팀변천/마일스톤/스플릿 + 팀 구단약사/레전드/시즌기록, 웹+서버 라이브. ↓상세확장 섹션) ⑤ **역대 게임단위 백필**(2010~23, save_games 과거팀명 드롭 픽스로 2017/18/20 갭 복원. ↓게임단위 섹션) ⑥ **Claude Design 연동**(↓아래)
-- **06-19 Claude Design 연동 (`_cd_kit/`)**: claude.ai/design가 PlayBall을 정확 인식하도록 **실 design_tokens.dart·team_theme.dart로 React 컴포넌트 복제** → DesignSync 도구로 디자인 프로젝트(uuid c76876af "111")에 push. 파일=`_cd_kit/pb-{tokens,gamecard,components,fieldview}.jsx`+프리뷰 html. 커버=토큰전체·게임카드(풀/compact)·상태pill·최근5·팀순위카드·선수행·필드뷰. **권위=dart, _cd_kit=시각 미러**(앱 바뀌면 동기 수정 후 재push). ⚠️**`/design-sync` 풀 스킬은 Flutter 부적합**(React dist 번들 요구) — 토큰카드 직접 push 방식도 setup게이트 불통과(철회). **DesignSync 내장 도구**(user:design:read/write 스코프)로 프로젝트 읽기/쓰기는 가능(`claude_design` MCP·`/design-login`은 이 버전 미존재, 불필요). 잔여=Claude Design서 프리뷰 육안검증(내 렌더 미검증)·잔여 컴포넌트(존히트맵/승률그래프)
-- **06-23~25 우천중단(rain delay) 완성 + DB 커넥션 누수 사고**: 06-23 착수분(BE 부품만, scheduler 미연결+API/앱 미작업)을 06-25 완성·배포(commit `841f417`, 웹+서버 라이브, ⚠️네이티브 APK 미반영). 스펙=`docs/superpowers/specs/2026-06-23-rain-delay-design.md`.
-  - **기능**: 경기 중 우천 일시중단을 relay 텍스트 키워드로 감지 → `games.suspended` BOOLEAN 오버레이(status='진행' 유지, 우천취소=별개) + 양 팀 팬 알림. `naver_crawler.is_game_suspended`(+순수 `_text_has_suspend` 단위테스트 `tests/test_rain_delay.py`) / `scheduler._check_rain_delays`(smart_update 루프 recapture 직후·prev가드 밖=재시작안전, false→true 1회 dedup, 비진행시 자동해제) / `fcm_service.notify_rain_delay` / games.py today·date·detail에 suspended(bootstrap 자동) / 앱 Game.suspended·게임카드(풀·compact) amber '우천중단' pill·경기상세 배지·알림탭 rain_delay 우산. ⚠️**Naver 실제 중단 텍스트 발행 라이브 미검증** — 키워드(`_SUSPEND_KEYWORDS`)는 실발생 시 튜닝. 알림 type='rain_delay'는 이 경로만 기록(game_start 전역 dedup 버그 패턴 무관).
-  - ⚠️⚠️ **DB 커넥션 누수 사고 (배포 중 발견)**: 마이그레이션 `ALTER TABLE games`가 lock_timeout으로 실패 → 조사: **`idle in transaction` 세션 5개가 1~4일째 방치**(pid 521217이 `SELECT ... FROM games WHERE id=494` 트랜잭션 미커밋으로 `games` AccessShare 락 보유 → ALTER의 AccessExclusive 차단, 나머지 4개는 `SELECT DISTINCT pds.player_id...` aborted 상태로 매~24h 1개씩 누적). `pg_terminate_backend`로 5개 정리 후 ALTER 성공. **근본원인 규명·수정(commit `922c069`)**: `crawl_player_events.daily_player_summary`/`hitting_streak_check`의 SELECT가 없는 컬럼 `pds.at_bats`(실제 컬럼=`pds.ab`) 참조 → **매 실행 에러** + **함수에 try/finally 부재** → 에러 시 `conn.close()` 스킵 → 커넥션 영구 leak(idle in tx **aborted**) → scheduler 외부 try가 예외만 삼키고 leak 회수 못 함 → **일 1개씩 누적**. 별도 단발 leak(`games WHERE id=494`, 비aborted)이 마이그레이션 직접 차단. 수정 4종: ① `at_bats→ab`(2곳, 트리거 제거) ② 두 함수 conn 생명주기 try/finally ③ `_PooledConn.close()` putconn 전 rollback(전 사용처 방어) ④ 서버 `idle_in_transaction_session_timeout=5min`(auto.conf — 322개 get_connection 사용처 전역 백스톱). 검증=수정쿼리 에러해소·idle-in-tx 잔여 0·smoke ALL PASS. 교훈: 핫테이블 ALTER 전 `pg_stat_activity` idle-in-tx 점검 + ↓주의사항 try/finally 규칙.
-  - 곁다리(06-23 동반, 같이 배포): scheduler 경기전 등록말소 크롤 직후 즉시 알림(`_notify_roster_for_fans`)+`_roster_recently_notified` 3일 dedup(KBO 당일말소 표 재노출 중복발송 차단) · 알림탭 `_cleanTitle`(title 선두 이모지 제거 — 타입아이콘 중복·웹 글리프 드롭 해소) · 선수상세 존히트맵/피칭디자인 캡션 군더더기 제거. 검증=py_compile·analyze lib 0·smoke ALL PASS·API suspended 노출 확인.
-  - **누수 안전망 `__del__`(commit `80dd922`)**: `_PooledConn.__del__`이 스코프 이탈 시 `close()` 자동 호출(CPython refcount) → 322개 get_connection 사용처 전역 retrofit(명시 close 누락해도 자동 회수, `_closed`로 no-op). DB불요 단위테스트 `tests/test_conn_safety.py` 3종(누수 자동반납·이중반납방지·with 1회) PASS. ↓주의사항 "DB 커넥션 누수 3중 방어".
-  - **UI/기능 묶음(06-25, commit `5324dd2`·`60e8e59`, 웹+서버 라이브·APK 미반영)**: ① **역대 기록실 선수 이미지** = `historical._leader_query` `profile_image: None` 하드코딩 → `hp.profile_image` SELECT(라이브 최정535·이승엽467 Naver URL) ② **팀상세 구단역사/역대레전드** = overview 인라인 → **공식홈 옆 '구단역사' 버튼**(`_legacyBtn`) → 모달 시트(`_showLegacySheet`)로 이동 + 최근뉴스/등록말소와 divider 행 레이아웃 통일 ③ **부문별 순위 TOP10→TOP30**(`/players/rankings` `[:30]`, 프론트 cap 없음) ④ **OS 글자크기 미반영**(main.dart `withNoTextScaling`, ↑주의사항). ⚠️ 사용자 "등록말소/선수목록 안나옴" 신고 = 백엔드/앱코드 전부 데이터 반환 정상 확인(라이브 검증) → **클라 캐시/구버전 환경**(코드 결함 아님), 강력새로고침 안내.
-  - **06-25b 팀상세 첫진입 빈화면 + 역대 라우팅(commit `d7d25c0`)**: ① **팀상세 첫진입 시 뉴스/등록말소 등 빈화면, 재진입하면 표시**(사용자 결정적 단서) = 웹서 push 라우트 직후 initState 동기 fetch의 setState가 첫 프레임에 repaint 안 됨(재진입=LocalCache 즉시) → `initState` 로더 전부 **`WidgetsBinding.addPostFrameCallback`**로 이동(첫 프레임 후 실행 → repaint 보장). ⚠️**후보 수정**(웹 첫-로드 repaint는 로컬 재현 불가, 사용자 검증 대기). ② **역대 기록실 현역선수 → 엉뚱한 선수상세** = 역대탭 전원 `kbo_player_id`로 HistoricalPlayerDetailScreen 라우팅이라 현역이 역대상세(브릿지 혼선)로 감 → `_leader_query`에 `player_id` 반환 추가, 앱은 **현역(player_id 有)=활성 PlayerDetailScreen / 은퇴=역대상세** 분기(podium+rank행, 라이브 최정 pid39·이승엽 None 정합). ③ 역대 이미지 "여전히"=클라 `historical_rankings` 캐시 stale(서버는 이미지 반환 확정).
-- **📌 06-25~26 세션 종합 + 미해결 트래커** (위 상세 = 06-23~25 부모불릿 하위): 한 세션서 우천중단 완성 → DB 커넥션 누수 사고 근본수정(3중 방어) → UI/기능 4종(역대이미지·구단역사 시트이동·부문30위·글자크기고정) → 팀상세 첫진입/역대 라우팅. 커밋 `841f417`→`24c8a9b`. 전부 **웹+서버 라이브, ⚠️네이티브 APK 미반영**(누적 — IPA는 Codemagic 자동, APK 재빌드 필요).
-  - **⏳ 검증대기/미해결**: ① **팀상세 첫진입 빈화면 = post-frame 후보수정**(로컬 재현불가 → 사용자 검증 중. 여전하면 FutureBuilder/Streambuilder 등 더 깊은 웹 repaint 대응 필요) ② 역대 기록실 이미지/데이터 = 서버 정상 확정, 클라 stale → **사이트데이터 삭제**로 해결(하드새로고침≠localStorage). ③ DB 커넥션 누수 근본(개별 322 try/finally)은 `__del__`+timeout 백스톱으로 자동회수(↑알려진이슈, 신규코드만 try/finally).
-  - **교훈(이번 세션)**: ⓐ "데이터 안나옴" 신고 = 백엔드 라이브 검증부터(내부curl+HTTPS+전팀 루프) → 코드/환경 가름 ⓑ 첫진입O/재진입X 패턴 = 클라 캐시·repaint 타이밍(웹) 신호 ⓒ teams.id 비연속(삼성=11, 결번3) — 하드코딩 1~10 가정 금지(`_kTeams`는 정확).
-- **📌 06-26~27 "알림이 죽었어" 신고 → 실측으로 3개 별개 문제 분해·전부 수정** (웹+서버 라이브 + **APK 재빌드 배포** — 텍스트/FCM 픽스가 네이티브 전용이라 이번엔 APK도 반영). 커밋 `d8013af`→`90cb86f`(폐기)→`27f2522`→`af5d5e3`(docs).
-  - **① 알림함 "9시간 전" 시간버그**: 서버 UTC naive 타임스탬프(`2026-06-26T10:08:23`, tz표기 없음)를 Dart `DateTime.parse`가 **로컬로 파싱** → `.toLocal()` no-op → UTC를 KST로 읽어 정확히 **+9h(=KST 오프셋)** 오차. 해결 = `utils/time_util.dart parseServerTime`(tz표기 없으면 UTC 재해석 후 toLocal, tz-aware는 존중) → notifications/team_detail(2곳)/game_detail 4곳 교체. ⚠️인앱 알림함 자체는 정상이었음(서버 행 최신·API 200) — 시간 표시만 버그.
-  - **② FCM 배너 죽음**: 재빌드 전 **stale 토큰**이 원인. Firebase가 회전된 옛 토큰을 유예기간 수락 → 스케줄러 로그 "1성공/0실패" = **가짜 양성**(`_send`의 UNREGISTERED 자동삭제도 안 걸림), 기기 미수신. 진단 = 직사 테스트 푸시 2회 Firebase 수락(message_id 반환)인데 기기 무표시 + 배터리/권한/채널ID 전부 정상이라 배제. 복구 = 사용자 APK 재빌드(새 설치=새 토큰+채널 생성). **재발방지** = `main.dart syncFcmToken` + `_RootBackHandler.didChangeAppLifecycleState`로 **앱 재개(resumed)마다 토큰 재등록**(기존=콜드스타트 1회 등록+401삼킴만이라 취약, 06-11~25 push-token 401 이력 다수).
-  - **③ APK UI 텍스트 과대**: 폰 **글자크기 0.8(작게)** 설정을 `withNoTextScaling`(06-25, 1.0 강제)이 무시 → 텍스트가 사용자 설정보다 **~25%↑**. **임시 진단 오버레이**(MediaQuery `w/dpr/osTS/scale` 화면표시, `_kSizeDiag` const)로 양쪽 실측: APK `osTS=0.8`·w=411, 웹 `osTS=1.0`·w=549 → 원인 확정. 해결 = `TextScaler.linear(0.85)` 고정(OS 독립 유지+축소, ↑주의사항 라인). "요소도 큼"은 **화면폭 차이**(웹 549 넓은화면 vs 폰 411, scale 둘 다 1.05=버그 아님). ⚠️**display-size 가설(클램프 0.85→0.5)은 폐기**(실측 width=411로 무관 확인, 0.85 복원).
-  - **교훈**: ⓐ 모호 신고("알림 죽음")는 **실측 우선** — 추측 2회 빗나감(display-size 가설 틀림 → 실측 osTS=0.8로 교정) ⓑ FCM 로그 "성공"=stale 토큰서 **가짜 양성**(전달 보장 아님) ⓒ 기기측 렌더 문제는 **진단 오버레이로 실값(MediaQuery) 확보**가 왕도(원격 추측 종결, 검증 후 `_kSizeDiag` 제거).
-- **📌 06-29~30 역대 C2 데이터 + UI 노출 (장기보류 큐 해소)** — 웹+서버 라이브, ⚠️네이티브 APK 미반영. 상세 = ↓「역대 C2」·「역대 C2 데이터 UI 노출」 섹션(아래 신설). 두 단계:
-  - **① C2 데이터 3트랙 적재** (트리거 `역대C2 진행`): 스파이크서 **2군 pitch-by-pitch 소스 infeasible 확정**(KBO 박스가 최심부·Naver 2군 relay 없음 — 노력 아닌 데이터 부재) → 게이트 통과 후 가능범위만. **T1** 2군 시즌스탯(`historical_futures_season_stats` 17시즌 12967행, `crawl_futures_*` ddlTeam 12팀) **T2** 2군 box경기(`futures_games`+`futures_game_box` JSONB 952경기, requests+box-score-wrap 슬라이스 파싱 — ⚠️상단 markup이 html.parser 깨뜨려 슬라이스 필수) **T3** 1군 스플릿 세밀축(`historical_splits` 투수 신규 5459 + 타자 좌우플래툰/구장). 버그 2개 수정: 2015 누락·**투수 split 행 playerId 앵커 부재**(타자 split엔 有 = KBO 비대칭 → 이름+팀 제약조인 pid해결, type필터 금지=타자페이지 투수오염 회피 93%매칭).
-  - **② C2 UI 노출** (`ui 작업 진행`, brainstorm→스펙→플랜→**subagent-driven** 12커밋 `d1b84e1`~`dcc4dbb`): **A** 선수상세 2군 시즌스탯블록 **B** 스플릿 세밀축 노출(투수 ERA칩+한글축, ⚠️`_player_splits`가 타자컬럼만 SELECT라 투수 NULL이던 버그 해소) **C** 독립 퓨처스 화면(순위 탭 5번째 탭, 1군 게임카드/라인스코어/박스 미러). 리뷰 3라운드서 try/finally·IP단소수·season guard·.000타자보존·월필터모순 잡음. 웹 wasm 재빌드+rsync /app/ 200 smoke PASS.
-  - ⚠️ **서버 git 원격 토큰 만료 발견**(`ghp_T5Gpq..` → `could not read Password`) → 서버 `git pull/fetch` 불가, **이번 전 배포 = scp/rsync 우회**. **유저 조치 = 서버 git 재인증**(`git remote set-url origin git@github.com:Aa26178787/playball.git` SSH or 새 PAT) → `git fetch && git reset --hard origin/main`(scp본·scheduler 핫픽스 전부 원격 커밋됨이라 동일라인 복구 안전).
-  - ⚠️ **육안 렌더 미검증** = Flutter canvas 헤드리스 관찰 불가 → 데이터/빌드/배포만 검증, 사용자 디바이스/웹 스팟체크 권장.
-  - **교훈**: ⓐ 니치 데이터 착수 전 **소스 실측 스파이크**(2군 pitch infeasible를 빌드 전에 확정 — 헛수고 방지) ⓑ KBO 페이지 비대칭(투수 split=링크無) 같은 함정은 **재현으로 근본원인**(앵커부재) 규명 후 수정 ⓒ subagent-driven = 구현 서브에이전트가 내 컨텍스트 보존 + 리뷰 라운드가 try/finally·표기버그 등 정적체크 못 잡는 것 포착.
-- **📌 06-30 등말소 알림 1건 누락 버그 + 퓨처스 홈 토글** (2건). 알림픽스 = 웹+서버+**APK도 반영 대상**(FCM은 네이티브), 토글 = 웹+서버 라이브·⚠️APK 미반영.
-  - **① 등록말소 알림 1건만 발송 버그**(한화 정민규+오재원 동시 등말소 → 정민규만 수신, commit `e7570bc`): 근본원인 = `fcm_service._send`의 `collapse = f"{ntype}_{game_id}" if game_id else ntype` — roster_change는 `game_id=None`이라 collapse가 **bare `"roster_change"` 상수** → Android `tag` + APNs `collapse-id` 동일 → 같은 날 다수 선수 알림이 **트레이 한 슬롯으로 합쳐져 최신이 이전 교체**(오재원 07:40:57.68→정민규 .80 덮어씀). notification_log엔 둘 다 발송기록(발송 OK, 클라 트레이 collapse가 드롭) + 인앱 알림함엔 둘 다 저장(`_save_notifications` per-user). 수정 = `_collapse_key(ntype, game_id, data)` 추출 — game_id 無면 `data`의 **player_id/team_id로 엔티티별 분리**, team-roster notify `data`에 player_id 추가(분별자+탭 라우팅). milestone(career)/rank/streak 등 game_id 無 동타입 다발 알림도 자동 수혜. score_change는 game_id로 경기당 1슬롯 유지(Android 50캡). 테스트 `tests/test_fcm_collapse.py` 5종. ⚠️**경기 관련 무-game_id 알림 신규 추가 시 = data에 player_id/team_id 넣어 collapse 분리**(안 넣으면 같은 타입 다발이 트레이서 합쳐짐).
-  - **② 퓨처스 홈 토글**(brainstorm→스펙→플랜→subagent-driven 5커밋 `6ec8c2c`~`02b7e05`): 홈(경기) 탭 월/날짜스트립 위 `[1군|퓨처스]` 세그먼트 → 퓨처스 모드 = **같은 날짜스트립+카드 셸을 2군 데이터로**(기존 `/futures/games?season&month` 월1콜 프론트 날짜그룹핑, **백엔드 무변경**). 라이브/폴링/LIVE pill·1군 컨트롤(필터/간략) 숨김. 카드 = `futures_screen._gameCard` → 공용 `widgets/futures_game_card.dart`(`FuturesGameCard` + `groupFuturesGamesByDate`) 추출. **`futures_screen.dart` 제거 + 순위탭 5번째 퓨처스 탭 제거(탭 4개 복귀)**. box 시트 유지. 토글 영속X(재시작=1군)·퓨처스 풀히어로/마이팀필터 비목표. 리뷰서 잡음: `_enterFuturesMode` async 레이스(모드 복귀 가드 `!mounted||!_futuresMode`)·모드전환 스크롤 reset·1군 shimmer가 퓨처스 가림(`_isLoading && !_futuresMode`)·`_loadTomorrowGames` 퓨처스 가드·날짜파싱 length guard. analyze 0·골든 5+신규 3 PASS. 스펙/플랜=`docs/superpowers/{specs,plans}/2026-06-30-futures-home-toggle*.md`.
-  - **교훈**: ⓐ 모호 신고("알림 빠짐")=**프로덕션 DB 실측부터**(notification_log서 둘 다 발송 확인 → 발송 아닌 클라 트레이 collapse로 범위 좁힘) ⓑ FCM collapse_key/tag는 **트레이 dedup** — 같은 타입 다발 이벤트는 엔티티별 분별자 필수 ⓒ 헌 로컬 클론(origin 1247뒤)서 작업 = **origin/main worktree 분기 후 push**로 우회(직접 force-push 금지).
-- **📌 07-01 퓨처스 후속 (토글 폴리시 + 경기상세 풀스크린)** — 웹+서버 라이브, ⚠️APK 미반영.
-  - **① 토글 폴리시 4종**(commit `8329f0d`): ⓐ 토글 크기↓(full-width `Expanded`→컴팩트 중앙 pill) ⓑ **라벨 `1군`→`KBO`** ⓒ **웹 콜드로드 빈화면**(새로고침해야 뜨던 것) = initState 동기 `_loadGames()`를 `addPostFrameCallback`로 이동(첫 프레임 paint 후 fetch→repaint 보장, 06-25b 첫진입 repaint 패턴) ⓓ **우천취소 게임카드 0:0 오표기**(한화-KT game 529, 4회 콜드) = full 히어로카드 score 자리서 `isCancelled` 분기가 `if(isUpcoming)` 안에 있어 **dead code**(`isUpcoming=!isCancelled`) → 진행중 취소경기가 score `else`로 떨어져 `0:0` 렌더 → `isCancelled` 분기 명시 추가('취소' 표기), compact 카드도 'vs'→'취소'. ⚠️취소경기 스탯: 4회 콜드=**노게임**(5회 미만) → KBO 공식·우리 시스템 둘 다 미반영 정합(PA/투구위치=종료 후처리서만 적재라 취소=0행, 시즌스탯=KBO공식 노게임 제외, game_pitches 181행은 529 detail 전용).
-  - **② 퓨처스 경기상세 풀스크린**(brainstorm→스펙→플랜→subagent-driven, `4b7bb9b`~): box 바텀시트 → **KBO detail풍 풀스크린** `screens/futures/futures_game_detail_screen.dart`(`FuturesGameDetailScreen`). 히어로(로고+스코어 승팀강조)+라인스코어 상단 고정 + `Expanded(TabBarView)` **[타자|투수] 탭**(각 독립 ListView, 팀별 박스스코어 표 + 주요기록 tail). 투수표=[결과+이름] 좌측 고정 + 스탯 가로스크롤(KBO 박스 패턴). box API 전 필드 노출(타자 타순/득점, 투수 투구수/상대/볼넷/홈런 등). **백엔드 무변경**. `futures_box_sheet.dart` 제거, 홈 `_buildFuturesList` onTap push 교체. 순수헬퍼 `futuresSummaryEntries`/`futuresAvgLabel` TDD 3종. ⚠️투수 `side`="away"/"home"로 분리, box 선수=이름만(kbo_player_id 미연결). 리뷰서 Divider thickness(M2 default 0=투명) 수정. analyze 0·골든5+신규6 PASS. 스펙/플랜=`docs/superpowers/{specs,plans}/2026-07-01-futures-detail-ui*.md`.
-  - ⚠️ **육안 렌더 미검증**(Flutter canvas 헤드리스) — 투수표 좌/우 정렬·가로스크롤 등 사용자 디바이스/웹 스팟체크 권장.
-- **📌 07-02 퓨처스 배치 픽스 + 감사** (commits `a6089a6`~`787235c`) — 웹+서버 라이브, ⚠️APK 미반영. 유저 배치 요청 7종:
-  - **① 퓨처스 상세 전면 재설계**: 고정 히어로+탭 → **NestedScrollView**(스코어보드 카드 스크롤 + TabBar `SliverPersistentHeader` 고정). 통합 스코어보드 카드(히어로+라인스코어 1카드), **zebra 표**(타자/투수 교대 배경), 섹션헤더 팀컬러 바, 스코어 40px black. **⚠️전반적 재설계라 육안검증 필수**(헤드리스).
-  - **② 포지션 한자→한글**: box `pos`=Naver 약어(한자 一二三 + 한글 유좌중우포투지 + 대타/대주 + 교대조합 "주유"=대주→유격). `futuresPosLabel()` 매퍼 — 교대 시 **마지막 문자(최종 수비위치)** → 한글(1루/2루/3루/유격/좌익/…/대주/대타). TDD.
-  - **③ 상무/울산/소뱅 로고**: TeamLogo가 SM/UL/SO 코드에 URL 없어 회색 영문 배지였음 → `team_theme.dart` `kTeamColors`+`kTeamDisplayNames`에 SM(상무·그린)/UL(울산·블루)/SO(소뱅·그레이) 추가 → `_avatar` 배지가 한글팀명+색. (WO=고양은 키움로고 유지=키움2군이라 무방)
-  - **④ 퓨처스 7월 데이터 부재 = stale**: 2군 데이터 6/28까지만(C2 백필 일회성, **2군 크롤 스케줄러 부재**) → 7월 날짜스트립 비활성. 해결 = ⓐ 서버 `backfill_futures_games 2026` 즉시 백필(405경기 upsert, 7월 채움) ⓑ **scheduler `_update_futures_games` 일일 잡 신설**(UTC 19:00/KST 04:00, `backfill_season(현재년)` idempotent — 2군 stale 재발 방지). ⚠️**신규 시즌 월은 이 잡이 채움**.
-  - **⑤ 작동감사(0 High·3 Med·4 Low)**: Med=미연결 기능(`updateStadiumRecord` PUT 서버라우트 없음 / `getMyTeamScore`·`getFuturesLeaders` 백엔드有 UI無 — **잔여, 유저 결정**). **L3 버그 수정** = `game_detail_screen` `_gameData!['innings'/'pitchers'/'batters'] as List`가 취소/미완경기서 키 없으면 TypeError→빈화면 → `as List? ?? []` 가드(+player_detail matchup `as Map` 동일). 리포트=`.sdd/audit-broken.md`.
-  - **⑥ 데드코드 감사·정리**: 제거 = 고아 dart 2(`models/player.dart`·`screens/player/player_stats_section.dart`)·빈 `api/models.py`·`games.py.bak`·미사용 import 4(random/shutil×2/get_features). **잔여(유저결정)**=12 스크래치 `test*.py`(비pytest 디버그)·`crawl_all_kbo_players`(dead fn)·`kbo_crawler.py`(superseded)·미연결 ApiService 메서드. `pa_hit_model.py`=의도보존. 리포트=`.sdd/audit-deadcode.md`.
-  - **⚠️ 잔여/유저조치**: 미연결 기능 3종(M1-M3) 살릴지 결정 · 스크래치 스크립트 12개 제거 여부 · **퓨처스 상세 육안 스팟체크**(재설계 렌더).
-- **📌 07-02b 마일스톤 알림 확장** (commits `a93cd12`~`80de367`, subagent-driven 5태스크+최종리뷰) — 서버 라이브(백엔드 전용, 앱/DB 스키마 무변경). 웹리서치로 미커버 대기록 발굴 → 4묶음 추가:
-  - **신규 마일스톤**: 끝내기(`walkoff_hr`/`walkoff_hit`, 선수식별) · 사이클링(`game_cycle`) · 한경기 다홈런(`game_multi_hr`) · 전 구단 상대 홈런(`season_hr_vs_all`, 완성 감지) · 20-20/30-30/40-40(`season_20_20`류) · 통산 안타 **100단위 확장**(1000↑, 1100안타류 해소)+**역대순위 캡션**("역대 N번째") · 통산 탈삼진 100단위(`career_so`).
-  - **구조**: 순수판정 `api/milestone_detect.py`(is_cycle/walkoff_type/crossed/dual_crossed/format_milestone_title/career_thresholds_100, pytest 6) + `_check_post_game_milestones` 확장(종료+27분, PA 적재 후) + `notify_milestone`/`_MILESTONE_LABELS` 재사용. dedup=`player_milestone_alerts`. **동명이인 회피**=game_batters(player_id); PA(batter_name)는 game 스코프만+name→pid 다중매칭 스킵.
-  - ⚠️ **최종리뷰가 잡은 결함**(반영): ⓐ `career_tb`(루타)=**폐기**(game_batters에 tb 없어 today TB 소스 부재→prev==curr→영영 미발송. 향후 PA서 today-TB 계산해 재도입) ⓑ 끝내기=**마지막 이닝 말 마지막 PA**(is_hit 필터 제거)로 게임종결 플레이 귀속(안타 후 볼넷 결승 시 오귀속 방지) ⓒ **per-game 이벤트(사이클/끝내기/다홈런)는 `month` 슬롯에 game_id** 넣어 시즌 내 재발생도 발송(dedup 붕괴 방지) ⓓ 20-20류 title value=1(숫자 중복 제거).
-  - ⚠️ **문구 title만 정리**(`format_milestone_title`: unit='' & value<=1 → 숫자 생략) — body는 기존 유지. **실발송=다음 해당 경기부터**(소급 없음). 스펙/플랜=`docs/superpowers/{specs,plans}/2026-07-02-milestone-expansion*.md`.
-  - **큐(유저 요청)**: ① 팀 기록 묶음(선발 전원안타/전원타점 등 — team-game record, 다음 배치) ② 실시간 알림 지연 개선(마일스톤 +27분·한줄평 +30분 설계 + 단일스레드 스케줄러 smart_update 블로킹 혼잡 → 로그 실측 후 개선).
-- **📌 07-02c 팀 기록 알림** (commits `a7d0155`~, subagent-driven 3태스크+최종리뷰) — 서버 라이브(백엔드 전용, 앱/DB 무변경). 개인 마일스톤에 이어 **팀-경기 기록** 6종:
-  - 선발 전원 안타/타점/득점(`team_all_hit`/`_rbi`/`_run`, game_rosters is_starter 9명 × all_meet) · 팀 한경기 5홈런+(`team_multi_hr`) · 20안타+(`team_many_hits`, game_batters SUM per team_side) · 3연속타자 홈런(`team_consec_hr`, PA inning-half 최대 연속 hr).
-  - **구조**: 신규 `_check_team_records(game_id)`(종료+27분, 개인 마일스톤과 동반 스케줄) → 신규 `fcm_service.notify_team_record` → **팀팬**(`notify_team_milestone` 토글 재사용). dedup=`notification_log`(game_id,'team_record',`{tid}:{type}`). 순수헬퍼 `max_consecutive_hr`/`all_meet`(milestone_detect.py, pytest 8 누적).
-  - ⚠️ **06-30 트레이 collapse 회피**: `notify_team_record`=`_send(game_id=None)` + `data['team_id']=f"{tid}_{record_type}"` → `_collapse_key`가 record별 트레이 분리(같은 경기 다수 팀기록 안 합쳐짐). 문구=`format_milestone_title` 재사용(연속홈런만 특례 "{N}연속 타자 홈런!").
-  - ⚠️ **최종리뷰 Important 반영**: `fire()` 발송당 try/except 격리(한 기록 실패가 나머지 팀/기록 안 막게). 라이브 스팟체크(gid 539 대량득점) 무크래시 확인. **실발송=다음 경기부터**. 비목표=두자릿수득점(빈도)·한이닝기록·팀통산.
-  - **잔여 큐**: 실시간 알림 지연 개선(위 07-02b ②) → **07-03 완료(↓)**.
-- **📌 07-03 알림 지연 개선** (commits `bb93a93`~, systematic-debugging→brainstorm→subagent-driven) — 서버 라이브(백엔드 전용). 한줄평·게임데이터 마일스톤이 7-30분 늦던 것 → ~1-5분.
-  - **근본원인(로그 실측 확정, game 542)**: ⓐ 한줄평(game_summary)=`game_pitchers.result` 충원 대기, result는 **"5분 후" 예약된 boxscore 크롤**이 채움(~7분 대기) ⓑ 게임데이터 마일스톤=전부 **+27분 하드코딩 배치**(원래 KBO 시즌스탯 +25분 대기용인데 game_batters/PA 기반은 불요). ⚠️혼잡 가설(H2)=**기각**(사이클~33s), rank/score/clutch=이미 즉시.
-  - **Part 1 (한줄평 가속)**: `_crawl_game_boxscore(gid)`(update_finished per-game 추출) → smart_update result-대기 루프서 미충원 시 **즉시 재크롤** + post_finished 종료 즉시 1회 → result 채워지는 즉시(≤30s) 발송. "5분 예약"은 백업 유지. **result-게이트 유지=오발송 없음**.
-  - **Part 2 (마일스톤 early/late 분리)**: `_check_post_game_milestones`서 게임데이터 감지(완봉/QS/노히터·사이클·다홈런·끝내기·전구단·팀기록)를 **`_check_game_data_records`로 추출**(game_batters/game_pitchers/PA **독립쿼리**, batter_stats 조인 제거) → smart_update서 **game_batters 채워진 순간 1회**(`_already_notified(gid,'game_data_records')` dedup) 조기 발송. 시즌/월간/통산/20-20=`_check_post_game_milestones` **+27분 잔류**(KBO 스탯, 안전). 팀기록 +27분 스케줄→조기호출로 이동.
-  - ⚠️ **최종리뷰(opus) 7/7 통과**: no double-fire/missing-fire·season·career 온전·month=gid 규약·조기배선·팀기록스케줄 제거·독립쿼리 검증. Minor: 완봉/QS·다홈런 블록별 예외격리 추가(수정), game_cg month=0(pre-existing/의도=시즌 첫 완봉/QS, 유지). 라이브 gid539 무크래시.
-  - ⚠️ **하한**: Naver boxscore 게시·KBO 시즌스탯 갱신(외부) — 그보다 빠르겐 불가. **실효과=다음 라이브 종료경기 로그 재측정 권장**(종료→발송 델타).
-- **📌 07-04~05 투구 궤적 시각화** (commits `6be181e`~`3a31001`, brainstorm→subagent-driven, 웹+서버 라이브·⚠️APK 미반영) — 투구위치보기에 궤적 추가.
-  - **데이터 근거**: Naver `ptsOptions`=완전 9-파라미터 PITCHf/x(x0/vx0/ax·y0/vy0/ay·z0/vz0/az+crossPlateX/Y). 현 크롤러는 파생 x/z만 저장했음. `game_relay_archive`엔 물리값 없어 백필=Naver 재크롤 불가피.
-  - **A 데이터**: `game_pitch_locations`에 9 물리컬럼+cross_y **nullable 추가**(기존 106k 행 null) · 크롤러(`crawl_pitch_locations`) 원값 저장(⚠️tuple↔INSERT 22-pos 정합) · API `pitch-locations`에 `physics` 서브객체(null-safe) · 백필 `backfill_pitch_physics.py`(game별 **DELETE+재크롤 replace**, live-guard KST17-23, ⚠️DELETE후 재크롤실패=위치0행→crawl_all이 재수집). **백필 부분완료**(≈265k행/871경기, live-guard로 정지 — **창밖 재실행 필요**).
-  - **B 수학**: `app/lib/utils/pitch_trajectory.dart`(순수 Dart, TDD 4) — `pitchTrajectory`(위치(t)=p0+v0t+½at², t_plate=y(t)=cross_y 해)·`pitchMovement`(무회전 대비 break inch)·`PitchPhysics.fromJson`(null-safe).
-  - **C 뷰**(`pitch_location_chart.dart`): [위치]/[궤적] 토글 · **무브먼트 꼬리**(플레이트 차트) · **2D 측면/상단 비행 아크** · **3D 원근 회전 뷰**(`_Trajectory3DView`, CustomPainter 회전+원근투영, 드래그 회전, 3D엔진 불요). 물리값 null 경기=궤적 탭 빈상태.
-  - ⚠️ **육안 미검증**(헤드리스 렌더 불가): 무브먼트꼬리·2D·**3D 회전/원근/스케일** 사용자 스팟체크 필수. 3D 초기각(yaw0.4/pitch0.28)·스케일·depth-sort 튜닝 여지(리뷰 노트).
-  - ⚠️ **미완/잔여**: 백필 나머지(live-guard 창밖 `python3 -m crawler.backfill_pitch_physics` 재실행) · Phase C-2D 서브에이전트가 계정 세션한도로 uncommitted 중단→메인루프가 검증(lint 1 fix)+커밋 · APK 미반영.
-  - **07-05 궤적 폴리시**(commit `885e14d`, 웹+서버 라이브): 육안 피드백 2건. ① [위치] 뷰서 무브먼트 꼬리 제거(`_StrikeZonePainter`) — 궤적/무브먼트는 [궤적] 탭 전용. ② **3D ABS 밖 스트라이크 오표시** 근본원인 = 3D 스트라이크존 박스가 폭에 `pHW`(plate 반폭 8.5/12) 사용, 실제 ABS 존 폭 = `absHalfW = pHW + ballR(1.45/12) = 9.95/12`(위치 뷰 `_StrikeZonePainter.absHalfW` 값) → 박스 좁아 가장자리 스트라이크가 밖으로. top 뷰 밴드도 plateHalfW 사용 → **둘 다 absHalfW 정렬**(4뷰 위치·side·top·3D 존 정의 통일: 폭 ±absHalfW·높이 avg[botSz,topSz]). 홈플레이트/그리드는 실제 plate라 pHW 유지. ⚠️육안 미검증.
-- **📌 07-07 마일스톤 stale 신고 = 오진(버그 아님, 코드 무변경)**: "디아즈 69타점인데 시즌 50타점 알림" 신고 → systematic-debugging 실측: **득점(runs) ≠ 타점(RBI) 혼동**. 디아즈 2026 = runs 50·rbis 69, game 558(07-05) runs +1 → 50번째 득점 갓 통과. 발송 알림 = `season_runs` 50("🏃 시즌 50득점", 타점 아님). season_rbi(타점)는 50(06-14)·60(06-23) 정상 발화·70 미도달 침묵. crossing 가드 `prev = 시즌누계 - 오늘경기; if prev < t <= 시즌누계`(BATTER_SEASON 전체 동일, `season_runs:[50,80,100]` 포함) 정상 + game_batters per-game 값 정상(디아즈 0-1/경기) → stale 경로 없음. **교훈: "N타점인데 M 알림" 신고 = 스탯종류(득점/타점/안타) 먼저 대조**(user_notifications.title + player_milestone_alerts.milestone_type 실측).
+## 변경 이력 (기능 상세 = git log · 재발방지 규칙 = 주의사항)
+세션별 한 줄 요약. 사고 원인/교훈은 전부 ↑주의사항에 규칙화됨. 상세 브레인스톰/구프로젝트 로그 = `CLAUDE.md.diet-bak.*` 백업 참조.
+- **~06-08**: 필드뷰 CustomPainter(ABS)·알림체계·이닝중계 개편·Option A 전면이식·인앱크롭·다중사진·피칭디자인/존히트맵·인스타 핸들
+- **06-08b~10**: 출시준비(시크릿env·admin키·rate limit·FK CASCADE·유저차단·백업가드·Crashlytics) / 선수상세 개편(커스텀피커·비교말풍선·ⓘ용어) / 보안점검(EXIF·pg listen·인증제한)
+- **06-11**: A1.Flex 이전 + 성능(orjson·uvicorn[std]) + app-config 풀스택 + 아침브리핑 + **메가A**(game_event_stream·plate_appearances·인게임 승률모델 AUC.85·승률그래프·클러치푸시·불펜피로도) + 3시즌화(PA type23 픽스·24/25 시즌스탯)
+- **06-12**: **메가B**(point_ledger·예측·정산·리더보드·뱃지·미션·푸시GW quiet hours·온보딩모드) + **메가C**(공유카드·랜딩·인앱리뷰) + **메가D 코드측**(smoke.sh·CI·release APK) + 킬스위치(admin feature-flags)
+- **06-13**: iOS 사파리 대응(웹 JS백트랩·전역스케일·webBottomGuard) + 성능3종(SWR·ETag/304·/home/bootstrap) + **관리자 콘솔 대확장**(로그인게이트·DAU·통계/설정/시스템 탭) + 502 사고2건(duckdns cron·fail2ban)
+- **06-14**: game_start 미발송 진범=pregame이 user_notifications type='game_start' 기록→dedup 충돌(→'game_soon' 분리) / QS·starter 식별(pitching_order MIN) / 웹 다크이미지=color-scheme meta / 관리자 토글9종·maintenance
+- **06-15~16**: **메가E**(내러티브·game_reviews) + **메가F**(points ON·예측결과푸시) + **메가G**(시즌phase·Wrapped) + 팀상세 대수술·디자인토큰 전면화(Typo/Pal/Radii/Space) + 데드코드·refresh_token bloat·로스터 자동화(2군·부상 diff)
+- **06-17~19**: 역대데이터 프로젝트(↓완료섹션) + AI한줄평 LLM화 + 투구 truncation·seqno 중복 픽스(↑주의사항) + 역대 게임단위 백필(2010~23)
+- **06-23~27**: 우천중단(games.suspended) + DB 커넥션 누수 근본수정(↑주의사항 3중방어) + "알림 죽음" 3분해(시간버그 parseServerTime·FCM stale토큰·글자크기 0.85 고정)
+- **06-29~30**: 역대 C2(2군 시즌스탯/box/스플릿) 적재+UI + **퓨처스 홈 토글**(`[KBO｜퓨처스]` 세그먼트) + **FCM collapse 버그**(등말소 다발 알림 트레이 합쳐짐 → `_collapse_key` 엔티티 분리, ↑주의사항)
+- **07-01~03**: 퓨처스 경기상세 풀스크린·배치픽스(포지션 한글·상무/울산/소뱅 로고·2군 일일잡 `_update_futures_games`·우천취소 0:0 픽스) + **마일스톤 대확장**(끝내기/사이클/다홈런/20-20/통산100단위/역대순위/팀기록6종) + **알림 지연 개선**(한줄평 즉시 boxscore 재크롤·게임데이터 마일스톤 early 분리 = 7~30분→1~5분)
+- **07-04~05**: **투구 궤적 시각화**(game_pitch_locations 9 물리컬럼(PITCHf/x)·`pitch_trajectory.dart`·[위치/궤적] 토글·2D 측면상단·3D 원근회전 뷰) — ⚠️physics 백필 부분완료(live-guard 창밖 `backfill_pitch_physics` 재실행 잔여)·3D 존폭=absHalfW 정렬
+- **07-07**: 마일스톤 stale 신고=**오진**(득점≠타점 혼동, 코드 무변경) — 교훈 "N타점인데 M 알림"=스탯종류 먼저 대조
+- **07-17**: 경기요약 한줄평 팀 오귀속 버그 수정(key_play 승팀 필터·MVP wpa inning_half '0'/'1' 인코딩, 17건 재생성) + 투구위치 3D 횡회전 고정 + 서버 git 재인증·reconcile(origin/main)
 
-## 역대 데이터 수집 프로젝트 (KBO 1982~) — ✅ 핵심 완료 (2026-06-15 착수 ~ 06-16 A/C1/B/꼬리/검증 완료, C2만 장기보류)
+## 역대 데이터 프로젝트 (KBO 1982~) — ✅ 전부 완료
+목적: 역대 선수·팀 데이터로 상세 깊이·올드팬 자산·비시즌 DAU. 소스 = **KBO 공식 + Naver 통계 API만** (⚠️statiz 크롤=불법 ToS, 절대 금지 — `statiz_crawler.py`는 오명, 실체는 Naver API). 크롤러 = `backend/crawler/historical_crawler.py` 서브커맨드(`<시즌범위>`/bio/awards/link/fip/ps/splits/futures/detsplits/naver).
+- ⚠️ **kbo_player_id = 역대 정규키**(players + historical_players 공유, 사람1=id1, 이름조인 폐기). naver_player_id=라이브 브릿지.
+- ⚠️ **KBO 리스트=규정충족자만** → 비규정은 `ddlTeam` 팀필터로 우회. 해체구단(삼미/현대/쌍방울) 비규정은 미수집.
+- ⚠️ **Naver stat API = 2007~만**(pre-2007=KBO 단일 spine). woba~2008+·war/wrc+~2014+ = **시즌별 표시용**(통산집계 부정확).
 
-### ⚡ 트리거 (재개 프로토콜)
-- ✅ **이 섹션(역대수집 핵심)은 완료** (A/C1/B/꼬리/검증). `역대수집 진행`은 이제 C2(장기 큐)만 남음 → 사실상 **아래 두 후속 트리거로 분기**:
-  - **`역대UI 진행`** → 역대 데이터 앱/API 노출 (실사용자 가치, 데이터 준비됨) — 별도 섹션 「역대 데이터 UI 노출」
-  - **`역대C2 진행`** → 퓨처스 경기단위·스플릿 세밀축 (장기·니치·무거움) — 별도 섹션 「역대 C2」
-- **공통 동작 프로토콜**(세 트리거 동일): ① 해당 섹션 **진행 체크리스트** 읽기 → ② 첫 `[ ]` 실행 → ③ `[x]`+**진행로그** 한 줄 → ④ **연속**: 다음 `[ ]` → ⑤ `⏸️ 게이트` 만나면 멈추고 질문 / 막히면 정직 보고. 게이트 없으면 소진까지 자율.
-- **각 단계 끝 = CLAUDE.md 해당 섹션 갱신**(체크박스+진행로그) → 세션 끊겨도 이어받음.
-- 멈춤: "<트리거> 중단" / 게이트 / 미완료 0개.
-- `역대수집 진행`(구 트리거) = C2 장기 큐 가리킴 (아래 「역대 C2」 = `역대C2 진행`과 동일 취급).
+### 적재 스냅샷 (프로덕션 DB)
+- `team_franchises` 22행 — 구단계보(current_team_id NULL=해체구단)
+- `historical_players` ~1100명 — bio/career/draft_info/debut·final/primary_team + naver·player_id 브릿지(현역 277명)
+- `historical_season_stats` ~14566행 — 규정+비규정, series_type(정규/PS), FIP/woba/war/wrc+/babip/iso 등
+- `historical_awards` 541건 — MVP/골글/타이틀
+- `historical_splits` — 타자 11130행(23~26)+투수 5459행(24~25): 홈원정/상대팀/월별/플래툰/구장
+- `historical_futures_season_stats` 12967행/17시즌 — 2군 시즌스탯 / `futures_games`+`futures_game_box`(JSONB) 952경기 — 2군 box(playerId 없이 이름만)
+- **게임단위 백필 = game_pitches/PA 2010~2023 확장**(11317경기·885120타석, 갭0) → matchup 진짜통산·역대 WPA/클러치·리플레이·존히트맵
+- ⚠️ 미수집/잔여: PS 2006~ 부분결손 · 2군 pitch-by-pitch=infeasible(소스부재) · WAR/wOBA 통산집계 부정확(시즌표시만)
 
-### 목적
-- KBO 역대(1982~) 선수·팀 데이터로 **① 상세페이지 깊이(콘텐츠) ② 승리예측 정확도(모델)** 강화. 비시즌 DAU 방어·올드팬 자산.
-
-### ⚠️ 소스 정책 (확정)
-- **statiz(스탯티즈) 크롤 = 불법(ToS/저작권) → 전면 금지.** 절대 재도입 금지.
-- 합법 소스만: **KBO 공식(koreabaseball.com, 가장 방어가능) + Naver 통계 API(기존 `statiz_crawler.py`가 실제로 쓰는 `api-gw.sports.naver.com/statistics` — 이름만 statiz, 도메인은 naver)**.
-- ⚠️ `backend/crawler/statiz_crawler.py` = 오명. 실체는 Naver API. statiz.co.kr 안 건드림.
-
-### 확인된 소스맵 (2026-06-15 스파이크 결과)
-| 데이터 | 소스 | 깊이 | 방식 | 상태 |
-|---|---|---|---|---|
-| 1군 시즌스탯(타/투) | KBO `record/player/...basic1.aspx` | **1982~2026 44시즌** | ASP.NET `__doPostBack`+5단위페이저 | ✅확인 |
-| 퓨처스 스탯 | KBO `futures/player/hitter.aspx` | **2010~2026** | postback+팀필터 | ✅확인 |
-| 세이버(WAR/wOBA/wRC+/FIP) | — KBO 미제공 | — | 기존 `recompute_*_derived`로 자체계산 | ✅보유 |
-| 은퇴선수 bio(생일/키/체중) | KBO `Record/Player/{Hitter,Pitcher}Detail/Basic.aspx?playerId=` | **은퇴선수 포함** | detail 헤더(생년월일/신장체중/투타/포지션/경력출신교) | ✅확인(양준혁 검증 — 1969생·188/95·좌투좌타·외야수·남도초~LG) |
-| 수상경력 | KBO `History/Etc/{PlayerPrize,GoldenGlove}.aspx` + `Player/Awards/{playerprize,GoldenGlove,SeriesPrize}.aspx` | 역대 | ASP.NET(WebFetch는 list/history 에러 → selenium 필요) | ✅URL확인(구조 selenium서) |
-| 드래프트 | **`draft.koreabaseball.com`** (별도 subdomain) | ❓ | ❓ | ✅URL확인(구조 미확인) |
-| 연봉 | KBO 미제공 가능(공시/언론뿐) | ❓ | 합법성 회색 | ⬜보류후보 |
-- 퓨처스 팀 = 한화/LG/고양/SSG/두산/상무/롯데/KIA/NC/삼성/KT/울산 (독립·군팀 고양/상무/울산 포함 → C2 팀매핑 소스).
-- KBO = postback 무겁지만 레포 **이미 KBO postback 크롤 중**(`kbo_roster_crawler` fnSearchChange, `kbo_daily_crawler`) → 패턴 존재. selenium = ARM snap chromium `driver_util.arm_or_wdm_chrome` 경유 필수.
-
-### 트랙 구성 (목적별 분리 — 섞지 말 것)
-- **트랙 A 콘텐츠**(상세 깊이): 구단계보·선수신상·통산스탯·수상·PS·(꼬리)드래프트/연봉. ⚠️ statiz 빠져 신상/수상/연봉 소스 불확실 = bio 스파이크가 생사 결정.
-- **트랙 B 모델**(예측): 박스역대(~2015+ 실효, 분포이동 주의)·스플릿 기본축. ⚠️ 야구 본질 고분산 = 데이터로 안 깨지는 천장(per-PA AUC~.52, ingame .854). 무한정 정확해지지 않음.
-- **트랙 C1 근**(roster 시너지): 콜업/말소+2군 시즌스탯 → 기존 roster_diff "부상≠2군 구분 불가" 한계 해결. 가벼움.
-- **트랙 C2 장기**(보류): 퓨처스 경기단위·일정·박스 = 사실상 2군 리그 풀 파이프라인. 니치·무거움 → 장기 큐.
-
-### 견적 (statiz 드롭·꼬리 제거 후)
-- 저장: 코어 ~400MB / 스플릿세밀·C2 포함 ~2GB. 크롤: ~5~12시간 1회배치. **$0**.
-- 개발: 근기(A코어+C1+B+A꼬리) ~7~9세션. C2/스플릿세밀 = 장기.
-- **불변 병목**: ① 동명이인(44년치 이름중복, statiz_id 못 쓰니 KBO/Naver player_id 키 설계) ② 구단계보(삼미/청보/태평양/빙그레/쌍방울/해태/현대/OB 등 없어진 구단 team_id 확장).
-
-### ✅ 의사결정 (2026-06-15 게이트 통과 — 확정)
-1. ~~스키마~~ → **별도 역대테이블 확정**: `historical_players`+`historical_season_stats`. 현 players/현역 파이프 무손상(신규생성금지 가드 유지). 앱 = active(players) ∪ historical 병합조회.
-2. ~~동명이인 키~~ → **`kbo_player_id` UNIQUE 정규키 확정**: players + historical_players 둘 다 보유, 사람 1=id 1. naver_player_id=라이브 보조 브릿지. **이름조인 전면폐기**(PA naver_id 숙제와 연결 — 양현종/이태양 혼합 근본해결 경로).
-3. ~~기회비용~~ → **단계적 착수 확정**: 구단계보 1단계만 먼저 → 재평가(전체 7~9세션 몰빵 아님).
-4. ~~**bio/수상 소스**~~ → **✅해소(2026-06-15 스파이크2/3)**: KBO 은퇴선수 detail 페이지에 bio 풀세트(생년월일/신장체중/투타/포지션/경력) + 수상/드래프트 URL 확인. 트랙A 콘텐츠 축소 불요, 위키 대체소스 불요. statiz 드롭해도 트랙A 생존.
-
-### 진행 체크리스트 (트리거가 여기 따라 진행)
-- [x] 브레인스톰: 트랙/단계/견적 합의
-- [x] 스파이크: KBO 1군기록(1982~) + 퓨처스(2010~) 구조 확인, statiz 불법 판정·드롭
-- [x] **스파이크2**: KBO detail 페이지 은퇴선수 bio ✅존재(양준혁 검증) — 트랙A 생존, #4 해소
-- [x] **스파이크3**: 수상(History/Etc·Player/Awards) + 드래프트(draft.koreabaseball.com) URL ✅확인 (구조 selenium서)
-- [x] **스파이크4 (실측 종결 2026-06-15d)**: 서버 curl 실측 → naver stat api = **2007~만**(2006=count0, 2007부터 데이터). 역대 1982~2006은 naver 불가 → **KBO 단일 spine 확정**(id space 하나=kbo_player_id, 브릿지 불요). naver는 라이브/현역 파이프 전용 유지
-- [x] ⏸️ **설계 게이트** (2026-06-15 사용자 결정): **#1 스키마=별도 역대테이블**(`historical_players`+`historical_season_stats`, 현 players 무손상, 앱 active∪historical 병합조회) / **#2 동명이인키=`kbo_player_id` UNIQUE 정규키**(naver_player_id=라이브보조, 이름조인 전면폐기) / **#3=단계적 착수**(구단계보 1단계만 하고 재평가)
-- [x] 구단계보/팀역사 테이블 설계+시드 (2026-06-15): `team_franchises` 22행 시드, 프로덕션 적용·검증 완료
-- [x] 트랙A코어 크롤러 (2026-06-15~16) **완료**: 통산/bio/수상/franchise/PS/세이버FIP 전부 빌드+검증. 정합: 이승엽467HR·MVP×44·2005KS 삼성vs두산·선동열 1993 FIP0.52(전체최저). FIP=1003행(avg3.57). PS 배치 백그라운드 완주중(`/tmp/hist_ps.log`). WAR/wOBA/wRC+=infeasible(미계산).
-- [x] ~~트랙A코어 (구 상세)~~: **통산스탯 ✅**(`historical_crawler.py` Basic1+Basic2, **1982~2025 배치 실행중** nohup `/tmp/hist_crawl.log`) · **신상bio ✅**(`enrich_bio` detail div.player_info, 손민한 검증) · **franchise링크 ✅**(`link_franchises` 919/919, 백인천→LG) · **수상 ✅**(`enrich_awards` detail `Award.aspx` — ⚠️per-player Award는 서버 도달 OK(aggregation History만 차단), 손민한 2005 MVP+골글 검증). **⚠️배치 완료 후 runbook**: `python3 -m crawler.historical_crawler link` → `bio` → `awards`(전부 재실행안전). 잔여: **PS**(✅소스확정 = Basic1 `ddlSeries` 드롭다운 0정규/4와일드카드/3준PO/5PO/7한국시리즈 → **같은 크롤러+series param**, 스키마에 series_type 컬럼+UNIQUE 추가 필요, 배치후 빌드) · **세이버**(war=infeasible / fip=시즌집계로 계산가능, woba/wrc+=리그가중치 근사 필요 / babip·iso 등은 현 스키마에 컬럼 없음) · 비규정선수 완전성(KBO=규정자만, `ddlTeam` 팀필터가 우회 가능성). ※**trackB 스플릿 소스도 발견**: Basic1 `ddlSituation`(월별/구장별/홈방문/상대팀별/주야/전후반)
-- [x] 트랙C1 (2026-06-16): **2군(부상≠강등) 구분 완료·배포**. `crawl_active_futures`(futures/player/register.aspx, 1군과 동일구조 `_crawl_register_page` 공유, 255명/10팀) + `classify_roster_diff` futures_registered 인자(2군 등록=positive→'2군' 즉시판정, 어느군도 없음=등록말소 stale가드, 2군크롤실패=폴백) + sync 통합('2군 강등(자동)' reason). roster_diff 테스트 10종 PASS, sync 라이브 123건(KT 이채호 등 2군 정합), scheduler 배포+smoke ALL PASS. ⚠️새 change_type='2군'도 reason '(자동)'이라 news surface 제외·선수상세 배지만 노출(도배방지 정책 준수). 2군 시즌스탯(historical)은 C2.
-- [x] 트랙B (2026-06-16, 스플릿만): **박스역대→모델 = 저ROI 스킵**(야구 천장 .854/.52, CLAUDE.md 명시 — 9시즌 크롤 대비 AUC 거의 안 움직임). **스플릿 기본축 v1 완료**: `historical_splits`(타자 홈원정/상대팀/월별, ddlSituation+Detail 이중드롭 동적순회) — 2025 적재(2250행)+2023~2024 배치, slg=구성요소 계산(양의지 홈 .336/.512 검증). ⚠️v1 한계: 분할값당 ~80% 커버(KBO 분할뷰 표시필터/페이지 — 일부 스타 한 분할 누락), 투수/OPS·OBP(BB 미수집)·역대전체=후속(세밀축 장기). UI(선수상세 스플릿 테이블)=별도 기능작업.
-- [x] 트랙A꼬리 (2026-06-16): **드래프트 ✅** = detail '지명순위'(예 손민한 '97 롯데 1차') → `draft_info` 컬럼, bio enrich 통합, 전체 재크롤중(`/tmp/hist_draft.log`, ~30min). **연봉 = 보류**(합법성 회색, 공시/언론뿐). draft.koreabaseball.com 별도크롤 불요(detail에 있음).
-- [x] 검증 (2026-06-16): 라이브 스팟체크(이승엽 467HR·MVP×44·선동열 FIP0.52·백인천.412·양의지/김도영 스플릿·손민한 draft) + pytest 15종(test_historical_parse 5: _parse_ip/_parse_bio/draft + test_roster_diff 10: C1 2군구분). 전부 PASS.
-- [ ] (장기 큐) 트랙C2 퓨처스 경기단위 / 스플릿 세밀축
-
-### 진행로그
-- 2026-06-15: 착수. 브레인스톰 완료(3트랙+C1/C2 분할). 스파이크1 완료 — statiz 서버렌더지만 **크롤 불법 판정→드롭**. KBO 1군 1982~2026·퓨처스 2010~2026 postback 확인. 트리거 프로토콜·이 섹션 신설. 다음=스파이크2(KBO bio).
-- 2026-06-16g: **역대수집 핵심 완료**. 트랙A꼬리 드래프트(`draft_info`='지명순위', detail서 추출, 연봉=보류) + 검증(pytest 15 PASS: 파서+roster_diff, 라이브 스팟체크). 체크리스트 A/C1/B/꼬리/검증 전부 [x], 남은 건 C2(퓨처스 경기단위/스플릿 세밀축)=장기 큐 보류(설계대로). draft bio 재크롤 ~30min 완주중(`/tmp/hist_draft.log`). **데이터 깊이 적재 종료** — 다음 가치=UI 노출(앱/API, 별도 기능작업).
-- 2026-06-16f: **트랙B 스플릿 v1 완료**(모델=저ROI 스킵 결정). `historical_splits` 스키마+`crawl_splits_season`(ddlSituation 축 + ddlSituationDetail 값 동적순회, 타자 Basic1 코어). FK 위반(스플릿엔 비규정선수 등장)→INSERT전 `_upsert_player` 픽스. slg는 분할뷰에 TB컬럼 없어 구성요소(H+2B+2*3B+3*HR)/AB 계산+백필(4496행). 2025 검증(양의지 홈 .336/.512), 2023~2024 배치(PID 246262, `/tmp/hist_splits.log`). ⚠️분할값당 첫값 150/나머지 120 = ~80% 커버(KBO 표시필터 추정, 일부 누락) — v1 수용, 정밀화 후속. 2023~2025 배치 완료(6750행, ~235선수/시즌) + slg 백필 완료(~99.9% AB>0, 김도영2024 홈 .339/.591 검증). **역대수집 주요트랙(A/C1/B) 전부 일단락**. 남은=PS완성(low-pri)·세밀축/투수스플릿/트랙A꼬리draft(장기)·**UI노출(앱/API — 별도 기능작업)**.
-- 2026-06-16e: PS 배치 종료(부분) + trackB 스플릿 제약 발견. **PS**: 최적화본도 sleep-bound(~9s/page-sweep×8/season)라 glacial(kill 시 1984에 머묾) → kill. 현재 PS 적재=부분(한국시리즈 13시즌/PO 10/준PO 7, 주로 ~2005, 2006~ 결손). **low-priority라 부분 수용**, crawler 유휴 시 재개 가능(`ps 2006 2025`). **trackB 스플릿 제약**: ddlSituation은 situation1(축)+situation2(값) 이중드롭(홈/방문 등), split당 1크롤 → 전체 역대 스플릿(7축×값×44시즌×타투) = **비현실적(수일)**. 기본축=바운드 필수(현/최근시즌·홈원정/상대팀/월별). 좌우투 핸디드니스는 ddlSituation에 없음(별도). 스키마는 스코프 확정 후. 다음=스플릿 스코프 결정.
-- 2026-06-16d: **트랙C1 완료·배포** (부상≠2군 구분). 기존 roster_diff 한계(1군 부재=무조건 '등록말소'라 강등·부상 혼동) 해결 = 2군 등록현황(`futures/player/register.aspx`, 1군과 구조동일) 크롤해 positive 증거로 '2군' 판정. classify_roster_diff에 futures_registered(2군 등록=즉시 '2군', 부재+stale=등록말소, 크롤실패=종전폴백) — 테스트 10 PASS. sync_active_roster 통합('2군 강등(자동)'), 라이브 123건 동기화(KT 이채호/문상철 등 2군 정합), scheduler 배포+smoke ALL PASS. ⚠️'2군' change_type도 '(자동)'이라 news surface 제외, 선수상세 배지만. historical 2군 시즌스탯=C2(장기). 다음 트랙=B(모델) 미착수. PS 배치 계속.
-- 2026-06-16c: PS 크롤 드라이버 재사용 최적화(시즌당 8→1 startup, crawl_*_season에 driver 주입). 구 PS배치 kill→최적화 재가동(`/tmp/hist_ps2.log`, ps 1982~2025, ON CONFLICT 재개). ⚠️실 병목=per-page sleep(~64s/season)이라 ~2.6배만 빨라짐(~40min). ⚠️다음트리거=`/tmp/hist_ps2.log`(ps2). PS는 low-priority tail — trackA 핵심은 이미 완료.
-- 2026-06-16b: 세이버 FIP 완료 → **트랙A코어 100% 종료**. `recompute_fip()`(시즌 리그상수 cFIP + per-pitcher, IP 6.1=6⅓변환, 정규만) → 1003행, avg3.57 범위0.52~6.20. 검증=선동열 1993 ERA0.78/FIP0.52(전체최저)·1986 0.99/0.91. WAR/wOBA/wRC+=infeasible(데이터/모델 한계, 미계산). 다음 트랙(C1 2군 / B 모델)은 미정=사용자 선택 대기(트랙 경계). PS 배치 계속 완주중.
-- 2026-06-16: 트랙A코어 완료(데이터 적재+검증) + PS 빌드. **enrichment 완료**: bio 838/838(크래시fix 후 재실행 성공)·awards 541건/208명(MVP 정확히 44=44시즌×1, 골글 포지션별 44 정합)·franchise링크 919→전체. **정합검증**: career HR 이승엽467(정확)·최정432·최형우419 / W 송진우185·양현종168·선동열133 / debut·final 정확 / bio NULL 0(throws만 24결손). ⚠️career 합이 일부 실제보다 약간 낮음=KBO 규정자만 노출 한계(이승엽은 항상규정→정확). **PS 빌드**: series_type 컬럼(정규/와일드카드/준PO/PO/한국시리즈), ddlSeries param, 2005KS 검증(삼성vs두산 4G 정합), 1982~2025 PS 배치 실행중(PID 219812, `/tmp/hist_ps.log`, ~2hr, 단명드라이버라 crash내성). 다음=세이버 FIP(선택) or 트랙C1(콜업/2군). ⚠️다음트리거=`/tmp/hist_ps.log` 확인.
-- 2026-06-15i: 시즌배치 완료(44시즌/838선수/2815행) + link 완료(1961행). **bio 드라이버 크래시 발견·수정**: 단일 드라이버가 ~327명서 chromium 사망(Connection refused) → bio 327/838 중단. `enrich_bio`/`enrich_awards`에 **70명마다 드라이버 재생성 + 예외 시 respawn 1회 재시도** 추가 → 재실행 검증(327→389/100s, 오류0). **재실행 오케스트레이터 가동**(bio→awards, `/tmp/hist_post2.sh`→`/tmp/hist_post2.log`, ~35min). ⚠️**다음 트리거 = `/tmp/hist_post2.log` "ALL DONE" 확인** → 완료면 정합검증+**PS 빌드(ddlSeries)**+**saber FIP**. ⚠️pkill -f "crawler..." 금지(자기 ssh 셸 매칭 자살, 255) — kill -0 PID로 체크.
-- 2026-06-15h: 배치후 enrichment **자동 오케스트레이터 가동**(detached PID, `/tmp/hist_post.sh`→`/tmp/hist_post.log`): 시즌배치(`1982 2025`) 종료 대기 후 link→bio→awards 순차 자동실행(동시크롤 회피).
-- 2026-06-15g: PS 소스 확정 + trackB 스플릿 소스 발견(recon). KBO Basic1에 `ddlSeries`(0정규/1시범/4와일드카드/3준PO/5PO/7한국시리즈) → **PS=같은 크롤러+series param**(detail 탭엔 PS 없었으나 리스트 series 드롭이 답). `ddlSituation`(월별/요일별/구장별/홈방문/상대팀별/주야/전후반)=trackB 스플릿축. `ddlTeam`(팀필터)=비규정 완전성 우회 후보. PS 빌드=배치후(series_type 컬럼+UNIQUE 변경 + 크롤). 배치 34/44 진행중.
-- 2026-06-15f: 수상(awards) 서버사이드 해결. **핵심 발견**: aggregation History/Award 페이지는 서버 IP 차단이나 **per-player detail `{Hitter,Pitcher}Detail/Award.aspx?playerId=`는 도달 OK** → 로컬PC 불요. `historical_awards` 테이블 + `enrich_awards`(table 연도|수상 파싱) → 손민한 2005 MVP+골든글러브 검증. 배치후 runbook = link→bio→awards. PS는 detail 탭에 없어 소스 미확인(별도 조사). 배치 23/44 진행중.
-- 2026-06-15e: 트랙A코어 bio+franchise링크 완료. **bio enrichment**(`enrich_bio`): detail `div.player_info ul li` 파싱(생년월일/신장체중/투타분해 '외야수(좌투좌타)'/경력) → 손민한 검증(1975-01-02·180/85·우우·대연초~NC). **franchise 링크**(`link_franchises` 순수SQL, 재실행안전): 시즌행 team_name(MBC/OB/현대..)→team_franchises era매칭(시즌범위 구분)+debut/final+대표팀(최다출전 현존구단). 919/919 링크·0 미연결·백인천1982 MBC청룡→LG 검증. ⚠️세이버/수상/PS 잔여(수상·PS=서버IP aggregation 차단→로컬). 배치완료 후 link·bio 재실행 runbook 기록.
-- 2026-06-15d: 트랙A코어 통산스탯 크롤러 완료(배치 진행중). **스파이크4 실측 종결**: naver stat api = **2007~만**(2006=0, 2007✅) → 역대는 KBO 단일 spine 확정. **스키마 적용**: historical_players+historical_season_stats 프로덕션 생성. **크롤러**: `historical_crawler.py` — KBO `{Hitter,Pitcher}Basic/Basic1·Basic2.aspx`(⚠️ `Basic.aspx`(no"1")는 에러페이지 — `Basic1`/`Basic2`가 실 리스트, repo kbo_daily_crawler 패턴), ddlSeason 1982~9999, 선수명 앵커 `/Record/Retire/...playerId=` 추출=kbo_player_id. ⚠️**서버 IP는 detail+list("Basic1")만 도달, Main/search/History/PlayerPrize 등 aggregation은 에러**(WebFetch도 동일 — JS세션 필요. 단 우리 용도엔 Basic1으로 충분). ⚠️KBO 리스트=**규정충족자만**(2005 타43/투15, 비규정은 미노출 — 완전성은 후속 과제). **버그수정**: 1페이지 시즌서 `//a[.="2"]` 스트레이 클릭→18열 이종테이블 로드→ON CONFLICT 정상행 덮어씀(손민한 W18→0) → headers 열수 가드+(선수,팀)dedup+새행0종료. 검증=이병규2005(.337/9HR/.843)·손민한2005(18W/168.1IP)·백인천1982(.412)·박철순1982(24W/1.84). 1982~2025 배치 nohup 실행중(PID 185718). 다음=bio/수상/PS enrichment.
-- 2026-06-15c: 구단계보 단계 완료. `team_franchises`(current_team_id NULL=단절, team_name/code/start_year/end_year/is_continuous/note, UNIQUE(team_name,start_year)) 마이그레이션+22행 시드 → 프로덕션 적용·검증(17 mapped/5 defunct). 개명·인수=현구단 연속, 현대(삼미→청보→태평양→현대)·쌍방울=KBO 관례대로 단절. 다음=트랙A코어 크롤러(#3 재평가 지점, GO 확인 후).
-- 2026-06-15b: 스파이크2/3/4 일괄. **스파이크2 ✅**: KBO `Record/Player/HitterDetail/Basic.aspx?playerId=` 은퇴선수(양준혁) detail에 bio 풀세트(생년월일/신장체중/투타/포지션/경력출신교) 렌더 확인 → 트랙A 콘텐츠 생존, #4 해소. **스파이크3 ✅**: 수상=`History/Etc/PlayerPrize·GoldenGlove.aspx`+`Player/Awards/*`, 드래프트=`draft.koreabaseball.com`(별 subdomain) URL 확인(WebFetch는 KBO list/history 에러라 구조 검증은 selenium impl서). **스파이크4 [~]**: naver api `{season}` free-form 확인하나 실측 깊이는 이 환경서 미측정(WebFetch api-gw 차단) → impl서 curl 1줄. 다음=⏸️ 설계 게이트(스키마#1·동명이인키#2·우선순위#3 사용자 결정).
-
-### 📦 현재 데이터 스냅샷 (2026-06-16 — UI/C2 세션 참조용)
-적재 완료 (프로덕션 DB, 크롤러=`backend/crawler/historical_crawler.py` 서브커맨드 `<시즌범위>`/`bio`/`awards`/`link`/`fip`/`ps`/`splits`):
-- `team_franchises` 22행 — 구단계보 (current_team_id NULL=해체구단 삼미/청보/태평양/현대/쌍방울)
-- `historical_players` ~1100명 — **kbo_player_id 정규키** + bio/throws/bats/position/career/draft_info/debut_year/final_year/primary_team_id + naver_player_id·player_id 브릿지 (838 규정 + ~262 스플릿추가분 bio 보강중)
-- `historical_season_stats` ~2880 정규행 + PS 부분 — series_type(정규/와일드카드/준PO/PO/한국시리즈), UNIQUE(kbo_player_id,season,team_name,series_type), FIP 1003행
-- `historical_awards` 541건/208명 — MVP/골글/타이틀 (연도|수상)
-- `historical_splits` 6750행 — 2023~2025 타자 기본축(홈원정/상대팀/월별), avg/slg
-- 앱 노출 정책(설계 확정): **active(players) ∪ historical_players 병합조회, kbo_player_id 정규키, 이름조인 폐기**
-- ⚠️ 잔여: PS 2006~ 결손(low-pri, `ps 2006 2025` 재개) / 스플릿 분할값당 ~80%커버 / 투수스플릿·OPS·세밀축 미수집 / WAR·wOBA·wRC+ infeasible
-
-## 역대 데이터 UI 노출 (앱/API) — ✅ 완료 (2026-06-16, P1~P4 배포·live검증)
-### ⚡ 트리거: 사용자가 **`역대UI 진행`** 입력 시 = 이 섹션 재개.
-- **동작**: 역대수집과 동일 프로토콜 — 첫 `[ ]` 실행 → `[x]`+진행로그 → 연속, ⏸️게이트서 멈춤/질문. 각 단계 끝 CLAUDE.md 갱신.
-- **목적**: 적재된 역대 데이터(위 스냅샷)를 앱/웹서 노출 = 올드팬 자산·비시즌 DAU. **데이터 준비됨 → 크롤 불요, 순수 백엔드+프론트라 PS/크롤 충돌 없음**(역대수집/C2와 독립 진행 가능).
-### 진행 체크리스트
-- [x] 브레인스톰/스파이크: 노출 범위·진입점 + 구조 파악 (2026-06-16) — players.py(검색/상세=players만, 역대 API 없음=그린필드)·player_screen(검색 탭2)·player_detail_screen(시즌칩=stats 기반) 파악. historical_* 스키마 4종 확인(series_type DEFAULT '정규', player_id 현역 브릿지, draft_info TEXT)
-- [x] ⏸️ 설계 게이트 통과 (2026-06-16 사용자 결정): **범위=풀**(현역통산+은퇴검색/상세+스플릿+역대탭) / **검색=통합**(/players/search가 현역+은퇴 반환) / **은퇴상세=신규화면**(historical_player_detail_screen) / **검색키=kbo_player_id**(수집게이트 기확정) / 동명이인=primary_team+debut~final 구분. 스펙=`docs/superpowers/specs/2026-06-16-historical-data-ui-design.md`
-- [x] API (2026-06-16, P1 배포+live검증): 신규 `api/routers/historical.py` — `GET /historical/{kbo_player_id}`(bio/통산집계/시즌별/PS/수상/스플릿/franchise, @cached 600) + `GET /historical/leaders`(통산 명예의전당, /{id}보다 먼저 선언, @cached 3600). 기존 `/players/search` UNION(historical_players 브릿지없는 은퇴만, key_type/is_historical/years 부여) + `/players/{id}` 머지(현역 브릿지 시 series_type='정규' AND season<2024 역대시즌+수상, 키매핑 walks_allowed→walks). 헬퍼 `_aggregate_career`/`_ip_to_outs`(순수테스트 3종 local PASS). **live: 이승엽 career HR 467·시즌15·수상15, leaders HR=467 top, search key_type=historical 정합**. ⚠️ local py(3.14)는 backend deps 없음 → 모듈테스트는 서버/CI
-- [x] 앱 (2026-06-16, P2~P4, analyze lib=0): `api_service` getHistoricalPlayer/getHistoricalLeaders · `player_screen` 통합검색 '역대' 배지+활동연도+라우팅분기(is_historical→은퇴상세)+_numAvatar 이름폴백+헤더 '역대 기록실' 진입 · 신규 `historical_player_detail_screen`(bio/통산/시즌별표/PS/수상/스플릿/franchise, 라이브섹션 없음=이미지 미사용이라 웹규칙 무관) · 신규 `historical_leaders_screen`(명예의전당 카테고리칩+TOP25) · 현역 `player_detail_screen` 수상 섹션 머지. 토큰 교정(Pal.paper·BorderRadius.circular(Radii)·Typo.regular)
-- [x] 웹 동반 빌드+배포 (2026-06-16): wasm 재빌드 → rsync `/var/www/playball_web/`, `/app/` 200. live검증 = 이승엽 career HR 467·선동열 search historical 1985~1993·leaders 승 송진우 185 정합. 골든 회귀 통과.
-### 진행로그
-- 2026-06-16: 착수. 브레인스톰+구조파악 완료(players.py/player_screen/player_detail_screen + historical_* 4스키마). 설계 게이트 통과(범위=풀·검색통합·은퇴상세신규·kbo_player_id키). 설계 스펙 작성+셀프리뷰(series_type='정규' 머지필터·컬럼키매핑 정정) → `docs/superpowers/specs/2026-06-16-historical-data-ui-design.md`. **유저 스펙 승인** → 구현플랜 작성+셀프리뷰 완료 → `docs/superpowers/plans/2026-06-16-historical-data-ui.md`(Task1~10, P1 backend TDD → P2 현역통산 → P3 은퇴상세 → P4 역대탭). 플랜 실행(인라인) → **P1~P4 전부 완료·배포**.
-- 2026-06-16b: **역대UI 전체 완료**. P1 백엔드(historical.py 상세+leaders·/search UNION·/{id} 머지, series_type='정규'·키매핑, 헬퍼 순수테스트 local PASS) 배포+live(이승엽 467HR·leaders·search 정합). P2~P4 앱(통합검색 '역대'배지+라우팅·신규 historical_player_detail_screen·신규 historical_leaders_screen 명예의전당·현역상세 수상섹션, analyze lib=0). 웹 wasm 재빌드+rsync(`/app/` 200), 골든 4 PASS. ⚠️**네이티브 APK 미반영**(웹+서버만 — 기존 관행). 잔여=역대선수 인기투표/비교/공유=비목표(추후), PS 2006~ 결손(데이터).
-- 2026-06-16c (후속 — 유저 피드백 3건): ① **현역상세 24시즌까지만 버그 = player_id 브릿지=0** (크롤러가 미설정). (이름+생일) 매칭으로 **277명 브릿지 복구**(동명이인 생일로 분리 — 양현종 KIA투수 1988 vs 키움내야수 2006) + `link_franchises`에 영속화. 양현종 상세 2024→**2009~2026 전체+수상(MVP·골글)** 라이브. ② **역대 기록실 = 선수스크린 헤더버튼 → 팀스크린 탭으로 이동**: 탭 재배치 팀순위/팀기록/부문별순위/**역대기록실**(length4, isScrollable), **`PlayerRankingsTab(historical:true)` 동일위젯 재사용**(포디엄/칩/순위행 UI 동일)+신규 `/historical/rankings` 번들. historical_leaders_screen.dart 삭제. 웹 재빌드+배포. ③ **데이터 한계 규명+해결**: KBO 기록=규정충족자만(시즌~60~70명) → 마무리(오승환 0행)·비규정·루키 누락, leaders 현역 과소(최정 432). **ddlTeam 팀필터가 비규정 노출 확정**(KIA필터=30명 전원 비규정포함). `allteams` 크롤(시즌×10팀) 빌드+검증(2024: 76→483행). **1982~2025 전체배치 가동중**(`/tmp/hist_allteams.log`, ~3hr, nohup PID 275699). ⚠️**배치 완료 후 runbook**: `link`(신규 비규정 현역 브릿지) → `fip`(recompute) → leaders/career 정확도↑. ⚠️해체구단(삼미/현대/쌍방울) 비규정은 ddlTeam 부재라 미수집(규정자는 기존 적재분 有). ⚠️현역 current시즌(2024~26)은 batter_stats에 있고 historical leaders엔 미합산 = 잔여(별도).
-- 2026-06-17 (비규정 배치 완료 + 정확도 마감): **비규정 전체배치 완료** — 1985~2025 40/41시즌 확장(풀 로스터), `historical_season_stats` 정규행 ~2880 → **14566** (~5배). **현역 current 합산**(`_leader_query` = historical + batter/pitcher_stats UNION, NOT EXISTS 멱등) → leaders 활성선수 보정. **runbook 수동**(워처 `pgrep -f allteams_batch.sh`가 **자기 명령줄 자매칭**해 무한대기 버그 → 수동): `link`(franchise 13143·debut/final·브릿지277) + `fip`(5029행). ⚠️**player_type 오염 발견·수정**: KBO 타자 팀필터 페이지에 투수도 등장 → hitter crawl '타자' 선INSERT + ON CONFLICT player_type 미갱신 → 투수 시즌행 1570개 '타자' 오염(오승환 세이브 161 누락). **historical_players 권위값 정규화 UPDATE**(라이브 1570행 + `link_franchises`에 영속화 step5). **최종검증 라이브: 최정 통산 HR 534 #1(historical 20시즌495+현역39)·오승환 세이브 427 #1·송진우 승201**. ⚠️신규 비규정 선수 bio(birth_date) 미적재 → 그들 현역브릿지/검색은 `bio` enrich 필요(미실행, 별도 — 단 기존 현역스타 통산은 kbo_id 귀속이라 무관). ⚠️해체구단 비규정 여전 미수집(ddlTeam 부재).
-- 2026-06-17b (Naver 세이버 백필 + 2017 갭): **Naver stat API(`api-gw.sports.naver.com/statistics`)로 KBO 미제공 woba/war/wrc+ 백필** — `historical_crawler.py backfill_naver_saber`(CLI `naver <s> [e]`, requests=셀레늄불요). 매칭=(시즌+이름+team prefix), >0만 덮음. **woba ~2008+·war/wrc+ ~2014+**(Naver 제공범위, 2007/구시즌은 미계산=0). 2007~2025 적용(시즌당 ~400~690행). ⚠️**2017이 비규정 배치서 누락**(40/41 갭 = 2017)→`allteams 2017` 재크롤 66→517행 + naver 2017 재백필 596행. **검증**: 김재환2017 war7.78/wrc+176·이대호 통산374#5·김광현(동명이인 정상 — 타자94233 1994~99 / 투수77829 180승)·오스틴2023 woba.392/war5.57. ⚠️war 통산리더엔 미반영(war 시즌 일부만 있어 통산합 부정확 — woba/war/wrc+는 **시즌별 표시용**, 통산집계 X). ⚠️statiz 아님=naver 합법 API. **역대 데이터 수집 사실상 종결**(잔여=해체구단 비규정·신규선수 bio·우승이력 등 별도).
-- 2026-06-17c (Naver 레이트 전체 + 사진/naver_id): Naver 전 필드 값검증 후 추가 백필. **신규컬럼**(`2026-06-17_historical_saber_cols.sql`): 타자 babip/iso/wpa · 투수 k_per_9/bb_per_9/k_bb/k_pct/bb_pct/wpct/wpa/np. ⚠️**필드 매핑 검증**(김광현2019): `pitcherWra`=**승률**(17/23=.739, 피안타율 아님!)·`inningKk`=K/9·`inningBb`=BB/9·`paKkRate`=K%·`isop`=ISO. avg_against는 Naver 미제공. `backfill_naver_saber` 확장(지표별 0가드) + **historical_players 사진(playerImageUrl)·naver_player_id 보충(COALESCE NULL만)**. 2007~2025 재실행. **검증**: 김도영2024 babip.375/iso.30·김광현2019 k9 8.51/승률.739·이대호 Naver사진URL. **사진/naver_id = 1969명**(2007~ 등장자, pre-2007 전용은 Naver 범위밖이라 미매칭). ⚠️레이트는 **시즌별 표시용**(통산집계 아님). **Naver 매칭 가능 스탯 = 전부 수집 완료**(나머지는 KBO raw서 recompute 가능분뿐).
-
-## 역대 C2 (퓨처스 경기단위 · 스플릿 세밀축) — ✅ 완료 (2026-06-29, 3트랙 적재: 2군시즌스탯 17시즌 12967행 · 1군 투수스플릿 신규 · 2군 box 952경기)
-### ⚡ 트리거: 사용자가 **`역대C2 진행`** 입력 시 = 이 섹션 재개.
-- **동작**: 동일 프로토콜.
-- **목적/스코프**: ① 퓨처스(2군) 경기단위·일정·박스 = 사실상 2군 리그 풀 파이프라인 ② 스플릿 세밀축(7축 전체×역대시즌·투수스플릿·OPS/OBP)
-- ⚠️ **무거움·니치·일부 비현실**: KBO 크롤 sleep-bound(~9s/page-sweep) → 역대 전체 스플릿/2군 경기단위 = **수일~**. 착수 전 스코프 강하게 바운드 필수. 니치(2군 게임데이터=좁은 수요). **UI 노출보다 후순위 권장.**
-### 진행 체크리스트
-- [x] 스파이크 (2026-06-29): 소스맵 확정. **퓨처스 일정 = `Futures/Schedule/GameList.aspx`**(날짜/시간/팀/스코어/구장/상태 + 경기당 **박스스코어 링크** `Futures/Game/BoxScore.aspx?leagueId=2&seriesId=0&seasonId={y}&gameId={YYYYMMDDAWHM}0`, GameList WebFetch 도달O). ⚠️⚠️ **퓨처스 pitch-by-pitch/문자중계 = 없음** — 박스스코어가 최심부("No separate play-by-play links"). **Naver 2군 relay 없음**(api-gw 차단확인불가지만 1군 파이프 핵심인 textRelays는 2군 미존재 — 방송계약(Sportcado)뿐 데이터API無). **결론 = 2군 경기단위 = box-score 천장**(라인스코어+선수 box 집계). PA/투구/win_rate/존히트맵/필드뷰 리플레이 **불가능(소스부재)**. → 무거운 C2 야망(2군 pitch 파이프) = heavy 아니라 **infeasible 확정**. 비용: 2군시즌스탯역대화=KBO postback 17시즌(2010~)≈1~2세션·小 / 2군 box경기단위=GameList+BoxScore 셀레늄, ~시즌당 수백경기 단일페이지(1군 이닝sweep보다 가벼움)이나 **니치·저UI가치** / 스플릿세밀축=sleep-bound 역대전체=수일(바운드 필수)
-- [x] ⏸️ 게이트 통과 (2026-06-29 사용자 결정): **3트랙 전부 채택** = ① 2군 시즌스탯 역대화 ② 1군 스플릿 세밀축 ③ 2군 경기단위(box-only). + "KBO 공식 확인" 지시 → **서버 curl 실측으로 전 소스 확정**. **확정 소스맵**: 2군타자=`futures/player/hitter.aspx`(✅76KB·ddlSeason)·2군투수=`futures/player/pitcher.aspx`(✅60KB)·2군일정=`Futures/Schedule/GameList.aspx`(✅113행, box href 추출)·**2군박스=`Futures/Schedule/BoxScore.aspx?leagueId=2&seriesId={s}&seasonId={y}&gameId={gid}`**(✅140KB: tblScordboard 라인스코어1-9 R/H/E + tblAwayHitter/tblHomeHitter 타자box + 투수box + 결승타/홈런/실책 요약). ⚠️**box base=`/Futures/Schedule/`** (WebFetch가 준 `/Futures/Game/`=환각, 175B 빈응답). ⚠️**seriesId 게임별 가변**(대부분0, 일부10 — GameList href서 파싱 필수, 하드코딩 금지). gameId 포맷=`YYYYMMDD{away}{home}{dh}`(예 20260601HHKT0).
-- [x] (스코프 확정분) 크롤러+스키마+적재 — 트랙1 2군시즌스탯 → 트랙3 스플릿세밀축 → 트랙2 box-only 순(가치/난이도). **3트랙 전부 완료·검증**.
-  - [x] **트랙1 2군 시즌스탯** (2026-06-29): `historical_futures_season_stats` 테이블(37컬럼) + `crawl_futures_{hitter,pitcher}_season`/`crawl_futures_season_allteams`(ddlTeam 12팀=10KBO2군+상무SM+고양WO+울산UL) + CLI `futures <s> [e]`. 테이블class=`tbl`(1군 tData01과 다름)·단일테이블(Basic1/2 분리없음)·OPS=SLG+OBP·WHIP=(H+BB)/IP. 커밋 `542666f`. ⚠️**서버 git 토큰 만료(`ghp_T5Gpq..` could not read Password)+scheduler.py 미커밋 핫픽스(=원격 81200bc)로 pull 막힘 → scp 직접배포**. LG 2026 테스트 검증(손용준 .360·문정빈 1.001 OPS·이상영 53.1IP/1.744WHIP) → **풀배치 2010~2026 가동중**(nohup `/tmp/hist_futures.log`, PID 837878, 2010=148행). 
-  - [x] **트랙3 스플릿 세밀축** (2026-06-29 ✅): `crawl_splits_detailed` — 타자 투수유형(좌우 플래툰)/구장 + **투수 스플릿 전무→신규**(홈원정/상대팀/월별/타자유형좌우/구장). `historical_splits`에 TB+투수컬럼 ALTER. slg=TB/AB·whip=(H+BB)/IP(SQL 백필). CLI `detsplits <s> [e]`. **적재: 타자 11130행(2023~2026) + 투수 5459행(2024~2025)**. ⚠️**투수 split 2026 미적재** = 1군 historical_season_stats 상한이 2025라 _pmap(2026) 빈값(pid해결 불가) → **1군 2026 season_stats 적재 후 detsplits 2026 재실행 시 자동 채움**. ⚠️OBP=Basic1 split에 BB 없어 미수집·whip은 split 마지막컬럼이 AVG(피안타율)이라 미제공→SQL 파생(v1 한계).
-  - [x] **트랙2 box-only** (2026-06-29 ✅): `backfill_futures_games.py` — 일정=GameList selenium 월별 nav(ddlYear/ddlMonth), 박스=BoxScore **requests+box-score-wrap 슬라이스 파싱**(⚠️상단 markup이 html.parser 깨뜨려 table 0개 → 슬라이스 필수, lxml 미설치). `futures_games`+`futures_game_box`(JSONB). ⚠️box 선수행 **playerId 앵커 없음→이름만**(kbo_player_id 미연결). **적재: 952경기/952박스(2025=552·2026=400, 전 종료경기 100%)**. 역대확장=`backfill_futures_games 2010 2024`(바운드 늘리면).
-  - **오케스트레이터** (`/tmp/c2_orch.log`): Track1 종료대기 → detsplits 2024-2026 → futures games 2025-2026. ⚠️⚠️ **서버 git 원격 토큰 만료(`ghp_T5Gpq..`) → git pull/fetch 불가, 전 배포 scp 우회**. + 서버 scheduler.py 미커밋 핫픽스(=원격 81200bc) 잔존. **유저 조치 필요 = 서버 git 재인증(새 PAT or SSH remote)** 후 정상 pull 복구.
-  - **1차 검증(2026-06-29)** = 버그 2개 발견·수정: ① **트랙1 2015 시즌 누락**(transient, 16/17) → `futures 2015` 재크롤 ② **트랙3 투수 스플릿 0행** — ⚠️**투수 split 페이지 행엔 playerId 앵커 없음**(타자 split엔 有, data-id 속성뿐) → `if not pid: continue`가 투수 전 행 스킵. 수정 = (이름,팀,시즌) historical_season_stats 제약조인 pid 해결(⚠️**type 필터 금지** — 다수 투수가 타자페이지 오염으로 '타자' row만 보유 → type='투수' 필터 시 47%, 무필터 93%. 동명이인 same-team=모호제외). 커밋 `e3d96f1`, 재실행 배치 가동. **트랙2 box = 1차서 완벽**(952박스, 2025=552·2026=400 전 종료경기 적재).
-- [x] 스플릿 세밀축(투수/추가축, 바운드 내) — 트랙3에 통합 완료
-- [x] 검증 (2026-06-29): 라이브 스팟체크 — 손용준 2026 .360·이상영 1.744WHIP(T1) / 양현종 2024 홈원정 split 홈106.1IP4.82·방문65IP2.91·whip 1.077/1.364(T3) / 한화1:12KT 라인스코어+box+요약(T2). 버그2 발견·수정(2015갭·투수split 0행). **C2 완료**.
-### 진행로그
-- 2026-06-29: 착수. **스파이크 완료** — 소스맵: 퓨처스 일정=`GameList.aspx`(✅도달), 경기당 box=`BoxScore.aspx?leagueId=2...gameId=`. ⚠️**2군 pitch-by-pitch 소스 전무**(KBO 박스가 최심부·Naver textRelays 2군 미존재) → **2군 경기단위 = box-score 천장, PA/투구레벨 infeasible 확정**(소스부재, 노력문제 아님). **게이트 통과(전 3트랙 채택)** + 사용자 "KBO 확인" 지시 → **서버 curl로 전 소스 라이브 검증**: hitter.aspx 76KB·pitcher.aspx 60KB·GameList 113행·BoxScore(정정 base `/Futures/Schedule/`) 140KB 라인스코어+타자/투수box 전부 렌더 확정. box URL 환각 정정(`/Futures/Game/`→`/Futures/Schedule/`)·seriesId 가변 발견. 다음 = 빌드(트랙1 2군시즌스탯 먼저).
-- 2026-06-29b: **3트랙 전부 빌드·배포·파서검증, 크롤 가동**. 트랙1(2군시즌스탯)=풀배치 2010~2026(검증 LG2026 손용준.360·이상영 WHIP). 트랙3(detsplits)·트랙2(box)=빌드+배포(box파서 검증 한화1:12KT). 마이그 3종 적용. 오케스트레이터 = Track1 종료→detsplits 2024-26→futures games 2025-26 순차. ⚠️**서버 git 토큰 만료→scp 우회**(유저 재인증 필요). 커밋 542666f·c8aac83.
-- 2026-06-29d: **C2 데이터 UI 노출 완료** (웹+서버 라이브, ⚠️네이티브 APK 미반영). 스펙=`docs/superpowers/specs/2026-06-29-c2-ui-design.md`, 플랜=`docs/superpowers/plans/2026-06-29-c2-ui.md`(subagent-driven 실행, 12커밋 `d1b84e1`~`dcc4dbb`). **A** 선수상세 2군 시즌스탯 — `_futures_stats` 헬퍼 → career-extras 번들(현역+은퇴 공유 1곳 수정) + `CareerExtrasSection._futuresBlock`(1군 시즌표 룩). **B** 스플릿 세밀축 노출 — `_player_splits` 투수컬럼+player_type 확장(⚠️기존 타자컬럼만 SELECT라 투수 NULL이던 것) + `_splitsBlock` 투수 ERA칩+한글축 라벨맵(홈원정/투수유형=플래툰 등, 기존 영문키 raw폴백 버그도 해소)+플래툰 우선정렬. **C** 독립 퓨처스 화면 — 신규 `api/routers/futures.py`(games/box/leaders, try/finally) + `screens/futures/{futures_screen,futures_box_sheet}.dart`(1군 게임카드/라인스코어/박스 미러) + 순위 탭 **5번째 탭 '퓨처스'**. 라이브검증: career-extras futures_stats/투수split·games 102/box·leaders. 리뷰 3라운드(Phase1 try/finally·Phase2 IP단소수·season guard·.000타자보존·최종 월필터 모순). ⚠️**투수 split 행 playerId 앵커 없어 BE서 이름+팀 조인**(데이터층 처리완료). ⚠️box 선수=이름만(playerId 없음). 웹 wasm 재빌드+rsync, /app/ 200, smoke ALL PASS. **육안 렌더 검증은 사용자 디바이스/웹 스팟체크 권장**(Flutter canvas는 헤드리스 관찰 불가).
-- 2026-06-29c: **C2 완료**. 오케스트레이터 1차 완료 후 검증서 버그 2개 발견·수정 → ① 트랙1 2015 누락(transient)→재크롤(17시즌 12967행) ② **트랙3 투수 스플릿 0행**(근본원인=투수 split 행 playerId 앵커 부재, 타자 split엔 有 KBO 비대칭) → (이름,팀,시즌) historical_season_stats 제약조인 pid 해결(type 필터 금지=타자페이지 투수오염 회피, 무필터 93%매칭, 동명이인 same-team 모호제외). 커밋 `e3d96f1`. whip은 split서 미제공(AVG 컬럼)→SQL 파생 백필. **최종: T1 12967행/17시즌, T2 952박스, T3 타자11130(23~26)+투수5459(24~25)**. 투수 split 2026=1군 season_stats 상한2025라 보류(향후 자동). ⚠️**서버 git 재인증 = 유저 잔여 조치**.
-
-## 역대 게임단위 백필 (2010~2023) — ✅ 완료 (2026-06-19, 11317경기·885120타석, 갭 0)
-- ⚠️⚠️ **06-19 과거팀명 드롭 사고+수정 (save_games)**: `save_games`가 팀 id를 `teams.name = <API 팀명>`으로 조회했는데 **Naver 스케줄 API가 시즌마다 팀명 혼용**(2016=현재명 'SSG'/'키움' / **2017·2018=당시명 'SK'(SK와이번스)·'넥센'**) → 현재 teams.name 불일치 → team_id NULL → **그 경기 통째 미삽입**. 결과: 2017(SK+넥센)·2018(SK+넥센)·2020(SK, 2021 SSG개명 전) 경기 대량 증발(2017 461/720·2018 448·2020 589=COVID+SK드롭). 진단=홈/어웨이 팀분포에 SK·WO 부재 + API 직접대조(2016 'SSG' vs 2017 'SK'). **수정 = 팀조회 `name`→`short_name`(코드 SK/WO/HH… 불변, teams.short_name과 1:1)**. ⚠️**라이브 save_games도 동일 경로라 수정 혜택**(현재명도 코드매칭). 재크롤 = 픽스 후 전체배치 재실행(resume이 누락 SK/넥센만 INSERT+크롤, `/tmp/hist_games_batch2.log`).
-- **목적**: 게임단위(투구/PA/투구위치)를 2010~2023 확장 (현재 2024~26만). → matchup 진짜통산·역대 WPA/클러치·필드뷰 리플레이·존히트맵 역대.
-- **도구**: `crawler/backfill_seasons.py <year>`(games INSERT + relay pitches + 위치, requests=셀레늄無·안정·resume안전). `_is_kbo`=**roundCode**(정규 kbo_r + PS kbo_ps_* / 시범 kbo_e 제외 — id/날짜 휴리스틱 폐기). 미등록시즌 범위=3/15~11/30.
-- **오케스트레이터**: `/tmp/hist_games_batch.sh`(2023→2010 순차 + 끝에 `backfill_pa.py`), nohup `/tmp/hist_games_batch.log`. **⚠️live-guard = KST 17~23시 자동정지**(라이브 경합 회피) → 실질 23:00~17:00만 크롤. ~시즌당 8~9hr crawl-time, 14시즌 = **~1주 wall-clock**.
-- **모니터**: `tail /tmp/hist_games_batch.log` · `SELECT EXTRACT(YEAR FROM game_date),count(*) FROM game_pitches gp JOIN games g ON g.id=gp.game_id GROUP BY 1`. **resume**: 죽으면 `nohup bash /tmp/hist_games_batch.sh &` 재실행(pitches 있는 경기 skip).
-- ⚠️ 위치(physics)는 옛 경기서 없을 수 있음(PA단위는 textRelays라 확보). ⚠️ Naver relay 하한 ~2008(미확인) — 2010~2011 sparse 가능.
-- **진행로그**:
-  - 2026-06-17 가동(roundCode 시범제외 검증 — 2023 3월 시범 25개 삭제+필터화). SEASON 2023부터.
-  - 2026-06-19 **1차배치 완료**(10607경기·829438타석 PA, 06-19 03:22 UTC). 검증서 **과거팀명 드롭 사고 발견**(2017/18 SK·넥센, 2020 SK 누락) → save_games name→short_name 픽스 → **전체배치 재실행**(`/tmp/hist_games_batch2.log`, 완료분 skip·누락 SK/넥센만 크롤).
-  - 2026-06-19b **전체 완료**(06-19 19:05 UTC): 2017 461→**734**·2018 448→**736**·2020 589→**733** 갭 복원. **2010~2023 전 시즌 완전**(10팀 ~730~736, 8~9팀 시대 2010~14 ~545~590=정상, 갭 0). 최종 PA = **11317경기·885120타석**(2010~2026 전 구간). 이득 = matchup 진짜통산·역대 WPA/클러치·필드뷰 리플레이·존히트맵 역대 전부 가용.
-
-## 선수/팀 상세 콘텐츠 확장 — 트리거 대기 (미착수, 2026-06-17 브레인스톰)
-### ⚡ 트리거: 사용자가 **`상세확장 진행`** 입력 시 = 이 섹션 재개.
-- **동작**: 역대UI와 동일 프로토콜 — 첫 `[ ]` 실행 → `[x]`+진행로그 → 연속, ⏸️게이트서 멈춤/질문. 각 단계 끝 CLAUDE.md 갱신.
-- **목적**: 적재된 데이터로 선수/팀 상세 깊이 강화(올드팬 자산). **대부분 크롤 불요 = 보유 데이터 계산/노출**(역대 14566행·수상·스플릿·franchise·plate_appearances).
-- **기존 화면**: `player_detail_screen`(현역, 히어로/핵심/그리드/트렌드/구종/존/시즌칩/수상) · `historical_player_detail_screen`(은퇴, bio/통산/시즌별/PS/수상/스플릿/franchise) · `team_detail_screen`(최근경기/월별·상대전적/팀리더/선수목록/로스터변경/PS확률). API = `api/routers/{players,teams,historical}.py`.
-### 후보 (⭐=크롤0·즉시, 데이터 보유)
-**선수 상세**:
-- ⭐ **타이틀 이력**(홈런왕/타격왕/다승왕/평자책왕 등 시즌 부문1위 횟수) — `historical_season_stats`서 계산. "홈런왕 3회" 배지. 高가성비.
-- ⭐ **통산 타임라인 / 팀 변천** — 시즌별 team_name 有 → "SK→SSG" 이적사·데뷔~은퇴 연표.
-- ⭐ **마일스톤** — 통산 500홈런·2000안타·300승 달성 표시 + 다음 마일스톤 ETA(시즌페이스).
-- **홈원정·상대팀 스플릿** — `historical_splits` 有(단 2023~25 타자만 → 투수/역대 확장 필요).
-- **포스트시즌 통산** — 현역상세 추가(은퇴상세엔 有, PS데이터 부분 2006~결손).
-- **클러치/WPA** — `plate_appearances` win_rate 有(현역 3시즌 한정).
-**팀 상세**:
-- ⭐ **구단 약사/계보 카드** — `team_franchises` 有(옛구단명·개명/인수/해체 note). "OB베어스 1982→두산 1999~".
-- ⭐ **구단 역대 레전드** — franchise 소속 역대 선수 통산 리더(historical + 계보 매핑).
-- ⭐ **역대 팀 시즌기록** — 14566행 팀별 집계(역대 최다승 시즌 등).
-- **시즌별 순위 추이** — games 승패서 도출.
-**크롤/소스 필요(별도, 비목표 후보)**: ❌우승이력(한국시리즈 — KBO/정적JSON) ❌연봉 ❌부상이력 ❌올스타/월간MVP ❌타이틀 중 비스탯(수비상 등)
-### 진행 체크리스트
-- [x] 브레인스톰/스파이크 (2026-06-18): 데이터 쿼리가능성 + 3화면 주입점 확인. **타이틀**=historical_season_stats 시즌별 부문 max 계산(카운팅=clean / 비율 타율·ERA=규정게이트 필요), awards엔 MVP/골글/신인상만 有(타이틀=별도계산). **팀변천**=team_name 시즌별 ✓. **구단약사**=team_franchises 22행(team_name/start~end/note) ✓. **역대레전드**=franchise+career ✓. **브릿지**=현역 277명 player_id. 주입점: 현역 player_detail(수상경력 섹션 1671 인근)·은퇴 historical_player_detail(franchise caption+통산+수상 有)·team_detail(Overview/팀리더 탭)
-- [x] ⏸️ 설계 게이트 통과 (2026-06-18 사용자 결정): **전 항목 채택** — 선수(타이틀 이력·팀변천 타임라인·마일스톤·통산 스플릿) + 팀(구단약사/계보·역대 레전드·역대 팀 시즌기록). 스펙=`docs/superpowers/specs/2026-06-18-detail-expansion-design.md`
-- [x] API (2026-06-18, 배포+live검증): 3 엔드포인트 @cached(3600), 7항목 전부. **공유 헬퍼** `historical.py` `_career_titles`(시즌부문 max, 비율은 규정게이트=시즌 최다출전 games×3.1[타]/×1.0[투])·`_team_timeline`(소속팀 연속구간 병합)·`_career_milestones`(달성+현역 ETA 최근시즌페이스)·`_player_splits`·`_career_extras`. `GET /historical/{kbo_id}/career-extras`(은퇴) + `GET /players/{id}/career-extras`(현역, player_id→kbo 브릿지, 미브릿지=빈번들 bridged:false) + `GET /teams/{id}/legacy`(franchise 계보·역대레전드 franchise통산리더 TOP3·시즌기록=타격합만 정확/투수승 과소라 제외). live: 이승엽 홈런왕5·타점왕4·삼성 95-03/12-17, 양현종 평자책왕2·다승왕1·200승 ETA2028, 두산 OB→두산·김재환276·2018 189홈런 정합
-- [x] 앱 (2026-06-18, analyze lib=0): 공유위젯 `widgets/career_extras_section.dart`(타이틀칩/팀변천 타임라인/마일스톤 골드뱃지+ETA/스플릿 — 이미지無 웹안전, 토큰 준수, 빈섹션 자동숨김). 현역 `player_detail`=`_loadCareerExtras`(브릿지 bridged시만) → 수상경력 인근 카드. 은퇴 `historical_player_detail`=Future.wait 병렬 fetch → career카드 인근(기존 per-season splits 루프 제거, 공유위젯 통합, _splitCard 삭제). 팀 `team_detail`=`_loadLegacy` → Overview에 구단역사(계보+시즌기록)·역대레전드(타자/투수 2열) 인라인(_C/_SectionLabel/_CardWrap 스타일)
-- [x] 웹 동반 빌드+배포 + 검증 (2026-06-18, 웹빌드 멈춤 해제): wasm 재빌드(306s)→tar→rsync `/var/www/playball_web/`, `/app/` 200. **누적 변경 일괄 반영**(최근5 정렬·경기상세 색상·AI한줄평은 백엔드·상세확장). HTTPS 검증: 이승엽 홈런왕5·타점왕4 / 두산 OB→두산 정합. analyze lib=0·골든 회귀.
-### 1차 추천 (크롤0)
-선수 = 타이틀이력 + 팀변천 타임라인 · 팀 = 구단약사 + 역대레전드. 전부 보유 데이터.
-### 진행로그
-- 2026-06-18: **상세확장 전체 완료·배포**. 스파이크→게이트(전항목)→API(3 엔드포인트·공유헬퍼)→앱(공유위젯 CareerExtrasSection+3화면, analyze lib=0)→웹 wasm 재빌드+rsync(`/app/` 200, 골든 PASS). live검증 = 이승엽 홈런왕5·양현종 200승ETA·두산 계보/레전드 정합. ⚠️네이티브 APK 미반영(웹+서버만).
+### UI 노출 (✅ 완료 — 웹+서버 라이브, APK 미반영)
+- 통합검색(현역∪은퇴 '역대'배지) · 은퇴상세 `historical_player_detail_screen` · 순위탭 '역대기록실' 탭(`PlayerRankingsTab(historical:true)`) · 현역상세 수상+career-extras(타이틀이력·팀변천·마일스톤·스플릿) · 팀상세 구단역사/레전드
+- **퓨처스(2군)**: 홈 탭 `[KBO｜퓨처스]` 토글(같은 날짜스트립+카드 셸을 2군 데이터로, `widgets/futures_game_card.dart`, 재시작=KBO) + 퓨처스 경기상세 풀스크린(`screens/futures/futures_game_detail_screen.dart`, 타자/투수 탭·박스). box API=`api/routers/futures.py`(games/box/leaders), 2군 일일잡 `scheduler._update_futures_games`(KST 04:00 idempotent). ⚠️box 선수=이름만(kbo_player_id 미연결)
+- ⚠️ 육안 렌더는 사용자 디바이스/웹 스팟체크 권장(Flutter canvas 헤드리스 미관찰)
+- 재개 트리거(전부 완료, 재작업 시만): `역대UI 진행` `역대C2 진행` `상세확장 진행` — 동작 = 위 이력·git log 참고 후 진행
 
 ## 해야할 것
-### AI 경기 한줄평 알림 (2026-06-14 요청) — ✅ 구현완료 (06-15 템플릿 → 06-18 Gemini LLM → 06-18b 경기내용 결합 → 06-19 무승부버그+길이단축)
-- **06-19 무승부 알림 누락 사고+수정**: 종료 후처리 game_summary 게이트(scheduler 1853)가 `game_pitchers.result IN ('승','패','세이브','홀드')` 충원을 대기 → **무승부(동점)는 승/패 투수 result가 영영 안 채워져 `[FCM] game_summary 대기 (result 미충원)` 무한루프 → game_end·한줄평·요약 전부 미발송**(488 삼성 3:3 한화 11회 연장 사고). ⚠️**smart_update 게이트 `1<=UTC시<15`라 종료시각이 윈도우 끝자락(14:59 UTC)이면 재시도 못 하고 영구 누락**. 수정 = `is_draw=(home==away)` 면 result 대기 스킵(스코어가 결과 확정). 488 수동 치유. **무승부도 정상 발송**.
-- **06-19 길이 단축**: AI 한줄평 2~3문장→**1문장(60자 안팎) 핵심만**(결과+승부처 한 조각). 프롬프트 룰 단순화·max_output_tokens 400→200·길이가드 300→120. 검증 488=58자.
-- **06-18b 경기내용 결합(결과 나열 탈피)**: "그냥 결과를 한줄로 바꾼것뿐" 피드백 → `_send_game_summary` enrichment + 프롬프트 확장으로 **결정적 장면+역전**을 facts에 주입, Gemini가 2~3문장 생생 한줄평 작성. **결정장면** = `plate_appearances` win_rate(WPA) 최대 swing 타석(이닝/초말/아웃/주자/타자/result_text). **역전** = 승팀 도중 열세(홈승=win_rate 최저<35 / 원정승=최고>65). ⚠️**거짓 결정타 방지 3가드(WPA 데이터 글리치 대응 — 초기 win_rate 불안정)**: ① **안타/희생타만**(`is_hit OR result_class='sac'` — 무주자 아웃이 50%p swing되는 글리치+Gemini가 아웃을 "결정타"로 오작성하는 것 배제) ② **대승 제외**(`margin<=5`서만 결정타, ≤6서만 역전 — 8:1 블로아웃에 "승부처" 표기 방지) ③ **초반 거대swing 글리치**(`swing>30 AND inning<=3` 배제 — 3회 88%p=저레버리지 불가능). 프롬프트 룰=facts만/결과나열 금지/수치(N%p) 본문금지/역전은 사실명시시만. 템플릿 폴백도 역전·결정장면 반영. 검증=452(15:1 대승→결정타None 깨끗)·477(2:1 역전→손호영 1루타 정확)·271639(글리치 아웃 배제→오스틴 2루타 선택)·476(역전 임의언급 사라짐). 한줄평=다음 종료경기부터.
-- **06-18 LLM 업그레이드**: `api/narrative.py game_review` = **Gemini 무료 API**(google-genai, `gemini-2.5-flash`) 우선 → 실패/무키/타임아웃(12s, 최소10s제약)/503 시 `_template_review` 폴백(절대 안 죽음). 검증 facts만 프롬프트(환각가드: 연장/이닝 등 미제공정보 언급금지), 평문 한국어, lazy import, `thinking_budget=0`(2.5-flash 기본 thinking이 출력토큰 소진→본문잘림 방지), max_output_tokens=400·길이가드 300. **env**: scheduler `gemini.conf` drop-in `GEMINI_API_KEY`(Google AI Studio 무료)·`GEMINI_MODEL`. 비용 $0(무료티어, 일 5~15경기). ⚠️**06-18 game_summary 죽음 버그 수정 직후**(event_type) 이 위에 얹음 — 둘 다 _send_game_summary 경로. ⚠️무료티어=입력 학습사용 가능(공개 경기facts라 저민감). 키 회전 시 gemini.conf 교체+scheduler restart.
-- 구현: `api/narrative.py`, game_summary 본문 교체(별도 푸시·토글 신설 안 함), game_reviews 영속. 발송=종료 후처리 `post_finished_done`. 잔여 = 추후 3줄요약/다이제스트(메가E2)
 
-### 관리자 콘솔 확장 백로그 (2026-06-13 추천)
-- **1순위 묶음 (app_config 편집 — 한 세션감)**: ① 공지 배너 작성/해제 UI ② min_version/latest_version 강제업데이트 설정 ③ 공지 푸시 발송(전체/팀별, 확인 다이얼로그)
-- **사용자 추이**: DAU/WAU/MAU — 측정 인프라부터 필요: API 미들웨어서 인증 유저 (user_id, date) 일별 upsert(daily_active_users 테이블, 메모리 set+주기 flush로 경량) + 가입 추이(users.created_at 기존) + 콘솔 그래프 탭
-- 운영: 서버 상태 패널(스케줄러 하트비트·최근 에러·크롤 성공여부 — 등록말소 크롤 사고 류 콘솔 인지)·포인트 수동 지급(reason=admin)·댓글 검색/삭제·인스타 핸들 즉석 수정·시즌 단계 전환(season_phase)·알림 발송 내역 뷰어(CS 디버깅)
-- 분석: 기능 사용률(예측 참여/직관기록 수)·인기 게시글·팀별 팬 분포·알림 발송량 추이
-- 도구: 유저 상세(활동 이력+포인트+기기)·계정 정지(현재 삭제만)·크롤 수동 재실행 버튼·경기 데이터 무결성 체크·admin 접근로그 뷰어(security_log 기보유)·백업 최근 시각 표시
+### AI 경기 한줄평 — ✅ 구현완료 (Gemini LLM)
+- `api/narrative.py game_review` = Gemini 무료 API(`gemini-2.5-flash`) 우선 → 실패/무키/타임아웃(12s) 시 `_template_review` 폴백(절대 안 죽음). env = scheduler `gemini.conf` `GEMINI_API_KEY`/`GEMINI_MODEL`(키 회전 시 교체+scheduler restart). 검증 facts만 프롬프트(환각가드), `thinking_budget=0`, **1문장 60자**. game_summary 본문 교체, game_reviews 영속, 발송=종료 후처리.
+- ⚠️ **결정장면(key_play)·MVP = 반드시 승팀 타석만**(07-17 팀 오귀속 버그 수정): key_play=win_rate 부호정렬(홈승 DESC/원정승 ASC)로 승팀 기여만, MVP wpa=`inning_half` **'0'(초/원정)·'1'(말/홈) 인코딩**('초'/'말' 아님). 거짓결정타 3가드(안타/희생타만·margin≤5·초반거대swing 글리치배제). 무승부도 발송(is_draw면 result 대기 스킵).
 
-### UI/UX 추천 백로그 (2026-06-13 큐레이션 — 구현비용 대비 체감순)
-- **강추 3**: ① 첫 실행 마이팀 선택 플로우(개인화 뿌리 — 홈 풀카드·푸시·캘린더 즉시 개인화) ② 홈 직관 미니 배너("이번 시즌 직관 5승 3패" — 차별 자산 노출, 데이터 보유) ③ 새 중계 항목 amber 페이드인(30s 폴링이 살아있는 중계로 체감)
-- 가성비: 선수 초성검색(ㄱㄷㅇ→김도영)·경기 없는 날 마이팀 D-day 카드·필드뷰 풀스크린 토글(작은폰 보완)·예측 마감 카운트다운(포인트 ON 시)·오프라인 배너(connectivity)
-- 완성도(출시 직전): AppEmptyView 공용 빈상태·목록→상세 Hero 전환·스낵바 톤 통일
+### 백로그 (착수 전 상의)
+- **관리자 콘솔**: app-config 편집(공지배너·강제업데이트·푸시발송) · 서버상태 패널 · 유저상세/정지 · 크롤 수동재실행 · 기능 사용률 분석
+- **UI/UX 강추**: 첫실행 마이팀 선택 플로우 · 홈 직관 미니배너 · 새 중계 amber 페이드인 · 선수 초성검색 · 필드뷰 풀스크린 · AppEmptyView 공용
+- **베타/출시**: Android=Firebase App Distribution(keystore 백업 선행) / iOS=$99+Codemagic→TestFlight or 웹 PWA(배포중 `/app/`)
+- **외부작업**(물어보면 안내): 도메인+Cloudflare Tunnel(IP은닉) · Play Console $25 · 법무(문의메일 실계정·법률검토·KBO/Naver 저작권) · 홈위젯(native kotlin)
+- ⏸️ **다크모드 육안검증 = 영구 패스**(사용자 지시, 골든이 회귀방어)
 
-### ✅ 완료 (요약 — 상세 git log / 활성 규칙은 주의사항)
-- **즉시·키회전** (06-09): Gmail/Kakao(JS·네이티브·REST)/DB pw 회전+라이브검증. 메가B/C/D 코드측 완료.
-- **중기 코드품질** (06-09): empty catch→debugPrint(17파일)·AppErrorView 6화면·서버 print→logging·SemColor.panelDark 감사+홀리스틱 다크패스(3화면)·Radii.pill 33곳·골든 인프라·pre-commit hook·nginx 보안헤더 7종. (다크 가시성 규칙 = 주의사항 "버튼 색 하드코딩 금지")
-- **보안 점검** (06-10): EXIF strip·pg listen localhost·rpcbind off·이메일 5회 제한·백업 오프사이트(`backup_pull.ps1`)·ufw/fail2ban/SSH키온리/unattended-upgrades/pip-audit 감사.
-- ⏸️ **다크모드 육안검증 = 영구 패스**(사용자 지시 — 직접 요청 전까지 안 함, 골든이 회귀 방어)
-
-### 베타/출시 배포 경로 (2026-06-11 결정)
-- **Android 베타 = Firebase App Distribution** (이미 Firebase 연동·Crashlytics 동일 콘솔·완전 무료·Play Console $25 불요·자동 업데이트 알림). release keystore 생성+안전백업 선행(분실=업뎃 불가). 지인 이메일 등록→링크 설치
-- **iOS = $99 회피 불가** (Apple 서명 인증서가 Developer Program에 묶임 — TestFlight·App Distribution·Scarlet 모두 그 위. Mac은 Codemagic 무료티어로 회피 가능하나 $99는 별개). 지인 소수 = **웹 PWA 맛보기**(무료·안전), 정식 iOS = $99+Codemagic→TestFlight
-- ⭐⭐ **웹 동반 수정 원칙 (2026-06-11, 사용자 지시)**: 앱(Flutter) 수정 시 **웹도 반드시 같이 반영**. 같은 코드베이스라 대부분 자동 동반되나, **재빌드+배포 필요**(`MSYS_NO_PATHCONV=1 flutter build web --wasm --release --base-href "/app/" --no-web-resources-cdn --pwa-strategy=none` → tar→rsync `/var/www/playball_web/`. **06-12 wasm(skwasm) 본판 승격** — nginx /app/에 COOP/COEP 필수, dart:html 플러그인 2종은 local_packages 스텁 override, 미지원 브라우저 자동 JS 폴백. /app2/=실험트랙 잔존). 배포 스크립트화 권장. ⚠️**앱엔 되는데 웹엔 안 되는 변경이면 사용자에게 먼저 고지**. 웹 미지원 영역(`kIsWeb` 분기 필요): 푸시·카카오지도(inappwebview)·갤러리(photo_manager)·이미지공유·캘린더내보내기·secure_storage(→_SafeStore 폴백 완료)·dio IO어댑터(→kIsWeb 가드 완료)·외부이미지(→webSafeImageUrl 프록시 완료). 새 기능이 이 영역 건드리면 웹 폴백 동시 구현 or 고지
-- **웹 PWA 배포 완료** (2026-06-11): `https://playball.duckdns.org/app/` — 지인 iOS 사파리서 '홈 화면에 추가' = 설치. 빌드 = `MSYS_NO_PATHCONV=1 flutter build web --release --base-href "/app/"`(Git Bash 경로변환 회피 필수) → `build/web` tar→ `/var/www/playball_web/` rsync. nginx `location /app/` alias+SPA try_files + **CSP 재선언**(server의 `script-src 'none'`이 location add_header로 덮여야 Flutter JS 작동 — script 'self'+unsafe-inline+wasm-unsafe-eval, img https:). 갱신 = 재빌드→rsync (nginx 불변). ⚠️재빌드 시 base-href·MSYS 플래그 누락 주의
-- **웹 PWA 빌드 시 불가 기능**: 푸시(firebase_messaging/local_notifications)·구장지도(flutter_inappwebview)·갤러리(photo_manager)·이미지공유(path_provider+share_plus 파일)·캘린더내보내기(add_2_calendar). 크롭·secure_storage·Crashlytics=반쪽. ✅정상=홈/경기상세(필드뷰·중계·승률그래프·맞대결·불펜)·선수(피칭디자인·존히트맵)·순위·커뮤니티텍스트·검색·인증
-
-### 장기 / 출시 외부작업 (네 권한·비용 — **물어보면 안내**)
-- [ ] **도메인 + Cloudflare**: 웹사이트 Free 플랜 + Tunnel(IP은닉, duckdns/certbot 제거). ⚠️ Bot Fight Mode OFF(앱 API 차단), 동적 JSON 캐시 bypass
-- [ ] **Play Console**($25) + keystore 안전백업(분실=업데이트 불가) + Data Safety + targetSdk 확인
-- [ ] **법무 잔여**: 정책 페이지(`/privacy`·`/terms`)·HTML(`backend/static/legal/`) 배포 완료. 남음 = ① 문의메일 placeholder(`playball.support@gmail.com`) 실계정 교체 ② 출시 전 법률 검토 ③ (옵션)앱 마이페이지 약관 링크 ④ KBO/Naver 저작권 최종 판단
-- [ ] 홈화면 위젯(Android AppWidget native kotlin) / state restoration / i18n=skip 확정 / 골든 테스트 확대 / Radii 수치 스케일 토큰화
-
-## 기능 백로그 (2026-06-10 브레인스톰 — 우선순위 미정, 착수 전 상의)
-
-### 신규 기능
-- 라이브: 실시간 승리확률 그래프(ML 재사용)·현재타석 matchup 통산기록(game_pitches로 계산)·결정적순간 푸시(확률 급변 ±20%p)·불펜 피로도 보드(game_pitchers 최근 등판일/투구수)·우천취소 확률(weather 재사용)
-- 기록: 마일스톤 트래커 화면(알림 백엔드 보유)·신인왕/MVP 레이스(WAR)·순위변동 타임라인·오늘의 MVP(종료 시 자동선정)·매직넘버(PS odds 재사용)·선수 스플릿(홈원정/주야/vs팀)·팀 H2H 매트릭스
-- 참여: 승부예측 포인트/랭킹(game_predictions 보유 — 리텐션 1순위)·데일리픽·직관뱃지(전구장 정복 등 visit_record)·이상형월드컵·선수카드/직관기록 공유이미지(RepaintBoundary+share_plus)·경기별 응원톡(모더레이션 비용 고려)
-- 유틸: 선수 팔로우 알림(선발등판/타순 포함 — favorite_players 보유)·아침 브리핑 푸시(어제결과+오늘 선발 1통)·중계채널 안내(정적 매핑)·티켓오픈 알림·ICS 캘린더 내보내기
-
-### UI/UX 개선 (✅=2026-06-11 완료: 햅틱(탭/투표/새로고침)·이닝칩 자동스크롤·댓글 이탈경고 / 펄스dot·히트맵범례 = 기구현 확인)
-- 전역: Hero 전환(목록 아바타→상세)·오프라인 배너(connectivity+SWR 표시)·빈상태 공용 AppEmptyView(AppErrorView 패턴)·당겨새로고침 통일·긴 리스트 위로가기 FAB·스낵바 톤 통일·하단바 스와이프 힌트(1회 flag)
-- 홈: 경기없는날 마이팀 다음경기 D-day 카드·날짜스트립 길게누르기 픽커(_pickerBuilder 필수)·compact 토글 첫실행 툴팁
-- 경기상세: 새 중계 항목 amber 페이드인·필드뷰 풀스크린 오버레이(작은폰 비좁음)
-- 선수: 초성검색(ㄱㄷㅇ→김도영)·목록 길게누르기 2명 비교선택·투표 결과 바 애니메이션
-- 캘린더/커뮤: 직관기록 다중사진(image_urls 인프라 재사용)·이미지 핀치줌 갤러리 뷰어·달력 월 스와이프
-
-### 운영/출시 인프라
-- ⭐강제 업데이트 게이트(`/app-config` min_version — **출시 전 필수**, 나중엔 못 넣음)·킬스위치(Firebase Remote Config 기능별 off)·공지배너(app-config에 banner 필드)
-- admin 콘솔 웹(insta/게시글 신고·맛집 승인 — 현재 psql 수동, X-Admin-Key 재사용)·배포후 스모크 curl 스크립트(scheduler 미재시작류 사고 감지)
-- 알림: quiet hours(22~08 보류 — 심야 푸시=삭제 1순위)·Android 채널 분리(라이브/마이팀/커뮤 — OS 선택 차단 가능)
-- 성장: 딥링크(게시글/경기/선수 공유→앱)·인앱리뷰(직관 '승리' 기록 직후)·Play 내부테스트 트랙(push_tokens 다수 검증 겸용)
-- 품질: 외국인 한글↔영문 이름매핑 테이블(인스타 검증도 필요)·pitch_locations 시즌 아카이빙 계획(106k+/시즌)·GitHub Actions CI(analyze+골든)·앱 백그라운드 시 폴링 중단 확인(배터리/서버)
-
-### 팬 세그먼트별 (올드팬=기록 깊이 / 라이트팬=쉬움·재미. 현재 앱=올드팬 강·라이트팬 funnel 약)
-- 올드팬 분석계(보유 데이터로 즉시 가능): 볼배합 시퀀스 분석(game_pitches 구종순서·초구 성향)·**과거경기 필드뷰 리플레이(game_relay_archive JSONB 보유 — 타앱 없는 유니크 자산)**·보더라인 판정 분석(ABS존 px)·클러치 WPA/LI 리더보드(승률모델 재사용)·파크팩터(구장별 타고/투고 보정)·페이스 프로젝션(시즌 환산+마일스톤 ETA)·좌우 스플릿 수치 테이블(존히트맵 데이터 표화)·박스스코어 기록지 뷰(전통 스코어카드+이미지 저장)·등록말소/부상 타임라인(roster_changes 보유)·PS 확률 분포 그래프(odds 확장)·**타석 안타확률 모델(per-PA, 아래 별도)**
-- 올드팬 확장계(크롤/콘텐츠 추가 필요): 통산 커리어 합산 뷰·2군 기록/콜업 워치(퓨처스 크롤)·연봉 대비 WAR 가성비(연봉 공시 크롤)·KBO 오늘의 역사(정적 JSON)·역대 기록실·조건 알림 빌더("X가 OPS 1.0 도달 시" — 마일스톤 인프라 연장)·기록 CSV 내보내기·커스텀 스탯 대시보드 확장(핵심스탯 피커 연장)·라인업 시뮬레이터(타순 기대득점)
-- 라이트팬 진입장벽: 응원팀 찾기 테스트(온보딩 취향 퀴즈→팀 추천, 결과 공유=바이럴)·쉬운 스탯 모드(OPS→S~C 등급, 리그 백분위)·**"지금 무슨 상황?" 라이브 캡션(relay→"2사 만루, 한 방이면 역전" 자연어 한줄)**·야구 입문 코스(기존 ⓘ 용어 모아 단계별)·룰 일러스트 사전(인필드플라이 등)·첫 직관 가이드(체크리스트+구장별)·용어 팝업 퀴즈
-- 라이트팬 재미/콘텐츠: 경기 3줄 요약(game_summary 자연어 강화)·하이라이트 몰아보기 피드·"오늘의 한 장"(종료 시 사진1+한줄 자동)·최애 포토카드 꾸미기(프로필+스탯 커스텀→공유)·선수 생일/데뷔 기념일 알림·응원가 가사 링크집(저작권→링크만)·야구퀴즈/밸런스게임·시즌 연말결산 카드(Wrapped式 — 직관/예측/투표 데이터)·다이제스트 모드(푸시 대신 하루 1통 요약)
-- 소셜/게이미피케이션(공통): 팬 레벨(출석+예측+커뮤니티+직관 포인트 통합)·1:1 예측 대결(친구 초대)·오늘의 승리 MVP 팬투표(인기투표 인프라 재사용)·주간 미션(시즌패스式 무료)·출석 스탬프
-- 모드 컨셉: 온보딩 "야구 얼마나 보세요?" → 프로/캐주얼 모드(스탯 밀도·푸시 빈도·홈 구성 프리셋 — compact 토글·커스텀 피커가 씨앗)
-### 추가 영역 (2차 브레인스톰)
-- ML 확장(모델/데이터 보유): 투수 교체 타이밍 예측(불펜 패턴)·경기 소요시간 예측(직관러 귀가용)·익일 선발라인업 예측·선수 시즌 최종성적 프로젝션 밴드·LLM 자동 경기 프리뷰/리뷰 기사(Claude API — 매일 5경기, 비용 소액)·기록 질문 챗봇(RAG over own DB — 차별화 크나 API 비용 검토)
-- 커뮤니티 심화: 경기별 라이브 스레드 자동 개설/종료시 아카이브·투표(poll) 첨부 게시글·직관샷/팬아트 갤러리 탭(이미지 그리드 뷰)·월간 베스트글 명예의전당. ⚠️지역 직관모임 매칭=모더레이션/안전 부담 커서 비추
-- **오프시즌 모드(비시즌 DAU 방어 — 야구앱 최대 갭)**: 스토브리그 FA 트래커·연말결산 카드·명장면 리플레이 큐레이션·올타임 팀 뽑기·퀴즈 시즌제·개막 D-day
-- 시즌 이벤트: 포스트시즌 브라켓 예측(10월 참여 폭발)·골든글러브/올스타 예측 이벤트
-- 수익화(출시 후): AdMob 네이티브(게임카드 사이 1개 수준)·프리미엄 구독(광고제거+심화 분석+위젯 커스텀)·티켓/굿즈 어필리에이트
-- 플랫폼: Flutter web 커뮤니티(SEO 유입)·태블릿 2컬럼 레이아웃. TV/WearOS=비추(니치)
-- 접근성: 스크린리더 시맨틱·색각보조(팀컬러에 패턴/라벨 병기)·시니어 모드(큰글씨+단순화 — 고령 올드팬 실수요)
-- 신뢰: 기록 갱신시각 표시("5초 전")·오류신고 일반화(인스타 신고 패턴→전 기록)·데이터 출처 고지 페이지·오픈소스 라이선스 화면
-- **타석 안타확률(per-PA) 모델**: 라벨=game_pitches 타석결과(1루타/2루타/3루타/홈런/내야안타 — '안타' 단독표기 없음 규칙 재사용), ~5.5만 타석/시즌. 피처=타자 시즌누적(시점까지만 — leakage 금지, player_daily_stats rolling)+최근폼+플래툰(bats×throws)+투수 피성적+**존 겹침점수(타자 핫존5x5 × 투수 투구분포5x5 내적 — 양쪽 보유, 차별화 피처)**+매치업 통산(표본少→empirical Bayes shrinkage)+구장 파크팩터+홈원정. 모델=LR/GBM+기존 calibration 모듈, 시간순 split(승리예측 관행). 기대성능 정직하게: base ~27%, AUC ~0.58-0.62(야구 per-PA 본질 한계) — 절대값보다 "오늘 매치업 21% vs 33%" 상대 비교 가치. 확장=멀티클래스(아웃/볼넷/단타/장타)→xwOBA식 기대치, 볼카운트 반영 실시간 업데이트(pitch별 재계산). 서빙=relay 응답에 batter 확률 필드 or /games/{id}/pa-prob @10s
-
-### 시너지 번들 (2026-06-10 — 같이 만들면 배수 효과. ⭐=신규 발굴 항목)
-1. **라이브 승률 엔진** = ⭐**win_prob 시계열 적재**(scheduler 30s 사이클서 이닝/타석별 승률 재계산→테이블 저장 — 신규) 하나로 4기능: 승리확률 그래프(시계열 그대로)+결정적순간 푸시(델타±20%p 감지)+클러치 WPA 리더보드(타석 전후 차 적분)+오늘의 MVP(경기 WPA 합산). **엔진 1 : 기능 4**
-2. **게이미피케이션 공통 기반** = ⭐**통합 포인트 원장+뱃지 엔진**(point_ledger+badges+user_badges, 적립사유 UNIQUE dedup=notification_log 패턴 — 신규) 위에: 승부예측 랭킹·데일리픽·출석스탬프·직관뱃지·주간미션·팬레벨 6개가 전부 얹힘. 원장 없이 개별 구현하면 나중에 통합 지옥
-3. **per-PA 모델 1 : 기능 3**: 타석 안타확률 모델 → matchup 확률 표시(필드뷰)+데일리픽 후보 제공+쉬운스탯 기대등급. 번들2 원장이 데일리픽 정산 받쳐줌
-4. **app-config 묶음**: `/app-config` 엔드포인트 하나에 min_version(강제업데이트)+feature_flags(킬스위치)+banner(공지) 3기능 — 1세션, 출시 전 필수
-5. **홈 성능 3종 동시**: /home/bootstrap 집계 만들 때 ETag/304+서버측 SWR 같은 코드경로에 함께 — 따로 하면 3번 손대는 곳을 1번에
-6. **공유 성장 루프**: 공유이미지(포토카드/직관기록)+딥링크+인앱리뷰+⭐**공유 랜딩 페이지**(서버 정적 HTML og:image 프리뷰 — 미설치자 유입용, 신규) = 생성→공유→유입→리뷰 루프 완성
-7. **온보딩 리뉴얼 1플로우**: 응원팀 찾기 테스트→프로/캐주얼 모드 선택→푸시 프리셋 — 첫실행 한 플로우로 묶어야 자연스러움
-8. **불펜 데이터 계보**: 불펜 피로도 보드(집계)→투수교체 예측·익일 선발라인업 예측(같은 피처 재사용) — 보드 먼저
-9. **콘텐츠 발송 파이프**: 아침 브리핑+3줄 요약+다이제스트 모드 = scheduler 일일 batch 1개(템플릿 기반, LLM은 추후 업그레이드만)
-10. **admin 콘솔 = 신고 통합**: ⭐**통합 신고 큐**(insta/게시글/기록오류 reports 일반화 테이블 — 신규)+맛집 승인 한 화면. 오류신고 일반화 항목과 동시 설계
-11. **직관러 니치 패키지** (사업성 전략① 정렬): 직관뱃지+직관통계 심화+우천취소 확률+경기 소요시간 예측+첫직관 가이드+티켓오픈 알림+기존 구장/맛집 — 묶어서 "직관 탭" 강화로 출시 차별점
-12. **품질 3종 순서**: 다크모드 육안검증→발견 화면 골든 추가→GitHub Actions CI — 검증이 골든 소재 공급, CI가 회귀 방어
-
-### 로드맵 최종 (2026-06-10 — 번들 단위 즉시/중기/장기 + 4트랙 수렴)
-**4트랙 수렴**: 전 백로그가 ①라이브 임팩트(경기 보는 맛) ②리텐션 루프(돌아올 이유) ③성장 루프(퍼지는 경로) ④출시·운영 게이트(안 죽는 기반)로 정리됨
-- **즉시(1세션 단위)**: 보안5종 일괄(EXIF·pg listen·rpcbind·백업pull·이메일5회) / 번들4 app-config(강제업뎃+킬스위치+배너) / 즉효성능 3종(orjson·uvicorn[std]·TLS1.3) / 다크모드 육안검증(번들12 1단계) / 아침 브리핑 템플릿판(번들9 시작) / UI소품 묶음(햅틱·펄스dot·자동포커스·범례ⓘ·이탈경고 등)
-- **중기(3~4세션 단위)**: ⭐메가A 라이브 임팩트 / ⭐메가B 리텐션 루프 / 메가C 성장 루프 / 메가D 출시 게이트 / 번들5 홈성능3종 / 번들10 admin+신고큐 / 번들11 직관러 패키지 / 잔여 분석 단품(마일스톤트래커·순위타임라인·스플릿·H2H·파크팩터·박스스코어)
-- **장기(그 이상/유료/외부)**: 외부작업(도메인·Play·법무·KBO라이선스) / 리플레이·홈위젯·iOS·web·오프시즌모드·브라켓예측 / 크롤신규(2군·연봉·역사) / LLM(자동기사·챗봇)·수익화 / 접근성 확장·state restoration
-
-**2차 메가번들 (번들의 번들 — ⭐=신규 부품)**
-- **메가A 라이브 임팩트** = 번들1(승률엔진→4기능)+번들3(per-PA→3기능)+번들8 1단계(불펜피로도). 공통 토대 = ⭐**PA(타석) 정규화 모듈**(game_pitches 타석경계·안타라벨 파싱 공통화 — per-PA 라벨·WPA 적분·matchup 집계 셋 다 이걸 씀, 신규). 순서: PA모듈→승률엔진→per-PA→피로도
-- **메가B 리텐션 루프** = 번들2(원장+6기능)+번들7(온보딩 모드)+quiet hours+채널분리+다이제스트. 공통 토대 = ⭐**푸시 발송 게이트웨이 단일화**(발송부 한 곳: quiet hours·채널 라우팅·다이제스트 적립·dedup 일괄 — 흩어진 채로 quiet hours 넣으면 곳곳 수정, 신규). 유저 라이프사이클 1축 관리
-- **메가C 성장 루프** = 번들6(공유+랜딩+딥링크+리뷰)+번들11 교차(직관기록 카드=공유 1순위 소재) — 직관 탭 강화가 곧 공유 소재 공장
-- **메가D 출시 게이트** = 번들4(app-config)+스모크 스크립트+번들12(골든+CI)+Play 내부테스트 — 배포 안전망 일괄, 출시 직전 1묶음
-- **연결 명시**: 번들1 산출(오늘의 MVP·WPA)이 번들9 콘텐츠(브리핑/3줄요약) 소재로 흐름 — 승률엔진 먼저면 브리핑 품질 공짜 상승 / 검색 패키지(초성+최근검색+외국인 이름매핑) 소묶음 추가
-
-**3차: 플랫폼 코어 발견 (트랙 횡단 공통층)**
-- 코어 4 = PA모듈(데이터)·포인트원장(상태)·푸시GW(전달)·app-config(제어) + ⭐**game_events 도메인 이벤트 스트림**(신규 — scheduler가 감지하는 모든 사건(득점/교체/마일스톤/승률델타)을 이벤트 테이블로 발행, 푸시GW·원장적립·브리핑·WPA가 같은 스트림 구독). **이벤트 스트림 = 과거경기 리플레이의 토대이기도** (relay_archive+events 재생) → **리플레이 장기→중기 강등(쉬워짐)**
-- 트랙 의존: A(콘텐츠 생산)→B(소비·정산)→C(공유·확산), D 횡단. A 먼저가 정석
-
-**4차: 시즌 캘린더 시간축 매핑**
-- 6~7월 즉시묶음+메가D+**출시**(10월 모멘텀 타려면 여름 출시 필수) → 7~8월 메가A(시즌 중 가치 최대) → 8~9월 메가B·C → **10월 브라켓 예측 이벤트**(원장 위 1세션급 — 장기→중기 강등)+마케팅 → 11~3월 오프시즌모드(연말결산=원장·직관 데이터 소비)+리플레이+크롤신규(2군/연봉)
-- ⭐**시즌 상태머신**(신규 — 서버/앱이 개막전·정규·PS·비시즌 단계 인지, 홈 구성·푸시·기능 자동 전환. app-config feature_flags 확장으로 구현, 오프시즌 모드의 토대)
-
-**5차: 차단기(blocker) 역방향 분석 — 트랙별 선행 게이트**
-- 메가B 전 **push_tokens 다수 검증**(내부테스트 트랙과 동시) / 커뮤니티 심화 전 **admin콘솔+신고큐** / 수익화 전 **KBO 라이선스** / 모든 신규 UI 전 **다크 육안검증** / 킬스위치 = 데이터 종속 리스크 완충재(네이버 차단 시 라이브만 끄고 생존 — app-config 출시 전 필수 근거)
-- ⭐**합성 부하테스트**(신규 — k6/locust 가상유저 100~1000으로 bootstrap+폴링 부하 1회 실측, free tier 한계 수치화 = 서버비용 리스크 실측. 출시 전 1세션)
-
-### 사업성 메모 (2026-06-10 평가)
-- 순풍: KBO 1000만 관중 시대(2030·여성 신규팬 급증)+티빙 모바일 중계 유료화 → **무료 텍스트/시각화 라이브 수요 공백** = 필드뷰가 정조준. 경쟁(네이버=범용 문자중계, KBO공식앱=품질낮음, 팀앱=단일팀)에 비해 분석깊이+직관기록+커뮤니티 통합이 차별점
-- ⭐최대 리스크 = **데이터 종속**: 네이버 비공식 API+statiz 크롤 — 상업화 시 약관/저작권 노출 급증, 차단=서비스 사망. **수익화 마케팅 전 KBO 데이터 제휴/라이선스 검토 필수** (법무 잔여항목과 연결). 하이라이트=링크만(영상 호스팅 금지) 유지
-- 기타 리스크: 1인 운영(모더레이션/CS)·서버비용(현 무료티어, 캐시로 버팀)·비시즌 DAU 폭락(오프시즌 모드로 방어)
-- 수익 현실치: DAU 1만 가정 — 네이티브광고 월 ~100-200만원, 구독(전환 1-3%) 월 ~50-100만원. 1년차 현실 목표 MAU 1~5만 = 사이드수익 구간. 단독 스타트업 스케일은 데이터 라이선스 해결+니치 장악 후 판단
-- 전략: ①니치 1개 집중(직관러 도구 or 라이브 필드뷰) ②무료+가벼운 광고로 시작 ③데이터 리스크 해결 전 공격적 마케팅 자제 ④포스트시즌(10월) 모멘텀 활용
+### 기능 백로그 (아이디어 인덱스 — 착수 전 상의. 상세 = 백업 참조)
+- **라이브**: 승률그래프✅·matchup✅·클러치푸시✅·불펜보드✅ / 우천취소 확률·투수교체 예측·경기 소요시간 예측
+- **기록**: 마일스톤 트래커·MVP레이스·순위타임라인·H2H·파크팩터·박스스코어 / per-PA 안타확률(보류 AUC~.52 데이터한계)
+- **참여**: 예측랭킹✅·뱃지✅·미션✅ / 데일리픽·직관뱃지·팬레벨·1:1 예측대결·이상형월드컵
+- **콘텐츠/라이트팬**: 3줄요약·다이제스트·"지금 무슨상황" 캡션✅·쉬운스탯 등급·응원팀 찾기 테스트·연말결산 Wrapped✅
+- **오프시즌**(비시즌 DAU): 스토브리그 FA·명장면 리플레이(game_relay_archive 자산)·올타임 팀뽑기·퀴즈·개막 D-day
+- **시즌이벤트**: 포스트시즌 브라켓 예측·골든글러브/올스타 예측
+- **올드팬 분석**(보유데이터): 볼배합 시퀀스·과거경기 필드뷰 리플레이·클러치 WPA 리더보드·좌우 스플릿 테이블·파크팩터
+- **수익화**(출시후): AdMob 네이티브·프리미엄 구독 / ⚠️최대 리스크 = 네이버 데이터 종속(상업화 전 KBO 제휴/라이선스 검토 필수)
 
 ## 알려진 이슈
 - ✅ ~~**DB 커넥션 누수 (idle in transaction 미커밋)**~~ — 06-25 **근본원인 규명·수정**(↓변경이력). 원인 = `crawl_player_events.daily_player_summary`/`hitting_streak_check` SELECT가 없는 컬럼 `pds.at_bats`(실제=`pds.ab`) 참조 → 매 실행 에러 + **try/finally 부재**로 `conn.close()` 스킵 → 커넥션 영구 leak(idle in tx aborted), 일 1개 누적 → `games` 락으로 마이그레이션 차단. 수정 = 컬럼 픽스 + try/finally + `_PooledConn.close()` rollback + `idle_in_transaction_session_timeout=5min`(auto.conf) + **`_PooledConn.__del__` 안전망(322개 사용처 전역 retrofit, 스코프 이탈 시 자동 close)**. ⚠️**재발방지 = ↓주의사항 "DB 커넥션 누수 3중 방어"**. 점검: `SELECT pid,state,now()-state_change,left(query,60) FROM pg_stat_activity WHERE state LIKE 'idle in transaction%'`
