@@ -1022,10 +1022,13 @@ class _TrajectorySidePainter extends CustomPainter {
 
       final traj = pitchTrajectory(phys, samples: 24);
       if (traj.length < 2) continue;
+      // 궤적 y서 crossY를 빼 존 평면(_yPlate=0)에 정확히 닿게 정렬 (안 하면 공이
+      // 존 밴드보다 ~0.71ft 앞에서 멈춤 — 3D 뷰와 동일 정렬 버그).
+      final cy = phys.crossY;
       final path = Path();
       bool first = true;
       for (final v in traj) {
-        final o = _tc(v.y, v.z, size);
+        final o = _tc(v.y - cy, v.z, size);
         if (first) { path.moveTo(o.dx, o.dy); first = false; }
         else { path.lineTo(o.dx, o.dy); }
       }
@@ -1038,7 +1041,7 @@ class _TrajectorySidePainter extends CustomPainter {
 
       // release dot
       if (!isOther) {
-        final rel = _tc(traj.first.y, traj.first.z, size);
+        final rel = _tc(traj.first.y - cy, traj.first.z, size);
         canvas.drawCircle(rel, isSel ? 4.5 : 3.0,
             Paint()..color = color.withValues(alpha: alpha));
       }
@@ -1143,10 +1146,12 @@ class _TrajectoryTopPainter extends CustomPainter {
 
       final traj = pitchTrajectory(phys, samples: 24);
       if (traj.length < 2) continue;
+      // 궤적 y서 crossY를 빼 존 평면(_yPlate=0)에 정렬 (측면/3D 뷰와 동일).
+      final cy = phys.crossY;
       final path = Path();
       bool first = true;
       for (final v in traj) {
-        final o = _tc(v.y, v.x, size);
+        final o = _tc(v.y - cy, v.x, size);
         if (first) { path.moveTo(o.dx, o.dy); first = false; }
         else { path.lineTo(o.dx, o.dy); }
       }
@@ -1158,7 +1163,7 @@ class _TrajectoryTopPainter extends CustomPainter {
         ..strokeJoin = StrokeJoin.round);
 
       if (!isOther) {
-        final rel = _tc(traj.first.y, traj.first.x, size);
+        final rel = _tc(traj.first.y - cy, traj.first.x, size);
         canvas.drawCircle(rel, isSel ? 4.5 : 3.0,
             Paint()..color = color.withValues(alpha: alpha));
       }
@@ -1198,8 +1203,9 @@ class _Trajectory3DView extends StatefulWidget {
 }
 
 class _Trajectory3DViewState extends State<_Trajectory3DView> {
-  // 초기: 살짝 횡으로 튼 정면 시점 (yaw 약 23°로 궤적 곡선이 보이게)
-  double _yaw   = 0.40;   // ~23° — scene rotated laterally
+  // 초기: 거의 정면(터널뷰) — 릴리스의 투수 실루엣 + 존이 한 화면에 보이게 낮은 각도.
+  // (릴리스는 존서 ~49ft 뒤라 큰 yaw서 화면 밖으로 밀림. 사용자가 드래그로 더 돌릴 수 있음.)
+  double _yaw   = 0.14;   // ~8° — slight lateral tilt (투수 보이는 각도)
   // 카메라 상하 각(pitch)은 0 = 정면(눈높이) 고정 — 위에서 내려다보지 않음(사용자 요청:
   // "상단 45도가 아닌 정면 각도"). 횡(yaw)으로만 회전, 상하 드래그는 무시.
   final double _pitch = 0.0;   // 0° — 정면(수평) 시점 (고정)
@@ -1328,6 +1334,31 @@ class _Trajectory3DPainter extends CustomPainter {
     }
   }
 
+  // 릴리스 지점에 투수 실루엣(스틱 피겨) — 공이 날아오는 방향 직관 큐.
+  // world 좌표로 그려 턴테이블 회전에 함께 돌아감. (wx,wy)=지면 발 위치.
+  void _drawPitcher(Canvas c, double wx, double wy, Size size, double scale, bool isDark) {
+    final col = (isDark ? Colors.grey[300]! : Colors.grey[700]!).withValues(alpha: 0.5);
+    final p = Paint()
+      ..color = col
+      ..strokeWidth = 2.2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    // P(z, dx): 발 위치(wx,wy) 기준 높이 z(ft), 횡 오프셋 dx(ft)의 화면 좌표
+    Offset? pt(double z, [double dx = 0]) => _proj(wx + dx, wy, z, size, scale);
+    _drawSeg(c, pt(1.1), pt(4.6), p);                 // 척추(골반→어깨)
+    _drawSeg(c, pt(1.1), pt(0.0, -0.35), p);          // 왼다리
+    _drawSeg(c, pt(1.1), pt(0.0, 0.35), p);           // 오른다리
+    _drawSeg(c, pt(3.9), pt(3.3, -0.6), p);           // 글러브팔
+    _drawSeg(c, pt(3.9), pt(4.8, 0.75), p);           // 투구팔(플레이트쪽으로 든 형태)
+    // 머리 — 5.1ft·5.6ft 투영 간 거리로 반지름 산출 (원근 반영)
+    final head = pt(5.1), headTop = pt(5.6);
+    if (head != null && headTop != null) {
+      final r = (head - headTop).distance.clamp(2.0, 14.0);
+      c.drawCircle(head, r, Paint()..color = col..style = PaintingStyle.fill);
+    }
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     // Background
@@ -1416,6 +1447,18 @@ class _Trajectory3DPainter extends CustomPainter {
           ..style = PaintingStyle.stroke,
         close: true);
 
+    // ── Pitcher figure at release (방향 직관 큐) ────────────────────────────────
+    // 전 투구 릴리스 평균 위치. y는 궤적과 동일하게 crossY 보정, 발은 지면(z=0).
+    {
+      double sx = 0, sy = 0; int n = 0;
+      for (final p in pitches) {
+        final ph = p['_phys'] as PitchPhysics?;
+        if (ph == null) continue;
+        sx += ph.x0; sy += (ph.y0 - ph.crossY); n++;
+      }
+      if (n > 0) _drawPitcher(canvas, sx / n, sy / n + 2.0, size, scale, isDark);
+    }
+
     // ── Trajectory polylines ─────────────────────────────────────────────────
     for (int i = 0; i < pitches.length; i++) {
       final p = pitches[i];
@@ -1432,8 +1475,12 @@ class _Trajectory3DPainter extends CustomPainter {
       final traj = pitchTrajectory(phys, samples: 24);
       if (traj.length < 2) continue;
 
+      // ⚠️ 궤적 y는 PITCHf/x 원좌표(포수쪽 crossY≈0.71ft서 판정, 릴리스 y0=50).
+      //    스트라이크존은 world y=0에 그려지므로, 궤적 y에서 crossY를 빼 존 평면(0)에
+      //    정확히 닿게 정렬. (안 하면 공이 존보다 ~0.71ft(8.5") 앞에서 멈춤 — 측면뷰서
+      //    존과 어긋나 보이던 버그.)
       final pts3d = traj
-          .map((v) => _proj(v.x, v.y, v.z, size, scale))
+          .map((v) => _proj(v.x, v.y - phys.crossY, v.z, size, scale))
           .toList();
 
       // Draw polyline
