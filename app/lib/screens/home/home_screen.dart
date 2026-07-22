@@ -428,6 +428,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
   List _rankings = [];
   bool _isLoading = true;
   bool _loadError = false;
+  int _homeLoadAttempt = 0; // 첫 로드 실패 시 자동 재시도 카운터 (웹 첫 접속 실패→자동복구)
   Set<int> _favoriteTeamIds = {};
   bool _myTeamOnly = false;
   bool _compactMode = false;
@@ -1009,6 +1010,7 @@ class _TodayGamesTabState extends State<TodayGamesTab>
       await LocalCache.set('games_$dateStr', games);
       if (!mounted || _loadGen != gen) { debugPrint('[loadGames] unmounted/gen after cache set'); return; }
       debugPrint('[loadGames] setState _games=${games.length} _isLoading=false');
+      _homeLoadAttempt = 0;
       setState(() { _games = games; _isLoading = false; _loadError = false; });
       _updateMyTeamData();
       _prefetchAdjacentDates(dateStr);
@@ -1020,7 +1022,18 @@ class _TodayGamesTabState extends State<TodayGamesTab>
         if (_isLoading) setState(() => _isLoading = false);
         return;
       }
-      setState(() { _isLoading = false; if (_games.isEmpty) _loadError = true; });
+      // 웹 첫 접속 시 첫 API 호출이 간헐 실패(→ 새로고침하면 정상)하던 증상 대응:
+      // 즉시 에러 배너를 띄우는 대신 자동 재시도(백오프). 유저의 '새로고침' 수동
+      // 복구를 앱이 대신 수행. 캐시 데이터가 이미 있으면(_games 有) 재시도 불필요.
+      if (_games.isEmpty && _homeLoadAttempt < 3) {
+        _homeLoadAttempt++;
+        Future.delayed(Duration(milliseconds: 500 * _homeLoadAttempt), () {
+          if (mounted && _loadGen == gen && _games.isEmpty) _loadGames();
+        });
+        // _isLoading 유지 → shimmer 계속 (에러 배너 X)
+      } else {
+        setState(() { _isLoading = false; if (_games.isEmpty) _loadError = true; });
+      }
     }
   }
 

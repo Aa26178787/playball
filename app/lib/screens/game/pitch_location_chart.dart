@@ -1198,10 +1198,11 @@ class _Trajectory3DView extends StatefulWidget {
 }
 
 class _Trajectory3DViewState extends State<_Trajectory3DView> {
-  // Initial 3/4 view: pitcher slightly right, looking from above-behind catcher
+  // 초기: 살짝 횡으로 튼 정면 시점 (yaw 약 23°로 궤적 곡선이 보이게)
   double _yaw   = 0.40;   // ~23° — scene rotated laterally
-  // 위아래(pitch)는 고정 — 횡(yaw)으로만 회전 (사용자 요청). 상하 드래그는 무시.
-  final double _pitch = 0.28;   // ~16° — tilt down from above (고정)
+  // 카메라 상하 각(pitch)은 0 = 정면(눈높이) 고정 — 위에서 내려다보지 않음(사용자 요청:
+  // "상단 45도가 아닌 정면 각도"). 횡(yaw)으로만 회전, 상하 드래그는 무시.
+  final double _pitch = 0.0;   // 0° — 정면(수평) 시점 (고정)
 
   void _onPan(DragUpdateDetails d) {
     setState(() {
