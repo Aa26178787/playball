@@ -1478,18 +1478,24 @@ def _send_game_summary(game_id: int, notify: bool = True):
                 if mr:
                     mvp_player_id, mvp_name, mvp_hits, mvp_hr, mvp_rbi = mr
         else:
-            # 무승부: 승팀 관점이 없으므로 양팀 통틀어 |WPA| 최대 타자를 선정
+            # 무승부: 승팀 관점이 없으므로 양팀 통틀어 "자기 팀 기준 최대 양(+) 기여" 타자를 선정.
+            # ⚠️ ABS(SUM(delta))만 보면 부호 무관 최대 변동만 골라 병살타 등 최악의 실책성
+            #    타석(홈 승률을 크게 올린 원정타자의 아웃)이 MVP로 뽑히는 사고가 남 —
+            #    타자 자기 팀 관점 부호 보정(원정타자=home 상승이 나쁨→반전) 후 최댓값 선정.
             cur.execute("""
-                SELECT pa.batter_name, SUM(pa.win_rate_after - pa.win_rate_before) AS wpa
+                SELECT pa.batter_name,
+                       SUM(CASE WHEN pa.inning_half = '1'
+                                THEN (pa.win_rate_after - pa.win_rate_before)
+                                ELSE -(pa.win_rate_after - pa.win_rate_before) END) AS wpa
                 FROM plate_appearances pa
                 WHERE pa.game_id = %s
                   AND pa.win_rate_before IS NOT NULL AND pa.win_rate_after IS NOT NULL
                 GROUP BY pa.batter_name
-                ORDER BY ABS(SUM(pa.win_rate_after - pa.win_rate_before)) DESC
+                ORDER BY wpa DESC
                 LIMIT 1
             """, (game_id,))
             wpa_row = cur.fetchone()
-            if wpa_row:
+            if wpa_row and wpa_row[1] is not None and wpa_row[1] > 0:
                 mr = _batter_stat("AND p.name = %s", "", (game_id, wpa_row[0]))
                 if mr:
                     mvp_player_id, mvp_name, mvp_hits, mvp_hr, mvp_rbi = mr
