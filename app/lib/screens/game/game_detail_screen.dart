@@ -60,6 +60,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   Map<String, dynamic>? _recordDetailData;
   Map<String, dynamic>? _relayAllData;
   int _relayRetryCount = 0;
+  bool _relayFailed = false; // 이닝중계 재시도 소진 → 무한 shimmer 대신 재시도 UI
   Map<String, dynamic>? _weatherData;
   Map<String, dynamic>? _pitchTypesData;
   List _highlights = [];
@@ -401,6 +402,12 @@ class _GameDetailScreenState extends State<GameDetailScreen>
       LocalCache.set('team_rankings', list);
     }).catchError((_) {});
 
+    // 보조 데이터(로스터·프리뷰·기록·이닝중계·날씨·구종)는 getGameDetail 성공과 무관하게
+    // 즉시 병렬 로드. ⚠️ 과거엔 이 fetch들이 `await getGameDetail` 아래에 있어, detail이
+    // 느린/불안정 회선에서 지연·실패하면 relay_all이 영영 안 불려 이닝중계 탭이 무한
+    // shimmer로 멈췄음(_gameData가 캐시로 차 있으면 에러 화면도 안 뜸). 독립 실행으로 분리.
+    _loadSecondaryData();
+
     // Phase 2: fetch from API
     try {
       final gameData = await ApiService.getGameDetail(widget.gameId);
@@ -451,48 +458,6 @@ class _GameDetailScreenState extends State<GameDetailScreen>
           if (mounted) setState(() => _sameDayGames = games.where((g) => g['id'] != widget.gameId).toList());
         }).catchError((_) {});
       }
-
-      Future.wait([
-        ApiService.getGameRoster(widget.gameId)
-            .then((d) async {
-              if (!mounted) return;
-              setState(() { _rosterData = d; });
-              await LocalCache.set(_ck('roster'), d);
-            })
-            .catchError((_) {}),
-        ApiService.getGamePreview(widget.gameId)
-            .then((d) async {
-              if (mounted) setState(() => _previewData = d);
-              await LocalCache.set(_ck('preview'), d);
-            })
-            .catchError((_) {}),
-        ApiService.getGameRecordDetail(widget.gameId)
-            .then((d) async {
-              if (mounted) setState(() => _recordDetailData = d);
-              await LocalCache.set(_ck('record'), d);
-            })
-            .catchError((_) {}),
-        ApiService.getGameRelayAll(widget.gameId)
-            .then((d) async {
-              if (!mounted) return;
-              setState(() { _relayAllData = d; _relayRetryCount = 0; });
-              if (_tabController.index == 0) _scrollInningsToBottom();
-              await LocalCache.set(_ck('relay'), d);
-            })
-            .catchError((_) { if (mounted && _relayAllData == null) _scheduleRelayRetry(); }),
-        ApiService.getGameWeather(widget.gameId)
-            .then((w) async {
-              if (mounted) setState(() => _weatherData = w);
-              if (w != null) await LocalCache.set(_ck('weather'), w);
-            })
-            .catchError((_) {}),
-        ApiService.getGamePitchTypes(widget.gameId)
-            .then((d) async {
-              if (mounted) setState(() => _pitchTypesData = d);
-              await LocalCache.set(_ck('pitch_types'), d);
-            })
-            .catchError((_) {}),
-      ]);
 
       if (gameData['game']['status'] == '진행') {
         ApiService.getGameRelay(widget.gameId)
@@ -583,17 +548,78 @@ class _GameDetailScreenState extends State<GameDetailScreen>
     }
   }
 
+  // 보조 데이터 병렬 로드 — getGameDetail과 독립 실행 (detail 지연/실패해도 이닝중계 등
+  // 각 탭 데이터가 개별적으로 도착). 각 fetch는 catchError로 격리돼 서로 영향 없음.
+  void _loadSecondaryData() {
+    ApiService.getGameRoster(widget.gameId)
+        .then((d) async {
+          if (!mounted) return;
+          setState(() { _rosterData = d; });
+          await LocalCache.set(_ck('roster'), d);
+        })
+        .catchError((_) {});
+    ApiService.getGamePreview(widget.gameId)
+        .then((d) async {
+          if (mounted) setState(() => _previewData = d);
+          await LocalCache.set(_ck('preview'), d);
+        })
+        .catchError((_) {});
+    ApiService.getGameRecordDetail(widget.gameId)
+        .then((d) async {
+          if (mounted) setState(() => _recordDetailData = d);
+          await LocalCache.set(_ck('record'), d);
+        })
+        .catchError((_) {});
+    ApiService.getGameRelayAll(widget.gameId)
+        .then((d) async {
+          if (!mounted) return;
+          setState(() { _relayAllData = d; _relayRetryCount = 0; _relayFailed = false; });
+          if (_tabController.index == 0) _scrollInningsToBottom();
+          await LocalCache.set(_ck('relay'), d);
+        })
+        .catchError((_) { if (mounted && _relayAllData == null) _scheduleRelayRetry(); });
+    ApiService.getGameWeather(widget.gameId)
+        .then((w) async {
+          if (mounted) setState(() => _weatherData = w);
+          if (w != null) await LocalCache.set(_ck('weather'), w);
+        })
+        .catchError((_) {});
+    ApiService.getGamePitchTypes(widget.gameId)
+        .then((d) async {
+          if (mounted) setState(() => _pitchTypesData = d);
+          await LocalCache.set(_ck('pitch_types'), d);
+        })
+        .catchError((_) {});
+  }
+
   void _scheduleRelayRetry() {
-    if (_relayRetryCount >= 3) return;
+    if (_relayRetryCount >= 3) {
+      // 재시도 소진 → 무한 shimmer 대신 '다시 시도' UI 노출 (수동 복구 경로)
+      if (mounted && _relayAllData == null) setState(() => _relayFailed = true);
+      return;
+    }
     _relayRetryCount++;
     Future.delayed(const Duration(seconds: 4), () {
       if (!mounted || _relayAllData != null) return;
       ApiService.getGameRelayAll(widget.gameId)
           .then((d) {
-            if (mounted) setState(() { _relayAllData = d; _relayRetryCount = 0; });
+            if (mounted) setState(() { _relayAllData = d; _relayRetryCount = 0; _relayFailed = false; });
           })
           .catchError((_) { if (mounted && _relayAllData == null) _scheduleRelayRetry(); });
     });
+  }
+
+  // 이닝중계 수동 재시도 (실패 UI 버튼)
+  void _retryRelay() {
+    setState(() { _relayFailed = false; _relayRetryCount = 0; });
+    ApiService.getGameRelayAll(widget.gameId)
+        .then((d) async {
+          if (!mounted) return;
+          setState(() { _relayAllData = d; _relayRetryCount = 0; _relayFailed = false; });
+          if (_tabController.index == 0) _scrollInningsToBottom();
+          await LocalCache.set(_ck('relay'), d);
+        })
+        .catchError((_) { if (mounted && _relayAllData == null) _scheduleRelayRetry(); });
   }
 
   Widget _buildRelayShimmer() {
@@ -2043,7 +2069,25 @@ class _GameDetailScreenState extends State<GameDetailScreen>
             const SizedBox(height: Space.lg),
           ],
 
-          if (_relayAllData == null)
+          if (_relayAllData == null && _relayFailed)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 32),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.wifi_off_rounded, size: 40,
+                        color: Pal.sub(Theme.of(context).brightness == Brightness.dark)),
+                    const SizedBox(height: Space.md),
+                    Text('중계를 불러오지 못했어요',
+                        style: TextStyle(color: Pal.ink(Theme.of(context).brightness == Brightness.dark))),
+                    const SizedBox(height: Space.md),
+                    OutlinedButton(onPressed: _retryRelay, child: const Text('다시 시도')),
+                  ],
+                ),
+              ),
+            )
+          else if (_relayAllData == null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
               child: _buildRelayShimmer(),

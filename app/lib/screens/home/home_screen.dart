@@ -538,16 +538,28 @@ class _TodayGamesTabState extends State<TodayGamesTab>
 
   int _dateIndex(DateTime d) => d.difference(_seasonStart).inDays.clamp(0, _totalDays - 1);
 
+  bool _dateStripPositioned = false;
   void _scrollToSelected() {
     if (!_dateScrollController.hasClients) return;
     final idx = _dateIndex(_selectedDate);
     final screenW = MediaQuery.of(context).size.width;
     final offset = (idx * _itemW) - (screenW / 2) + (_itemW / 2);
-    _dateScrollController.animateTo(
-      offset.clamp(0.0, _dateScrollController.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
-    );
+    final target = offset.clamp(0.0, _dateScrollController.position.maxScrollExtent);
+    // ⚠️ 첫 위치잡기는 jumpTo — animateTo는 offset 0(시즌 시작)→오늘(리스트 끝 근처,
+    //    ~850일)까지 스크롤하며 그 사이 모든 날짜 셀을 build → 셀마다 _loadMonthGameDates
+    //    호출로 30개월치 /calendar 요청이 콜드스타트에 폭주(대역 경합→느린 회선서 홈
+    //    로딩 실패 유발). jumpTo는 중간 셀을 build하지 않아 딱 현재 월만 요청.
+    final dist = (target - _dateScrollController.offset).abs();
+    if (!_dateStripPositioned || dist > 8 * _itemW) {
+      _dateStripPositioned = true;
+      _dateScrollController.jumpTo(target);
+    } else {
+      _dateScrollController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   void _scrollToMonthStart(int month, {int? year}) {

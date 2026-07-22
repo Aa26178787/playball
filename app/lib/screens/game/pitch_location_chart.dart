@@ -1265,50 +1265,50 @@ class _Trajectory3DPainter extends CustomPainter {
     required this.pitch,
   });
 
-  // Scene centre
-  static const double _scCx = 0.0;
-  static const double _scCy = 27.5;
-  static const double _scCz = 3.5;
-  // Camera sits this many scene-units behind the scene centre along the
-  // rotated depth axis.  55 ft keeps all trajectory points in front.
-  static const double _camBack = 55.0;
-
-  // Screen-space correction that pins the strike zone to the centre of the
-  // canvas regardless of yaw — set once per paint() before any drawing, from
-  // the projected position of the zone anchor point. Without this, rotating
-  // yaw swings the zone (near the camera) far off-centre because the pivot
-  // is the scene midpoint, not the zone itself.
-  Offset _screenCorrection = Offset.zero;
+  // Rotation pivot = the STRIKE ZONE centre (plate y=0, lateral x=0, height=_zMid).
+  // Rotating (yaw) about a vertical axis through the zone keeps the zone fixed at
+  // screen centre AND at constant depth (so it never shrinks/grows when spun) —
+  // a true turntable. Previously the pivot was the trajectory midpoint (y≈27.5),
+  // so the zone orbited ~27.5 ft off-axis: yawing swung it off-centre and its
+  // depth changed (180° → zone receded → "점점 멀어짐"). x/lateral pivot = 0.
+  static const double _pivotX = 0.0;
+  static const double _pivotY = 0.0;
+  // Camera sits this many feet behind the pivot along the rotated depth axis.
+  static const double _camBack = 68.0;
+  // Zone-centre height (ft); set each paint() from the game's avg top/bot ABS zone.
+  double _zMid = 2.45;
 
   /// Project world-space (wx, wy, wz) → canvas Offset.
   /// Returns null when the point is behind the camera.
   Offset? _proj(double wx, double wy, double wz, Size size, double scale) {
-    // 1. Translate to scene centre
-    final lx = wx - _scCx;
-    final ly = wy - _scCy;
-    final lz = wz - _scCz;
+    // 1. Translate so the zone centre is the origin (rotation pivot).
+    final lx = wx - _pivotX;
+    final ly = wy - _pivotY;
+    final lz = wz - _zMid;
 
-    // 2. Yaw rotation around Z (scene-up) axis
+    // 2. Yaw rotation around the world-up (Z) axis — the turntable axis, exactly
+    //    vertical (perpendicular to the ground).
     final cosY = math.cos(yaw), sinY = math.sin(yaw);
     final rx = lx * cosY + ly * sinY;
     final ry = -lx * sinY + ly * cosY;
+    final rz = lz;
 
-    // 3. Pitch rotation around X (scene-lateral) axis
-    //    positive pitch = tilt scene forward → view from above
+    // 3. Fixed downward camera tilt (pitch) around the lateral (X) axis.
     final cosP = math.cos(pitch), sinP = math.sin(pitch);
     final px      = rx;
-    final pyDepth = ry * cosP + lz * sinP;   // depth in camera frame
-    final pzUp    = -ry * sinP + lz * cosP;  // vertical in camera frame
+    final pyDepth = ry * cosP - rz * sinP;   // depth in camera frame
+    final pzUp    = ry * sinP + rz * cosP;   // vertical in camera frame
 
-    // 4. Camera pull-back: camera at pyDepth = -_camBack
+    // 4. Camera pull-back. Zone centre (lx=ly=lz=0) → depth == _camBack for ALL
+    //    yaw, so it always projects to exact screen centre at constant scale.
     final depth = pyDepth + _camBack;
     if (depth < 0.1) return null;
 
     // 5. Perspective divide
     final s = _camBack / depth * scale;
     return Offset(
-      size.width  / 2 + px   * s + _screenCorrection.dx,
-      size.height / 2 - pzUp * s + _screenCorrection.dy,  // canvas-y inverted
+      size.width  / 2 + px   * s,
+      size.height / 2 - pzUp * s,  // canvas-y inverted
     );
   }
 
@@ -1345,14 +1345,9 @@ class _Trajectory3DPainter extends CustomPainter {
     if (tops.isNotEmpty) topSz = tops.reduce((a, b) => a + b) / tops.length;
     if (bots.isNotEmpty) botSz = bots.reduce((a, b) => a + b) / bots.length;
 
-    // Pin the strike zone to screen centre: project its anchor with zero
-    // correction, then use the offset from centre as a constant screen-space
-    // shift for every subsequent _proj call this frame.
-    _screenCorrection = Offset.zero;
-    final zoneAnchor = _proj(0.0, 0.0, (topSz + botSz) / 2, size, scale);
-    if (zoneAnchor != null) {
-      _screenCorrection = Offset(size.width / 2, size.height / 2) - zoneAnchor;
-    }
+    // Rotation pivot height = strike-zone centre → _proj keeps the zone pinned
+    // to screen centre at constant scale for every yaw (turntable).
+    _zMid = (topSz + botSz) / 2;
 
     const pHW = 8.5 / 12.0; // plate half-width (ft) — 홈플레이트/그리드용
     // ABS 스트라이크존 반폭 = 플레이트 반폭 + 공 반지름 (위치 뷰 _StrikeZonePainter.absHalfW와 동일)
