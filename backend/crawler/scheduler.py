@@ -1389,8 +1389,9 @@ def _check_pitcher_change(game_id: int, game_info: dict):
         print(f"[FCM] 투수 교체 알림 오류: {e}")
 
 
-def _send_game_summary(game_id: int):
-    """경기 종료 결과 요약 알림 (호출 측에서 dedup, 여기선 즉시 발송)"""
+def _send_game_summary(game_id: int, notify: bool = True):
+    """경기 종료 결과 요약 알림 (호출 측에서 dedup, 여기선 즉시 발송).
+    notify=False: game_reviews만 재계산/갱신하고 푸시는 스킵 (과거 경기 재생성용)."""
     conn = get_connection()
     if not conn:
         return
@@ -1428,47 +1429,76 @@ def _send_game_summary(game_id: int):
             elif result == '세이브':
                 save_pitcher = pname
 
-        winner_side = 'home' if home_score > away_score else 'away'
-        # 오늘의 MVP — WPA(plate_appearances, win_rate=홈기준 0~100) 우선, 없으면 rbis 휴리스틱.
-        # ⚠️ pa.inning_half는 game_pitches 원본 '0'(초/원정공격)·'1'(말/홈공격) — '초'/'말' 아님!
-        #    (과거 '초'/'말' 리터럴로 필터해 항상 0행→rbis 폴백만 돌던 사일런트 버그 수정)
-        # 승팀 공격 half만 집계: 홈승='1'(+부호), 원정승='0'(-부호=원정 기여 +).
-        wpa_half = '1' if winner_side == 'home' else '0'
-        wpa_sign = 1 if winner_side == 'home' else -1
+        # ⚠️ 무승부(2대2 등)는 "승팀"이 없는데 과거 코드가 home_score>away_score가
+        #    거짓이면 무조건 winner_side='away'로 확정 — 무승부 경기가 원정팀 승리로
+        #    잘못 취급돼 그 팀 관점으로만 MVP/결정장면이 뽑히던 버그(07-21 두산-KT 2:2).
+        is_draw = (home_score == away_score)
+        winner_side = None if is_draw else ('home' if home_score > away_score else 'away')
         mvp_player_id = mvp_name = None
         mvp_hits = mvp_hr = mvp_rbi = 0
 
-        def _batter_stat(name_filter, order_by, params):
+        def _batter_stat(name_filter, order_by, params, team_side=None):
+            side_clause = "AND gb.team_side = %s" if team_side is not None else ""
+            side_params = (team_side,) if team_side is not None else ()
             cur.execute(f"""
                 SELECT gb.player_id, p.name, COALESCE(gb.hits,0),
                        COALESCE(gb.home_runs,0), COALESCE(gb.rbis,0)
                 FROM game_batters gb JOIN players p ON p.id = gb.player_id
-                WHERE gb.game_id = %s AND gb.team_side = %s {name_filter}
+                WHERE gb.game_id = %s {side_clause} {name_filter}
                 {order_by} LIMIT 1
-            """, params)
+            """, (params[0], *side_params, *params[1:]))
             return cur.fetchone()
 
-        cur.execute("""
-            SELECT pa.batter_name,
-                   %s * SUM(pa.win_rate_after - pa.win_rate_before) AS wpa
-            FROM plate_appearances pa
-            WHERE pa.game_id = %s AND pa.inning_half = %s
-              AND pa.win_rate_before IS NOT NULL AND pa.win_rate_after IS NOT NULL
-            GROUP BY pa.batter_name
-            ORDER BY wpa DESC
-            LIMIT 1
-        """, (wpa_sign, game_id, wpa_half))
-        wpa_row = cur.fetchone()
-        if wpa_row and wpa_row[1] is not None and wpa_row[1] > 0:
-            mr = _batter_stat("AND p.name = %s", "", (game_id, winner_side, wpa_row[0]))
-            if mr:
-                mvp_player_id, mvp_name, mvp_hits, mvp_hr, mvp_rbi = mr
-        if not mvp_name:  # 폴백: rbis/hr 휴리스틱
-            mr = _batter_stat("AND (gb.rbis > 0 OR gb.home_runs > 0)",
-                              "ORDER BY gb.rbis DESC, gb.home_runs DESC, gb.hits DESC",
-                              (game_id, winner_side))
-            if mr:
-                mvp_player_id, mvp_name, mvp_hits, mvp_hr, mvp_rbi = mr
+        if not is_draw:
+            # 오늘의 MVP — WPA(plate_appearances, win_rate=홈기준 0~100) 우선, 없으면 rbis 휴리스틱.
+            # ⚠️ pa.inning_half는 game_pitches 원본 '0'(초/원정공격)·'1'(말/홈공격) — '초'/'말' 아님!
+            #    (과거 '초'/'말' 리터럴로 필터해 항상 0행→rbis 폴백만 돌던 사일런트 버그 수정)
+            # 승팀 공격 half만 집계: 홈승='1'(+부호), 원정승='0'(-부호=원정 기여 +).
+            wpa_half = '1' if winner_side == 'home' else '0'
+            wpa_sign = 1 if winner_side == 'home' else -1
+            cur.execute("""
+                SELECT pa.batter_name,
+                       %s * SUM(pa.win_rate_after - pa.win_rate_before) AS wpa
+                FROM plate_appearances pa
+                WHERE pa.game_id = %s AND pa.inning_half = %s
+                  AND pa.win_rate_before IS NOT NULL AND pa.win_rate_after IS NOT NULL
+                GROUP BY pa.batter_name
+                ORDER BY wpa DESC
+                LIMIT 1
+            """, (wpa_sign, game_id, wpa_half))
+            wpa_row = cur.fetchone()
+            if wpa_row and wpa_row[1] is not None and wpa_row[1] > 0:
+                mr = _batter_stat("AND p.name = %s", "", (game_id, wpa_row[0]), team_side=winner_side)
+                if mr:
+                    mvp_player_id, mvp_name, mvp_hits, mvp_hr, mvp_rbi = mr
+            if not mvp_name:  # 폴백: rbis/hr 휴리스틱
+                mr = _batter_stat("AND (gb.rbis > 0 OR gb.home_runs > 0)",
+                                  "ORDER BY gb.rbis DESC, gb.home_runs DESC, gb.hits DESC",
+                                  (game_id,), team_side=winner_side)
+                if mr:
+                    mvp_player_id, mvp_name, mvp_hits, mvp_hr, mvp_rbi = mr
+        else:
+            # 무승부: 승팀 관점이 없으므로 양팀 통틀어 |WPA| 최대 타자를 선정
+            cur.execute("""
+                SELECT pa.batter_name, SUM(pa.win_rate_after - pa.win_rate_before) AS wpa
+                FROM plate_appearances pa
+                WHERE pa.game_id = %s
+                  AND pa.win_rate_before IS NOT NULL AND pa.win_rate_after IS NOT NULL
+                GROUP BY pa.batter_name
+                ORDER BY ABS(SUM(pa.win_rate_after - pa.win_rate_before)) DESC
+                LIMIT 1
+            """, (game_id,))
+            wpa_row = cur.fetchone()
+            if wpa_row:
+                mr = _batter_stat("AND p.name = %s", "", (game_id, wpa_row[0]))
+                if mr:
+                    mvp_player_id, mvp_name, mvp_hits, mvp_hr, mvp_rbi = mr
+            if not mvp_name:  # 폴백: rbis/hr 휴리스틱 (팀 무관)
+                mr = _batter_stat("AND (gb.rbis > 0 OR gb.home_runs > 0)",
+                                  "ORDER BY gb.rbis DESC, gb.home_runs DESC, gb.hits DESC",
+                                  (game_id,))
+                if mr:
+                    mvp_player_id, mvp_name, mvp_hits, mvp_hr, mvp_rbi = mr
 
         # 끝내기/연장 플래그 (game_event_stream)
         event_flags = set()
@@ -1485,27 +1515,45 @@ def _send_game_summary(game_id: int):
         key_play = None
         comeback = False
         try:
-            # 결정장면 = 승팀 타자의 안타/희생타 중 승팀 승리확률을 가장 크게 끌어올린 타석.
-            # ⚠️ win_rate=홈기준 → 홈승=최대상승(after-before DESC)·원정승=최대하락(ASC).
-            #    부호 정렬로 승팀 기여 타석만 선택(패팀 클러치 안타를 승부처로 오귀속하던 버그 수정
-            #    — 예: 한화 강백호 9회 2루타가 키움 역전승 결정타로 표기됨). inning_half 인코딩 비의존.
-            kp_dir = 'DESC' if winner_side == 'home' else 'ASC'
+            # 결정장면 = (무승부 아니면) 승팀 타자의 안타/희생타 중 승팀 승리확률을 가장
+            # 크게 끌어올린 타석. ⚠️ win_rate=홈기준 → 홈승=최대상승(after-before DESC)·
+            # 원정승=최대하락(ASC). 부호 정렬로 승팀 기여 타석만 선택(패팀 클러치 안타를
+            # 승부처로 오귀속하던 버그 수정 — 예: 한화 강백호 9회 2루타가 키움 역전승
+            # 결정타로 표기됨). 무승부는 승팀이 없으므로 |변동폭| 최대로 선정.
+            # ⚠️ 07-21 두산-KT 2:2 사고: "적시타"라 표기해놓고 정작 그 타석엔 득점이
+            #    없던(단순 진루타) 버그 — win_rate 변동폭만 보고 골랐을 뿐 실제 득점
+            #    여부를 확인 안 함. LAG로 이 타석에서 스코어가 실제로 올랐는지 확인해
+            #    득점이 발생한 타석만 결정장면 후보로 인정.
+            kp_dir = 'ABS(win_rate_after - win_rate_before) DESC' if is_draw else \
+                ('(win_rate_after - win_rate_before) DESC' if winner_side == 'home' else
+                 '(win_rate_after - win_rate_before) ASC')
             cur.execute(f"""
+                WITH scored AS (
+                    SELECT inning, inning_half, batter_name, result_text,
+                           outs_before, base1, base2, base3, win_rate_before, win_rate_after,
+                           is_hit, result_class,
+                           (home_score + away_score)
+                             - LAG(home_score + away_score) OVER (ORDER BY inning, inning_half, pa_seq)
+                             AS runs_scored
+                    FROM plate_appearances
+                    WHERE game_id = %s
+                )
                 SELECT inning, inning_half, batter_name, result_text,
                        outs_before, base1, base2, base3, win_rate_before, win_rate_after
-                FROM plate_appearances
-                WHERE game_id = %s AND win_rate_before IS NOT NULL AND win_rate_after IS NOT NULL
+                FROM scored
+                WHERE win_rate_before IS NOT NULL AND win_rate_after IS NOT NULL
                   AND (is_hit = true OR result_class = 'sac')
-                ORDER BY (win_rate_after - win_rate_before) {kp_dir} LIMIT 1
+                  AND runs_scored > 0
+                ORDER BY {kp_dir} LIMIT 1
             """, (game_id,))
             kp = cur.fetchone()
             margin = abs((home_score or 0) - (away_score or 0))
             if kp:
                 inn, half, bat, rtext, outs, b1, b2, b3, wb, wa = kp
-                # 승팀 기여도(양수여야 유효): 홈승=(wa-wb), 원정승=-(wa-wb)
                 delta = (wa or 0) - (wb or 0)
-                swing = delta if winner_side == 'home' else -delta
-                # 가드: ①승팀쪽 의미있는 변동(≥8%p) ②대승(≥8점차)은 결정타 없음 제외
+                # 승팀 기여도(양수여야 유효): 홈승=(wa-wb), 원정승=-(wa-wb). 무승부는 |변동폭|.
+                swing = abs(delta) if is_draw else (delta if winner_side == 'home' else -delta)
+                # 가드: ①의미있는 변동(≥8%p) ②대승(≥8점차)은 결정타 없음 제외
                 #       ③초반(≤3회) 거대 swing = win_rate 글리치(저레버리지라 불가능)
                 glitch = swing > 30 and (inn or 99) <= 3
                 if swing >= 8 and margin <= 5 and not glitch:
@@ -1514,7 +1562,8 @@ def _send_game_summary(game_id: int):
                                '1·2루' if (b1 and b2) else '3루' if b3 else '2루' if b2 else
                                '1루' if b1 else '주자 없음')
                     key_play = {
-                        'inning': inn, 'half': '말' if winner_side == 'home' else '초',
+                        # half는 추정한 winner_side가 아니라 실제 타석의 inning_half('1'=말)로 결정
+                        'inning': inn, 'half': '말' if str(half) == '1' else '초',
                         'outs': outs, 'runners': runners, 'batter': bat,
                         'text': (rtext or '').split(' : ')[-1].strip() if rtext else '',
                         'swing': round(swing, 1),
@@ -1568,6 +1617,8 @@ def _send_game_summary(game_id: int):
     except Exception as e:
         print(f"[narrative] game_reviews 저장 오류 game={game_id}: {e}")
 
+    if not notify:
+        return
     try:
         from api.fcm_service import notify_game_summary
         notify_game_summary(

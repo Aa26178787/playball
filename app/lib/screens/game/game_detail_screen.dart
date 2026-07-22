@@ -66,6 +66,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
   bool _highlightsLoading = false;
   Map<int, int> _rankMap = {};
   bool _isLoading = true;
+  bool _loadError = false;
   int _loadAttempt = 0;
   bool _isLoadingInFlight = false;
   bool _isRelayRefreshing = false;
@@ -370,6 +371,7 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
     if (!mounted) return;
     setState(() {
+      _loadError = false;
       if (_gameData == null) {
         // 메모리 캐시 없을 때만 LocalCache로 세팅
         if (cachedDetail != null && cachedDetail['game']?['home_team_code'] != null) {
@@ -518,7 +520,9 @@ class _GameDetailScreenState extends State<GameDetailScreen>
         });
         // keep _isLoading = true → shimmer stays visible
       } else {
-        setState(() => _isLoading = false);
+        // 재시도 소진: _gameData가 여전히 null이면 shimmer가 무한 표시되던 버그
+        // (build()가 _isLoading만 보고 실패를 구분 못 함) — _loadError로 명시 구분
+        setState(() { _isLoading = false; _loadError = _gameData == null; });
       }
     }
   }
@@ -651,6 +655,40 @@ class _GameDetailScreenState extends State<GameDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_loadError && _gameData == null) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return Scaffold(
+        appBar: AppBar(title: const Text('경기 상세')),
+        body: RefreshIndicator(
+          onRefresh: () async { _loadAttempt = 0; setState(() { _isLoading = true; _loadError = false; }); await _loadData(); },
+          child: LayoutBuilder(
+            builder: (ctx, c) => SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: SizedBox(
+                height: c.maxHeight,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.wifi_off_rounded, size: 48, color: Pal.sub(isDark)),
+                      const SizedBox(height: Space.md),
+                      Text('경기 정보를 불러오지 못했어요', style: TextStyle(color: Pal.ink(isDark))),
+                      const SizedBox(height: Space.sm),
+                      Text('아래로 당겨서 새로고침 해주세요', style: TextStyle(color: Pal.sub(isDark), fontSize: 12)),
+                      const SizedBox(height: Space.lg),
+                      OutlinedButton(
+                        onPressed: () { _loadAttempt = 0; setState(() { _isLoading = true; _loadError = false; }); _loadData(); },
+                        child: const Text('다시 시도'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     if (_isLoading || _gameData == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('경기 상세')),

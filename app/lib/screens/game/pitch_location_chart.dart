@@ -1273,6 +1273,13 @@ class _Trajectory3DPainter extends CustomPainter {
   // rotated depth axis.  55 ft keeps all trajectory points in front.
   static const double _camBack = 55.0;
 
+  // Screen-space correction that pins the strike zone to the centre of the
+  // canvas regardless of yaw — set once per paint() before any drawing, from
+  // the projected position of the zone anchor point. Without this, rotating
+  // yaw swings the zone (near the camera) far off-centre because the pivot
+  // is the scene midpoint, not the zone itself.
+  Offset _screenCorrection = Offset.zero;
+
   /// Project world-space (wx, wy, wz) → canvas Offset.
   /// Returns null when the point is behind the camera.
   Offset? _proj(double wx, double wy, double wz, Size size, double scale) {
@@ -1300,8 +1307,8 @@ class _Trajectory3DPainter extends CustomPainter {
     // 5. Perspective divide
     final s = _camBack / depth * scale;
     return Offset(
-      size.width  / 2 + px   * s,
-      size.height / 2 - pzUp * s,  // canvas-y inverted
+      size.width  / 2 + px   * s + _screenCorrection.dx,
+      size.height / 2 - pzUp * s + _screenCorrection.dy,  // canvas-y inverted
     );
   }
 
@@ -1337,6 +1344,15 @@ class _Trajectory3DPainter extends CustomPainter {
         .map((p) => (p['bot_sz'] as num).toDouble()).toList();
     if (tops.isNotEmpty) topSz = tops.reduce((a, b) => a + b) / tops.length;
     if (bots.isNotEmpty) botSz = bots.reduce((a, b) => a + b) / bots.length;
+
+    // Pin the strike zone to screen centre: project its anchor with zero
+    // correction, then use the offset from centre as a constant screen-space
+    // shift for every subsequent _proj call this frame.
+    _screenCorrection = Offset.zero;
+    final zoneAnchor = _proj(0.0, 0.0, (topSz + botSz) / 2, size, scale);
+    if (zoneAnchor != null) {
+      _screenCorrection = Offset(size.width / 2, size.height / 2) - zoneAnchor;
+    }
 
     const pHW = 8.5 / 12.0; // plate half-width (ft) — 홈플레이트/그리드용
     // ABS 스트라이크존 반폭 = 플레이트 반폭 + 공 반지름 (위치 뷰 _StrikeZonePainter.absHalfW와 동일)
