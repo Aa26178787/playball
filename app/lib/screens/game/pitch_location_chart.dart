@@ -1334,28 +1334,65 @@ class _Trajectory3DPainter extends CustomPainter {
     }
   }
 
-  // 릴리스 지점에 투수 실루엣(스틱 피겨) — 공이 날아오는 방향 직관 큐.
-  // world 좌표로 그려 턴테이블 회전에 함께 돌아감. (wx,wy)=지면 발 위치.
-  void _drawPitcher(Canvas c, double wx, double wy, Size size, double scale, bool isDark) {
-    final col = (isDark ? Colors.grey[300]! : Colors.grey[700]!).withValues(alpha: 0.5);
-    final p = Paint()
-      ..color = col
-      ..strokeWidth = 2.2
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    // P(z, dx): 발 위치(wx,wy) 기준 높이 z(ft), 횡 오프셋 dx(ft)의 화면 좌표
-    Offset? pt(double z, [double dx = 0]) => _proj(wx + dx, wy, z, size, scale);
-    _drawSeg(c, pt(1.1), pt(4.6), p);                 // 척추(골반→어깨)
-    _drawSeg(c, pt(1.1), pt(0.0, -0.35), p);          // 왼다리
-    _drawSeg(c, pt(1.1), pt(0.0, 0.35), p);           // 오른다리
-    _drawSeg(c, pt(3.9), pt(3.3, -0.6), p);           // 글러브팔
-    _drawSeg(c, pt(3.9), pt(4.8, 0.75), p);           // 투구팔(플레이트쪽으로 든 형태)
-    // 머리 — 5.1ft·5.6ft 투영 간 거리로 반지름 산출 (원근 반영)
-    final head = pt(5.1), headTop = pt(5.6);
+  void _fillPoly3d(Canvas c, List<Offset?> pts, Paint p) {
+    final path = Path();
+    bool first = true;
+    for (final pt in pts) {
+      if (pt == null) return; // 한 점이라도 카메라 뒤면 스킵
+      if (first) { path.moveTo(pt.dx, pt.dy); first = false; }
+      else { path.lineTo(pt.dx, pt.dy); }
+    }
+    path.close();
+    c.drawPath(path, p);
+  }
+
+  void _strokePath3d(Canvas c, List<Offset?> pts, Paint p) {
+    final path = Path();
+    bool first = true;
+    for (final pt in pts) {
+      if (pt == null) continue;
+      if (first) { path.moveTo(pt.dx, pt.dy); first = false; }
+      else { path.lineTo(pt.dx, pt.dy); }
+    }
+    c.drawPath(path, p);
+  }
+
+  // 릴리스 지점에 투수 실루엣 — 공이 날아오는 방향 직관 큐. world 좌표(릴리스 y평면)
+  // 로 그려 턴테이블 회전에 함께 돌아감. ⚠️ 손(hand)을 실제 릴리스점(hx,hy,hz)에
+  // 정확히 두어 공이 손끝에서 출발하게 함 (과거엔 머리 위 허공서 시작해 팔과 단절돼
+  // 보였음). 몸통은 손 기준 옆·아래로 구성.
+  void _drawPitcher(Canvas c, double hx, double hy, double hz, Size size, double scale, bool isDark) {
+    final base = isDark ? Colors.grey[300]! : Colors.grey[600]!;
+    final fill = Paint()..color = base.withValues(alpha: 0.55)..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+    final cap  = Paint()..color = base.withValues(alpha: 0.7)..style = PaintingStyle.fill;
+    // 사지 굵기 = 원근 반영 (릴리스 깊이의 s로 근사). 화면 px로 환산.
+    final unit = ((_proj(hx, hy, 1.0, size, scale)?.dy ?? 0) -
+                  (_proj(hx, hy, 2.0, size, scale)?.dy ?? 0)).abs();
+    final limbW = (unit * 0.34).clamp(2.2, 9.0);
+    final limb = Paint()..color = base.withValues(alpha: 0.55)..style = PaintingStyle.stroke
+      ..strokeWidth = limbW..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round;
+
+    // P(dx, z): 손 x(hx) 기준 횡오프셋 dx(ft), 절대높이 z(ft) → 화면좌표
+    Offset? P(double dx, double z) => _proj(hx + dx, hy, z, size, scale);
+
+    // 다리 (스트라이드: 앞발=플레이트쪽 +dx, 뒷발)
+    _strokePath3d(c, [P(-0.55, 2.5), P(-0.15, 1.25), P(0.15, 0.0)], limb); // 앞다리
+    _strokePath3d(c, [P(-0.55, 2.5), P(-1.05, 1.35), P(-1.35, 0.0)], limb); // 뒷다리
+    // 글러브팔 (몸 앞으로)
+    _strokePath3d(c, [P(-0.62, 4.5), P(-1.15, 4.2), P(-1.55, 3.7)], limb);
+    // 몸통 (어깨→골반 채운 다각형)
+    _fillPoly3d(c, [P(-0.95, 4.7), P(-0.35, 4.7), P(-0.32, 2.4), P(-0.78, 2.4)], fill);
+    // 투구팔: 어깨→팔꿈치→손(=릴리스점 dx0,hz). 손이 릴리스라 공이 손끝서 출발.
+    _strokePath3d(c, [P(-0.5, 4.6), P(-0.28, hz - 0.55), P(0.0, hz)], limb);
+    // 머리 (어깨 위, 손보다 약간 아래 옆) + 모자챙
+    final head = P(-0.72, 5.2), headTop = P(-0.72, 5.75);
     if (head != null && headTop != null) {
-      final r = (head - headTop).distance.clamp(2.0, 14.0);
-      c.drawCircle(head, r, Paint()..color = col..style = PaintingStyle.fill);
+      final r = (head - headTop).distance.clamp(2.5, 15.0);
+      c.drawCircle(head, r, fill);
+      // 모자챙 (플레이트쪽으로 짧게)
+      final b1 = P(-0.62, 5.36), b2 = P(-0.15, 5.42), b3 = P(-0.6, 5.18);
+      _fillPoly3d(c, [b1, b2, b3], cap);
     }
   }
 
@@ -1448,15 +1485,15 @@ class _Trajectory3DPainter extends CustomPainter {
         close: true);
 
     // ── Pitcher figure at release (방향 직관 큐) ────────────────────────────────
-    // 전 투구 릴리스 평균 위치. y는 궤적과 동일하게 crossY 보정, 발은 지면(z=0).
+    // 손을 전 투구 평균 릴리스점(x0, y0-crossY, z0)에 정확히 배치 → 공이 손끝서 출발.
     {
-      double sx = 0, sy = 0; int n = 0;
+      double sx = 0, sy = 0, sz = 0; int n = 0;
       for (final p in pitches) {
         final ph = p['_phys'] as PitchPhysics?;
         if (ph == null) continue;
-        sx += ph.x0; sy += (ph.y0 - ph.crossY); n++;
+        sx += ph.x0; sy += (ph.y0 - ph.crossY); sz += ph.z0; n++;
       }
-      if (n > 0) _drawPitcher(canvas, sx / n, sy / n + 2.0, size, scale, isDark);
+      if (n > 0) _drawPitcher(canvas, sx / n, sy / n, sz / n, size, scale, isDark);
     }
 
     // ── Trajectory polylines ─────────────────────────────────────────────────
