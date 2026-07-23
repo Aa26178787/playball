@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import '../../widgets/common_widgets.dart';
 import '../../utils/design_tokens.dart';
 import '../../utils/pitch_trajectory.dart';
@@ -1202,6 +1204,20 @@ class _Trajectory3DView extends StatefulWidget {
   State<_Trajectory3DView> createState() => _Trajectory3DViewState();
 }
 
+// 투수 스프라이트(빌보드) — 앱 전역 1회 로드 후 캐시. assets/pitcher.png 교체 시
+// 자동 반영(사용자가 실제 사진/렌더로 갈아끼우기 쉬움).
+ui.Image? _pitcherSprite;
+Future<ui.Image>? _pitcherSpriteFuture;
+Future<ui.Image> _loadPitcherSprite() {
+  return _pitcherSpriteFuture ??= () async {
+    final data = await rootBundle.load('assets/pitcher.png');
+    final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+    final frame = await codec.getNextFrame();
+    _pitcherSprite = frame.image;
+    return frame.image;
+  }();
+}
+
 class _Trajectory3DViewState extends State<_Trajectory3DView> {
   // 초기: 거의 정면(터널뷰) — 릴리스의 투수 실루엣 + 존이 한 화면에 보이게 낮은 각도.
   // (릴리스는 존서 ~49ft 뒤라 큰 yaw서 화면 밖으로 밀림. 사용자가 드래그로 더 돌릴 수 있음.)
@@ -1209,6 +1225,14 @@ class _Trajectory3DViewState extends State<_Trajectory3DView> {
   // 카메라 상하 각(pitch)은 0 = 정면(눈높이) 고정 — 위에서 내려다보지 않음(사용자 요청:
   // "상단 45도가 아닌 정면 각도"). 횡(yaw)으로만 회전, 상하 드래그는 무시.
   final double _pitch = 0.0;   // 0° — 정면(수평) 시점 (고정)
+
+  @override
+  void initState() {
+    super.initState();
+    if (_pitcherSprite == null) {
+      _loadPitcherSprite().then((_) { if (mounted) setState(() {}); }).catchError((_) {});
+    }
+  }
 
   void _onPan(DragUpdateDetails d) {
     setState(() {
@@ -1233,6 +1257,7 @@ class _Trajectory3DViewState extends State<_Trajectory3DView> {
             selectedIdx: widget.selectedIdx,
             yaw: _yaw,
             pitch: _pitch,
+            sprite: _pitcherSprite,
           ),
         ),
       ),
@@ -1262,6 +1287,7 @@ class _Trajectory3DPainter extends CustomPainter {
   final bool isDark;
   final int? selectedIdx;
   final double yaw, pitch;
+  final ui.Image? sprite;
 
   _Trajectory3DPainter({
     required this.pitches,
@@ -1270,6 +1296,7 @@ class _Trajectory3DPainter extends CustomPainter {
     required this.selectedIdx,
     required this.yaw,
     required this.pitch,
+    this.sprite,
   });
 
   // Rotation pivot = the STRIKE ZONE centre (plate y=0, lateral x=0, height=_zMid).
@@ -1485,7 +1512,8 @@ class _Trajectory3DPainter extends CustomPainter {
         close: true);
 
     // ── Pitcher figure at release (방향 직관 큐) ────────────────────────────────
-    // 손을 전 투구 평균 릴리스점(x0, y0-crossY, z0)에 정확히 배치 → 공이 손끝서 출발.
+    // 전 투구 평균 릴리스점 기준. sprite(assets/pitcher.png) 있으면 빌보드 이미지,
+    // 없으면(로딩 중/에셋 부재) 벡터 실루엣 폴백.
     {
       double sx = 0, sy = 0, sz = 0; int n = 0;
       for (final p in pitches) {
@@ -1493,7 +1521,13 @@ class _Trajectory3DPainter extends CustomPainter {
         if (ph == null) continue;
         sx += ph.x0; sy += (ph.y0 - ph.crossY); sz += ph.z0; n++;
       }
-      if (n > 0) _drawPitcher(canvas, sx / n, sy / n, sz / n, size, scale, isDark);
+      if (n > 0) {
+        if (sprite != null) {
+          _drawPitcherSprite(canvas, sprite!, sx / n, sy / n, size, scale);
+        } else {
+          _drawPitcher(canvas, sx / n, sy / n, sz / n, size, scale, isDark);
+        }
+      }
     }
 
     // ── Trajectory polylines ─────────────────────────────────────────────────
@@ -1572,11 +1606,35 @@ class _Trajectory3DPainter extends CustomPainter {
         Offset(size.width - tp.width - 4, size.height - tp.height - 4));
   }
 
+  // 릴리스 지점에 투수 스프라이트(빌보드) — 이미지는 회전 않고 항상 정면, 위치·크기만
+  // 원근 반영. 발을 지면(z=0) 릴리스 컬럼에 앵커, 높이는 ~8.2ft 투영으로 스케일.
+  void _drawPitcherSprite(Canvas c, ui.Image img, double hx, double hy, Size size, double scale) {
+    final ground = _proj(hx, hy, 0.0, size, scale);
+    final top    = _proj(hx, hy, 8.2, size, scale);
+    if (ground == null || top == null) return;
+    final h = (ground - top).distance;
+    if (h < 6 || !h.isFinite) return;
+    final aspect = img.width / img.height;
+    final w = h * aspect;
+    final dst = Rect.fromLTWH(ground.dx - w / 2, ground.dy - h, w, h);
+    final src = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble());
+    // 흰 실루엣 소스를 모듈레이트로 톤+반투명 (다크/라이트 대응). 사용자가 교체하는
+    // 컬러 이미지면 modulate가 톤을 살짝 입히므로, 필요 시 이 tint를 흰색(무변형)으로.
+    final tint = (isDark ? const Color(0xFFCED3DA) : const Color(0xFF8A9099))
+        .withValues(alpha: 0.6);
+    final paint = Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.medium
+      ..colorFilter = ColorFilter.mode(tint, BlendMode.modulate);
+    c.drawImageRect(img, src, dst, paint);
+  }
+
   @override
   bool shouldRepaint(_Trajectory3DPainter old) =>
       old.pitches     != pitches     ||
       old.isDark      != isDark      ||
       old.selectedIdx != selectedIdx ||
       old.yaw         != yaw         ||
-      old.pitch       != pitch;
+      old.pitch       != pitch       ||
+      old.sprite      != sprite;
 }
