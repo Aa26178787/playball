@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from database.connection import get_connection
 from api.cache import cached
 
@@ -322,7 +322,7 @@ def _leader_query(cur, ptype, col, limit):
 # ⚠️ /rankings·/leaders 는 /{kbo_player_id} 보다 먼저 선언 (정수경로 오매칭 방지)
 @router.get("/rankings")
 @cached(3600)
-def get_historical_rankings(limit: int = 50):
+def get_historical_rankings(limit: int = Query(50, ge=1, le=200)):
     """부문별 순위 탭과 동일 구조 — 통산 리더 전 카테고리 일괄 (정규시즌 합산)."""
     conn = get_connection()
     if not conn:
@@ -336,7 +336,7 @@ def get_historical_rankings(limit: int = 50):
 
 @router.get("/leaders")
 @cached(3600)
-def get_historical_leaders(category: str = "home_runs", limit: int = 20):
+def get_historical_leaders(category: str = "home_runs", limit: int = Query(20, ge=1, le=200)):
     if category not in _LEADER_CATS:
         raise HTTPException(status_code=400, detail="알 수 없는 카테고리")
     ptype, col, desc = _LEADER_CATS[category]

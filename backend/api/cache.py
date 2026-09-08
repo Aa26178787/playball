@@ -21,6 +21,26 @@ _refreshing: set[str] = set()
 # 해결: 키별 Lock으로 첫 번째 스레드만 fn() 실행, 나머지는 결과 대기
 # 사용자 1000명 이상 동시접속 시 캐시 만료 시점의 DB 폭발 방지
 _key_locks: dict[str, threading.Lock] = {}
+_MAX_CACHE_ENTRIES = 4096
+
+
+def _prune_locked(now: float) -> None:
+    expired = [key for key, (_, _, stale_until) in _store.items()
+               if now >= stale_until]
+    for key in expired:
+        _store.pop(key, None)
+        lock = _key_locks.get(key)
+        if lock is not None and not lock.locked():
+            _key_locks.pop(key, None)
+
+    overflow = len(_store) - _MAX_CACHE_ENTRIES + 1
+    if overflow > 0:
+        oldest = sorted(_store, key=lambda key: _store[key][2])[:overflow]
+        for key in oldest:
+            _store.pop(key, None)
+            lock = _key_locks.get(key)
+            if lock is not None and not lock.locked():
+                _key_locks.pop(key, None)
 
 
 def _get_key_lock(key: str) -> threading.Lock:
@@ -59,6 +79,7 @@ def cache_set(key: str, value: Any, ttl: int, stale_factor: int = 10) -> None:
     """ttl 동안 신선, 이후 ttl*stale_factor까지 stale 보관 (SWR 재료)."""
     now = time.monotonic()
     with _global_lock:
+        _prune_locked(now)
         _store[key] = (value, now + ttl, now + ttl * stale_factor)
 
 

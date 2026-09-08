@@ -1,7 +1,7 @@
 """승리 예측 API."""
 import os
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Request, Header
+from fastapi import APIRouter, HTTPException, Request, Header, Query
 from api.cache import cached
 from api.security_log import log_admin_access
 from api.prediction.model import predict_win_probability, reload_model
@@ -48,7 +48,7 @@ def admin_reload_model(request: Request, x_admin_key: Optional[str] = Header(Non
 
 @router.get("/accuracy")
 @cached(300)
-def get_accuracy_history(limit: int = 30):
+def get_accuracy_history(limit: int = Query(30, ge=1, le=200)):
     """일별 정확도 + 최근 모델 정보."""
     from database.connection import get_connection
     conn = get_connection()

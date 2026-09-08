@@ -16,11 +16,12 @@ h11==0.16.0
 idna==3.16
 psycopg2-binary==2.9.11
 pyasn1==0.6.3
-pyasn1-modules==0.2.1
+pyasn1-modules==0.4.2
 pycparser==3.0
 pydantic==2.12.5
 pydantic_core==2.41.5
 python-jose==3.5.0
+PyJWT==2.13.0
 python-multipart==0.0.29
 requests==2.34.2
 requests-toolbelt==0.9.1

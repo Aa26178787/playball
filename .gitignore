@@ -3,6 +3,16 @@ backend/__pycache__/
 **/__pycache__/
 backend/*.pyc
 *.pyc
+backend/Lib/
+backend/Scripts/*.exe
+backend/.venv/
+
+# crawler output / local audit artifacts
+backend/crawler/*.csv
+backend/crawler/*.tsv
+backend/crawler/*.html
+backend/crawler/*_err.txt
+backend/crawler/*_log.txt
 
 # secrets / env
 .env

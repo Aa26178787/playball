@@ -3,10 +3,14 @@
 $ErrorActionPreference = 'Stop'
 $dir = "$env:USERPROFILE\playball_backups"
 $marker = Join-Path $dir '.last_pull'
-$key = 'C:\Users\qq772\Downloads\ssh-key-2026-03-28 (2).key'
-$srv = 'ubuntu@168.107.36.158'
+$key = $env:PLAYBALL_SSH_KEY
+$srv = if ($env:PLAYBALL_SERVER) { $env:PLAYBALL_SERVER } else { 'ubuntu@168.107.36.158' }
 $ssh = "$env:SystemRoot\System32\OpenSSH\ssh.exe"
 $scp = "$env:SystemRoot\System32\OpenSSH\scp.exe"
+
+if (-not $key -or -not (Test-Path -LiteralPath $key)) {
+    throw 'PLAYBALL_SSH_KEY must point to an existing private key'
+}
 
 if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
 if (Test-Path $marker) {
@@ -14,9 +18,9 @@ if (Test-Path $marker) {
     if ($age.TotalDays -lt 6) { exit 0 }
 }
 
-$latest = (& $ssh -i $key -o StrictHostKeyChecking=no $srv 'ls -t ~/backups/playball_*.sql.gz | head -1').Trim()
+$latest = (& $ssh -i $key -o StrictHostKeyChecking=accept-new $srv 'ls -t ~/backups/playball_*.sql.gz | head -1').Trim()
 if (-not $latest) { exit 1 }
-& $scp -i $key -o StrictHostKeyChecking=no "${srv}:$latest" $dir
+& $scp -i $key -o StrictHostKeyChecking=accept-new "${srv}:$latest" $dir
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
 # 무결성 최소 확인: 1MB 미만이면 실패 간주 (빈 백업 사고 방지)

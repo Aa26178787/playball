@@ -10,6 +10,21 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database.connection import get_connection
 
 
+def _insert_row_safely(cur, sql, params, label):
+    """Keep one bad crawler row from aborting the entire batch transaction."""
+    cur.execute("SAVEPOINT sp_player_event_row")
+    try:
+        cur.execute(sql, params)
+        row = cur.fetchone()
+        cur.execute("RELEASE SAVEPOINT sp_player_event_row")
+        return row
+    except Exception as exc:
+        cur.execute("ROLLBACK TO SAVEPOINT sp_player_event_row")
+        cur.execute("RELEASE SAVEPOINT sp_player_event_row")
+        print(f"[{label}] INSERT 오류: {exc}")
+        return None
+
+
 def ensure_tables():
     """이벤트 추적 테이블 생성."""
     conn = get_connection()
@@ -157,18 +172,15 @@ def crawl_transactions():
             pid, pname = matched
             # event_date = 기사 발행일 우선, 없으면 today
             evt_date = pub.date() if pub and hasattr(pub, 'date') else today
-            try:
-                cur.execute("""
+            row = _insert_row_safely(cur, """
                     INSERT INTO player_transactions
                         (player_id, player_name, transaction_type, detail, event_date)
                     VALUES (%s, %s, %s, %s, %s)
                     ON CONFLICT (player_id, transaction_type, event_date) DO NOTHING
                     RETURNING id
-                """, (pid, pname, ttype, title[:500], evt_date))
-                if cur.fetchone():
-                    inserted += 1
-            except Exception as e:
-                print(f"[transaction] INSERT 오류: {e}")
+                """, (pid, pname, ttype, title[:500], evt_date), "transaction")
+            if row:
+                inserted += 1
     conn.commit()
     cur.close(); conn.close()
     if inserted:
@@ -204,18 +216,15 @@ def crawl_injury_list():
             action = 'returned'
         if not action:
             continue
-        try:
-            cur.execute("""
+        row = _insert_row_safely(cur, """
                 INSERT INTO player_injury_list
                     (player_id, player_name, team_id, action, reason, event_date)
                 VALUES (%s, %s, %s, %s, %s, %s)
                 ON CONFLICT (player_id, action, event_date) DO NOTHING
                 RETURNING id
-            """, (pid, pname, team_id, action, reason[:200] if reason else '', gdate))
-            if cur.fetchone():
-                inserted += 1
-        except Exception as e:
-            print(f"[injury] INSERT 오류: {e}")
+            """, (pid, pname, team_id, action, reason[:200] if reason else '', gdate), "injury")
+        if row:
+            inserted += 1
     conn.commit()
     cur.close(); conn.close()
     if inserted:
@@ -264,18 +273,15 @@ def crawl_awards(season: int = None):
                 continue
             for name, (pid, tid) in players_cache.items():
                 if name in title:
-                    try:
-                        cur.execute("""
+                    row = _insert_row_safely(cur, """
                             INSERT INTO player_awards
                                 (player_id, player_name, team_id, award_type, position, season)
                             VALUES (%s, %s, %s, %s, %s, %s)
                             ON CONFLICT (player_id, award_type, season) DO NOTHING
                             RETURNING id
-                        """, (pid, name, tid, atype, '', season))
-                        if cur.fetchone():
-                            inserted += 1
-                    except Exception as e:
-                        print(f"[award] INSERT 오류: {e}")
+                        """, (pid, name, tid, atype, '', season), "award")
+                    if row:
+                        inserted += 1
                     break
     conn.commit()
     cur.close(); conn.close()
@@ -317,18 +323,15 @@ def crawl_allstars(season: int = None):
             elif '나눔' in title: league = 'nanum'
             for name, (pid, tid) in players_cache.items():
                 if name in title:
-                    try:
-                        cur.execute("""
+                    row = _insert_row_safely(cur, """
                             INSERT INTO player_allstars
                                 (player_id, player_name, team_id, season, league, vote_rank)
                             VALUES (%s, %s, %s, %s, %s, %s)
                             ON CONFLICT (player_id, season) DO NOTHING
                             RETURNING id
-                        """, (pid, name, tid, season, league, 0))
-                        if cur.fetchone():
-                            inserted += 1
-                    except Exception as e:
-                        print(f"[allstar] INSERT 오류: {e}")
+                        """, (pid, name, tid, season, league, 0), "allstar")
+                    if row:
+                        inserted += 1
                     break
     conn.commit()
     cur.close(); conn.close()
@@ -354,8 +357,8 @@ def notify_pending():
     """)
     for tid, pid, pname, ttype, detail in cur.fetchall():
         try:
-            notify_player_transaction(pid, pname, ttype, detail or '')
-            cur.execute("UPDATE player_transactions SET notified=TRUE WHERE id=%s", (tid,))
+            if notify_player_transaction(pid, pname, ttype, detail or ''):
+                cur.execute("UPDATE player_transactions SET notified=TRUE WHERE id=%s", (tid,))
         except Exception as e:
             print(f"[event] transaction 알림 실패 id={tid}: {e}")
 
@@ -368,8 +371,8 @@ def notify_pending():
     """)
     for iid, pid, pname, tname, action, reason in cur.fetchall():
         try:
-            notify_injury_list(pid, pname, tname or '', action, reason or '')
-            cur.execute("UPDATE player_injury_list SET notified=TRUE WHERE id=%s", (iid,))
+            if notify_injury_list(pid, pname, tname or '', action, reason or ''):
+                cur.execute("UPDATE player_injury_list SET notified=TRUE WHERE id=%s", (iid,))
         except Exception as e:
             print(f"[event] injury 알림 실패 id={iid}: {e}")
 
@@ -382,8 +385,8 @@ def notify_pending():
     """)
     for aid, pid, pname, tname, atype, season, position in cur.fetchall():
         try:
-            notify_award(pid, pname, tname or '', atype, season, position or '')
-            cur.execute("UPDATE player_awards SET notified=TRUE WHERE id=%s", (aid,))
+            if notify_award(pid, pname, tname or '', atype, season, position or ''):
+                cur.execute("UPDATE player_awards SET notified=TRUE WHERE id=%s", (aid,))
         except Exception as e:
             print(f"[event] award 알림 실패 id={aid}: {e}")
 
@@ -396,8 +399,8 @@ def notify_pending():
     """)
     for aid, pid, pname, tname, season, league, vrank in cur.fetchall():
         try:
-            notify_allstar(pid, pname, tname or '', season, league or '', vrank or 0)
-            cur.execute("UPDATE player_allstars SET notified=TRUE WHERE id=%s", (aid,))
+            if notify_allstar(pid, pname, tname or '', season, league or '', vrank or 0):
+                cur.execute("UPDATE player_allstars SET notified=TRUE WHERE id=%s", (aid,))
         except Exception as e:
             print(f"[event] allstar 알림 실패 id={aid}: {e}")
 

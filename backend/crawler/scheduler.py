@@ -3291,8 +3291,14 @@ def _notify_roster_for_fans():
 
 
 def _run_once(func, *args):
-    func(*args)
-    return schedule.CancelJob
+    try:
+        func(*args)
+    except Exception as e:
+        import traceback
+        print(f"[scheduler] 일회성 작업 오류 ({func.__name__}): {e}")
+        traceback.print_exc()
+    finally:
+        return schedule.CancelJob
 
 
 def _update_today_games():
@@ -4113,6 +4119,18 @@ def _update_futures_games():
         print(f"[퓨처스 갱신] 오류: {e}")
 
 
+def _run_scheduled_job(func, *args):
+    """Keep one failed job from terminating or wedging the scheduler loop."""
+    try:
+        func(*args)
+    except Exception as e:
+        import traceback
+        name = getattr(func, "__name__", repr(func))
+        print(f"[scheduler] 작업 실행 오류 ({name}): {e}")
+        traceback.print_exc()
+    return None
+
+
 def run_scheduler():
     print("PlayBall 스케줄러 시작!")
     try:
@@ -4121,21 +4139,21 @@ def run_scheduler():
         print(f'[recovery] 오류: {e}')
 
     # 30초마다 (UTC 01:00~15:00에만 동작)
-    schedule.every(30).seconds.do(smart_update)
+    schedule.every(30).seconds.do(_run_scheduled_job, smart_update)
 
     # 매일 UTC 01:00 (KST 10:00): 네이버 선수 통계
-    schedule.every().day.at("01:00").do(update_player_stats)
+    schedule.every().day.at("01:00").do(_run_scheduled_job, update_player_stats)
 
     # 매일 UTC 15:00 (KST 00:00): 자정 기록/팀순위 + KBO 선수 스탯
-    schedule.every().day.at("15:00").do(update_finished_game_records)
-    schedule.every().day.at("15:00").do(update_team_rankings)
-    schedule.every().monday.at("15:00").do(update_kbo_player_stats)  # KST 월요일 00:00
+    schedule.every().day.at("15:00").do(_run_scheduled_job, update_finished_game_records)
+    schedule.every().day.at("15:00").do(_run_scheduled_job, update_team_rankings)
+    schedule.every().monday.at("15:00").do(_run_scheduled_job, update_kbo_player_stats)  # KST 월요일 00:00
 
     # 매일 UTC 00:30 (KST 09:30): 등록말소 크롤링
-    schedule.every().day.at("00:30").do(_update_roster_changes)
+    schedule.every().day.at("00:30").do(_run_scheduled_job, _update_roster_changes)
 
     # 아침 브리핑 (UTC 00:00 = KST 09:00) — 마이팀 어제 결과 + 오늘 경기
-    schedule.every().day.at("00:00").do(_daily_briefing)
+    schedule.every().day.at("00:00").do(_run_scheduled_job, _daily_briefing)
 
     # 매일 UTC 15:30 (KST 00:30): 예측 정확도 평가 + 일별 집계 + 오늘 로깅 + 재학습
     def _prediction_daily():
@@ -4144,7 +4162,7 @@ def run_scheduler():
             daily_pipeline()
         except Exception as e:
             print(f"[prediction] daily_pipeline 오류: {e}")
-    schedule.every().day.at("15:30").do(_prediction_daily)
+    schedule.every().day.at("15:30").do(_run_scheduled_job, _prediction_daily)
 
     # 매일 UTC 15:40 (KST 00:40): 즐겨찾기 선수 이벤트 처리
     def _player_events_daily():
@@ -4163,7 +4181,7 @@ def run_scheduler():
             check_allstar_vote_events()
         except Exception as e:
             print(f"[player-events] daily 오류: {e}")
-    schedule.every().day.at("15:40").do(_player_events_daily)
+    schedule.every().day.at("15:40").do(_run_scheduled_job, _player_events_daily)
 
     # 시상/올스타 — 시즌 이벤트 (월별 트리거: 7월 올스타, 11월 시상식)
     def _player_events_seasonal():
@@ -4184,7 +4202,7 @@ def run_scheduler():
         except Exception as e:
             print(f"[player-events] seasonal 오류: {e}")
     # 매일 UTC 15:50 (KST 00:50): 시상/올스타 (해당 월만 작동)
-    schedule.every().day.at("15:50").do(_player_events_seasonal)
+    schedule.every().day.at("15:50").do(_run_scheduled_job, _player_events_seasonal)
 
     # 매시간: 오늘 예측 로깅 (스케줄 변경 대응 — 선발 변경 시 갱신)
     def _prediction_hourly_log():
@@ -4193,34 +4211,34 @@ def run_scheduler():
             log_today_predictions()
         except Exception as e:
             print(f"[prediction] hourly log 오류: {e}")
-    schedule.every(1).hours.do(_prediction_hourly_log)
+    schedule.every(1).hours.do(_run_scheduled_job, _prediction_hourly_log)
 
     # 매주 월요일 UTC 03:00: 시즌 일정
-    schedule.every().monday.at("03:00").do(update_season_schedule)
+    schedule.every().monday.at("03:00").do(_run_scheduled_job, update_season_schedule)
 
     # 매시간: 좀비 크롬 정리
-    schedule.every(1).hours.do(kill_zombie_chrome)
+    schedule.every(1).hours.do(_run_scheduled_job, kill_zombie_chrome)
 
     # 매일 UTC 18:00 (KST 03:00): 죽은 refresh_token 전역 정리 (bloat 방지)
-    schedule.every().day.at("18:00").do(_purge_dead_refresh_tokens)
+    schedule.every().day.at("18:00").do(_run_scheduled_job, _purge_dead_refresh_tokens)
 
     # 매일 UTC 18:30 (KST 03:30): 시즌 단계 자동 갱신 (postseason=admin 핀 보존)
-    schedule.every().day.at("18:30").do(_update_season_phase)
+    schedule.every().day.at("18:30").do(_run_scheduled_job, _update_season_phase)
 
     # 매일 UTC 19:00 (KST 04:00): 퓨처스(2군) 일정/박스 갱신 (2군 크롤 스케줄러 부재로 stale 방지)
-    schedule.every().day.at("19:00").do(_update_futures_games)
+    schedule.every().day.at("19:00").do(_run_scheduled_job, _update_futures_games)
 
     # 매시간: 팀 뉴스 크롤링
-    schedule.every(1).hours.do(_crawl_news_hourly)
+    schedule.every(1).hours.do(_run_scheduled_job, _crawl_news_hourly)
 
     # 6시간마다: 하이라이트 크롤링 (YouTube API quota 절감)
-    schedule.every(6).hours.do(_crawl_highlights_hourly)
+    schedule.every(6).hours.do(_run_scheduled_job, _crawl_highlights_hourly)
 
     # 15분마다: 크롤러 헬스체크
-    schedule.every(15).minutes.do(_health_check)
+    schedule.every(15).minutes.do(_run_scheduled_job, _health_check)
 
     # 5분마다: 경기 시작 전 알림 (30분/1시간/2시간 전)
-    schedule.every(5).minutes.do(_send_pregame_notifications)
+    schedule.every(5).minutes.do(_run_scheduled_job, _send_pregame_notifications)
 
     print("스케줄 등록 완료!")
     print("- 30초마다 (UTC 01:00~15:00 = KST 10:00~00:00): 경기 상태/이닝/선수/투구 업데이트")

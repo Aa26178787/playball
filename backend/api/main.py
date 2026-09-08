@@ -8,14 +8,14 @@ import time
 import threading
 from collections import defaultdict, deque
 from api.log_setup import setup_logging
+from api.paths import STATIC_DIR
 
 setup_logging()
 
 _ALLOWED_ORIGINS = [
     "https://playball.duckdns.org",
-    "http://localhost",
-    "http://10.0.0.0/8",   # 로컬 개발 (ADB over WiFi)
 ]
+_LOCAL_ORIGIN_RE = r"^http://(localhost|127\.0\.0\.1)(:\d+)?$"
 
 app = FastAPI(
     title="PlayBall API",
@@ -50,13 +50,28 @@ _SENSITIVE_LIMITS = [
     ("/auth/check-", 30),    # 이메일/닉네임 enumeration 완화
 ]
 _sensitive_store: dict[str, deque] = defaultdict(deque)
+_MAX_RATE_KEYS = 10_000
+
+
+def _prune_rate_stores(now: float) -> None:
+    for store in (_rate_store, _sensitive_store):
+        if len(store) <= _MAX_RATE_KEYS:
+            continue
+        expired = [key for key, values in store.items()
+                   if not values or now - values[-1] > _RATE_WINDOW]
+        for key in expired:
+            store.pop(key, None)
 
 
 @app.middleware("http")
 async def limit_body_size(request: Request, call_next):
     content_length = request.headers.get("content-length")
-    if content_length and int(content_length) > _MAX_BODY:
-        return JSONResponse(status_code=413, content={"detail": "요청 크기 초과"})
+    if content_length:
+        try:
+            if int(content_length) > _MAX_BODY:
+                return JSONResponse(status_code=413, content={"detail": "요청 크기 초과"})
+        except ValueError:
+            return JSONResponse(status_code=400, content={"detail": "잘못된 Content-Length"})
     return await call_next(request)
 
 
@@ -81,6 +96,7 @@ async def rate_limit(request: Request, call_next):
     now = time.time()
 
     with _rate_lock:
+        _prune_rate_stores(now)
         dq = _rate_store[ip]
         # 윈도우 밖 타임스탬프 제거
         while dq and now - dq[0] > _RATE_WINDOW:
@@ -122,6 +138,16 @@ class _ETagMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         if request.method != "GET" or response.status_code != 200:
             return response
+        content_type = response.headers.get("content-type", "")
+        content_length = response.headers.get("content-length")
+        try:
+            response_size = int(content_length) if content_length is not None else None
+        except ValueError:
+            response_size = None
+        if (not content_type.startswith("application/json")
+                or response_size is None
+                or response_size > 2 * 1024 * 1024):
+            return response
         body = b"".join([chunk async for chunk in response.body_iterator])
         etag = f'W/"{_hashlib.md5(body).hexdigest()}"'
         if request.headers.get("if-none-match") == etag:
@@ -153,6 +179,7 @@ app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
+    allow_origin_regex=_LOCAL_ORIGIN_RE,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Admin-Key"],
     allow_credentials=True,
@@ -184,7 +211,7 @@ from api.routers import bootstrap
 app.include_router(bootstrap.router, tags=["부트스트랩"])
 app.include_router(historical.router, prefix="/historical", tags=["역대"])
 app.include_router(futures.router, prefix="/futures", tags=["퓨처스(2군)"])
-app.mount("/static", StaticFiles(directory="/home/ubuntu/playball/backend/static"), name="static")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 @app.get("/")

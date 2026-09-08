@@ -8,6 +8,7 @@ import io
 from PIL import Image, ImageOps
 
 _FMT = {'.jpg': 'JPEG', '.jpeg': 'JPEG', '.png': 'PNG', '.webp': 'WEBP'}
+_MAX_IMAGE_PIXELS = 20_000_000
 
 
 def strip_metadata(data: bytes, ext: str) -> bytes:
@@ -17,6 +18,8 @@ def strip_metadata(data: bytes, ext: str) -> bytes:
         raise ValueError(f'unsupported ext: {ext}')
     try:
         img = Image.open(io.BytesIO(data))
+        if img.width * img.height > _MAX_IMAGE_PIXELS:
+            raise ValueError('image dimensions are too large')
         img = ImageOps.exif_transpose(img)
         out = io.BytesIO()
         if fmt == 'JPEG':

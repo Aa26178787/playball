@@ -24,9 +24,13 @@ _pool_lock = threading.Lock()
 def _get_pool() -> pool.ThreadedConnectionPool:
     global _pool
     if _pool is None:
-        maxconn = int(os.environ.get('DB_POOL_MAX', '20'))
-        minconn = min(3, maxconn)
-        _pool = pool.ThreadedConnectionPool(minconn=minconn, maxconn=maxconn, **DB_CONFIG)
+        with _pool_lock:
+            if _pool is None:
+                maxconn = int(os.environ.get('DB_POOL_MAX', '20'))
+                minconn = min(3, maxconn)
+                _pool = pool.ThreadedConnectionPool(
+                    minconn=minconn, maxconn=maxconn, **DB_CONFIG
+                )
     return _pool
 
 
@@ -43,8 +47,9 @@ def _reset_pool():
 
 class _PooledConn:
     """Wraps a pooled psycopg2 connection. close() returns to pool instead of dropping."""
-    def __init__(self, conn):
+    def __init__(self, conn, owner_pool=None):
         self._conn = conn
+        self._owner_pool = owner_pool or _get_pool()
         self._closed = False
 
     def cursor(self, *args, **kwargs):
@@ -67,7 +72,7 @@ class _PooledConn:
             except Exception:
                 pass
             try:
-                _get_pool().putconn(self._conn)
+                self._owner_pool.putconn(self._conn)
             except Exception:
                 pass
 
@@ -96,16 +101,12 @@ class _PooledConn:
 def get_connection() -> _PooledConn | None:
     """Return a pooled DB connection. Call conn.close() to return it to the pool."""
     try:
-        return _PooledConn(_get_pool().getconn())
+        owner_pool = _get_pool()
+        return _PooledConn(owner_pool.getconn(), owner_pool)
     except pool.PoolError as e:
         if 'exhausted' in str(e).lower():
-            print(f"[DB] 풀 고갈 감지 → 풀 재생성")
-            _reset_pool()
-            try:
-                return _PooledConn(_get_pool().getconn())
-            except Exception as e2:
-                print(f"[DB] 풀 재생성 후 연결 실패: {e2}")
-                return None
+            print("[DB] 풀 고갈: 활성 연결을 유지하고 요청을 거절합니다")
+            return None
         print(f"[DB] 연결 오류: {e}")
         return None
     except Exception as e:

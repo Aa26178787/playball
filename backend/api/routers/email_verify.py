@@ -1,11 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
 from database.connection import get_connection
 from api.routers.auth import get_current_user
 from api.email_service import send_verification_email
-import random
-import string
+import secrets
 
 router = APIRouter()
 
@@ -15,7 +14,7 @@ MAX_VERIFY_ATTEMPTS = 5   # 코드당 검증 실패 허용 횟수 (초과 시 �
 
 
 def _generate_code() -> str:
-    return ''.join(random.choices(string.digits, k=6))
+    return f'{secrets.randbelow(1_000_000):06d}'
 
 
 def _cleanup_expired(cur):
@@ -64,18 +63,23 @@ def send_code(current_user: dict = Depends(get_current_user)):
         'INSERT INTO phone_verifications (user_id, phone_number, code, expires_at) VALUES (%s, %s, %s, %s)',
         (current_user["user_id"], email, code, expires_at)
     )
+    ok = send_verification_email(email, code)
+    if not ok:
+        cur.execute(
+            'UPDATE phone_verifications SET used=TRUE '
+            'WHERE user_id=%s AND phone_number=%s AND code=%s',
+            (current_user["user_id"], email, code),
+        )
     conn.commit()
     cur.close()
     conn.close()
-
-    ok = send_verification_email(email, code)
     if not ok:
         raise HTTPException(status_code=500, detail="이메일 발송 실패")
     return {'message': '인증번호가 발송되었습니다', 'email': email}
 
 
 class VerifyRequest(BaseModel):
-    code: str
+    code: str = Field(pattern=r'^\d{6}$')
 
 
 @router.post("/verify")
@@ -97,7 +101,7 @@ def verify_code(req: VerifyRequest, current_user: dict = Depends(get_current_use
         '''SELECT id FROM phone_verifications
            WHERE user_id=%s AND phone_number=%s AND code=%s
              AND expires_at > NOW() AND used=FALSE
-           ORDER BY created_at DESC LIMIT 1''',
+           ORDER BY created_at DESC LIMIT 1 FOR UPDATE''',
         (current_user["user_id"], email, req.code)
     )
     vrow = cur.fetchone()
@@ -106,7 +110,7 @@ def verify_code(req: VerifyRequest, current_user: dict = Depends(get_current_use
         cur.execute(
             '''SELECT id, COALESCE(attempts, 0) FROM phone_verifications
                WHERE user_id=%s AND phone_number=%s AND expires_at > NOW() AND used=FALSE
-               ORDER BY created_at DESC LIMIT 1''',
+               ORDER BY created_at DESC LIMIT 1 FOR UPDATE''',
             (current_user["user_id"], email)
         )
         active = cur.fetchone()

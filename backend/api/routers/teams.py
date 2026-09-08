@@ -261,7 +261,7 @@ def _calc_home_away(team_id, cur):
 
 @router.get("/rankings")
 @cached(60)
-def get_team_rankings(period: str = Query('full', regex='^(full|first_half|last_10)$')):
+def get_team_rankings(period: str = Query('full', pattern='^(full|first_half|last_10)$')):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -506,7 +506,7 @@ def get_team_players(team_id: int):
 
 
 @router.get("/{team_id}/games")
-def get_team_games(team_id: int, limit: int = 10):
+def get_team_games(team_id: int, limit: int = Query(10, ge=1, le=100)):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")

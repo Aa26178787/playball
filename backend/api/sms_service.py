@@ -1,7 +1,7 @@
 import os
 import hmac
 import hashlib
-import random
+import secrets
 import string
 import time
 import logging
@@ -11,19 +11,23 @@ logger = logging.getLogger(__name__)
 API_KEY = os.environ.get('COOLSMS_API_KEY', '')
 API_SECRET = os.environ.get('COOLSMS_API_SECRET', '')
 SENDER = os.environ.get('COOLSMS_SENDER', '')
+_ALLOW_DEV_CODES = os.environ.get('ALLOW_DEV_VERIFICATION_CODES') == '1'
 
 
 def generate_code() -> str:
-    return ''.join(random.choices(string.digits, k=6))
+    return f'{secrets.randbelow(1_000_000):06d}'
 
 
 def send_verification_sms(phone: str, code: str) -> bool:
     if not API_KEY or not API_SECRET or not SENDER:
-        logger.info(f'[SMS Dev] {phone} → 인증번호: {code}')
-        return True
+        if _ALLOW_DEV_CODES:
+            logger.warning('[SMS Dev] verification code for %s: %s', phone, code)
+            return True
+        logger.error('[SMS] credentials are not configured')
+        return False
     try:
         timestamp = str(int(time.time() * 1000))
-        salt = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
+        salt = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(16))
         signature_msg = f'{timestamp}{salt}'
         signature = hmac.new(
             API_SECRET.encode('utf-8'),

@@ -248,10 +248,40 @@ def _collapse_key(ntype: str, game_id: int | None, data: dict) -> str:
     return f"{ntype}_{disc}" if disc else ntype
 
 
+def _failure_reason_counts(responses) -> dict[str, int]:
+    """Aggregate FCM failures without exposing registration tokens."""
+    counts = {}
+    for result in responses:
+        if result.success:
+            continue
+        reason = type(result.exception).__name__ if result.exception else "UnknownError"
+        code = getattr(result.exception, "code", None) if result.exception else None
+        key = f"{reason}: {code or 'no-code'}"
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+_INVALID_TOKEN_MSGS = (
+    'registration-token-not-registered',
+    'Requested entity was not found',
+    'invalid-registration-token',
+    'not a valid FCM registration token',
+    'SenderId mismatch',
+)
+
+
+def _is_invalid_token_failure(result) -> bool:
+    return bool(
+        not result.success
+        and result.exception
+        and any(message in str(result.exception) for message in _INVALID_TOKEN_MSGS)
+    )
+
+
 def _send(targets: list[tuple[int, str]], title: str, body: str,
-          data: dict, ntype: str, game_id: int | None):
+          data: dict, ntype: str, game_id: int | None) -> bool:
     if not targets:
-        return
+        return True
     user_ids = list(dict.fromkeys(t[0] for t in targets))
     # 인앱 알림함은 quiet hours 무관 전원 저장
     _save_notifications(user_ids, title, body, ntype, game_id)
@@ -261,10 +291,10 @@ def _send(targets: list[tuple[int, str]], title: str, body: str,
         targets = [(uid, tok) for uid, tok in targets if uid in allow]
         if not targets:
             logger.info(f"[FCM] quiet hours 억제: {title}")
-            return
-    tokens = [t[1] for t in targets]
+            return True
     if _get_app() is None:
-        return
+        logger.error("[FCM] Firebase app is unavailable")
+        return False
     try:
         from firebase_admin import messaging
         # 같은 (타입,경기) 알림은 tag로 트레이서 교체(누적 X) → Android 50개/앱 캡
@@ -273,47 +303,51 @@ def _send(targets: list[tuple[int, str]], title: str, body: str,
         # collapse_key = 기기 오프라인 시 미수신분도 최신만 전달.
         collapse = _collapse_key(ntype, game_id, data)
         # Android high priority + APNs alert → Doze 우회, background에서도 즉시 표시
-        msg = messaging.MulticastMessage(
-            notification=messaging.Notification(title=title, body=body),
-            data={k: str(v) for k, v in data.items()},
-            android=messaging.AndroidConfig(
-                priority='high',
-                collapse_key=collapse,
-                notification=messaging.AndroidNotification(
-                    channel_id=_channel_for(ntype),
-                    sound='default',
-                    default_vibrate_timings=True,
-                    tag=collapse,
+        all_processed = True
+        for start in range(0, len(targets), 500):
+            batch = targets[start:start + 500]
+            tokens = [item[1] for item in batch]
+            msg = messaging.MulticastMessage(
+                notification=messaging.Notification(title=title, body=body),
+                data={k: str(v) for k, v in data.items()},
+                android=messaging.AndroidConfig(
+                    priority='high',
+                    collapse_key=collapse,
+                    notification=messaging.AndroidNotification(
+                        channel_id=_channel_for(ntype),
+                        sound='default',
+                        default_vibrate_timings=True,
+                        tag=collapse,
+                    ),
                 ),
-            ),
-            apns=messaging.APNSConfig(
-                headers={
-                    'apns-priority': '10',
-                    'apns-collapse-id': collapse[:64],
-                },
-                payload=messaging.APNSPayload(
-                    aps=messaging.Aps(sound='default', badge=1),
+                apns=messaging.APNSConfig(
+                    headers={
+                        'apns-priority': '10',
+                        'apns-collapse-id': collapse[:64],
+                    },
+                    payload=messaging.APNSPayload(
+                        aps=messaging.Aps(sound='default', badge=1),
+                    ),
                 ),
-            ),
-            tokens=tokens,
-        )
-        resp = messaging.send_each_for_multicast(msg)
-        logger.info(f"[FCM] {title}: {resp.success_count}성공/{resp.failure_count}실패")
-        _INVALID_TOKEN_MSGS = (
-            'registration-token-not-registered',
-            'Requested entity was not found',
-            'invalid-registration-token',
-            'not a valid FCM registration token',  # 형식 불량 (InvalidArgumentError)
-            'SenderId mismatch',                   # 타 프로젝트 토큰
-        )
-        failed = [
-            tokens[i] for i, r in enumerate(resp.responses)
-            if not r.success and r.exception and
-            any(m in str(r.exception) for m in _INVALID_TOKEN_MSGS)
-        ]
-        _remove_invalid_tokens(failed)
+                tokens=tokens,
+            )
+            resp = messaging.send_each_for_multicast(msg)
+            logger.info(f"[FCM] {title}: {resp.success_count}성공/{resp.failure_count}실패")
+            if resp.failure_count:
+                for reason, count in _failure_reason_counts(resp.responses).items():
+                    logger.warning("[FCM] 실패 원인 count=%s reason=%s", count, reason)
+            invalid = [
+                tokens[i] for i, result in enumerate(resp.responses)
+                if _is_invalid_token_failure(result)
+            ]
+            _remove_invalid_tokens(invalid)
+            if any(not result.success and not _is_invalid_token_failure(result)
+                   for result in resp.responses):
+                all_processed = False
+        return all_processed
     except Exception as e:
         logger.error(f"[FCM] 발송 실패: {e}")
+        return False
 
 
 # ── 경기 알림 (user_settings 반영) ───────────────────────────────────────────
@@ -977,8 +1011,8 @@ def notify_hitting_streak(player_id: int, player_name: str, team_name: str,
         return
     targets = _get_player_fan_targets(player_id, 'notify_player_news')
     if not targets:
-        return
-    _send(targets,
+        return True
+    return _send(targets,
           f"🔥 {player_name} {streak}경기 연속 안타!",
           f"{team_name} {player_name} 선수가 {streak}경기 연속 안타 기록을 이어갑니다!",
           {"player_id": str(player_id), "type": "hitting_streak"},
@@ -1032,7 +1066,7 @@ def notify_player_transaction(player_id: int, player_name: str,
     transaction_type: 'trade' / 'release' / 'retire' / 'fa_signed' / 'fa_filed'."""
     targets = _get_player_fan_targets(player_id, 'notify_player_news')
     if not targets:
-        return
+        return True
     emoji_map = {
         'trade': '🔄', 'release': '👋', 'retire': '🎬',
         'fa_signed': '✍️', 'fa_filed': '📝',
@@ -1043,7 +1077,7 @@ def notify_player_transaction(player_id: int, player_name: str,
     }
     emoji = emoji_map.get(transaction_type, '📰')
     label = label_map.get(transaction_type, transaction_type)
-    _send(targets,
+    return _send(targets,
           f"{emoji} {player_name} {label}",
           f"{player_name} 선수 {label}{f' — {detail}' if detail else ''}",
           {"player_id": str(player_id), "type": f"transaction_{transaction_type}"},
@@ -1056,7 +1090,7 @@ def notify_injury_list(player_id: int, player_name: str, team_name: str,
     action: 'listed' / 'returned'"""
     targets = _get_player_fan_targets(player_id, 'notify_player_news')
     if not targets:
-        return
+        return True
     if action == 'listed':
         emoji = '🤕'
         title = f"{emoji} {player_name} 부상자 명단 등재"
@@ -1065,7 +1099,7 @@ def notify_injury_list(player_id: int, player_name: str, team_name: str,
         emoji = '💪'
         title = f"{emoji} {player_name} 부상자 명단 복귀"
         body = f"{team_name} {player_name} 부상자 명단 복귀!"
-    _send(targets, title, body,
+    return _send(targets, title, body,
           {"player_id": str(player_id), "type": f"injury_{action}"},
           "score_change", None)
 
@@ -1076,14 +1110,14 @@ def notify_award(player_id: int, player_name: str, team_name: str,
     award_type: 'mvp' / 'rookie' / 'gg' / 'pitcher_gg' / 'goldenglove'"""
     targets = _get_player_fan_targets(player_id, 'notify_player_news')
     if not targets:
-        return
+        return True
     emoji_map = {'mvp': '👑', 'rookie': '🌟', 'gg': '🏆', 'goldenglove': '🏆'}
     label_map = {'mvp': f'{season}시즌 MVP', 'rookie': f'{season}시즌 신인왕',
                  'gg': f'{season}시즌 골든글러브{f" ({position})" if position else ""}',
                  'goldenglove': f'{season}시즌 골든글러브{f" ({position})" if position else ""}'}
     emoji = emoji_map.get(award_type, '🏅')
     label = label_map.get(award_type, award_type)
-    _send(targets,
+    return _send(targets,
           f"{emoji} {player_name} {label}!",
           f"{team_name} {player_name} 선수 {label} 수상!",
           {"player_id": str(player_id), "type": f"award_{award_type}"},
@@ -1096,10 +1130,10 @@ def notify_allstar(player_id: int, player_name: str, team_name: str,
     league: 'dream' / 'nanum'"""
     targets = _get_player_fan_targets(player_id, 'notify_player_news')
     if not targets:
-        return
+        return True
     league_str = f"({'드림' if league == 'dream' else '나눔'} 올스타) " if league else ""
     rank_str = f" · 팬투표 {vote_rank}위" if vote_rank > 0 else ""
-    _send(targets,
+    return _send(targets,
           f"⭐ {player_name} {season} 올스타 선발!",
           f"{team_name} {player_name} 선수가 {season} 올스타전에 선발되었습니다 {league_str}{rank_str}",
           {"player_id": str(player_id), "type": "allstar"},

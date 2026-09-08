@@ -346,7 +346,9 @@ def recompute_pitcher_derived(cur, season=2026):
           k_bb_pct = round((ps.strikeouts-ps.walks)*100.0/NULLIF(ps.tbf,0),1),
           fip      = round((13*ps.home_runs_allowed+3*(ps.walks+ps.hbp)-2*ps.strikeouts)/(floor(ps.innings_pitched)+(ps.innings_pitched-floor(ps.innings_pitched))*10/3)+(SELECT c FROM cfip),2),
           babip    = CASE WHEN ps.tbf>0 AND (ps.tbf-ps.walks-ps.hbp-ps.sac-ps.strikeouts-ps.home_runs_allowed)>0
-                          THEN round((ps.hits_allowed-ps.home_runs_allowed)::numeric/(ps.tbf-ps.walks-ps.hbp-ps.sac-ps.strikeouts-ps.home_runs_allowed),3)
+                          THEN round(LEAST(1, GREATEST(0,
+                               (ps.hits_allowed-ps.home_runs_allowed)::numeric/
+                               (ps.tbf-ps.walks-ps.hbp-ps.sac-ps.strikeouts-ps.home_runs_allowed))),3)
                           ELSE ps.babip END
         WHERE ps.season=%s AND ps.innings_pitched>0
     """, (season, season))
@@ -364,6 +366,23 @@ def recompute_batter_derived(cur, season=2026):
           k_pct  = round(strikeouts*100.0/NULLIF(pa,0),1)
         WHERE season=%s AND at_bats>0
     """, (season,))
+
+
+def recompute_derived_safely(cur, player_type, season):
+    """Recompute derived stats without aborting the raw-stat transaction."""
+    cur.execute("SAVEPOINT sp_derived")
+    try:
+        if player_type == "PITCHER":
+            recompute_pitcher_derived(cur, season)
+        elif player_type == "HITTER":
+            recompute_batter_derived(cur, season)
+        cur.execute("RELEASE SAVEPOINT sp_derived")
+        return True
+    except Exception as e:
+        print(f"파생 스탯 재계산 오류 ({player_type}): {e}")
+        cur.execute("ROLLBACK TO SAVEPOINT sp_derived")
+        cur.execute("RELEASE SAVEPOINT sp_derived")
+        return False
 
 
 def save_players_and_stats(players, player_type, update_players=True):
@@ -527,10 +546,8 @@ def save_players_and_stats(players, player_type, update_players=True):
             continue
 
     # 파생 스탯 재계산 (statiz 미제공 — raw 갱신분 반영, stale 방지)
-    if player_type == "PITCHER" and players:
-        recompute_pitcher_derived(cur, players[0].get("season", 2026))
-    elif player_type == "HITTER" and players:  # (구 'BATTER' 오타 — 타자 파생 미실행 버그)
-        recompute_batter_derived(cur, players[0].get("season", 2026))
+    if players:
+        recompute_derived_safely(cur, player_type, players[0].get("season", 2026))
     conn.commit()
     cur.close()
     conn.close()

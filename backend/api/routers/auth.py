@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from database.connection import get_connection
@@ -17,31 +17,33 @@ if not _raw_secret:
     raise RuntimeError("JWT_SECRET_KEY 환경변수가 설정되지 않았습니다")
 SECRET_KEY = _raw_secret
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 1440
-REFRESH_TOKEN_EXPIRE_DAYS = 365
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get('ACCESS_TOKEN_EXPIRE_MINUTES', '60'))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get('REFRESH_TOKEN_EXPIRE_DAYS', '90'))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 class UserRegister(BaseModel):
-    email: str
-    password: str
-    nickname: str
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=8, max_length=128)
+    nickname: str = Field(min_length=1, max_length=30)
 
 
 class UserLogin(BaseModel):
-    email: str
-    password: str
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(min_length=64, max_length=64)
 
 
 def validate_password(password: str):
     import re
     if len(password) < 8:
         raise HTTPException(status_code=400, detail="비밀번호는 8자 이상이어야 합니다")
+    if len(password.encode('utf-8')) > 72:
+        raise HTTPException(status_code=400, detail="비밀번호가 너무 깁니다")
     if not re.search(r'[A-Za-z]', password):
         raise HTTPException(status_code=400, detail="비밀번호에 영문자가 포함되어야 합니다")
     if not re.search(r'[0-9]', password):

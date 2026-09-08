@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from database.connection import get_connection
 from api.cache import cached
 from typing import Optional
@@ -19,7 +19,7 @@ def _label(code):
 
 @router.get("/games")
 @cached(300)
-def get_futures_games(season: int, month: Optional[int] = None):
+def get_futures_games(season: int = Query(..., ge=1982, le=2100), month: Optional[int] = Query(None, ge=1, le=12)):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -99,7 +99,7 @@ _FUT_LEADERS = {
 
 @router.get("/leaders")
 @cached(3600)
-def get_futures_leaders(season: int):
+def get_futures_leaders(season: int = Query(..., ge=1982, le=2100)):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")

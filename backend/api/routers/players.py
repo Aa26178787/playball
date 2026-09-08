@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from database.connection import get_connection
 from typing import Optional
 from api.cache import cached
@@ -60,8 +60,8 @@ def search_players(q: str, player_type: str = None):
 @router.get("/hitters")
 @cached(300)
 def get_hitters(
-    season: int = 2026,
-    limit: int = 100,
+    season: int = Query(2026, ge=1982, le=2100),
+    limit: int = Query(100, ge=1, le=200),
     team_id: Optional[int] = None,
     sort_by: str = "avg",
     position: Optional[str] = None,
@@ -160,8 +160,8 @@ def get_hitters(
 @router.get("/pitchers")
 @cached(300)
 def get_pitchers(
-    season: int = 2026,
-    limit: int = 100,
+    season: int = Query(2026, ge=1982, le=2100),
+    limit: int = Query(100, ge=1, le=200),
     team_id: Optional[int] = None,
     sort_by: str = "era",
     throws: Optional[str] = None,
@@ -563,7 +563,7 @@ def get_player_pitch_stats(player_id: int, season: int = 2026):
 # ===== 인기투표 =====
 
 @router.get("/popularity")
-def get_player_popularity(limit: int = 20, current_user: dict | None = Depends(get_optional_user)):
+def get_player_popularity(limit: int = Query(20, ge=1, le=100), current_user: dict | None = Depends(get_optional_user)):
     """선수 인기투표 랭킹"""
     conn = get_connection()
     if not conn:

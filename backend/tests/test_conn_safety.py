@@ -1,5 +1,6 @@
 """_PooledConn 누수 안전망 테스트 (DB 불요 — 가짜 conn/pool)."""
 import gc
+from psycopg2 import pool
 import database.connection as c
 
 
@@ -63,3 +64,20 @@ def test_context_manager_closes_once():
         pass
     gc.collect()
     assert fake.returned.count(fc) == 1
+
+
+def test_exhausted_pool_does_not_close_active_connections():
+    class ExhaustedPool:
+        closed = False
+
+        def getconn(self):
+            raise pool.PoolError('connection pool exhausted')
+
+        def closeall(self):
+            self.closed = True
+
+    fake = ExhaustedPool()
+    c._pool = fake
+
+    assert c.get_connection() is None
+    assert fake.closed is False

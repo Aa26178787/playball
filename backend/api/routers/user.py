@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from typing import Optional
 from database.connection import get_connection
@@ -432,9 +432,10 @@ from fastapi import UploadFile, File, Request
 import os, uuid
 from api.security_log import log_upload
 from api.image_utils import strip_metadata
+from api.paths import PUBLIC_BASE_URL, static_subdir
 
-PROFILE_DIR = '/home/ubuntu/playball/backend/static/profiles'
-BASE_URL = 'https://playball.duckdns.org'
+PROFILE_DIR = static_subdir('profiles')
+BASE_URL = PUBLIC_BASE_URL
 _MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5MB
 
 # 이미지 매직바이트 (JPEG, PNG, WebP)
@@ -473,7 +474,7 @@ async def upload_profile_image(
     except ValueError:
         raise HTTPException(status_code=400, detail='이미지 처리에 실패했습니다')
     filename = f"{current_user['user_id']}_{uuid.uuid4().hex[:8]}{ext}"
-    path = os.path.join(PROFILE_DIR, filename)
+    path = PROFILE_DIR / filename
     with open(path, 'wb') as f:
         f.write(data)
     ip = (request.headers.get("X-Real-IP") or request.client.host) if request else "unknown"
@@ -589,7 +590,7 @@ def delete_calendar_event(event_id: int, current_user: dict = Depends(get_curren
 # ── 알림 타임라인 ──────────────────────────────────────────────────────────────
 
 @router.get('/notifications')
-def get_notifications(limit: int = 30, current_user: dict = Depends(get_current_user)):
+def get_notifications(limit: int = Query(30, ge=1, le=100), current_user: dict = Depends(get_current_user)):
     """알림 이력 조회 (최신순)"""
     conn = get_connection()
     if not conn:
@@ -725,7 +726,7 @@ def get_stadium_record(current_user: dict = Depends(get_current_user)):
 # ===== 직관 방문 기록 =====
 
 @router.get('/stadium-visits')
-def get_stadium_visits(limit: int = 20, current_user: dict = Depends(get_current_user)):
+def get_stadium_visits(limit: int = Query(20, ge=1, le=100), current_user: dict = Depends(get_current_user)):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail='DB 연결 실패')
@@ -864,7 +865,7 @@ def get_stadium_stats(current_user: dict = Depends(get_current_user)):
 # ===== 직관승률 랭킹 (공개) =====
 
 @router.get('/stadium-ranking')
-def get_stadium_ranking(limit: int = 30):
+def get_stadium_ranking(limit: int = Query(30, ge=1, le=100)):
     """직관 5회 이상 유저 승률 랭킹 (공개)"""
     conn = get_connection()
     if not conn:

@@ -62,8 +62,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: install test deps (순수 파서 + 토큰/포인트 import 체인만)
-        run: pip install pytest psycopg2-binary fastapi "python-jose[cryptography]" pydantic bcrypt
+      - name: install backend dependencies
+        run: pip install -r backend/requirements.txt pytest
       - name: pytest
         working-directory: backend
         run: pytest tests -v

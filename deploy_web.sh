@@ -2,8 +2,8 @@
 # Flutter 웹 PWA 빌드+배포 (/app/) — 앱 수정 시 웹 동반 반영용
 # 사용: bash deploy_web.sh   (Git Bash)
 set -e
-KEY="C:\\Users\\qq772\\Downloads\\ssh-key-2026-03-28 (2).key"
-SRV="ubuntu@168.107.36.158"
+KEY="${PLAYBALL_SSH_KEY:?set PLAYBALL_SSH_KEY to the private-key path}"
+SRV="${PLAYBALL_SERVER:-ubuntu@168.107.36.158}"
 cd "$(dirname "$0")/app"
 
 echo "== flutter build web (wasm) =="
