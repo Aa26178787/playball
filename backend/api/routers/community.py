@@ -122,7 +122,7 @@ def get_posts(
     category: Optional[str] = None,
     sort: str = "latest",
     q: Optional[str] = None,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=10000),
     limit: int = Query(20, ge=1, le=100),
 ):
     conn = get_connection()
@@ -558,7 +558,7 @@ def get_blocks(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/my-posts")
-def get_my_posts(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=100), current_user: dict = Depends(get_current_user)):
+def get_my_posts(page: int = Query(1, ge=1, le=10000), limit: int = Query(20, ge=1, le=100), current_user: dict = Depends(get_current_user)):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -605,7 +605,7 @@ def delete_comment(comment_id: int, current_user: dict = Depends(get_current_use
     return {"message": "댓글 삭제 완료"}
 
 @router.get('/my-comments')
-def get_my_comments(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=100), current_user: dict = Depends(get_current_user)):
+def get_my_comments(page: int = Query(1, ge=1, le=10000), limit: int = Query(20, ge=1, le=100), current_user: dict = Depends(get_current_user)):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail='DB 연결 실패')
@@ -659,7 +659,7 @@ def toggle_comment_like(comment_id: int, current_user: dict = Depends(get_curren
 
 
 @router.get("/my-likes")
-def get_my_likes(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=100), current_user: dict = Depends(get_current_user)):
+def get_my_likes(page: int = Query(1, ge=1, le=10000), limit: int = Query(20, ge=1, le=100), current_user: dict = Depends(get_current_user)):
     """내가 좋아요한 게시글"""
     conn = get_connection()
     if not conn:

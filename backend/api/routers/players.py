@@ -257,7 +257,7 @@ def get_pitchers(
 
 @router.get("/rankings")
 @cached(300)
-def get_player_rankings(season: int = 2026):
+def get_player_rankings(season: int = Query(2026, ge=1982, le=2100)):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -460,7 +460,7 @@ def _daily_from_pa(cur, player_id: int, season: int) -> list[dict]:
 
 @router.get("/{player_id}/daily")
 @cached(300)
-def get_player_daily(player_id: int, season: int = 2026):
+def get_player_daily(player_id: int, season: int = Query(2026, ge=0, le=2100)):
     """선수 일자별 기록 (season=0 = 전 시즌). daily 부재 시즌은 PA 합성 fallback."""
     conn = get_connection()
     if not conn:
@@ -524,7 +524,7 @@ def get_player_daily(player_id: int, season: int = 2026):
 
 @router.get("/{player_id}/pitch-stats")
 @cached(600)
-def get_player_pitch_stats(player_id: int, season: int = 2026):
+def get_player_pitch_stats(player_id: int, season: int = Query(2026, ge=0, le=2100)):
     """투수 구종 분포 (game_pitch_locations 집계)"""
     conn = get_connection()
     if not conn:
@@ -658,7 +658,7 @@ def get_matchup_stats(batter_id: int, pitcher_id: int):
 
 @router.get("/{player_id}/pitch-design")
 @cached(3600)
-def get_pitch_design(player_id: int, season: int = 2026, stance: str = ''):
+def get_pitch_design(player_id: int, season: int = Query(2026, ge=0, le=2100), stance: str = ''):
     """피칭 디자인 — 투수의 구종별 로케이션 5x5 존 분포 (2026-06-07)
     zone index: row*5+col, row0=상단 밖, col0=좌측 밖(포수 시점), 내부 = 1..3
     stance: '' 전체 / 'R' vs우타 / 'L' vs좌타"""
@@ -740,7 +740,7 @@ def get_pitch_design(player_id: int, season: int = 2026, stance: str = ''):
 
 @router.get("/{player_id}/batter-zones")
 @cached(3600)
-def get_batter_zones(player_id: int, season: int = 2026, throws: str = ''):
+def get_batter_zones(player_id: int, season: int = Query(2026, ge=0, le=2100), throws: str = ''):
     """타자 존 히트맵 (2026-06-07) — 피투구 분포 / 헛스윙 / 존별 타율
     - zone: 투수판과 동일 5x5 (타자별 ABS존 기준)
     - throws: '' 전체 / 'R' vs우투 / 'L' vs좌투 (투수 players.throws 조인)
@@ -863,7 +863,7 @@ def get_batter_zones(player_id: int, season: int = 2026, throws: str = ''):
 
 @router.get("/{player_id}/pitcher-zones")
 @cached(3600)
-def get_pitcher_zones(player_id: int, season: int = 2026, stance: str = ''):
+def get_pitcher_zones(player_id: int, season: int = Query(2026, ge=0, le=2100), stance: str = ''):
     """피칭 존 히트맵 — 투수의 존별 피투구 분포 / 피안타율 (구종 무관 합산)
     - zone: 5x5 (타자 ABS존 기준)
     - stance: '' 전체 / 'R' vs우타 / 'L' vs좌타 (gpl.stance)

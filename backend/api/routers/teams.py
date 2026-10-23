@@ -610,7 +610,7 @@ def get_roster_changes(team_id: int, days: int = 30):
 
 
 @router.get("/{team_id}/monthly-stats")
-def get_team_monthly_stats(team_id: int, season: int = 2026):
+def get_team_monthly_stats(team_id: int, season: int = Query(2026, ge=1982, le=2100)):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -696,7 +696,7 @@ def _hitter_best_ranks(cur, season, player_ids):
 
 @router.get("/{team_id}/batting-order")
 @cached(300)
-def get_batting_order_stats(team_id: int, season: int = 2026):
+def get_batting_order_stats(team_id: int, season: int = Query(2026, ge=1982, le=2100)):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -795,7 +795,7 @@ def get_batting_order_stats(team_id: int, season: int = 2026):
 
 @router.get("/{team_id}/leaders")
 @cached(300)
-def get_team_leaders(team_id: int, season: int = 2026):
+def get_team_leaders(team_id: int, season: int = Query(2026, ge=1982, le=2100)):
     """부문별 팀내 TOP3 (타자 5부문 + 투수 5부문). rate스탯은 소표본 배제."""
     conn = get_connection()
     if not conn:
@@ -862,7 +862,7 @@ def get_team_leaders(team_id: int, season: int = 2026):
 
 
 @router.get("/{team_id}/head-to-head")
-def get_head_to_head(team_id: int, season: int = 2026):
+def get_head_to_head(team_id: int, season: int = Query(2026, ge=1982, le=2100)):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -926,7 +926,7 @@ def get_head_to_head(team_id: int, season: int = 2026):
 
 @router.get("/{team_id}/season-stats")
 @cached(300)
-def get_team_season_stats(team_id: int, season: int = 2026):
+def get_team_season_stats(team_id: int, season: int = Query(2026, ge=1982, le=2100)):
     conn = get_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="DB 연결 실패")
@@ -1042,7 +1042,7 @@ def get_team_season_stats(team_id: int, season: int = 2026):
 
 
 @router.get("/all-stats")
-def get_all_team_stats(season: int = 2026):
+def get_all_team_stats(season: int = Query(2026, ge=1982, le=2100)):
     """모든 팀 시즌 기록 (타율/방어율/WHIP/득점/실점/홈런/도루)"""
     conn = get_connection()
     if not conn:
